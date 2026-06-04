@@ -22,11 +22,11 @@ export function ContactPage() {
       <div className="container mx-auto px-3 sm:px-4 relative z-10">
         {/* Header */}
         <div className="text-center mb-6 sm:mb-10">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-balance">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-balance">
             Entre em Contato
           </h1>
           <div className="w-24 sm:w-32 mx-auto mb-3 sm:mb-4 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
-          <p className="text-slate-700 max-w-xl mx-auto text-sm sm:text-base px-2 text-pretty">
+          <p className="text-slate-700 max-w-xl mx-auto text-lg sm:text-xl px-2 text-pretty">
             Tire suas dúvidas, faça seu pedido ou entre em contato conosco pelos canais abaixo.
           </p>
         </div>
@@ -38,23 +38,23 @@ export function ContactPage() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-[#8B5CF6]/20 border-2 border-[#8B5CF6]/50 flex items-center justify-center rounded-lg">
               <WhatsAppIcon className="w-8 h-8 sm:w-10 sm:h-10 text-[#8B5CF6]" />
             </div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-balance">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-balance">
               Fale pelo WhatsApp
             </h2>
-            <p className="text-slate-700 mb-4 sm:mb-6 text-sm sm:text-base text-pretty flex-grow">
+            <p className="text-slate-700 mb-4 sm:mb-6 text-lg sm:text-xl text-pretty flex-grow">
               Atendimento rápido e direto. Faça seu pedido ou tire dúvidas.
             </p>
             <Button
               asChild
               size="lg"
-              className="w-full bg-transparent border border-[#8B5CF6] text-[#8B5CF6] tracking-wide text-base sm:text-lg py-5 sm:py-6 hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 active:scale-[0.98]"
+              className="w-full bg-transparent border border-[#8B5CF6] text-[#8B5CF6] tracking-wide text-lg sm:text-xl h-14 sm:h-16 hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 active:scale-[0.98]"
             >
               <a
                 href="https://wa.me/5544999107516?text=Ol%C3%A1%21%20Vim%20pelo%20site%20e%20gostaria%20de%20saber%20mais%20sobre%20os%20proxies."
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <WhatsAppIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <WhatsAppIcon className="w-6 h-6 mr-2" />
                 Falar no WhatsApp
               </a>
             </Button>
@@ -65,21 +65,21 @@ export function ContactPage() {
             <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-[#8B5CF6]/20 border-2 border-[#8B5CF6]/50 flex items-center justify-center rounded-lg">
               <Mail className="w-8 h-8 sm:w-10 sm:h-10 text-[#8B5CF6]" />
             </div>
-            <h2 className="text-lg sm:text-xl md:text-2xl font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-balance">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-balance">
               Envie um E-mail
             </h2>
-            <p className="text-slate-700 mb-4 sm:mb-6 text-sm sm:text-base text-pretty flex-grow">
+            <p className="text-slate-700 mb-4 sm:mb-6 text-lg sm:text-xl text-pretty flex-grow">
               Prefere formalizar? Envie sua lista ou dúvidas por e-mail.
             </p>
             <Button
               asChild
               size="lg"
-              className="w-full bg-transparent border border-[#8B5CF6] text-[#8B5CF6] tracking-wide text-base sm:text-lg py-5 sm:py-6 hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 active:scale-[0.98]"
+              className="w-full bg-transparent border border-[#8B5CF6] text-[#8B5CF6] tracking-wide text-lg sm:text-xl h-14 sm:h-16 hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 active:scale-[0.98]"
             >
               <a
                 href="mailto:contato@proxybembem.com.br?subject=Contato%20via%20Site%20-%20ProxyBemBem&body=Ol%C3%A1%2C%20gostaria%20de%20falar%20sobre..."
               >
-                <Mail className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <Mail className="w-6 h-6 mr-2" />
                 Enviar E-mail
               </a>
             </Button>

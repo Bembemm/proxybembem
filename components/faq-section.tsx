@@ -31,16 +31,16 @@ export function FaqSection() {
     <section className="relative py-12 sm:py-16 bg-gradient-to-b from-transparent to-white/30">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-2 bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 rounded-full px-4 py-1.5 mb-4">
-            <HelpCircle className="w-4 h-4 text-[#8B5CF6]" />
-            <span className="text-xs sm:text-sm text-[#8B5CF6] font-medium">
+<div className="inline-flex items-center gap-2 bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 rounded-full px-4 py-1.5 mb-4">
+            <HelpCircle className="w-5 h-5 text-[#8B5CF6]" />
+            <span className="text-sm sm:text-base text-[#8B5CF6] font-medium">
               Tire suas dúvidas
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">
             Perguntas Frequentes
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base max-w-md mx-auto">
+          <p className="text-slate-600 text-base sm:text-lg max-w-md mx-auto">
             Tudo o que você precisa saber antes de comprar
           </p>
         </div>
@@ -53,10 +53,10 @@ export function FaqSection() {
                 value={`item-${index}`}
                 className="bg-white/70 backdrop-blur-sm border border-slate-200/60 rounded-lg px-4 sm:px-6 shadow-sm"
               >
-                <AccordionTrigger className="text-left text-sm sm:text-base font-medium text-slate-800 hover:text-[#8B5CF6] transition-colors py-4 [&[data-state=open]]:text-[#8B5CF6]">
+<AccordionTrigger className="text-left text-base sm:text-lg font-medium text-slate-800 hover:text-[#8B5CF6] transition-colors py-4 [&[data-state=open]]:text-[#8B5CF6]">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-slate-600 text-sm leading-relaxed pb-4">
+                <AccordionContent className="text-slate-600 text-base leading-relaxed pb-4">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>

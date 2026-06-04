@@ -36,8 +36,8 @@ export function Footer() {
           {/* Coluna 1: Logo + Redes Sociais */}
           <div>
             <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <img src="/logo.svg" alt="Logo PB" className="h-10 w-auto object-contain" />
-              <span className="text-lg sm:text-xl font-[family-name:var(--font-display)] text-black tracking-wide">
+              <img src="/logo.svg" alt="Logo PB" className="h-12 w-auto object-contain" />
+              <span className="text-xl sm:text-2xl font-[family-name:var(--font-display)] text-black tracking-wide">
                 ProxyBembem
               </span>
             </div>
@@ -65,22 +65,22 @@ export function Footer() {
 
           {/* Coluna 2: Texto Descritivo */}
           <div className="flex items-center justify-center">
-            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed text-center max-w-xs">
+            <p className="text-base sm:text-lg text-slate-700 leading-relaxed text-center max-w-xs">
               Sua loja de proxies para TCG. Qualidade premium com os melhores preços do mercado.
             </p>
           </div>
 
           {/* Coluna 3: Contato */}
           <div className="md:text-right">
-            <h3 className="font-[family-name:var(--font-display)] text-black mb-3 sm:mb-4 tracking-wide text-base sm:text-lg">Contato</h3>
+            <h3 className="font-[family-name:var(--font-display)] text-black mb-3 sm:mb-4 tracking-wide text-lg sm:text-xl">Contato</h3>
             <div className="w-10 sm:w-12 h-px bg-[#8B5CF6]/40 mb-3 sm:mb-4 md:ml-auto" />
             <ul className="space-y-2 sm:space-y-3">
               <li>
                 <a 
                   href="mailto:contato@proxybembem.com.br"
-                  className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
+                  className="flex items-center gap-2 text-base sm:text-lg text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
                 >
-                  <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#8B5CF6] shrink-0" />
+                  <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6] shrink-0" />
                   <span className="break-all">contato@proxybembem.com.br</span>
                 </a>
               </li>
@@ -89,9 +89,9 @@ export function Footer() {
                   href="https://wa.me/5544999107516"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
+                  className="flex items-center gap-2 text-base sm:text-lg text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
                 >
-                  <WhatsAppIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#8B5CF6] shrink-0" />
+                  <WhatsAppIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6] shrink-0" />
                   (44) 99910-7516
                 </a>
               </li>
@@ -101,14 +101,14 @@ export function Footer() {
 
         <div className="border-t border-slate-200/50 mt-8 sm:mt-12 pt-6 sm:pt-8">
           {/* Selo de Segurança */}
-          <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
-            <Lock className="w-3.5 h-3.5 text-[#8B5CF6]/70" />
-            <p className="text-xs text-slate-500">
+<div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
+            <Lock className="w-4 h-4 text-[#8B5CF6]/70" />
+            <p className="text-base text-slate-500">
               Pagamento 100% Seguro via Pix. Seus dados estão protegidos.
             </p>
           </div>
           
-          <p className="text-xs sm:text-sm text-slate-500 text-center">
+<p className="text-base sm:text-lg text-slate-500 text-center">
             © {new Date().getFullYear()} ProxyBembem. Todos os direitos reservados.
           </p>
         </div>
