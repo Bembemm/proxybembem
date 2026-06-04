@@ -5,15 +5,15 @@
 
 :root {
   --background: oklch(0.97 0.01 260);
-  --foreground: oklch(0.15 0.02 260);
+  --foreground: oklch(0 0 0);
   --card: oklch(0.98 0.005 260);
-  --card-foreground: oklch(0.15 0.02 260);
+  --card-foreground: oklch(0 0 0);
   --popover: oklch(0.98 0.005 260);
-  --popover-foreground: oklch(0.15 0.02 260);
+  --popover-foreground: oklch(0 0 0);
   --primary: oklch(0.63 0.26 292);
   --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.94 0.01 260);
-  --secondary-foreground: oklch(0.15 0.02 260);
+  --secondary-foreground: oklch(0 0 0);
   --muted: oklch(0.92 0.01 260);
   --muted-foreground: oklch(0.45 0.02 260);
   --accent: oklch(0.63 0.26 292);
@@ -30,11 +30,11 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.5rem;
   --sidebar: oklch(0.96 0.01 260);
-  --sidebar-foreground: oklch(0.15 0.02 260);
+  --sidebar-foreground: oklch(0 0 0);
   --sidebar-primary: oklch(0.63 0.26 292);
   --sidebar-primary-foreground: oklch(0.98 0 0);
   --sidebar-accent: oklch(0.94 0.01 260);
-  --sidebar-accent-foreground: oklch(0.15 0.02 260);
+  --sidebar-accent-foreground: oklch(0 0 0);
   --sidebar-border: oklch(0.88 0.02 260);
   --sidebar-ring: oklch(0.63 0.26 292);
 }
@@ -299,4 +299,38 @@
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease-out forwards;
   opacity: 0;
+}
+
+/* Custom Scrollbar - Modern Purple Theme */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #8B5CF6 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8B5CF6 0%, #7C3AED 100%);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #A78BFA 0%, #8B5CF6 100%);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }

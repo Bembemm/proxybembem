@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Menu, X, Layers } from "lucide-react"
+import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { PageType } from "@/app/page"
 
@@ -30,10 +30,8 @@ export function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
       <nav className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
         <Link href="/" onClick={() => handleNavClick("inicio")} className="flex items-center gap-2">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#8B5CF6]/20 border border-[#8B5CF6]/50 flex items-center justify-center fantasy-corners rounded">
-            <Layers className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6]" />
-          </div>
-          <span className="text-lg sm:text-xl font-[family-name:var(--font-display)] text-slate-900 tracking-wide">
+          <img src="/logo.svg" alt="Logo PB" className="h-10 w-auto object-contain" />
+          <span className="text-lg sm:text-xl font-[family-name:var(--font-display)] text-black tracking-wide">
             ProxyBembem
           </span>
         </Link>

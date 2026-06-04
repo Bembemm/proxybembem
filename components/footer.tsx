@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Instagram, Scroll, Mail, Phone, Lock } from "lucide-react"
+import { Instagram, Mail, Phone, Lock } from "lucide-react"
 
 function TikTokIcon({ className }: { className?: string }) {
   return (
@@ -24,10 +24,8 @@ export function Footer() {
           {/* Logo e descrição */}
           <div>
             <Link href="/" className="flex items-center gap-2 mb-3 sm:mb-4">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#8B5CF6]/20 border border-[#8B5CF6]/50 flex items-center justify-center rounded">
-                <Scroll className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6]" />
-              </div>
-              <span className="text-lg sm:text-xl font-[family-name:var(--font-display)] text-slate-900 tracking-wide">
+              <img src="/logo.svg" alt="Logo PB" className="h-10 w-auto object-contain" />
+              <span className="text-lg sm:text-xl font-[family-name:var(--font-display)] text-black tracking-wide">
                 ProxyBembem
               </span>
             </Link>
@@ -58,7 +56,7 @@ export function Footer() {
 
           {/* Contato */}
           <div>
-            <h3 className="font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-base sm:text-lg">Contato</h3>
+            <h3 className="font-[family-name:var(--font-display)] text-black mb-3 sm:mb-4 tracking-wide text-base sm:text-lg">Contato</h3>
             <div className="w-10 sm:w-12 h-px bg-[#8B5CF6]/40 mb-3 sm:mb-4" />
             <ul className="space-y-2 sm:space-y-3">
               <li className="flex items-center gap-2 text-xs sm:text-sm text-slate-700">
