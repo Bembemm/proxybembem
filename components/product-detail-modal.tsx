@@ -46,7 +46,7 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 z-50 p-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 transition-colors"
+          className="absolute right-3 top-3 z-50 p-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0"
         >
           <X className="w-4 h-4 text-slate-300" />
         </button>

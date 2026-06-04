@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { GalleryVerticalEnd, Sparkles, ShoppingCart, Check, Eye } from "lucide-react"
+import { ShoppingCart, Check, Eye } from "lucide-react"
 import Image from "next/image"
 import type { PageType } from "@/app/page"
 import { useCart, type Product } from "@/contexts/cart-context"
@@ -107,14 +107,6 @@ export function HomePage({ setCurrentPage }: HomePageProps) {
       <section className="relative flex items-center justify-center overflow-hidden pt-16 sm:pt-20 pb-6 sm:pb-8">
         <div className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-6 text-center z-10">
           <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-4 sm:p-6 md:p-8 max-w-2xl mx-auto rounded-lg">
-            <div className="flex justify-center items-center gap-2 sm:gap-4 mb-4 sm:mb-6 opacity-60">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-[#8B5CF6]" />
-              <div className="w-12 sm:w-24 h-px bg-gradient-to-r from-transparent via-[#8B5CF6] to-transparent" />
-              <GalleryVerticalEnd className="w-5 h-5 sm:w-6 sm:h-6 text-[#8B5CF6]" />
-              <div className="w-12 sm:w-24 h-px bg-gradient-to-r from-transparent via-[#8B5CF6] to-transparent" />
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-[#8B5CF6]" />
-            </div>
-            
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-[family-name:var(--font-display)] text-slate-900 mb-4 sm:mb-6 tracking-wide text-balance">
               Seja Bem-Vindo
             </h1>
@@ -132,12 +124,6 @@ export function HomePage({ setCurrentPage }: HomePageProps) {
       <section className="relative py-6 sm:py-8">
         <div className="container mx-auto px-3 sm:px-4 relative z-10">
           <div className="text-center mb-6 sm:mb-10 bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-4 sm:p-6 max-w-xl mx-auto rounded-lg">
-            <div className="flex justify-center items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-              <div className="w-8 sm:w-12 h-px bg-gradient-to-r from-transparent to-[#8B5CF6]/60" />
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6]" />
-              <div className="w-8 sm:w-12 h-px bg-gradient-to-l from-transparent to-[#8B5CF6]/60" />
-            </div>
-            
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-[family-name:var(--font-display)] text-slate-900 mb-2 sm:mb-3 tracking-wide text-balance">
               Proxies em Destaque
             </h2>

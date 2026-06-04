@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { X, Minus, Plus, Trash2, ShoppingBag, User, MapPin, AlertCircle, Lock } from "lucide-react"
+import { X, Minus, Plus, Trash2, ShoppingBag, User, MapPin, AlertCircle, Lock, Truck } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -98,7 +98,8 @@ export function CartPanel() {
 Produtos:
 ${productsList}
 
-Valor Total: ${formatPrice(totalPrice)}
+Subtotal (produtos): ${formatPrice(totalPrice)}
+Frete: A calcular
 
 Dados do Cliente:
 Nome: ${nome}
@@ -155,7 +156,7 @@ Referência: ${referencia || "Não informado"}
           </div>
           <button
             onClick={() => setIsCartOpen(false)}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors focus:outline-none focus:ring-0 focus:ring-offset-0"
           >
             <X className="w-5 h-5 text-slate-400" />
           </button>
@@ -227,9 +228,9 @@ Referência: ${referencia || "Não informado"}
                 ))}
               </div>
 
-              {/* Total */}
+              {/* Subtotal */}
               <div className="flex justify-between items-center py-3 border-t border-b border-[#8B5CF6]/20">
-                <span className="text-slate-400 font-medium">Total do Pedido:</span>
+                <span className="text-slate-400 font-medium">Subtotal (produtos):</span>
                 <span className="text-xl font-bold text-[#8B5CF6]">
                   {formatPrice(totalPrice)}
                 </span>
@@ -459,6 +460,19 @@ Referência: ${referencia || "Não informado"}
 
               {/* Checkout Button */}
               <div className="pt-2 pb-4">
+                {/* Aviso de Frete */}
+                <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3 mb-4">
+                  <div className="flex items-start gap-2.5">
+                    <Truck className="w-5 h-5 text-[#8B5CF6] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-white text-sm font-semibold mb-1">Calculo de Frete</p>
+                      <p className="text-gray-400 text-xs leading-relaxed">
+                        Para garantir o envio mais barato para a sua regiao, calcularemos o frete diretamente no WhatsApp antes do pagamento.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <Button
                   onClick={handleFinishOrder}
                   className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white py-3 text-sm font-semibold"

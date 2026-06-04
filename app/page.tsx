@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Navbar } from "@/components/navbar"
 import { HomePage } from "@/components/pages/home-page"
 import { ProductsPage } from "@/components/pages/products-page"
@@ -16,6 +16,10 @@ export type PageType = "inicio" | "produtos" | "contato"
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState<PageType>("inicio")
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }, [currentPage])
 
   return (
     <CartProvider>
