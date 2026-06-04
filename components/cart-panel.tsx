@@ -132,7 +132,7 @@ Referência: ${referencia || "Não informado"}
 -------------------`
 
     const encodedMessage = encodeURIComponent(message)
-    window.open(`https://wa.me/5544999107516?text=${encodedMessage}`, "_blank")
+    window.open(`https://wa.me/5544991250332?text=${encodedMessage}`, "_blank")
     
     clearCart()
     setNome("")

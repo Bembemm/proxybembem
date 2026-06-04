@@ -50,7 +50,7 @@ export function ContactPage() {
               className="w-full bg-transparent border border-[#8B5CF6] text-[#8B5CF6] tracking-wide text-lg sm:text-xl h-14 sm:h-16 hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 active:scale-[0.98]"
             >
               <a
-                href="https://wa.me/5544999107516?text=Ol%C3%A1%21%20Vim%20pelo%20site%20e%20gostaria%20de%20saber%20mais%20sobre%20os%20proxies."
+                href="https://wa.me/5544991250332?text=Ol%C3%A1%21%20Vim%20pelo%20site%20e%20gostaria%20de%20saber%20mais%20sobre%20os%20proxies."
                 target="_blank"
                 rel="noopener noreferrer"
               >

@@ -43,7 +43,7 @@ export function Footer() {
             </div>
             <div className="flex gap-3 sm:gap-4">
               <a
-                href="https://instagram.com/proxycards"
+                href="https://www.instagram.com/proxybembem/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-[#8B5CF6]/20 hover:border-[#8B5CF6]/50 hover:text-[#8B5CF6] transition-all duration-300 rounded active:scale-95"
@@ -52,7 +52,7 @@ export function Footer() {
                 <Instagram className="w-4 h-4 sm:w-5 sm:h-5" />
               </a>
               <a
-                href="https://tiktok.com/@proxycards"
+                href="https://www.tiktok.com/@proxybembem"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-[#8B5CF6]/20 hover:border-[#8B5CF6]/50 hover:text-[#8B5CF6] transition-all duration-300 rounded active:scale-95"
@@ -86,13 +86,13 @@ export function Footer() {
               </li>
               <li>
                 <a 
-                  href="https://wa.me/5544999107516"
+                  href="https://wa.me/5544991250332"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-base sm:text-lg text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
                 >
                   <WhatsAppIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6] shrink-0" />
-                  (44) 99910-7516
+                  (44) 99125-0332
                 </a>
               </li>
             </ul>
