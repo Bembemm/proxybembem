@@ -56,11 +56,13 @@ function isStoredCart(value: unknown): value is CartItem[] {
 
     const cartItem = item as Partial<CartItem>
     return (
+      typeof cartItem.quantity === "number" &&
       Number.isInteger(cartItem.quantity) &&
-      Number(cartItem.quantity) > 0 &&
+      cartItem.quantity > 0 &&
       !!cartItem.product &&
       typeof cartItem.product.id === "number" &&
       typeof cartItem.product.title === "string" &&
+      typeof cartItem.product.image === "string" &&
       typeof cartItem.product.discountPrice === "number"
     )
   })
