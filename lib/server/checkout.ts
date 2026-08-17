@@ -1,10 +1,6 @@
 import { getProductById } from "@/lib/catalog"
 import { brlToCents } from "@/lib/money"
-import type {
-  CheckoutItemInput,
-  CheckoutQuote,
-  PricedCheckoutItem,
-} from "@/types/commerce"
+import type { CheckoutQuote, PricedCheckoutItem } from "@/types/commerce"
 
 const MAX_CART_LINES = 50
 const MAX_QUANTITY_PER_ITEM = 20
@@ -16,34 +12,46 @@ export class CheckoutValidationError extends Error {
   }
 }
 
-function validateItem(item: CheckoutItemInput) {
-  if (!Number.isInteger(item.productId) || item.productId <= 0) {
+function parseItem(value: unknown) {
+  if (typeof value !== "object" || value === null) {
+    throw new CheckoutValidationError("Item do carrinho inválido.")
+  }
+
+  const item = value as Record<string, unknown>
+  const productId = item.productId
+  const quantity = item.quantity
+
+  if (!Number.isInteger(productId) || (productId as number) <= 0) {
     throw new CheckoutValidationError("Produto inválido.")
   }
 
   if (
-    !Number.isInteger(item.quantity) ||
-    item.quantity <= 0 ||
-    item.quantity > MAX_QUANTITY_PER_ITEM
+    !Number.isInteger(quantity) ||
+    (quantity as number) <= 0 ||
+    (quantity as number) > MAX_QUANTITY_PER_ITEM
   ) {
     throw new CheckoutValidationError("Quantidade inválida.")
   }
+
+  return {
+    productId: productId as number,
+    quantity: quantity as number,
+  }
 }
 
-export function priceCheckoutItems(items: CheckoutItemInput[]): CheckoutQuote {
-  if (!Array.isArray(items) || items.length === 0) {
+export function priceCheckoutItems(value: unknown): CheckoutQuote {
+  if (!Array.isArray(value) || value.length === 0) {
     throw new CheckoutValidationError("O carrinho está vazio.")
   }
 
-  if (items.length > MAX_CART_LINES) {
+  if (value.length > MAX_CART_LINES) {
     throw new CheckoutValidationError("O carrinho possui itens demais.")
   }
 
   const quantitiesByProduct = new Map<number, number>()
 
-  for (const item of items) {
-    validateItem(item)
-
+  for (const rawItem of value) {
+    const item = parseItem(rawItem)
     const nextQuantity =
       (quantitiesByProduct.get(item.productId) ?? 0) + item.quantity
 
