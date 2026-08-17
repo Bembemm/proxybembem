@@ -3,18 +3,21 @@ import {
   CheckoutValidationError,
   priceCheckoutItems,
 } from "@/lib/server/checkout"
-import type { CheckoutItemInput } from "@/types/commerce"
 
 export const runtime = "nodejs"
 
-interface QuoteRequestBody {
-  items?: CheckoutItemInput[]
+function getItemsFromBody(body: unknown) {
+  if (typeof body !== "object" || body === null) {
+    return undefined
+  }
+
+  return (body as Record<string, unknown>).items
 }
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as QuoteRequestBody
-    const quote = priceCheckoutItems(body.items ?? [])
+    const body: unknown = await request.json()
+    const quote = priceCheckoutItems(getItemsFromBody(body))
 
     return NextResponse.json(quote)
   } catch (error) {
