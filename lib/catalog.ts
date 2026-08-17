@@ -16,9 +16,8 @@ export const products: Product[] = [
 
 export const featuredProducts = products.filter((product) => product.featured)
 
-export const productCategories = Array.from(
-  new Set(products.map((product) => product.category)),
-)
+// Mantemos categorias futuras visíveis mesmo antes de terem produtos cadastrados.
+export const productCategories = ["Decks", "Avulsos"]
 
 export function getProductById(productId: number) {
   return products.find((product) => product.id === productId)
