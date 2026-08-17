@@ -21,22 +21,24 @@ function parseItem(value: unknown) {
   const productId = item.productId
   const quantity = item.quantity
 
-  if (!Number.isInteger(productId) || (productId as number) <= 0) {
+  if (
+    typeof productId !== "number" ||
+    !Number.isInteger(productId) ||
+    productId <= 0
+  ) {
     throw new CheckoutValidationError("Produto inválido.")
   }
 
   if (
+    typeof quantity !== "number" ||
     !Number.isInteger(quantity) ||
-    (quantity as number) <= 0 ||
-    (quantity as number) > MAX_QUANTITY_PER_ITEM
+    quantity <= 0 ||
+    quantity > MAX_QUANTITY_PER_ITEM
   ) {
     throw new CheckoutValidationError("Quantidade inválida.")
   }
 
-  return {
-    productId: productId as number,
-    quantity: quantity as number,
-  }
+  return { productId, quantity }
 }
 
 export function priceCheckoutItems(value: unknown): CheckoutQuote {
