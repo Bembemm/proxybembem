@@ -1,22 +1,9 @@
 "use client"
 
 import { createContext, useContext, useState, type ReactNode } from "react"
+import type { CartItem, Product } from "@/types/commerce"
 
-export interface Product {
-  id: number
-  title: string
-  image: string
-  originalPrice: number
-  discountPrice: number
-  tag: string | null
-  category: string
-  colors?: string[]
-}
-
-export interface CartItem {
-  product: Product
-  quantity: number
-}
+export type { CartItem, Product } from "@/types/commerce"
 
 interface CartContextType {
   items: CartItem[]
@@ -37,21 +24,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isCartOpen, setIsCartOpen] = useState(false)
 
   const addToCart = (product: Product) => {
-    setItems(prev => {
-      const existingItem = prev.find(item => item.product.id === product.id)
+    setItems((prev) => {
+      const existingItem = prev.find((item) => item.product.id === product.id)
+
       if (existingItem) {
-        return prev.map(item =>
+        return prev.map((item) =>
           item.product.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
-            : item
+            : item,
         )
       }
+
       return [...prev, { product, quantity: 1 }]
     })
   }
 
   const removeFromCart = (productId: number) => {
-    setItems(prev => prev.filter(item => item.product.id !== productId))
+    setItems((prev) => prev.filter((item) => item.product.id !== productId))
   }
 
   const updateQuantity = (productId: number, quantity: number) => {
@@ -59,10 +48,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeFromCart(productId)
       return
     }
-    setItems(prev =>
-      prev.map(item =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
+
+    setItems((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, quantity } : item,
+      ),
     )
   }
 
@@ -73,7 +63,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
   const totalPrice = items.reduce(
     (sum, item) => sum + item.product.discountPrice * item.quantity,
-    0
+    0,
   )
 
   return (
@@ -97,8 +87,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext)
+
   if (context === undefined) {
     throw new Error("useCart must be used within a CartProvider")
   }
+
   return context
 }
