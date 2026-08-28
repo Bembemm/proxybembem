@@ -1,9 +1,14 @@
-export interface ServerEnv {
-  mercadoPagoAccessToken: string
-  mercadoPagoWebhookSecret: string
+export interface SupabaseEnv {
   supabaseUrl: string
   supabaseSecretKey: string
 }
+
+export interface MercadoPagoEnv {
+  mercadoPagoAccessToken: string
+  mercadoPagoWebhookSecret: string
+}
+
+export interface ServerEnv extends SupabaseEnv, MercadoPagoEnv {}
 
 function required(name: string) {
   const value = process.env[name]?.trim()
@@ -13,7 +18,7 @@ function required(name: string) {
   return value
 }
 
-export function getServerEnv(): ServerEnv {
+export function getSupabaseEnv(): SupabaseEnv {
   const supabaseUrl = required("SUPABASE_URL")
   const parsedSupabaseUrl = new URL(supabaseUrl)
 
@@ -22,10 +27,22 @@ export function getServerEnv(): ServerEnv {
   }
 
   return {
-    mercadoPagoAccessToken: required("MERCADO_PAGO_ACCESS_TOKEN"),
-    mercadoPagoWebhookSecret: required("MERCADO_PAGO_WEBHOOK_SECRET"),
     supabaseUrl: parsedSupabaseUrl.origin,
     supabaseSecretKey: required("SUPABASE_SECRET_KEY"),
+  }
+}
+
+export function getMercadoPagoEnv(): MercadoPagoEnv {
+  return {
+    mercadoPagoAccessToken: required("MERCADO_PAGO_ACCESS_TOKEN"),
+    mercadoPagoWebhookSecret: required("MERCADO_PAGO_WEBHOOK_SECRET"),
+  }
+}
+
+export function getServerEnv(): ServerEnv {
+  return {
+    ...getSupabaseEnv(),
+    ...getMercadoPagoEnv(),
   }
 }
 
