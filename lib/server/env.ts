@@ -1,3 +1,5 @@
+import type { MercadoPagoEnvironment } from "@/lib/server/checkout-url"
+
 export interface SupabaseEnv {
   supabaseUrl: string
   supabaseSecretKey: string
@@ -6,6 +8,7 @@ export interface SupabaseEnv {
 export interface MercadoPagoEnv {
   mercadoPagoAccessToken: string
   mercadoPagoWebhookSecret: string
+  mercadoPagoEnvironment: MercadoPagoEnvironment
 }
 
 export interface ServerEnv extends SupabaseEnv, MercadoPagoEnv {}
@@ -14,6 +17,14 @@ function required(name: string) {
   const value = process.env[name]?.trim()
   if (!value) {
     throw new Error(`Missing required server environment variable: ${name}`)
+  }
+  return value
+}
+
+function mercadoPagoEnvironment(): MercadoPagoEnvironment {
+  const value = required("MERCADO_PAGO_ENVIRONMENT")
+  if (value !== "sandbox" && value !== "production") {
+    throw new Error("MERCADO_PAGO_ENVIRONMENT must be sandbox or production")
   }
   return value
 }
@@ -36,6 +47,7 @@ export function getMercadoPagoEnv(): MercadoPagoEnv {
   return {
     mercadoPagoAccessToken: required("MERCADO_PAGO_ACCESS_TOKEN"),
     mercadoPagoWebhookSecret: required("MERCADO_PAGO_WEBHOOK_SECRET"),
+    mercadoPagoEnvironment: mercadoPagoEnvironment(),
   }
 }
 
