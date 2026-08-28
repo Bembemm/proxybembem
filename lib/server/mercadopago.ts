@@ -7,6 +7,11 @@ interface MercadoPagoPreferenceInput {
   accessToken: string
   orderNumber: string
   items: CheckoutOrderItem[]
+  shipping?: {
+    serviceName: string
+    carrierName: string
+    amountCents: number
+  }
   notificationUrl: string
   returnUrl: string
   payerName: string
@@ -62,16 +67,48 @@ async function mercadoPagoFetch(path: string, accessToken: string, init?: Reques
 export async function createMercadoPagoPreference(
   input: MercadoPagoPreferenceInput,
 ): Promise<MercadoPagoPreference> {
+  let shippingItem: {
+    id: string
+    title: string
+    quantity: number
+    unit_price: number
+    currency_id: string
+  } | null = null
+
+  if (input.shipping) {
+    if (
+      !Number.isSafeInteger(input.shipping.amountCents) ||
+      input.shipping.amountCents <= 0 ||
+      !input.shipping.serviceName.trim() ||
+      !input.shipping.carrierName.trim()
+    ) {
+      throw new Error("Invalid freight amount or service")
+    }
+
+    shippingItem = {
+      id: "shipping",
+      title: `Frete - ${input.shipping.carrierName.trim()} / ${input.shipping.serviceName.trim()}`,
+      quantity: 1,
+      unit_price: input.shipping.amountCents / 100,
+      currency_id: "BRL",
+    }
+  }
+
+  const preferenceItems = [
+    ...input.items.map((item) => ({
+      id: String(item.productId),
+      title: item.title,
+      quantity: item.quantity,
+      unit_price: item.unitPriceCents / 100,
+      currency_id: "BRL",
+    })),
+    ...(shippingItem ? [shippingItem] : []),
+  ]
+
   const response = await mercadoPagoFetch("/checkout/preferences", input.accessToken, {
     method: "POST",
     body: JSON.stringify({
-      items: input.items.map((item) => ({
-        id: String(item.productId),
-        title: item.title,
-        quantity: item.quantity,
-        unit_price: item.unitPriceCents / 100,
-        currency_id: "BRL",
-      })),
+      items: preferenceItems,
       payer: {
         name: input.payerName,
       },
