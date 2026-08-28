@@ -7,14 +7,9 @@ interface PreferenceCheckoutUrls {
 
 export function selectMercadoPagoCheckoutUrl(
   preference: PreferenceCheckoutUrls,
-  environment: MercadoPagoEnvironment,
+  _environment: MercadoPagoEnvironment,
 ) {
-  if (environment === "sandbox") {
-    if (!preference.sandboxInitPoint) {
-      throw new Error("Mercado Pago did not return sandbox_init_point")
-    }
-    return preference.sandboxInitPoint
-  }
-
+  // Checkout Pro test mode is determined by the application's test credentials.
+  // With automatic test credentials, the buyer should enter through init_point.
   return preference.initPoint
 }
