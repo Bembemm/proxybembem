@@ -67,9 +67,12 @@ export interface CreateOrderInput {
 }
 
 export class OrderConflictError extends Error {
-  constructor(public readonly code: "checkout_attempt_conflict") {
+  readonly code: "checkout_attempt_conflict"
+
+  constructor(code: "checkout_attempt_conflict") {
     super(code)
     this.name = "OrderConflictError"
+    this.code = code
   }
 }
 
