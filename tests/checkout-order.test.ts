@@ -14,6 +14,12 @@ test("rebuilds price and title from the server catalog", () => {
       title: "Deck Commander Proxy 100 Cartas",
       unitPriceCents: 11990,
       quantity: 2,
+      shipping: {
+        weightKg: 0.25,
+        lengthCm: 25,
+        widthCm: 19,
+        heightCm: 4,
+      },
     },
   ])
 })
