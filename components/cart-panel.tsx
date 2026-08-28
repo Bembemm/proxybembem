@@ -17,7 +17,14 @@ import {
 
 const EMPTY_CHECKOUT: CheckoutData = {
   nome: "",
+  whatsapp: "",
   cep: "",
+}
+
+interface CheckoutResponse {
+  checkoutUrl?: unknown
+  error?: unknown
+  fieldErrors?: CheckoutErrors
 }
 
 export function CartPanel() {
@@ -28,13 +35,12 @@ export function CartPanel() {
     totalPrice,
     isCartOpen,
     setIsCartOpen,
-    clearCart,
   } = useCart()
 
   const [checkout, setCheckout] = useState<CheckoutData>(EMPTY_CHECKOUT)
   const [errors, setErrors] = useState<CheckoutErrors>({})
-  const [whatsappOpened, setWhatsappOpened] = useState(false)
-  const [popupBlocked, setPopupBlocked] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isCartOpen) return
@@ -42,7 +48,7 @@ export function CartPanel() {
     document.body.style.overflow = "hidden"
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isSubmitting) {
         setIsCartOpen(false)
       }
     }
@@ -53,52 +59,76 @@ export function CartPanel() {
       document.body.style.overflow = ""
       document.removeEventListener("keydown", handleKeyDown)
     }
-  }, [isCartOpen, setIsCartOpen])
+  }, [isCartOpen, isSubmitting, setIsCartOpen])
 
   const handleCheckoutChange = (field: keyof CheckoutData, value: string) => {
     setCheckout((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
-    setPopupBlocked(false)
+    setCheckoutError(null)
   }
 
-  const handleOpenWhatsApp = () => {
-    if (items.length === 0) return
+  const handleCheckout = async () => {
+    if (items.length === 0 || isSubmitting) return
 
     const nextErrors = validateCheckout(checkout)
     setErrors(nextErrors)
+    setCheckoutError(null)
 
     if (Object.keys(nextErrors).length > 0) return
 
-    const message = buildWhatsAppOrderMessage(items, totalPrice, checkout)
-    const whatsappWindow = window.open(buildWhatsAppOrderUrl(message), "_blank")
-
-    if (!whatsappWindow) {
-      setPopupBlocked(true)
-      return
-    }
+    setIsSubmitting(true)
 
     try {
-      whatsappWindow.opener = null
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+          customer: checkout,
+        }),
+      })
+
+      const result = (await response.json().catch(() => null)) as CheckoutResponse | null
+
+      if (!response.ok) {
+        if (result?.fieldErrors) setErrors(result.fieldErrors)
+        setCheckoutError(
+          typeof result?.error === "string"
+            ? result.error
+            : "Não foi possível iniciar o pagamento. Tente novamente.",
+        )
+        return
+      }
+
+      if (typeof result?.checkoutUrl !== "string") {
+        throw new Error("Checkout URL missing")
+      }
+
+      const checkoutUrl = new URL(result.checkoutUrl)
+      if (checkoutUrl.protocol !== "https:") {
+        throw new Error("Checkout URL must use HTTPS")
+      }
+
+      window.location.assign(checkoutUrl.toString())
     } catch {
-      // Some browsers prevent access to the newly opened window. The order can still continue.
+      setCheckoutError(
+        "Não foi possível iniciar o pagamento. Tente novamente ou continue pelo WhatsApp.",
+      )
+    } finally {
+      setIsSubmitting(false)
     }
-
-    setPopupBlocked(false)
-    setWhatsappOpened(true)
-  }
-
-  const handleConfirmSent = () => {
-    clearCart()
-    setCheckout(EMPTY_CHECKOUT)
-    setErrors({})
-    setWhatsappOpened(false)
-    setPopupBlocked(false)
-    setIsCartOpen(false)
   }
 
   const handleClose = () => {
-    setIsCartOpen(false)
+    if (!isSubmitting) setIsCartOpen(false)
   }
+
+  const whatsappFallbackUrl = buildWhatsAppOrderUrl(
+    buildWhatsAppOrderMessage(items, totalPrice, checkout),
+  )
 
   if (!isCartOpen) return null
 
@@ -115,12 +145,14 @@ export function CartPanel() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-panel-title"
+        aria-busy={isSubmitting}
       >
         <div className="flex items-center justify-between p-4 border-b border-[#8B5CF6]/20 bg-slate-900 sticky top-0 z-10">
           <div className="flex items-center gap-3">
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors md:hidden"
+              disabled={isSubmitting}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors md:hidden disabled:opacity-50"
               type="button"
               aria-label="Voltar e fechar carrinho"
             >
@@ -136,7 +168,8 @@ export function CartPanel() {
 
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors hidden md:block"
+            disabled={isSubmitting}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors hidden md:block disabled:opacity-50"
             type="button"
             aria-label="Fechar carrinho"
           >
@@ -170,10 +203,10 @@ export function CartPanel() {
 
               <OrderSummary
                 totalPrice={totalPrice}
-                whatsappOpened={whatsappOpened}
-                popupBlocked={popupBlocked}
-                onOpenWhatsApp={handleOpenWhatsApp}
-                onConfirmSent={handleConfirmSent}
+                isSubmitting={isSubmitting}
+                checkoutError={checkoutError}
+                whatsappFallbackUrl={whatsappFallbackUrl}
+                onCheckout={handleCheckout}
               />
             </div>
           )}
