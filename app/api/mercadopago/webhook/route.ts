@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerEnv } from "@/lib/server/env"
+import { getMercadoPagoEnv } from "@/lib/server/env"
 import {
   getMercadoPagoPayment,
   validateMercadoPagoWebhookSignature,
 } from "@/lib/server/mercadopago"
 import { getOrderByNumber, updateOrderByNumber } from "@/lib/server/orders"
+import { derivePaymentUpdate } from "@/lib/server/payment-status"
 
 export const runtime = "nodejs"
 
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    // Signature and resource lookup use headers/query params; malformed JSON is rejected below.
+    // Signature and resource lookup use headers/query params.
   }
 
   const topic =
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       : null)
 
   try {
-    const env = getServerEnv()
+    const env = getMercadoPagoEnv()
     const validSignature = validateMercadoPagoWebhookSignature({
       xSignature,
       xRequestId,
@@ -64,17 +65,33 @@ export async function POST(request: NextRequest) {
 
     const paidCents = Math.round(payment.transactionAmount * 100)
     const amountMatches = paidCents === order.subtotal_cents && payment.currencyId === "BRL"
-    const paymentStatus =
-      payment.status === "approved" && !amountMatches ? "manual_review" : payment.status
-    const statusDetail =
-      payment.status === "approved" && !amountMatches
-        ? `amount_or_currency_mismatch:${paidCents}:${payment.currencyId ?? "unknown"}`
-        : payment.statusDetail
+    const update = derivePaymentUpdate({
+      currentStatus: order.payment_status,
+      currentPaymentId: order.payment_id,
+      incomingStatus: payment.status,
+      incomingPaymentId: payment.id,
+      amountMatches,
+      statusDetail: payment.statusDetail,
+    })
+
+    if (!update) {
+      return new NextResponse(null, { status: 200 })
+    }
+
+    if (update.paymentStatus === "manual_review") {
+      console.warn("Mercado Pago approved amount did not match the order", {
+        orderNumber,
+        paymentId: payment.id,
+        expectedCents: order.subtotal_cents,
+        receivedCents: paidCents,
+        currencyId: payment.currencyId,
+      })
+    }
 
     await updateOrderByNumber(orderNumber, {
-      payment_id: payment.id,
-      payment_status: paymentStatus,
-      payment_status_detail: statusDetail,
+      payment_id: update.paymentId,
+      payment_status: update.paymentStatus,
+      payment_status_detail: update.paymentStatusDetail,
     })
 
     return new NextResponse(null, { status: 200 })
