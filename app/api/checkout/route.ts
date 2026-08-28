@@ -1,6 +1,10 @@
 import { randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
-import { digitsOnly, validateCheckout, type CheckoutData } from "@/lib/checkout"
+import {
+  normalizeCheckoutData,
+  validateCheckout,
+  type CheckoutData,
+} from "@/lib/checkout"
 import { buildCheckoutOrder } from "@/lib/server/checkout-order"
 import { selectMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
 import {
@@ -15,20 +19,24 @@ export const runtime = "nodejs"
 
 function parseCustomer(value: unknown): CheckoutData | null {
   if (!value || typeof value !== "object") return null
-  const candidate = value as { nome?: unknown; whatsapp?: unknown; cep?: unknown }
-  if (
-    typeof candidate.nome !== "string" ||
-    typeof candidate.whatsapp !== "string" ||
-    typeof candidate.cep !== "string"
-  ) {
+  const candidate = value as Partial<Record<keyof CheckoutData, unknown>>
+  const fields: Array<keyof CheckoutData> = [
+    "nome",
+    "whatsapp",
+    "cep",
+    "rua",
+    "numero",
+    "complemento",
+    "bairro",
+    "cidade",
+    "uf",
+  ]
+
+  if (fields.some((field) => typeof candidate[field] !== "string")) {
     return null
   }
 
-  return {
-    nome: candidate.nome,
-    whatsapp: candidate.whatsapp,
-    cep: candidate.cep,
-  }
+  return candidate as CheckoutData
 }
 
 export async function POST(request: NextRequest) {
@@ -69,11 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Carrinho inválido. Atualize a página e tente novamente." }, { status: 400 })
   }
 
-  const normalizedCustomer = {
-    nome: customer.nome.trim().replace(/\s+/g, " "),
-    whatsapp: digitsOnly(customer.whatsapp),
-    cep: digitsOnly(customer.cep),
-  }
+  const normalizedCustomer = normalizeCheckoutData(customer)
 
   const orderNumber = `PB-${randomBytes(6).toString("hex").toUpperCase()}`
   const publicToken = randomBytes(32).toString("hex")
