@@ -48,49 +48,53 @@ const products = [
 
 test("quotes sandbox freight with required headers and trusted product payload", async (t) => {
   await withProviderEnv("sandbox", async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
-      assert.equal(
-        String(input),
-        "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate",
-      )
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        assert.equal(
+          String(input),
+          "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate",
+        )
 
-      const headers = new Headers(init?.headers)
-      assert.equal(headers.get("authorization"), "Bearer secret-provider-token")
-      assert.equal(headers.get("accept"), "application/json")
-      assert.equal(headers.get("content-type"), "application/json")
-      assert.equal(headers.get("user-agent"), "ProxyBembem (contato@proxybembem.com.br)")
+        const headers = new Headers(init?.headers)
+        assert.equal(headers.get("authorization"), "Bearer secret-provider-token")
+        assert.equal(headers.get("accept"), "application/json")
+        assert.equal(headers.get("content-type"), "application/json")
+        assert.equal(headers.get("user-agent"), "ProxyBembem (contato@proxybembem.com.br)")
 
-      assert.deepEqual(JSON.parse(String(init?.body)), {
-        from: { postal_code: "86730000" },
-        to: { postal_code: "01001000" },
-        products: [
-          {
-            id: "1",
-            width: 19,
-            height: 4,
-            length: 25,
-            weight: 0.25,
-            insurance_value: 119.9,
-            quantity: 2,
-          },
-        ],
-        options: { receipt: false, own_hand: false },
-      })
+        assert.deepEqual(JSON.parse(String(init?.body)), {
+          from: { postal_code: "86730000" },
+          to: { postal_code: "01001000" },
+          products: [
+            {
+              id: "1",
+              width: 19,
+              height: 4,
+              length: 25,
+              weight: 0.25,
+              insurance_value: 119.9,
+              quantity: 2,
+            },
+          ],
+          options: { receipt: false, own_hand: false },
+        })
 
-      return new Response(
-        JSON.stringify([
-          {
-            id: 1,
-            name: "PAC",
-            custom_price: "18.42",
-            custom_delivery_time: 6,
-            company: { name: "Correios" },
-            packages: [{ price: "18.42" }],
-          },
-        ]),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      )
-    })
+        return new Response(
+          JSON.stringify([
+            {
+              id: 1,
+              name: "PAC",
+              custom_price: "18.42",
+              custom_delivery_time: 6,
+              company: { name: "Correios" },
+              packages: [{ price: "18.42" }],
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        )
+      },
+    )
 
     const result = await quoteMelhorEnvio({
       destinationCep: "01001000",
@@ -112,13 +116,17 @@ test("quotes sandbox freight with required headers and trusted product payload",
 
 test("uses production base URL in production environment", async (t) => {
   await withProviderEnv("production", async () => {
-    t.mock.method(globalThis, "fetch", async (input) => {
-      assert.equal(
-        String(input),
-        "https://melhorenvio.com.br/api/v2/me/shipment/calculate",
-      )
-      return new Response("[]", { status: 200 })
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (input: Parameters<typeof fetch>[0]) => {
+        assert.equal(
+          String(input),
+          "https://melhorenvio.com.br/api/v2/me/shipment/calculate",
+        )
+        return new Response("[]", { status: 200 })
+      },
+    )
 
     assert.deepEqual(
       await quoteMelhorEnvio({ destinationCep: "01001000", products }),
