@@ -6,11 +6,12 @@ export interface StoredCartLine {
 interface RuntimeCartLike {
   product: {
     id: number
+    [key: string]: unknown
   }
   quantity: number
 }
 
-function isPositiveInteger(value: unknown) {
+function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0
 }
 
