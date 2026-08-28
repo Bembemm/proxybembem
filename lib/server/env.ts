@@ -68,3 +68,21 @@ export function resolvePublicSiteUrl(requestOrigin: string) {
 
   return url.origin
 }
+
+export function isAllowedCheckoutOrigin(
+  originHeader: string | null,
+  configuredSiteUrl: string,
+  requestOrigin: string,
+) {
+  if (!originHeader) return true
+
+  try {
+    const origin = new URL(originHeader).origin
+    return (
+      origin === new URL(configuredSiteUrl).origin ||
+      origin === new URL(requestOrigin).origin
+    )
+  } catch {
+    return false
+  }
+}
