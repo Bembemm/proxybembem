@@ -1,5 +1,5 @@
 import type { CheckoutOrderItem } from "./checkout-order.ts"
-import { getServerEnv } from "./env.ts"
+import { getSupabaseEnv } from "./env.ts"
 
 export interface OrderRecord {
   id: string
@@ -55,7 +55,7 @@ const ORDER_SELECT = [
 ].join(",")
 
 async function supabaseRequest(path: string, init?: RequestInit) {
-  const { supabaseUrl, supabaseSecretKey } = getServerEnv()
+  const { supabaseUrl, supabaseSecretKey } = getSupabaseEnv()
   const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     ...init,
     headers: {
