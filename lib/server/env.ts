@@ -21,6 +21,10 @@ export interface MelhorEnvioEnv {
   quoteSecret: string
 }
 
+export interface RateLimitEnv extends SupabaseEnv {
+  rateLimitSecret: string
+}
+
 export interface ServerEnv extends SupabaseEnv, MercadoPagoEnv {}
 
 function required(name: string) {
@@ -86,6 +90,18 @@ export function getMelhorEnvioEnv(): MelhorEnvioEnv {
     userAgent: required("MELHOR_ENVIO_USER_AGENT"),
     originCep,
     quoteSecret,
+  }
+}
+
+export function getRateLimitEnv(): RateLimitEnv {
+  const rateLimitSecret = required("RATE_LIMIT_SECRET")
+  if (rateLimitSecret.length < 32) {
+    throw new Error("RATE_LIMIT_SECRET must contain at least 32 characters")
+  }
+
+  return {
+    ...getSupabaseEnv(),
+    rateLimitSecret,
   }
 }
 
