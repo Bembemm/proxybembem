@@ -19,6 +19,12 @@ const EMPTY_CHECKOUT: CheckoutData = {
   nome: "",
   whatsapp: "",
   cep: "",
+  rua: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  cidade: "",
+  uf: "",
 }
 
 interface CheckoutResponse {
