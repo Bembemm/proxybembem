@@ -33,3 +33,20 @@ test("rejects unknown products and abusive quantities", () => {
   assert.throws(() => buildCheckoutOrder([{ productId: 999, quantity: 1 }]))
   assert.throws(() => buildCheckoutOrder([{ productId: 1, quantity: 21 }]))
 })
+
+test("rebuilds shipping metadata from the server catalog", () => {
+  const result = buildCheckoutOrder([
+    {
+      productId: 1,
+      quantity: 2,
+      shipping: { weightKg: 0.001, lengthCm: 1, widthCm: 1, heightCm: 1 },
+    } as never,
+  ])
+
+  assert.deepEqual(result.items[0].shipping, {
+    weightKg: 0.25,
+    lengthCm: 25,
+    widthCm: 19,
+    heightCm: 4,
+  })
+})
