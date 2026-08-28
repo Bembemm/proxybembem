@@ -14,6 +14,13 @@ export interface ProductSection {
   paragraphs: string[]
 }
 
+export interface ProductShipping {
+  weightKg: number
+  lengthCm: number
+  widthCm: number
+  heightCm: number
+}
+
 export interface Product {
   id: number
   title: string
@@ -28,6 +35,7 @@ export interface Product {
   description: string
   details: ProductDetail[]
   sections: ProductSection[]
+  shipping: ProductShipping
 }
 
 export interface CartItem {
