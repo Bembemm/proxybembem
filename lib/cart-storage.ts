@@ -3,14 +3,6 @@ export interface StoredCartLine {
   quantity: number
 }
 
-interface RuntimeCartLike {
-  product: {
-    id: number
-    [key: string]: unknown
-  }
-  quantity: number
-}
-
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0
 }
@@ -46,7 +38,9 @@ export function parseStoredCart(value: unknown): StoredCartLine[] | null {
   return parsed
 }
 
-export function serializeCart(items: RuntimeCartLike[]): StoredCartLine[] {
+export function serializeCart<T extends { product: { id: number }; quantity: number }>(
+  items: T[],
+): StoredCartLine[] {
   return items.map((item) => ({
     productId: item.product.id,
     quantity: item.quantity,
