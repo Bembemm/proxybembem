@@ -1,21 +1,21 @@
-import { AlertCircle, CheckCircle2, Lock, Truck } from "lucide-react"
+import { AlertCircle, CreditCard, Loader2, Lock, MessageCircle, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatPrice } from "@/lib/checkout"
 
 interface OrderSummaryProps {
   totalPrice: number
-  whatsappOpened: boolean
-  popupBlocked: boolean
-  onOpenWhatsApp: () => void
-  onConfirmSent: () => void
+  isSubmitting: boolean
+  checkoutError: string | null
+  whatsappFallbackUrl: string
+  onCheckout: () => void
 }
 
 export function OrderSummary({
   totalPrice,
-  whatsappOpened,
-  popupBlocked,
-  onOpenWhatsApp,
-  onConfirmSent,
+  isSubmitting,
+  checkoutError,
+  whatsappFallbackUrl,
+  onCheckout,
 }: OrderSummaryProps) {
   return (
     <div className="pt-4 pb-8 space-y-4">
@@ -28,57 +28,58 @@ export function OrderSummary({
         <div className="flex items-start gap-3">
           <Truck className="w-6 h-6 text-[#8B5CF6] shrink-0 mt-0.5" />
           <div>
-            <p className="text-white text-lg font-semibold mb-1">Cálculo de Frete</p>
+            <p className="text-white text-lg font-semibold mb-1">Frete calculado separadamente</p>
             <p className="text-gray-400 text-base leading-relaxed">
-              O CEP é enviado para iniciar o cálculo. Endereço completo, CPF e outros dados de envio só serão solicitados no atendimento se forem necessários.
+              O pagamento abaixo cobre os produtos. O frete será calculado pelo CEP e combinado no atendimento antes do envio.
             </p>
           </div>
         </div>
       </div>
 
       <Button
-        onClick={onOpenWhatsApp}
-        className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-14 text-lg font-semibold rounded-xl active:scale-[0.98] transition-transform"
+        onClick={onCheckout}
+        disabled={isSubmitting}
+        className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-14 text-lg font-semibold rounded-xl active:scale-[0.98] transition-transform disabled:opacity-60"
         type="button"
       >
-        {whatsappOpened ? "Abrir WhatsApp novamente" : "Continuar pedido no WhatsApp"}
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Preparando pagamento...
+          </>
+        ) : (
+          <>
+            <CreditCard className="w-5 h-5 mr-2" />
+            Finalizar com Mercado Pago
+          </>
+        )}
       </Button>
 
-      {popupBlocked && (
+      {checkoutError && (
         <div
           className="flex items-start gap-2 text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3"
           role="alert"
         >
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          <p className="text-sm">
-            O navegador bloqueou a abertura do WhatsApp. Permita pop-ups para este site e tente novamente.
-          </p>
+          <p className="text-sm leading-relaxed">{checkoutError}</p>
         </div>
       )}
 
-      {whatsappOpened && (
-        <div className="space-y-3 bg-green-500/10 border border-green-500/20 rounded-xl p-4">
-          <div className="flex items-start gap-2 text-green-300">
-            <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
-            <p className="text-sm leading-relaxed">
-              O WhatsApp foi aberto. O carrinho continua salvo até você confirmar que enviou a mensagem.
-            </p>
-          </div>
-          <Button
-            onClick={onConfirmSent}
-            variant="outline"
-            type="button"
-            className="w-full border-green-400/40 bg-transparent text-green-200 hover:bg-green-500/10 hover:text-green-100"
-          >
-            Já enviei o pedido — limpar carrinho
-          </Button>
-        </div>
-      )}
+      <Button
+        asChild
+        variant="outline"
+        className="w-full border-slate-600 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white h-11"
+      >
+        <a href={whatsappFallbackUrl} target="_blank" rel="noopener noreferrer">
+          <MessageCircle className="w-4 h-4 mr-2" />
+          Prefiro continuar pelo WhatsApp
+        </a>
+      </Button>
 
       <div className="flex items-start justify-center gap-2 text-slate-500/90">
         <Lock className="w-4 h-4 text-[#8B5CF6]/60 shrink-0 mt-0.5" />
         <p className="text-sm text-center leading-relaxed">
-          Pagamento via Pix é combinado no atendimento. O site não coleta dados de pagamento.
+          Pix e cartão são processados no ambiente seguro do Mercado Pago. O site não recebe número do cartão nem CVV.
         </p>
       </div>
     </div>
