@@ -5,6 +5,12 @@ export interface CheckoutOrderItem {
   title: string
   unitPriceCents: number
   quantity: number
+  shipping: {
+    weightKg: number
+    lengthCm: number
+    widthCm: number
+    heightCm: number
+  }
 }
 
 export interface CheckoutOrder {
@@ -28,6 +34,18 @@ function assertLineItem(value: unknown): asserts value is { productId: number; q
     item.quantity > 20
   ) {
     throw new Error("Invalid cart item")
+  }
+}
+
+function assertValidShipping(value: {
+  weightKg: number
+  lengthCm: number
+  widthCm: number
+  heightCm: number
+}) {
+  const values = [value.weightKg, value.lengthCm, value.widthCm, value.heightCm]
+  if (values.some((candidate) => !Number.isFinite(candidate) || candidate <= 0)) {
+    throw new Error("Invalid catalog shipping metadata")
   }
 }
 
@@ -60,11 +78,19 @@ export function buildCheckoutOrder(value: unknown): CheckoutOrder {
       throw new Error("Invalid catalog price")
     }
 
+    assertValidShipping(product.shipping)
+
     items.push({
       productId: product.id,
       title: product.title,
       unitPriceCents,
       quantity,
+      shipping: {
+        weightKg: product.shipping.weightKg,
+        lengthCm: product.shipping.lengthCm,
+        widthCm: product.shipping.widthCm,
+        heightCm: product.shipping.heightCm,
+      },
     })
   }
 
