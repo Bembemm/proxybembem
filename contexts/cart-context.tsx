@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { products } from "@/data/products"
+import { parseStoredCart, serializeCart } from "@/lib/cart-storage"
 
 export interface ProductDetail {
   label: string
@@ -48,26 +50,6 @@ interface CartContextType {
 const CART_STORAGE_KEY = "proxybembem-cart-v1"
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
-function isStoredCart(value: unknown): value is CartItem[] {
-  if (!Array.isArray(value)) return false
-
-  return value.every((item) => {
-    if (!item || typeof item !== "object") return false
-
-    const cartItem = item as Partial<CartItem>
-    return (
-      typeof cartItem.quantity === "number" &&
-      Number.isInteger(cartItem.quantity) &&
-      cartItem.quantity > 0 &&
-      !!cartItem.product &&
-      typeof cartItem.product.id === "number" &&
-      typeof cartItem.product.title === "string" &&
-      typeof cartItem.product.image === "string" &&
-      typeof cartItem.product.discountPrice === "number"
-    )
-  })
-}
-
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
@@ -77,9 +59,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const storedCart = window.localStorage.getItem(CART_STORAGE_KEY)
       if (storedCart) {
-        const parsedCart: unknown = JSON.parse(storedCart)
-        if (isStoredCart(parsedCart)) {
-          setItems(parsedCart)
+        const parsedCart = parseStoredCart(JSON.parse(storedCart))
+        if (parsedCart) {
+          const restoredItems = parsedCart.flatMap((line) => {
+            const product = products.find((candidate) => candidate.id === line.productId)
+            return product ? [{ product, quantity: line.quantity }] : []
+          })
+          setItems(restoredItems)
+        } else {
+          window.localStorage.removeItem(CART_STORAGE_KEY)
         }
       }
     } catch {
@@ -91,7 +79,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isHydrated) return
-    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
+    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
   }, [items, isHydrated])
 
   const addToCart = (product: Product) => {
@@ -125,9 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  const clearCart = () => {
-    setItems([])
-  }
+  const clearCart = () => setItems([])
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0)
   const totalPrice = items.reduce(
