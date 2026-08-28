@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import { consumeRateLimit } from "@/lib/server/rate-limit"
+import {
+  InvalidJsonBodyError,
+  RequestBodyTooLargeError,
+  readJsonBody,
+} from "@/lib/server/request-body"
 import {
   ShippingUnavailableError,
   buildShippingQuoteResult,
@@ -7,36 +13,42 @@ import {
 
 export const runtime = "nodejs"
 
-const MAX_BODY_BYTES = 32_768
-
-function jsonError(error: string, status: number) {
+function jsonError(
+  error: string,
+  status: number,
+  headers?: Record<string, string>,
+) {
   return NextResponse.json(
     { error },
-    { status, headers: { "Cache-Control": "no-store" } },
+    {
+      status,
+      headers: { "Cache-Control": "no-store", ...headers },
+    },
   )
 }
 
 export async function POST(request: NextRequest) {
-  const contentLength = Number(request.headers.get("content-length") ?? "0")
-  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
-    return jsonError("Cotação inválida.", 413)
-  }
-
-  let text: string
   try {
-    text = await request.text()
+    const allowed = await consumeRateLimit({ request, scope: "shipping-quote" })
+    if (!allowed) {
+      return jsonError("Muitas tentativas. Aguarde alguns minutos e tente novamente.", 429, {
+        "Retry-After": "600",
+      })
+    }
   } catch {
-    return jsonError("Cotação inválida.", 400)
-  }
-
-  if (Buffer.byteLength(text, "utf8") > MAX_BODY_BYTES) {
-    return jsonError("Cotação inválida.", 413)
+    return jsonError("Não foi possível calcular o frete agora. Tente novamente.", 503)
   }
 
   let body: unknown
   try {
-    body = JSON.parse(text)
-  } catch {
+    body = await readJsonBody(request)
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return jsonError("Cotação inválida.", 413)
+    }
+    if (error instanceof InvalidJsonBodyError) {
+      return jsonError("Cotação inválida.", 400)
+    }
     return jsonError("Cotação inválida.", 400)
   }
 
