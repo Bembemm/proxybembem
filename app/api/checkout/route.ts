@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { digitsOnly, validateCheckout, type CheckoutData } from "@/lib/checkout"
 import { buildCheckoutOrder } from "@/lib/server/checkout-order"
 import { selectMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
-import { getServerEnv, resolvePublicSiteUrl } from "@/lib/server/env"
+import {
+  getServerEnv,
+  isAllowedCheckoutOrigin,
+  resolvePublicSiteUrl,
+} from "@/lib/server/env"
 import { createMercadoPagoPreference } from "@/lib/server/mercadopago"
 import { createOrder, updateOrderByNumber } from "@/lib/server/orders"
 
@@ -76,10 +80,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const env = getServerEnv()
-    const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
+    const requestOrigin = request.nextUrl.origin
+    const siteUrl = resolvePublicSiteUrl(requestOrigin)
     const originHeader = request.headers.get("origin")
 
-    if (originHeader && new URL(originHeader).origin !== siteUrl) {
+    if (!isAllowedCheckoutOrigin(originHeader, siteUrl, requestOrigin)) {
       return NextResponse.json({ error: "Origem de checkout inválida." }, { status: 403 })
     }
 
