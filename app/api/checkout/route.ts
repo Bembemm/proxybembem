@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { digitsOnly, validateCheckout, type CheckoutData } from "@/lib/checkout"
 import { buildCheckoutOrder } from "@/lib/server/checkout-order"
+import { selectMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
 import { getServerEnv, resolvePublicSiteUrl } from "@/lib/server/env"
 import { createMercadoPagoPreference } from "@/lib/server/mercadopago"
 import { createOrder, updateOrderByNumber } from "@/lib/server/orders"
@@ -108,10 +109,10 @@ export async function POST(request: NextRequest) {
       payment_status_detail: null,
     })
 
-    const checkoutUrl =
-      env.mercadoPagoAccessToken.startsWith("TEST-") && preference.sandboxInitPoint
-        ? preference.sandboxInitPoint
-        : preference.initPoint
+    const checkoutUrl = selectMercadoPagoCheckoutUrl(
+      preference,
+      env.mercadoPagoEnvironment,
+    )
 
     return NextResponse.json(
       { checkoutUrl, orderNumber },
