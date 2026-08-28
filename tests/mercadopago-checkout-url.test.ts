@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { selectMercadoPagoCheckoutUrl } from "../lib/server/checkout-url.ts"
 
-test("uses sandbox init point only when environment is sandbox", () => {
+test("uses init point for Checkout Pro in both test and production environments", () => {
   const preference = {
     initPoint: "https://www.mercadopago.com/checkout/v1/redirect?pref_id=prod",
     sandboxInitPoint: "https://sandbox.mercadopago.com/checkout/v1/redirect?pref_id=test",
@@ -10,7 +10,7 @@ test("uses sandbox init point only when environment is sandbox", () => {
 
   assert.equal(
     selectMercadoPagoCheckoutUrl(preference, "sandbox"),
-    preference.sandboxInitPoint,
+    preference.initPoint,
   )
   assert.equal(
     selectMercadoPagoCheckoutUrl(preference, "production"),
@@ -18,13 +18,13 @@ test("uses sandbox init point only when environment is sandbox", () => {
   )
 })
 
-test("fails closed when sandbox URL is missing", () => {
-  assert.throws(
-    () =>
-      selectMercadoPagoCheckoutUrl(
-        { initPoint: "https://www.mercadopago.com/checkout/v1/redirect?pref_id=prod" },
-        "sandbox",
-      ),
-    /sandbox_init_point/i,
+test("does not require sandbox_init_point when using automatic test credentials", () => {
+  const preference = {
+    initPoint: "https://www.mercadopago.com/checkout/v1/redirect?pref_id=prod",
+  }
+
+  assert.equal(
+    selectMercadoPagoCheckoutUrl(preference, "sandbox"),
+    preference.initPoint,
   )
 })
