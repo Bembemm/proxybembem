@@ -11,7 +11,14 @@ const baseInput = {
       title: "Deck Commander Proxy 100 Cartas",
       unitPriceCents: 11990,
       quantity: 1,
-      shipping: { weightKg: 0.25, lengthCm: 25, widthCm: 19, heightCm: 4 },
+      shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+    },
+    {
+      productId: 2,
+      title: "Deck Proxy 60 Cartas",
+      unitPriceCents: 6999,
+      quantity: 2,
+      shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
     },
   ],
   shipping: {
@@ -24,7 +31,7 @@ const baseInput = {
   payerName: "Breno Bembem",
 }
 
-test("adds trusted freight as an explicit Mercado Pago preference item", async (t) => {
+test("adds trusted mixed products and freight as explicit Mercado Pago preference items", async (t) => {
   t.mock.method(
     globalThis,
     "fetch",
@@ -43,6 +50,13 @@ test("adds trusted freight as an explicit Mercado Pago preference item", async (
           currency_id: "BRL",
         },
         {
+          id: "2",
+          title: "Deck Proxy 60 Cartas",
+          quantity: 2,
+          unit_price: 69.99,
+          currency_id: "BRL",
+        },
+        {
           id: "shipping",
           title: "Frete - Correios / PAC",
           quantity: 1,
@@ -54,7 +68,7 @@ test("adds trusted freight as an explicit Mercado Pago preference item", async (
         (sum, item) => sum + Math.round(item.unit_price * 100) * item.quantity,
         0,
       )
-      assert.equal(totalCents, 13832)
+      assert.equal(totalCents, 27830)
       assert.equal(payload.external_reference, "PB-A1B2C3D4E5F6")
 
       return new Response(
