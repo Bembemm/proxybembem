@@ -4,11 +4,11 @@ import {
   getMelhorEnvioOAuthEnv,
   isAllowedCheckoutOrigin,
   resolvePublicSiteUrl,
-} from "@/lib/server/env"
-import { buildMelhorEnvioAuthorizationUrl } from "@/lib/server/melhor-envio-oauth-client"
-import { createOAuthState } from "@/lib/server/melhor-envio-oauth-repository"
-import { consumeRateLimit } from "@/lib/server/rate-limit"
-import { timingSafeSecretEqual } from "@/lib/server/secret-compare"
+} from "../../../../../../lib/server/env.ts"
+import { buildMelhorEnvioAuthorizationUrl } from "../../../../../../lib/server/melhor-envio-oauth-client.ts"
+import { createOAuthState } from "../../../../../../lib/server/melhor-envio-oauth-repository.ts"
+import { consumeRateLimit } from "../../../../../../lib/server/rate-limit.ts"
+import { timingSafeSecretEqual } from "../../../../../../lib/server/secret-compare.ts"
 
 export const runtime = "nodejs"
 
