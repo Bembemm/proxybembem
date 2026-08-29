@@ -1,0 +1,288 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import type { CheckoutData } from "../lib/checkout.ts"
+import { createCartFingerprint, createShippingQuoteToken } from "../lib/server/shipping-quote-token.ts"
+import {
+  executeCheckoutFlow,
+  CheckoutFlowValidationError,
+  type CheckoutFlowDependencies,
+} from "../lib/server/checkout-flow.ts"
+
+const SECRET = "12345678901234567890123456789012"
+const ITEMS = [{ productId: 1, quantity: 1 }]
+const CART_FINGERPRINT = createCartFingerprint(ITEMS)
+
+const CUSTOMER: CheckoutData = {
+  nome: "Breno Bembem",
+  whatsapp: "44991250332",
+  cep: "01001000",
+  rua: "Praça da Sé",
+  numero: "100",
+  complemento: "",
+  bairro: "Sé",
+  cidade: "São Paulo",
+  uf: "SP",
+}
+
+function makeQuoteToken(priceCents = 1842, serviceId = "1") {
+  return createShippingQuoteToken(
+    {
+      serviceId,
+      priceCents,
+      destinationCep: CUSTOMER.cep,
+      cartFingerprint: CART_FINGERPRINT,
+    },
+    SECRET,
+    1_000,
+  )
+}
+
+function makeDependencies(overrides: Partial<CheckoutFlowDependencies> = {}): CheckoutFlowDependencies {
+  return {
+    quoteSecret: SECRET,
+    nowMs: () => 2_000,
+    buildQuote: async () => ({
+      cartFingerprint: CART_FINGERPRINT,
+      options: [
+        {
+          serviceId: "1",
+          serviceName: "PAC",
+          carrierName: "Correios",
+          priceCents: 1842,
+          deliveryDays: 6,
+          packages: [{ price: "18.42" }],
+          quoteToken: "fresh-token",
+        },
+      ],
+    }),
+    findOrderByAttempt: async () => null,
+    reserveOrder: async (input) => ({
+      orderNumber: input.orderNumber,
+      publicToken: input.publicToken,
+      checkoutFingerprint: input.checkoutFingerprint ?? null,
+      checkoutUrl: null,
+    }),
+    updateOrder: async () => undefined,
+    createPreference: async () => ({
+      id: "pref-1",
+      initPoint: "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=pref-1",
+      sandboxInitPoint: null,
+    }),
+    selectCheckoutUrl: (preference) => preference.initPoint,
+    generateOrderNumber: () => "PB-TESTE123456",
+    generatePublicToken: () => "a".repeat(64),
+    ...overrides,
+  }
+}
+
+test("rejects an invalid or cart-mismatched signed freight token before requoting", async () => {
+  let quoteCalls = 0
+  const deps = makeDependencies({
+    buildQuote: async () => {
+      quoteCalls += 1
+      throw new Error("must not run")
+    },
+  })
+
+  await assert.rejects(
+    () =>
+      executeCheckoutFlow(
+        {
+          items: ITEMS,
+          customer: CUSTOMER,
+          selectedQuoteToken: "invalid",
+          checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
+          siteUrl: "https://preview.example.com",
+          mercadoPagoAccessToken: "test-token",
+          mercadoPagoEnvironment: "sandbox",
+        },
+        deps,
+      ),
+    CheckoutFlowValidationError,
+  )
+  assert.equal(quoteCalls, 0)
+})
+
+test("returns refreshed options and creates no order when freight price changed", async () => {
+  let reserveCalls = 0
+  let paymentCalls = 0
+  const deps = makeDependencies({
+    buildQuote: async () => ({
+      cartFingerprint: CART_FINGERPRINT,
+      options: [
+        {
+          serviceId: "1",
+          serviceName: "PAC",
+          carrierName: "Correios",
+          priceCents: 1990,
+          deliveryDays: 5,
+          packages: [],
+          quoteToken: "new-signed-token",
+        },
+      ],
+    }),
+    reserveOrder: async () => {
+      reserveCalls += 1
+      throw new Error("must not reserve")
+    },
+    createPreference: async () => {
+      paymentCalls += 1
+      throw new Error("must not charge")
+    },
+  })
+
+  const result = await executeCheckoutFlow(
+    {
+      items: ITEMS,
+      customer: CUSTOMER,
+      selectedQuoteToken: makeQuoteToken(),
+      checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
+      siteUrl: "https://preview.example.com",
+      mercadoPagoAccessToken: "test-token",
+      mercadoPagoEnvironment: "sandbox",
+    },
+    deps,
+  )
+
+  assert.equal(result.kind, "shipping_changed")
+  if (result.kind === "shipping_changed") {
+    assert.equal(result.options[0]?.priceCents, 1990)
+    assert.equal("packages" in result.options[0]!, false)
+  }
+  assert.equal(reserveCalls, 0)
+  assert.equal(paymentCalls, 0)
+})
+
+test("reserves trusted subtotal plus freight and creates one payment preference", async () => {
+  let reserved: Parameters<CheckoutFlowDependencies["reserveOrder"]>[0] | null = null
+  let preferenceInput: Parameters<CheckoutFlowDependencies["createPreference"]>[0] | null = null
+  const updates: Array<{ orderNumber: string; patch: Record<string, unknown> }> = []
+
+  const result = await executeCheckoutFlow(
+    {
+      items: ITEMS,
+      customer: CUSTOMER,
+      selectedQuoteToken: makeQuoteToken(),
+      checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
+      siteUrl: "https://preview.example.com",
+      mercadoPagoAccessToken: "test-token",
+      mercadoPagoEnvironment: "sandbox",
+    },
+    makeDependencies({
+      reserveOrder: async (input) => {
+        reserved = input
+        return {
+          orderNumber: input.orderNumber,
+          publicToken: input.publicToken,
+          checkoutFingerprint: input.checkoutFingerprint ?? null,
+          checkoutUrl: null,
+        }
+      },
+      createPreference: async (input) => {
+        preferenceInput = input
+        return {
+          id: "pref-1",
+          initPoint: "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=pref-1",
+          sandboxInitPoint: null,
+        }
+      },
+      updateOrder: async (orderNumber, patch) => {
+        updates.push({ orderNumber, patch })
+      },
+    }),
+  )
+
+  assert.equal(result.kind, "created")
+  assert.equal(reserved?.subtotalCents, 11990)
+  assert.equal(reserved?.shipping?.amountCents, 1842)
+  assert.equal(reserved?.totalCents, 13832)
+  assert.equal(reserved?.shipping?.snapshot && typeof reserved.shipping.snapshot, "object")
+  assert.equal(preferenceInput?.shipping.amountCents, 1842)
+  assert.equal(updates.length, 1)
+  assert.equal(updates[0]?.patch.checkout_url, result.kind === "created" ? result.checkoutUrl : null)
+})
+
+test("reuses an existing URL for the same attempt and rejects a changed fingerprint", async () => {
+  let paymentCalls = 0
+  const existingUrl = "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=existing"
+
+  const reused = await executeCheckoutFlow(
+    {
+      items: ITEMS,
+      customer: CUSTOMER,
+      selectedQuoteToken: makeQuoteToken(),
+      checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440000",
+      siteUrl: "https://preview.example.com",
+      mercadoPagoAccessToken: "test-token",
+      mercadoPagoEnvironment: "sandbox",
+    },
+    makeDependencies({
+      findOrderByAttempt: async () => ({
+        orderNumber: "PB-EXISTING",
+        publicToken: "b".repeat(64),
+        checkoutFingerprint: null,
+        checkoutUrl: existingUrl,
+      }),
+      createPreference: async () => {
+        paymentCalls += 1
+        throw new Error("must not create")
+      },
+    }),
+  )
+
+  assert.equal(reused.kind, "attempt_conflict")
+  assert.equal(paymentCalls, 0)
+
+  let capturedFingerprint = ""
+  const created = await executeCheckoutFlow(
+    {
+      items: ITEMS,
+      customer: CUSTOMER,
+      selectedQuoteToken: makeQuoteToken(),
+      checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440001",
+      siteUrl: "https://preview.example.com",
+      mercadoPagoAccessToken: "test-token",
+      mercadoPagoEnvironment: "sandbox",
+    },
+    makeDependencies({
+      reserveOrder: async (input) => {
+        capturedFingerprint = input.checkoutFingerprint ?? ""
+        return {
+          orderNumber: input.orderNumber,
+          publicToken: input.publicToken,
+          checkoutFingerprint: input.checkoutFingerprint ?? null,
+          checkoutUrl: null,
+        }
+      },
+    }),
+  )
+  assert.equal(created.kind, "created")
+
+  const same = await executeCheckoutFlow(
+    {
+      items: ITEMS,
+      customer: CUSTOMER,
+      selectedQuoteToken: makeQuoteToken(),
+      checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440001",
+      siteUrl: "https://preview.example.com",
+      mercadoPagoAccessToken: "test-token",
+      mercadoPagoEnvironment: "sandbox",
+    },
+    makeDependencies({
+      findOrderByAttempt: async () => ({
+        orderNumber: "PB-EXISTING2",
+        publicToken: "c".repeat(64),
+        checkoutFingerprint: capturedFingerprint,
+        checkoutUrl: existingUrl,
+      }),
+      createPreference: async () => {
+        paymentCalls += 1
+        throw new Error("must not create")
+      },
+    }),
+  )
+
+  assert.equal(same.kind, "reused")
+  if (same.kind === "reused") assert.equal(same.checkoutUrl, existingUrl)
+  assert.equal(paymentCalls, 0)
+})
