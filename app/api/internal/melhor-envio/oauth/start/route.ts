@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto"
-import { NextRequest } from "next/server"
+import { NextRequest } from "next/server.js"
 import {
   getMelhorEnvioOAuthEnv,
   isAllowedCheckoutOrigin,
