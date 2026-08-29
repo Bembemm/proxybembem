@@ -121,7 +121,15 @@ export async function POST(request: NextRequest) {
     const siteUrl = resolvePublicSiteUrl(requestOrigin)
     const originHeader = request.headers.get("origin")
 
-    if (!isAllowedCheckoutOrigin(originHeader, siteUrl, requestOrigin)) {
+    if (
+      !isAllowedCheckoutOrigin({
+        originHeader,
+        configuredSiteUrl: siteUrl,
+        requestOrigin,
+        nodeEnv: process.env.NODE_ENV,
+        vercelEnv: process.env.VERCEL_ENV,
+      })
+    ) {
       return jsonResponse({ error: "Origem de checkout inválida." }, 403)
     }
 
