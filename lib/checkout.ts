@@ -140,7 +140,7 @@ export function buildWhatsAppOrderMessage(
   const normalized = normalizeCheckoutData(data)
   const freight = shipping
     ? `${formatPrice(shipping.priceCents / 100)} (${shipping.carrierName} / ${shipping.serviceName})`
-    : "A calcular"
+    : "não selecionado no site"
   const total = shipping
     ? `\nTotal: ${formatPrice(totalPrice + shipping.priceCents / 100)}`
     : ""
