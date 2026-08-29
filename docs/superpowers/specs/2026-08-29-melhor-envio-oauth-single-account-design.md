@@ -6,488 +6,360 @@ Target branch: `feat/checkout-mercadopago`
 
 ## 1. Goal
 
-Replace the current long-lived/static `MELHOR_ENVIO_ACCESS_TOKEN` dependency with a production-ready OAuth 2.0 flow for the single Melhor Envio account owned by ProxyBembem.
+Replace the current permanent `MELHOR_ENVIO_ACCESS_TOKEN` dependency with a production-ready OAuth 2.0 lifecycle for the single Melhor Envio account owned by ProxyBembem.
 
-The finished integration must:
+The integration must:
 
 - serve only the ProxyBembem store and its own Melhor Envio account;
 - never allow customers or third-party sellers to connect Melhor Envio accounts;
-- request only the permission currently needed for the site: `shipping-calculate`;
-- keep Client Secret, access tokens, refresh tokens, encryption keys, and administrator bootstrap credentials server-only;
-- encrypt provider tokens before they are persisted in Supabase;
-- refresh tokens automatically without seller intervention during normal operation;
-- prevent concurrent refresh attempts from racing and invalidating a newly rotated refresh token;
-- retry a failed provider request at most once after a successful forced refresh when Melhor Envio reports an authentication failure;
-- require explicit owner reauthorization when the provider has revoked/invalidated the authorization or the refresh token can no longer be used;
-- isolate Sandbox credentials/tokens from Production credentials/tokens;
-- preserve the existing quote-only/manual-label fulfillment scope;
-- remain on the feature branch until the final production-readiness gate and explicit merge approval.
+- request only `shipping-calculate` while the site only quotes freight;
+- keep all credentials/tokens server-only;
+- encrypt access and refresh tokens before persistence;
+- refresh automatically, including during periods with little/no store traffic;
+- coordinate refreshes so rotating refresh tokens cannot race;
+- retry a provider request at most once after a successful forced refresh;
+- require owner reauthorization when authorization is revoked/irrecoverable;
+- isolate Sandbox from Production;
+- preserve manual label purchase;
+- stay on the feature branch until explicit merge approval.
 
-## 2. Current state and reason for change
+## 2. Current state
 
-The current provider client reads `MELHOR_ENVIO_ACCESS_TOKEN` from the server environment and sends it directly as the Bearer token on every freight quotation.
+Today `lib/server/melhor-envio.ts` reads `MELHOR_ENVIO_ACCESS_TOKEN` from `lib/server/env.ts` and sends it as the Bearer token for every quote.
 
-That was sufficient for the initial Sandbox checkout validation, but it is not the desired production design. Melhor Envio's current OAuth 2.0 documentation specifies a 30-day access-token lifetime and a refresh flow that returns a new access token and a new refresh token. The integration therefore needs token lifecycle management rather than a permanently configured access-token variable.
+That was acceptable for initial Sandbox validation, but the current Melhor Envio OAuth flow uses temporary access tokens and rotating refresh tokens. The application therefore needs lifecycle management rather than a static production token.
 
-The current quote endpoint and trusted server-side product/freight calculations remain valid. This design changes authentication and token lifecycle, not the business rules for freight pricing.
+The existing trusted cart, server-side shipping metadata, quote revalidation, and manual-label business rules remain unchanged.
 
 ## 3. Confirmed deployment model
 
-ProxyBembem is a single-store integration:
+This is intentionally single-account:
 
-- one website;
+- one ProxyBembem website;
 - one seller/owner;
-- one Melhor Envio account;
+- one Melhor Envio account per environment;
 - customers never authorize Melhor Envio;
-- no marketplace or multi-tenant account model.
+- no marketplace/multi-tenant model.
 
-The database model may distinguish Sandbox and Production, but it does not model multiple merchants/users.
+Database records distinguish `sandbox` and `production`, not different merchants.
 
 ## 4. OAuth application and least privilege
 
-Create/configure a Melhor Envio application separately for the environment being used.
+The authorization request must use only trusted server configuration:
 
-The OAuth authorization request must use:
-
-- the configured Client ID;
-- an exact, statically configured callback URI;
+- configured Client ID;
+- exact static callback URI;
 - `response_type=code`;
-- a cryptographically random, single-use `state` value;
-- only the `shipping-calculate` scope.
+- at least 256 bits of cryptographically random single-use `state`;
+- scope exactly `shipping-calculate`.
 
-Do not request cart, purchase, label-generation, wallet, user-profile, tracking, or other scopes while the site only calculates freight and labels remain a manual seller operation.
+Do not request cart, checkout, label generation, wallet, profile, tracking, or other scopes until a separately approved feature needs them.
 
-The callback URI must come from trusted server configuration. It must never be derived from an arbitrary request `Host` or `Origin` header.
+The callback URI must never be built from arbitrary request `Host`/`Origin` headers. Production uses the canonical HTTPS ProxyBembem callback. Sandbox/Preview uses an explicitly configured stable HTTPS callback.
 
-Production callback must use the canonical HTTPS ProxyBembem domain. Sandbox/Preview must use its own explicitly configured stable HTTPS callback URL.
+## 5. Owner-only authorization
 
-## 5. Owner-only authorization and reauthorization
+Only the owner may start or restart OAuth.
 
-Because only the store owner may connect the Melhor Envio account, authorization initiation must not be a public unauthenticated action.
+### 5.1 Bootstrap page
 
-### 5.1 Minimal owner authorization page
+Provide a narrow internal page such as `/admin/integrations/melhor-envio`. It must not expose tokens, Client Secret, encryption state, or provider account data.
 
-Provide a small internal page such as:
+The page submits a high-entropy owner bootstrap secret in a POST body over HTTPS. The secret:
 
-- `/admin/integrations/melhor-envio`
+- exists only in a server-side environment variable;
+- is never put in a URL;
+- is never logged or persisted by application code;
+- is compared with a timing-safe comparison;
+- is protected by server-side rate limiting;
+- requires an allowed same-origin `Origin` header before starting OAuth.
 
-The page itself must not expose credentials or token state. It exists only to submit an owner bootstrap secret to the server over HTTPS.
+Invalid authorization attempts return a generic unauthorized response.
 
-The owner secret:
-
-- lives only in a server-side environment variable;
-- is a high-entropy random value;
-- is never placed in a URL/query string;
-- is never logged;
-- is never stored in the browser by application code;
-- is compared server-side using a timing-safe comparison;
-- is protected by the project's server-side rate limiting.
-
-A successful owner POST creates a one-time OAuth state and redirects the browser to Melhor Envio. An invalid secret returns a generic unauthorized response without disclosing configuration details.
-
-This narrowly scoped bootstrap mechanism is preferred over introducing a complete admin-login subsystem solely for one provider authorization flow.
+A successful POST creates a one-time OAuth state and returns an HTTP redirect to Melhor Envio. This is intentionally smaller than introducing a full admin authentication system solely for this integration.
 
 ### 5.2 OAuth state
 
-Generate at least 256 bits of cryptographically secure random state.
+Store only SHA-256(state), never the raw state. State metadata contains:
 
-Persist only a SHA-256 hash of the state, together with:
-
+- hash;
 - environment;
 - creation time;
 - expiration time;
-- consumed/used state.
+- consumed-at marker.
 
-Recommended state lifetime: 10 minutes.
+State expires after 10 minutes and is atomically single-use. Missing, malformed, expired, wrong-environment, or replayed state fails before provider credentials are persisted.
 
-The callback hashes the returned state and atomically consumes a matching unused, unexpired record. Missing, invalid, expired, or previously used state must fail before any token is stored.
+State is consumed before token acceptance. If the subsequent provider exchange fails, the owner starts a fresh authorization rather than replaying the callback.
 
-Consuming state is intentionally one-shot. If the subsequent provider token exchange fails, the owner starts authorization again instead of replaying the callback.
+## 6. Token exchange
 
-## 6. Token exchange and provider validation
+The callback performs the authorization-code exchange server-to-server using the configured Client ID, Client Secret, exact redirect URI and required User-Agent.
 
-The callback performs the authorization-code exchange server-to-server using the configured:
+Validate the response before persistence. Require at minimum:
 
-- Client ID;
-- Client Secret;
-- exact redirect URI;
-- authorization code;
-- required User-Agent.
+- expected Bearer token type;
+- non-empty access token;
+- non-empty refresh token;
+- sane positive `expires_in`.
 
-The application must validate the token response shape before storing anything. At minimum it must require a non-empty Bearer access token, non-empty refresh token, and a sane positive access-token lifetime.
+Provider response bodies are untrusted and may contain credentials. Never copy raw token/error responses into browser output or ordinary logs.
 
-Provider error bodies must not be copied directly into browser responses or normal logs. Store/report only a sanitized provider error classification/status when needed for operations.
+## 7. Authenticated encryption at rest
 
-## 7. Token encryption at rest
+Persist no provider token in plaintext.
 
-Access and refresh tokens must not be stored as plaintext database columns.
+Use AES-256-GCM with:
 
-Use application-layer authenticated encryption with AES-256-GCM:
+- an independent 256-bit key stored only in Vercel server environment;
+- a fresh random nonce/IV for every encryption;
+- authentication-tag verification;
+- a versioned envelope format;
+- authenticated additional data (AAD) binding the ciphertext to both the environment (`sandbox`/`production`) and token kind (`access`/`refresh`).
 
-- one independent 256-bit encryption key supplied as a server-only environment secret;
-- a fresh random nonce/IV for every encryption operation;
-- authentication tag verification on decryption;
-- an explicit ciphertext format/version so future key/format migration remains possible.
+The AAD binding prevents an encrypted token from being silently swapped between environments or between access/refresh fields.
 
-The database stores only encrypted token envelopes. The encryption key never enters Supabase and is never included in API responses or logs.
+The encryption key never enters Supabase. Database-only compromise therefore does not reveal usable provider tokens. Any malformed envelope, unknown version, wrong AAD, or authentication-tag failure fails closed; there is no fallback to an environment access token.
 
-This provides defense in depth: database-only access does not reveal usable Melhor Envio tokens.
+Crypto lives in a small server-only module with focused tests.
 
-Encryption/decryption must be isolated in a small server-only module with focused tests. Decryption/authentication failure must fail closed and mark the integration unavailable rather than falling back to another credential source.
+## 8. Database model and permissions
 
-## 8. Database model
-
-Use dedicated single-purpose Melhor Envio OAuth tables rather than a premature generic multi-provider credential framework.
+Use dedicated Melhor Envio tables rather than a generic multi-provider framework.
 
 ### 8.1 Credential table
 
-Conceptually store one row per environment (`sandbox`, `production`) with fields for:
+One row per environment, conceptually containing:
 
 - environment primary key;
 - encrypted access-token envelope;
 - encrypted refresh-token envelope;
-- access-token expiration timestamp;
-- authorization/token update timestamp;
+- access-token expiry;
+- token issued/updated timestamp;
 - token version/revision;
-- integration status (`active` or `reauthorization_required`);
+- status: `active` or `reauthorization_required`;
 - refresh lease owner, nullable;
-- refresh lease expiration, nullable;
-- last sanitized authentication failure timestamp/classification, nullable.
+- refresh lease expiry, nullable;
+- last sanitized authentication-failure timestamp/classification, nullable.
 
-Do not persist Client Secret or the token-encryption key in this table.
+Client Secret, encryption key, owner bootstrap secret and cron secret are never persisted here.
 
-### 8.2 OAuth-state table
+### 8.2 OAuth state table
 
-Store only one-time authorization state metadata:
+Contains only hashed one-time state metadata. Expired/consumed rows can be cleaned opportunistically.
 
-- state hash;
-- environment;
-- created-at;
-- expires-at;
-- consumed-at/used marker.
+### 8.3 Access policy
 
-Expired rows can be cleaned periodically or opportunistically.
+Both tables have RLS enabled and no browser-facing policies. `anon` and `authenticated` receive no direct access.
 
-### 8.3 Database access policy
+Atomic state-consume and refresh-lease/version transitions use narrowly scoped PostgreSQL RPCs where appropriate. Any `SECURITY DEFINER` function must use a fixed safe `search_path`, and `EXECUTE` must be revoked from `PUBLIC`, `anon`, and `authenticated`; only the trusted server role may invoke it.
 
-Both tables must:
+## 9. Token manager
 
-- have RLS enabled;
-- expose no direct `anon` or `authenticated` policy;
-- grant application access only through the existing trusted server-side Supabase credential and narrowly scoped RPCs where atomicity is required.
+All Melhor Envio HTTP operations obtain credentials through one server-only token manager. Freight code must not read token rows directly.
 
-Security-definer RPCs, if used, must have a fixed safe `search_path` and have `EXECUTE` revoked from `PUBLIC`, `anon`, and `authenticated` unless a specific role requires it.
+Normal request flow:
 
-## 9. Access-token selection and proactive refresh
+1. load the exact configured environment row;
+2. reject `reauthorization_required`;
+3. decrypt the access token with environment/token-kind AAD;
+4. if comfortably valid, return it;
+5. if near expiry, enter coordinated refresh;
+6. return only a current committed token.
 
-Every Melhor Envio API call obtains a token through one server-side token manager. Provider callers must not read OAuth token database fields directly.
+There is never a Sandbox↔Production fallback.
 
-Normal flow:
+Use a conservative proactive refresh threshold. Implementation should refresh well before the 30-day access-token deadline (recommended: when no more than 7 days remain), while still accepting a valid token during normal coordinated refresh where safe.
 
-1. load the credential row for the configured environment;
-2. reject if status is `reauthorization_required`;
-3. decrypt the current access token;
-4. if it remains valid beyond a conservative refresh buffer, return it;
-5. if it is near expiry, enter the refresh-coordination flow;
-6. after refresh, return the newly committed access token.
+## 10. Refresh rotation and concurrency
 
-Use a conservative refresh buffer so normal traffic refreshes before the 30-day deadline. The exact buffer belongs in implementation configuration/test constants, not browser configuration. A value on the order of hours rather than seconds is preferred.
+Rotating refresh tokens make concurrent serverless refreshes dangerous. Use a short database-backed lease plus token-version compare-and-set semantics.
 
-The system must never silently fall back from Production to Sandbox or vice versa.
+### 10.1 Lease winner
 
-## 10. Refresh-token rotation and concurrency control
-
-Refresh tokens rotate. Concurrent serverless requests must not independently refresh the same token and race to store incompatible results.
-
-Use a short database-backed refresh lease.
-
-### 10.1 Lease acquisition
-
-A request that decides refresh is needed generates a unique lease-owner identifier and atomically claims the refresh lease only if:
-
-- no active lease exists, or the previous lease expired; and
-- the credential row/token version is still the version the requester observed.
-
-Only one request becomes the refresh winner.
-
-### 10.2 Winner behavior
+A caller may claim refresh only when the lease is absent/expired and the observed token version is still current. The winner gets a unique lease-owner ID.
 
 The winner:
 
 1. decrypts the current refresh token;
-2. calls Melhor Envio's refresh-token grant server-to-server;
-3. validates the response;
-4. encrypts both newly returned tokens with fresh nonces;
-5. atomically commits the new token pair only if it still owns the lease and the expected token version matches;
-6. increments the token version;
-7. updates access-token expiry;
-8. clears the lease and returns the new access token.
+2. calls the provider refresh grant;
+3. validates the new response;
+4. encrypts both new tokens with new nonces and correct AAD;
+5. atomically commits only if lease owner and expected token version still match;
+6. increments token version;
+7. updates access expiry;
+8. clears the lease.
 
-Never overwrite a newer token version with an older refresh result.
+A stale winner can never overwrite a newer version.
 
-### 10.3 Loser behavior
+### 10.2 Lease loser — proactive refresh
 
-A request that cannot acquire the lease must not call the refresh endpoint with the same refresh token.
+A caller that loses a normal proactive-refresh race must not call the provider with the same refresh token. If its current access token remains valid for the immediate request, it may use it; otherwise it waits/reloads for the winner for a short bounded period, then fails closed if no valid committed token appears.
 
-If the currently loaded access token is still safely valid, it may use that token. Otherwise it briefly waits/reloads the credential row for the winner's committed version, subject to a strict short timeout. If no valid token becomes available, freight quotation fails closed with a temporary provider-unavailable response.
+### 10.3 Lease loser — forced refresh after authentication failure
 
-### 10.4 Crashed refresh owner
+This is stricter. If the access token has already produced an authentication failure, a losing caller must **never reuse that known-failed token**, even if its local expiry timestamp says it is valid. It waits for a newer committed token version from the refresh winner or fails closed after a short bounded timeout.
 
-Leases have a short expiration. If the winning serverless invocation crashes, another request can recover after the lease expires. No permanent lock is possible.
+### 10.4 Crash recovery
 
-## 11. Authentication failure and one retry
+Refresh leases expire quickly. If a serverless invocation dies while holding the lease, another invocation can recover after lease expiry. There is no permanent lock.
 
-If a Melhor Envio API request returns the provider's authentication-failure condition while the locally stored token appeared valid:
+## 11. Provider authentication failure
 
-1. do not repeatedly retry the same token;
-2. enter a forced coordinated refresh using the same lease/version protections;
-3. if refresh succeeds, retry the original Melhor Envio request exactly once with the new token;
-4. if the retried request is still unauthenticated, fail closed and require reauthorization rather than looping.
+On the provider's documented unauthenticated condition:
 
-Provider 4xx errors unrelated to authentication must not trigger token refresh automatically.
+1. do not retry the same token repeatedly;
+2. force coordinated refresh using the same lease/version protections;
+3. retry the original Melhor Envio request exactly once with a newer token;
+4. if the second provider attempt is still unauthenticated, stop and fail closed rather than loop.
 
-## 12. Reauthorization-required state
+Non-authentication 4xx responses do not automatically refresh credentials.
 
-If the refresh grant is rejected in a way that indicates the authorization/refresh token is no longer usable, mark the environment as `reauthorization_required`.
+If refresh is rejected in a way that indicates the refresh authorization is unusable/revoked, atomically mark `reauthorization_required`. While in that state freight quotation fails safely and checkout cannot create a payment without a valid freight quote.
 
-While in this state:
+The customer sees only a generic temporary freight-unavailable message. The owner reconnects using the protected OAuth bootstrap flow.
 
-- freight quotation must not use stale credentials;
-- checkout must not create a Mercado Pago payment without a valid freight quote;
-- customers receive a generic temporary freight-unavailable/retry-later message;
-- no provider token or internal authorization detail is exposed;
-- the owner reconnects through the protected owner authorization flow.
+## 12. Scheduled maintenance refresh
 
-Successful authorization replaces the encrypted token pair, increments/reinitializes the revision safely, clears stale refresh leases, and returns the integration to `active`.
+Request-driven refresh alone is insufficient for a low-traffic store: a refresh token can age out while no customer is requesting quotes.
 
-## 13. Environment variables after this redesign
+Production therefore includes a server-side scheduled health/refresh check, preferably Vercel Cron, in addition to request-driven refresh.
 
-The Melhor Envio portion of the final server environment becomes conceptually:
+A route such as `/api/internal/melhor-envio/refresh`:
+
+- accepts only Vercel's configured cron Bearer secret;
+- compares authorization safely;
+- returns no token/provider secrets;
+- calls the same token manager/lease mechanism, never a separate refresh implementation;
+- refreshes only when the proactive threshold says it is needed;
+- is safe if invoked more than once because lease/version rules remain authoritative.
+
+The scheduled job may run daily; it does not need to refresh daily. It only ensures the token manager gets a chance to refresh before the current token lifecycle becomes stale, even with no storefront traffic.
+
+Preview/Sandbox can test this route manually with test configuration; Production scheduling is enabled only after Production variables are ready.
+
+## 13. Final Melhor Envio environment variables
+
+After migration, the Melhor Envio-related server configuration is:
 
 - `MELHOR_ENVIO_ENVIRONMENT` — `sandbox` or `production`;
-- `MELHOR_ENVIO_CLIENT_ID` — application identifier for that Vercel environment;
-- `MELHOR_ENVIO_CLIENT_SECRET` — server-only OAuth client secret;
-- `MELHOR_ENVIO_REDIRECT_URI` — exact static callback URI for that environment;
-- `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` — independent 256-bit application encryption key;
+- `MELHOR_ENVIO_CLIENT_ID` — OAuth application ID;
+- `MELHOR_ENVIO_CLIENT_SECRET` — server-only OAuth Client Secret;
+- `MELHOR_ENVIO_REDIRECT_URI` — exact static callback URI;
+- `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` — independent 256-bit encryption key;
 - `MELHOR_ENVIO_OAUTH_ADMIN_SECRET` — independent high-entropy owner bootstrap secret;
-- `MELHOR_ENVIO_USER_AGENT` — required provider User-Agent with application/contact identification;
+- `MELHOR_ENVIO_USER_AGENT` — required application/contact User-Agent;
 - `SHIPPING_ORIGIN_CEP` — trusted origin CEP;
-- `SHIPPING_QUOTE_SECRET` — existing independent HMAC secret for signed freight quotes.
+- `SHIPPING_QUOTE_SECRET` — existing independent quote-signing secret;
+- `CRON_SECRET` — independent high-entropy secret protecting scheduled internal maintenance.
 
-`MELHOR_ENVIO_ACCESS_TOKEN` is removed from the permanent environment configuration after migration to the OAuth token manager.
+`MELHOR_ENVIO_ACCESS_TOKEN` is removed from permanent runtime configuration after OAuth Sandbox verification. No secret may use a `NEXT_PUBLIC_` prefix.
 
-No secret may use a `NEXT_PUBLIC_` prefix.
+Sandbox and Production use isolated OAuth credentials/tokens and independent encryption/admin/cron secrets where environment separation applies. Production values are never filled with Sandbox credentials/placeholders.
 
-Sandbox and Production must use distinct client credentials, authorization records/tokens, admin bootstrap secrets, and encryption keys where Vercel environment separation allows it. Production values must never be copied from Sandbox merely to fill a required field.
-
-## 14. Server components
+## 14. Server component boundaries
 
 Keep responsibilities separated:
 
-### OAuth configuration/env module
+- **OAuth env/config:** validates environment, Client ID/Secret, redirect URL, key material, User-Agent, admin and cron secrets.
+- **Token crypto:** AES-256-GCM envelope/AAD only; no HTTP or database logic.
+- **OAuth repository:** credential rows, state rows and atomic RPC contracts.
+- **OAuth client:** builds authorize URL and performs authorization-code/refresh exchanges.
+- **Token manager:** selects current token, coordinates leases, refreshes and handles reauthorization state.
+- **Freight client:** calculates shipping but asks token manager for Bearer credentials.
+- **Owner bootstrap/callback:** starts/finishes the one-account OAuth flow without exposing tokens.
+- **Scheduled refresh route:** invokes the same token manager using cron authentication.
 
-Validates environment, URLs, key material, Client ID/Secret, User-Agent, and owner bootstrap secret.
+## 15. Callback rules
 
-### Token crypto module
+Use a fixed route, conceptually `/api/melhor-envio/oauth/callback`, with its full URL supplied by `MELHOR_ENVIO_REDIRECT_URI`.
 
-Encrypts/decrypts versioned AES-256-GCM token envelopes. Contains no provider HTTP logic and no database logic.
+The callback:
 
-### OAuth repository module
+- validates strict `code`/`state` length and shape;
+- handles provider denial/error callbacks generically;
+- consumes valid state atomically;
+- performs server-to-server exchange;
+- stores only encrypted tokens;
+- clears stale refresh leases and safely updates token version/status;
+- redirects to a non-sensitive owner success/failure page;
+- never puts tokens, authorization code, raw state, Client Secret or raw provider errors into redirects/logs.
 
-Reads/writes credential state, manages one-time OAuth states, and invokes atomic lease/state RPCs. Contains no browser/UI code.
+## 16. Failure behavior and logging
 
-### Melhor Envio OAuth client
+Allowed operational logging is limited to non-secret metadata such as environment, operation name, provider HTTP status, sanitized error class, token version and lease outcome.
 
-Builds authorization URLs and performs authorization-code/refresh token exchanges. Contains no freight business logic.
+Never log access token, refresh token, authorization code, OAuth raw state, Client Secret, encryption key, owner bootstrap secret, cron secret, or full provider token/error response bodies.
 
-### Token manager
-
-Returns a usable access token, coordinates refresh leases, handles reauthorization state, and exposes a single provider-authentication interface to the freight client.
-
-### Freight client
-
-Keeps the existing shipment-calculation responsibilities, but obtains a token from the token manager instead of reading `MELHOR_ENVIO_ACCESS_TOKEN` directly.
-
-### Owner bootstrap routes/page
-
-Provide the narrowly scoped owner authorization start and callback flow. They must never expose stored tokens.
-
-## 15. Callback and URL rules
-
-Use one fixed callback route, conceptually:
-
-- `/api/melhor-envio/oauth/callback`
-
-The exact full callback URL comes only from `MELHOR_ENVIO_REDIRECT_URI`.
-
-The callback must:
-
-- require `code` and `state` within strict length limits;
-- reject provider error callbacks safely;
-- atomically consume valid state before accepting credentials;
-- perform server-to-server token exchange;
-- store only encrypted tokens;
-- redirect the owner to a non-sensitive success/failure page;
-- never include provider tokens, codes, Client Secret, or raw provider error bodies in its redirect URL.
-
-Authorization-code and state query values are treated as secrets/transient credentials and must not be logged by application code.
-
-## 16. Failure behavior and observability
-
-Operational logs may include:
-
-- environment;
-- high-level operation (`authorize`, `refresh`, `quote`);
-- provider HTTP status where useful;
-- sanitized internal error classification;
-- token version/lease outcome if it contains no secret material.
-
-Logs must never include:
-
-- access token;
-- refresh token;
-- authorization code;
-- OAuth state value;
-- Client Secret;
-- encryption key;
-- owner bootstrap secret;
-- full provider response bodies that may contain credentials.
-
-Customer-facing responses remain generic and do not reveal whether a credential expired, was revoked, or failed decryption.
+Decryption failures, missing credentials, lease timeouts and provider-auth failures all fail closed. They never bypass freight validation or permit Mercado Pago payment creation without a valid quote.
 
 ## 17. Migration and rollout
 
-### Phase 1 — implement on feature branch
+### Phase A — branch implementation
 
-Add tests, database migrations, token crypto/repository/manager, OAuth routes, and adapt the freight client. Do not modify `main`.
+Implement tests, migration, crypto/repository/token-manager/OAuth routes, cron route and adapt the freight client on `feat/checkout-mercadopago`. `main` remains untouched.
 
-### Phase 2 — Sandbox authorization
+### Phase B — Sandbox OAuth
 
-Configure Sandbox OAuth application variables, apply the database migration, authorize the single ProxyBembem Melhor Envio Sandbox account through the owner flow, and verify that encrypted credentials are persisted.
+Configure Sandbox OAuth values, apply migration, authorize the single ProxyBembem Sandbox account, and verify ciphertext-only token persistence.
 
-The old Sandbox `MELHOR_ENVIO_ACCESS_TOKEN` remains available only during development until the new path passes verification; it must not be used as a silent runtime fallback. Remove the legacy dependency after the OAuth path is verified.
+The legacy Sandbox access token may remain configured temporarily during development but must not be a runtime fallback. Remove its code dependency once OAuth Sandbox passes.
 
-### Phase 3 — Sandbox verification
+### Phase C — Sandbox verification
 
-Verify:
+Verify initial authorization, quote, encrypted persistence, proactive/forced refresh, refresh-token rotation, concurrent refresh, known-failed-token handling, state replay/expiry, reauthorization behavior, cron-auth behavior and no secret leakage.
 
-- initial authorization;
-- normal freight quotation;
-- access-token retrieval from encrypted persistence;
-- proactive refresh;
-- refresh-token rotation;
-- concurrent refresh requests produce one provider refresh;
-- forced refresh after authentication failure;
-- one-retry maximum;
-- reauthorization-required behavior;
-- state expiry/replay rejection;
-- quote/checkout still use server-authoritative freight amounts;
-- no credential appears in responses/logs/browser bundles.
+### Phase D — consolidated Production configuration
 
-### Phase 4 — Production variables and authorization
-
-Only after Sandbox verification, configure the final Production variables in Vercel in one pass, create/configure the Production Melhor Envio application, and authorize the production account once.
-
-This is followed by the remaining Mercado Pago Production/webhook and complete Production validation tasks before any merge to `main`.
+Only after Task 3.1 Sandbox verification do we create/finalize the complete Production Vercel variable set in one pass, authorize the Production Melhor Envio account, then continue Mercado Pago Production/webhook and final Production validation.
 
 ## 18. Testing requirements
 
-Implementation follows TDD for the critical behavior.
+Implementation follows TDD for critical behavior. At minimum cover:
 
-At minimum test:
+- env validation, HTTPS/static Production redirect, exact 256-bit encryption key and strong admin/cron secrets;
+- AES-GCM round-trip, fresh nonce, AAD mismatch, ciphertext/tag modification and unknown envelope version;
+- exact `shipping-calculate` scope;
+- allowed-origin admin POST, rate limit and timing-safe secret check;
+- random state, hashed-at-rest state, expiry and single-use replay protection;
+- token-response validation and encrypted-only persistence;
+- valid token skips refresh;
+- proactive threshold triggers refresh;
+- one winner for concurrent refresh;
+- proactive loser may use only a still-valid token;
+- forced-refresh loser never reuses the known-failed token;
+- stale refresh result cannot overwrite a newer version;
+- lease expiry recovers from a crashed winner;
+- refresh response atomically rotates both tokens;
+- provider auth failure allows at most one refreshed retry;
+- non-auth 4xx does not refresh;
+- irrecoverable refresh marks reauthorization required;
+- scheduled route rejects missing/wrong cron authorization and returns no secrets;
+- Sandbox/Production database rows cannot cross environments;
+- freight obtains credentials only through token manager;
+- missing valid OAuth state/credential prevents payment creation rather than bypassing shipping;
+- RLS enabled and no `anon`/`authenticated` access;
+- privileged RPC `EXECUTE` denied to `PUBLIC`, `anon`, `authenticated`;
+- Supabase security advisor reviewed after migration.
 
-### Environment/security
+Before Task 3.1 is declared complete, gather fresh evidence from unit/integration tests, TypeScript typecheck, production build, exact-head GitHub Actions CI, Vercel Preview, live Sandbox OAuth + freight quote, and Supabase security advisor.
 
-- missing/invalid OAuth variables fail closed;
-- redirect URI must be HTTPS in Production and exact/static;
-- encryption key must decode to exactly 256 bits;
-- admin secret minimum entropy/length requirement;
-- no client-side import can obtain server secret modules.
+## 19. Non-goals
 
-### Crypto
-
-- encrypt/decrypt round trip;
-- fresh nonce results in different ciphertext for the same plaintext;
-- modified ciphertext/tag fails authentication;
-- malformed/version-unknown envelope fails closed.
-
-### Authorization
-
-- authorization URL uses configured host/client/redirect;
-- scope is exactly the approved minimum scope;
-- state is random, hashed at rest, expiring, and single-use;
-- invalid admin secret cannot create authorization state;
-- wrong/expired/replayed state is rejected;
-- malformed/missing code rejected;
-- token response validation rejects missing/invalid fields;
-- persisted tokens are encrypted, never plaintext.
-
-### Refresh concurrency
-
-- valid non-expiring token skips refresh;
-- near-expiry token triggers refresh;
-- exactly one concurrent caller acquires a refresh lease;
-- loser does not reuse the same refresh token at the provider;
-- stale winner cannot overwrite a newer token version;
-- expired lease can be recovered;
-- new refresh token replaces the previous token atomically;
-- failed/invalid refresh marks reauthorization when appropriate.
-
-### Freight integration
-
-- quote client obtains Bearer token through token manager;
-- one authentication failure can trigger one coordinated refresh and one retry;
-- second authentication failure does not loop;
-- non-auth provider errors do not trigger refresh;
-- Sandbox/Production records cannot cross environments;
-- missing valid OAuth credentials prevents payment creation rather than bypassing freight validation.
-
-### Database/security
-
-- RLS enabled on OAuth tables;
-- no `anon`/`authenticated` direct access;
-- new security-definer functions use fixed safe `search_path`;
-- `PUBLIC`, `anon`, and `authenticated` cannot execute privileged OAuth RPCs;
-- Supabase security advisor is reviewed after migrations.
-
-### Project verification
-
-Before claiming Task 3.1 implementation complete, run fresh evidence for:
-
-- unit/integration tests;
-- TypeScript typecheck;
-- production build;
-- exact-head GitHub Actions CI;
-- Vercel Preview deployment;
-- live Sandbox OAuth authorization and freight quote;
-- Supabase security advisor.
-
-## 19. Explicit non-goals
-
-This task does not add:
-
-- customer accounts;
-- seller/merchant accounts;
-- multi-tenant Melhor Envio connections;
-- automatic label purchase;
-- Melhor Envio wallet operations;
-- automatic tracking;
-- a general-purpose admin authentication platform;
-- automatic Production deployment or merge to `main`.
-
-Those require separate design/approval if ever needed.
+Task 3.1 does not add customer accounts, merchant accounts, multi-tenant Melhor Envio connections, automatic label purchase, wallet operations, tracking automation, a general admin-auth platform, Production deployment, or merge to `main`.
 
 ## 20. Completion gate
 
 Task 3.1 is complete only when:
 
-1. the OAuth design is implemented on the feature branch;
-2. credentials are encrypted at rest and inaccessible to browser roles;
-3. refresh rotation is automatic and concurrency-safe;
-4. owner authorization/re-authorization is protected and state-replay safe;
-5. only `shipping-calculate` is requested;
-6. Sandbox end-to-end authorization and quote succeed without legacy access-token fallback;
-7. security tests, Supabase advisor, CI, build, typecheck, and Preview are clean/understood;
-8. no secret is committed or exposed.
+1. OAuth is implemented on the feature branch;
+2. persisted tokens are authenticated-encrypted and inaccessible to browser roles;
+3. refresh rotation is automatic, scheduled and concurrency-safe;
+4. a token already rejected by the provider is never reused during forced-refresh races;
+5. owner authorization/re-authorization is protected and state-replay safe;
+6. only `shipping-calculate` is requested;
+7. Sandbox end-to-end authorization and quote succeed with no legacy runtime fallback;
+8. tests, advisor, typecheck, build, exact-head CI and Preview verification are clean/understood;
+9. no secret is committed, logged, exposed to the client or copied into support screenshots.
 
-Production credentials are configured afterward as part of the consolidated Production configuration task. No merge to `main` occurs without explicit owner approval.
+Production credentials are configured afterward in the consolidated Production-variables task. No merge to `main` occurs without explicit owner approval.
