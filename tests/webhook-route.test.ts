@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { createHmac } from "node:crypto"
 import test from "node:test"
-import { NextRequest } from "next/server"
+import { NextRequest } from "next/server.js"
 import { POST } from "../app/api/mercadopago/webhook/route.ts"
 
 const SECRET = "webhook-secret-123456789012345678901234"
