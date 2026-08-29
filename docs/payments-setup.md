@@ -1,83 +1,96 @@
 # Ativação do pagamento direto
 
-Esta integração usa Mercado Pago Checkout Pro para Pix/cartão e Supabase para registrar pedidos. O site nunca recebe número do cartão ou CVV e nunca confia em preço/status enviados pelo navegador.
+A integração usa Mercado Pago Checkout Pro para pagamento e Supabase para registrar pedidos. O valor enviado ao Mercado Pago é reconstruído no servidor e inclui **produtos + frete selecionado**. O navegador nunca decide preço, frete, total ou status de pagamento.
 
-## 1. Criar o banco no Supabase
+## 1. Preparar o Supabase
 
-1. Crie um projeto no Supabase.
-2. Abra o SQL Editor.
-3. Execute todo o arquivo `supabase/migrations/202608280001_create_orders.sql`.
-4. Em **Settings / API Keys**, copie a chave server-side atual `sb_secret_...` (preferida) e a URL do projeto.
-5. Não use a chave publishable/anon para gravar pedidos e nunca coloque a chave secret em variável `NEXT_PUBLIC_*`.
-
-Variáveis:
+No SQL Editor do projeto, execute as migrations nesta ordem:
 
 ```text
-SUPABASE_URL=https://SEU-PROJETO.supabase.co
-SUPABASE_SECRET_KEY=sb_secret_...
+supabase/migrations/202608280001_create_orders.sql
+supabase/migrations/202608280002_shipping_checkout_hardening.sql
+supabase/migrations/202608280003_atomic_payment_events.sql
 ```
 
-A tabela `orders` fica com RLS habilitado e sem privilégios para `anon`/`authenticated`; apenas o backend usa a chave de serviço.
+A migration `003` cria unicidade para `payment_id`. Antes de aplicá-la em um banco que já recebeu testes, confira se há IDs de pagamento duplicados:
 
-## 2. Criar a aplicação no Mercado Pago
+```sql
+select payment_id, count(*)
+from public.orders
+where payment_id is not null
+group by payment_id
+having count(*) > 1;
+```
 
-1. Entre em Mercado Pago Developers / Suas integrações.
-2. Crie uma aplicação para Checkout Pro.
-3. Comece pelas credenciais de teste/sandbox.
-4. Copie o Access Token para `MERCADO_PAGO_ACCESS_TOKEN`.
-5. Configure explicitamente o ambiente:
+Se a consulta retornar linhas, revise e limpe **somente os registros de teste que você reconhece** antes de aplicar a migration. Não apague pedidos reais para contornar a restrição.
+
+Em **Settings / API Keys**, use a chave server-side atual do projeto e mantenha-a apenas no backend:
+
+```text
+SUPABASE_URL=
+SUPABASE_SECRET_KEY=
+```
+
+A tabela `orders` usa RLS e não concede acesso direto a `anon`/`authenticated`. A migration `002` também cria o armazenamento/RPC de rate limit, e a `003` cria o RPC atômico de transição dos pagamentos.
+
+## 2. Configurar o Mercado Pago
+
+Crie ou use uma aplicação de Checkout Pro apropriada ao ambiente de teste e configure:
 
 ```text
 MERCADO_PAGO_ENVIRONMENT=sandbox
-MERCADO_PAGO_ACCESS_TOKEN=SEU_ACCESS_TOKEN_DE_TESTE
+MERCADO_PAGO_ACCESS_TOKEN=
+MERCADO_PAGO_WEBHOOK_SECRET=
 ```
 
-Não inferimos mais sandbox pelo prefixo do Access Token. A documentação atual do Mercado Pago informa que tokens de teste do Checkout Pro podem usar o prefixo `APP_USR`, assim como tokens produtivos. Por segurança, `MERCADO_PAGO_ENVIRONMENT` deve ser definido explicitamente como `sandbox` ou `production`.
+`MERCADO_PAGO_ENVIRONMENT` é explícito e aceita apenas `sandbox` ou `production`; o código não tenta descobrir o ambiente pelo prefixo do token.
 
-Em `sandbox`, o backend exige que a preferência retorne `sandbox_init_point`; se isso não ocorrer, o checkout falha fechado em vez de redirecionar acidentalmente para produção.
+Para iniciar o Checkout Pro, a aplicação usa o `init_point` retornado pela preferência. O modo efetivo de teste/produção depende das credenciais e da conta usadas na integração. O código **não exige `sandbox_init_point`**.
 
-## 3. Configurar o webhook
+Nunca coloque Access Token ou segredo de webhook em variável `NEXT_PUBLIC_*`, no repositório, em screenshot ou em mensagens.
 
-No painel da aplicação do Mercado Pago:
+## 3. Configurar o webhook do Mercado Pago
 
-1. Abra **Webhooks / Configurar notificações**.
-2. Selecione o evento **Pagamentos**.
-3. Use a URL HTTPS:
+No painel da aplicação, habilite notificações de **Pagamentos** para:
 
 ```text
 https://SEU-DOMINIO/api/mercadopago/webhook
 ```
 
-4. Salve e revele a chave secreta do webhook.
-5. Configure:
+O webhook implementado:
 
-```text
-MERCADO_PAGO_WEBHOOK_SECRET=SUA_CHAVE_DO_WEBHOOK
-```
+1. valida `x-signature` HMAC antes de ler o corpo opcional ou consultar provedores;
+2. aceita apenas um `data.id` de pagamento numérico válido;
+3. consulta o pagamento diretamente no Mercado Pago;
+4. valida a referência `PB-...` do pedido;
+5. converte o valor recebido para centavos inteiros;
+6. aplica o evento em um RPC atômico no Supabase;
+7. compara moeda e valor com `total_cents` do pedido, usando `subtotal_cents` apenas como fallback para pedidos legados sem frete armazenado;
+8. envia divergências de valor/moeda para `manual_review` em vez de aprovar.
 
-O endpoint valida `x-signature` com HMAC-SHA256 antes de consultar o pagamento. Depois, consulta `GET /v1/payments/{id}` no Mercado Pago e só marca um pedido como aprovado quando `external_reference`, moeda e valor batem com o pedido salvo.
-
-> O Mercado Pago informa que pagamentos feitos com credenciais de teste podem ter comportamento diferente nas notificações. Para validar o recebimento do webhook em teste, use também o simulador disponível em **Webhooks** no painel.
+Eventos duplicados ou fora de ordem são tratados dentro da transação do banco. Um pagamento aprovado não pode ser sobrescrito por outro `payment_id` conflitante.
 
 ## 4. Configurar o domínio público
 
-Na Vercel, adicione:
+Use em Vercel:
 
 ```text
-NEXT_PUBLIC_SITE_URL=https://SEU-DOMINIO
+NEXT_PUBLIC_SITE_URL=https://www.proxybembem.com.br
 ```
 
-Em produção, a URL precisa ser HTTPS. Ela é usada para:
+Em Production essa variável é obrigatória e precisa usar HTTPS. Ela define:
 
-- retorno do Mercado Pago para `/pedido/<token>`;
-- `notification_url` do webhook;
-- validação de origem do checkout.
+- retorno para `/pedido/<token>`;
+- `notification_url` do Mercado Pago;
+- origem canônica aceita pelo checkout.
 
-Se testar em um deploy Preview, use a URL HTTPS desse Preview ou uma URL pública equivalente. `localhost` não funciona como `notification_url` do Mercado Pago.
+Production só aceita a origem canônica configurada. Preview continua aceitando a origem HTTPS do deployment ativo para permitir testes.
 
-## 5. Variáveis necessárias na Vercel
+Para testar webhooks em Preview, o endpoint precisa estar publicamente acessível ao Mercado Pago. Se a Vercel Deployment Protection estiver bloqueando chamadas externas, ajuste a proteção apenas pelo tempo necessário ao teste e reative-a depois, quando aplicável.
 
-Configure todas como Environment Variables do projeto:
+## 5. Variáveis relacionadas ao checkout
+
+Além das variáveis de pagamento e Supabase, o checkout atual depende da configuração de frete e rate limit:
 
 ```text
 NEXT_PUBLIC_SITE_URL=
@@ -86,33 +99,47 @@ MERCADO_PAGO_ACCESS_TOKEN=
 MERCADO_PAGO_WEBHOOK_SECRET=
 SUPABASE_URL=
 SUPABASE_SECRET_KEY=
+MELHOR_ENVIO_ENVIRONMENT=sandbox
+MELHOR_ENVIO_ACCESS_TOKEN=
+MELHOR_ENVIO_USER_AGENT=ProxyBembem (contato@proxybembem.com.br)
+SHIPPING_ORIGIN_CEP=86730000
+SHIPPING_QUOTE_SECRET=
+RATE_LIMIT_SECRET=
 ```
 
-Somente `NEXT_PUBLIC_SITE_URL` é pública. As demais devem permanecer server-side. Em Preview use `MERCADO_PAGO_ENVIRONMENT=sandbox`; troque para `production` apenas junto com credenciais produtivas validadas.
+`SHIPPING_QUOTE_SECRET` e `RATE_LIMIT_SECRET` devem ser segredos aleatórios fortes e permanecer apenas no servidor. Consulte `docs/shipping-setup.md` para a configuração do Melhor Envio.
 
-## 6. Fluxo de teste recomendado
+## 6. Fluxo de teste em Preview
 
-1. Execute a migration do Supabase.
-2. Configure as credenciais de teste do Mercado Pago e do Supabase na Vercel Preview.
-3. Defina `MERCADO_PAGO_ENVIRONMENT=sandbox`.
-4. Abra o site Preview e adicione o produto ao carrinho.
-5. Informe nome, WhatsApp e CEP.
-6. Clique em **Finalizar com Mercado Pago**.
-7. Confirme que o valor mostrado pelo Mercado Pago é o valor real do catálogo, mesmo se o localStorage tiver sido alterado manualmente.
-8. Conclua um pagamento de teste.
-9. Volte para `/pedido/<token>` e confirme que o pedido existe e fica aguardando confirmação enquanto o webhook não for processado.
-10. Use o simulador de webhook com um Data ID consultável para validar a assinatura + atualização do pedido.
-11. Confirme que um webhook com valor/moeda divergente resulta em `manual_review`, nunca em `approved`.
+Depois de aplicar as migrations e configurar as variáveis de Preview:
 
-## 7. Antes de produção
+1. abra o deployment Preview;
+2. adicione um ou mais produtos/quantidades ao carrinho;
+3. informe nome, WhatsApp, CEP e endereço completo;
+4. aguarde as opções de frete retornadas pelo Melhor Envio Sandbox;
+5. selecione uma opção e confirme que o resumo mostra produtos, frete e total;
+6. clique em **Finalizar com Mercado Pago**;
+7. confirme no Checkout Pro que o valor é exatamente o total mostrado no site;
+8. conclua o pagamento com usuários/credenciais de teste compatíveis entre comprador e vendedor;
+9. confirme que o retorno vai para `/pedido/<token>`;
+10. confirme que a página mostra o status vindo do Supabase, não do parâmetro de retorno do Mercado Pago;
+11. valide que o webhook atualiza o pedido para o status correto;
+12. confira subtotal, frete, total, transportadora, serviço, prazo e endereço na página do pedido.
 
-- Confirme com o Mercado Pago que o tipo de produto comercializado pela ProxyBembem é aceito pelas políticas da conta e da plataforma de pagamentos.
-- Troque o Access Token de teste pelo de produção.
-- Troque `MERCADO_PAGO_ENVIRONMENT` para `production` no mesmo deploy.
-- Configure o webhook também no modo produtivo.
-- Use o domínio final HTTPS em `NEXT_PUBLIC_SITE_URL`.
-- Faça uma compra real de baixo valor controlada por você e confira pedido, pagamento, retorno e atendimento antes de divulgar o checkout.
+Se o preço do frete mudar entre a cotação e o clique de pagamento, o backend recota e retorna `shipping_changed`; o comprador precisa confirmar a nova opção antes de ser redirecionado.
 
-## Limitação intencional desta primeira versão
+## 7. Antes de Production
 
-O pagamento do Mercado Pago cobre **somente os produtos**. O frete é informado de forma explícita no carrinho e na página do pedido como calculado separadamente pelo CEP no atendimento. Automatizar cotação/pagamento de frete deve ser uma integração posterior, para não misturar uma regra ainda não definida com o fluxo financeiro já seguro.
+Antes de trocar o ambiente:
+
+- mantenha `main` sem alterações até a revisão final da branch;
+- confirme que CI, typecheck e build estão verdes no mesmo SHA que será promovido;
+- use credenciais de Production novas e separadas das de Sandbox/Preview;
+- defina `MERCADO_PAGO_ENVIRONMENT=production` junto com o Access Token produtivo;
+- configure o segredo e a URL produtiva do webhook;
+- use `NEXT_PUBLIC_SITE_URL=https://www.proxybembem.com.br`;
+- configure também o Melhor Envio Production conforme `docs/shipping-setup.md`;
+- confirme com os provedores que o uso da conta e a categoria de produto atendem às políticas aplicáveis;
+- não faça auto-pagamento com a mesma parte atuando como comprador e vendedor para “testar” Production.
+
+A primeira transação produtiva deve ser acompanhada com atenção a pedido, pagamento, webhook e entrega antes de aumentar o volume.
