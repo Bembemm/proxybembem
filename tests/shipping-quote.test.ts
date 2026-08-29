@@ -174,7 +174,7 @@ test("returns a controlled unavailable error when the provider has no valid serv
   })
 })
 
-test("classifies safe preview diagnostics without exposing them in production", async (t) => {
+test("keeps shipping provider failures generic in preview and production", async (t) => {
   await withShippingEnv(async () => {
     t.mock.method(globalThis, "fetch", async () => new Response("unauthorized", { status: 401 }))
 
@@ -190,28 +190,8 @@ test("classifies safe preview diagnostics without exposing them in production", 
     }
 
     assert.ok(providerError)
-    assert.equal(providerError.diagnosticCode, "provider_401")
-    assert.match(formatShippingUnavailableMessage(providerError, "preview"), /provider_401/)
-    assert.doesNotMatch(formatShippingUnavailableMessage(providerError, "production"), /provider_401/)
-  })
-})
-
-test("identifies a missing Melhor Envio environment without exposing values", async () => {
-  await withShippingEnv(async () => {
-    delete process.env.MELHOR_ENVIO_ENVIRONMENT
-
-    let configError: ShippingUnavailableError | null = null
-    try {
-      await buildShippingQuoteResult({
-        destinationCep: "01001000",
-        items: [{ productId: 1, quantity: 1 }],
-      })
-    } catch (error) {
-      assert.ok(error instanceof ShippingUnavailableError)
-      configError = error
-    }
-
-    assert.ok(configError)
-    assert.equal(configError.diagnosticCode, "config_missing_environment")
+    const expected = "Não foi possível calcular o frete agora. Confira o CEP e tente novamente."
+    assert.equal(formatShippingUnavailableMessage(providerError, "preview"), expected)
+    assert.equal(formatShippingUnavailableMessage(providerError, "production"), expected)
   })
 })
