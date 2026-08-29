@@ -75,18 +75,25 @@ A cotação por produto envia, para cada item confiável do catálogo:
 - valor segurado em reais;
 - quantidade.
 
-O deck atual usa provisoriamente:
+Os dois produtos atuais usam provisoriamente o mesmo perfil físico de pacote:
 
 ```text
+Deck Commander Proxy 100 Cartas
+Peso:        0,50 kg
+Comprimento: 25 cm
+Largura:     19 cm
+Altura:      4 cm
+
+Deck Proxy 60 Cartas
 Peso:        0,50 kg
 Comprimento: 25 cm
 Largura:     19 cm
 Altura:      4 cm
 ```
 
-Esses valores representam uma estimativa provisória do conjunto já embalado e podem ser alterados depois no cadastro do produto sem mudar a arquitetura do checkout. Assim que houver balança e medidas reais do pacote pronto, substitua os valores provisórios pelos medidos.
+Esses valores representam uma estimativa provisória do produto já embalado e podem ser alterados individualmente depois no cadastro sem mudar a arquitetura do checkout. Assim que houver balança e medidas reais de cada pacote pronto, substitua os valores provisórios pelos medidos.
 
-Produtos futuros devem possuir seu próprio perfil de peso/dimensões no catálogo. O backend reconstrói esses dados pelo ID do produto e ignora peso ou dimensão enviados pelo navegador.
+Cada produto possui seu próprio perfil de peso/dimensões no catálogo, mesmo quando os valores provisórios coincidem. O backend reconstrói esses dados pelo ID do produto e ignora preço, peso ou dimensão enviados pelo navegador. Carrinhos com produtos diferentes são enviados ao Melhor Envio como linhas separadas, permitindo que o provedor calcule o empacotamento/volumes.
 
 ## 5. Como o preço e o prazo são escolhidos
 
@@ -147,11 +154,13 @@ Antes de Production:
 - `SHIPPING_ORIGIN_CEP=86730000`;
 - `SHIPPING_QUOTE_SECRET` configurado apenas no servidor;
 - CEP de destino retorna ao menos uma modalidade válida;
-- carrinho com quantidade 1 e quantidade maior que 1 cota normalmente;
+- cada produto individual cota normalmente;
+- carrinho com quantidade maior que 1 cota normalmente;
+- carrinho misto com Deck Commander 100 + Deck 60 cota normalmente;
 - alteração de CEP/carrinho invalida a escolha anterior;
 - mudança de preço entre cotação e checkout exige reconfirmação;
-- o Mercado Pago recebe o total de produtos + frete;
-- a página do pedido mostra transportadora, serviço, prazo, frete, total e endereço.
+- o Mercado Pago recebe todos os produtos + frete no mesmo total;
+- a página do pedido mostra todos os itens, transportadora, serviço, prazo, frete, total e endereço.
 
 ## 9. Migração para Production
 
