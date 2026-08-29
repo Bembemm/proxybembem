@@ -167,7 +167,7 @@ function parseCredentialRow(
   }
 
   return {
-    environment,
+    environment: expectedEnvironment,
     accessTokenEnvelope,
     refreshTokenEnvelope,
     accessTokenExpiresAt,
