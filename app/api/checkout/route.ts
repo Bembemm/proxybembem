@@ -1,21 +1,34 @@
-import { randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
+import { validateCheckout, type CheckoutData } from "@/lib/checkout"
 import {
-  normalizeCheckoutData,
-  validateCheckout,
-  type CheckoutData,
-} from "@/lib/checkout"
-import { buildCheckoutOrder } from "@/lib/server/checkout-order"
-import { selectMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
+  CheckoutFlowProviderError,
+  CheckoutFlowValidationError,
+  executeCheckoutFlow,
+} from "@/lib/server/checkout-flow"
 import {
   getServerEnv,
   isAllowedCheckoutOrigin,
   resolvePublicSiteUrl,
 } from "@/lib/server/env"
-import { createMercadoPagoPreference } from "@/lib/server/mercadopago"
-import { createOrder, updateOrderByNumber } from "@/lib/server/orders"
+import { consumeRateLimit } from "@/lib/server/rate-limit"
+import {
+  InvalidJsonBodyError,
+  readJsonBody,
+  RequestBodyTooLargeError,
+} from "@/lib/server/request-body"
+import { ShippingUnavailableError } from "@/lib/server/shipping-quote"
 
 export const runtime = "nodejs"
+
+function jsonResponse(body: unknown, status: number, extraHeaders?: HeadersInit) {
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+      ...extraHeaders,
+    },
+  })
+}
 
 function parseCustomer(value: unknown): CheckoutData | null {
   if (!value || typeof value !== "object") return null
@@ -40,47 +53,67 @@ function parseCustomer(value: unknown): CheckoutData | null {
 }
 
 export async function POST(request: NextRequest) {
-  const contentLength = Number(request.headers.get("content-length") ?? "0")
-  if (Number.isFinite(contentLength) && contentLength > 32_768) {
-    return NextResponse.json({ error: "Pedido inválido." }, { status: 413 })
+  try {
+    const allowed = await consumeRateLimit({ request, scope: "checkout" })
+    if (!allowed) {
+      return jsonResponse(
+        { error: "Muitas tentativas de pagamento. Aguarde alguns minutos e tente novamente." },
+        429,
+        { "Retry-After": "600" },
+      )
+    }
+  } catch {
+    return jsonResponse(
+      { error: "Não foi possível iniciar o pagamento agora. Tente novamente em instantes." },
+      503,
+    )
   }
 
   let body: unknown
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: "Pedido inválido." }, { status: 400 })
+    body = await readJsonBody(request)
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return jsonResponse({ error: "Pedido inválido." }, 413)
+    }
+    if (error instanceof InvalidJsonBodyError) {
+      return jsonResponse({ error: "Pedido inválido." }, 400)
+    }
+    return jsonResponse({ error: "Pedido inválido." }, 400)
   }
 
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ error: "Pedido inválido." }, { status: 400 })
+    return jsonResponse({ error: "Pedido inválido." }, 400)
   }
 
-  const payload = body as { items?: unknown; customer?: unknown }
+  const payload = body as {
+    items?: unknown
+    customer?: unknown
+    selectedQuoteToken?: unknown
+    checkoutAttemptId?: unknown
+  }
   const customer = parseCustomer(payload.customer)
   if (!customer) {
-    return NextResponse.json({ error: "Confira seus dados e tente novamente." }, { status: 400 })
+    return jsonResponse({ error: "Confira seus dados e tente novamente." }, 400)
   }
 
   const fieldErrors = validateCheckout(customer)
   if (Object.keys(fieldErrors).length > 0) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: "Confira seus dados e tente novamente.", fieldErrors },
-      { status: 400 },
+      400,
     )
   }
 
-  let checkoutOrder
-  try {
-    checkoutOrder = buildCheckoutOrder(payload.items)
-  } catch {
-    return NextResponse.json({ error: "Carrinho inválido. Atualize a página e tente novamente." }, { status: 400 })
+  if (
+    typeof payload.selectedQuoteToken !== "string" ||
+    typeof payload.checkoutAttemptId !== "string"
+  ) {
+    return jsonResponse(
+      { error: "Escolha uma opção de frete e tente novamente." },
+      400,
+    )
   }
-
-  const normalizedCustomer = normalizeCheckoutData(customer)
-
-  const orderNumber = `PB-${randomBytes(6).toString("hex").toUpperCase()}`
-  const publicToken = randomBytes(32).toString("hex")
 
   try {
     const env = getServerEnv()
@@ -89,62 +122,72 @@ export async function POST(request: NextRequest) {
     const originHeader = request.headers.get("origin")
 
     if (!isAllowedCheckoutOrigin(originHeader, siteUrl, requestOrigin)) {
-      return NextResponse.json({ error: "Origem de checkout inválida." }, { status: 403 })
+      return jsonResponse({ error: "Origem de checkout inválida." }, 403)
     }
 
-    await createOrder({
-      orderNumber,
-      publicToken,
-      customerName: normalizedCustomer.nome,
-      whatsapp: normalizedCustomer.whatsapp,
-      cep: normalizedCustomer.cep,
-      items: checkoutOrder.items,
-      subtotalCents: checkoutOrder.subtotalCents,
+    const result = await executeCheckoutFlow({
+      items: payload.items,
+      customer,
+      selectedQuoteToken: payload.selectedQuoteToken,
+      checkoutAttemptId: payload.checkoutAttemptId,
+      siteUrl,
+      mercadoPagoAccessToken: env.mercadoPagoAccessToken,
+      mercadoPagoEnvironment: env.mercadoPagoEnvironment,
     })
 
-    const returnUrl = `${siteUrl}/pedido/${publicToken}`
-    const preference = await createMercadoPagoPreference({
-      accessToken: env.mercadoPagoAccessToken,
-      orderNumber,
-      items: checkoutOrder.items,
-      notificationUrl: `${siteUrl}/api/mercadopago/webhook`,
-      returnUrl,
-      payerName: normalizedCustomer.nome,
-    })
+    if (result.kind === "shipping_changed") {
+      return jsonResponse(
+        {
+          error: "O valor do frete foi atualizado. Confirme o novo valor para continuar.",
+          code: "shipping_changed",
+          options: result.options,
+        },
+        409,
+      )
+    }
 
-    await updateOrderByNumber(orderNumber, {
-      preference_id: preference.id,
-      payment_status: "pending",
-      payment_status_detail: null,
-    })
+    if (result.kind === "attempt_conflict") {
+      return jsonResponse(
+        {
+          error: "Os dados desta tentativa de pagamento mudaram. Revise o pedido e tente novamente.",
+          code: "checkout_attempt_conflict",
+        },
+        409,
+      )
+    }
 
-    const checkoutUrl = selectMercadoPagoCheckoutUrl(
-      preference,
-      env.mercadoPagoEnvironment,
-    )
-
-    return NextResponse.json(
-      { checkoutUrl, orderNumber },
-      { status: 201, headers: { "Cache-Control": "no-store" } },
+    return jsonResponse(
+      { checkoutUrl: result.checkoutUrl, orderNumber: result.orderNumber },
+      result.kind === "created" ? 201 : 200,
     )
   } catch (error) {
-    console.error("Checkout creation failed", {
-      orderNumber,
-      error: error instanceof Error ? error.message : "unknown",
-    })
-
-    try {
-      await updateOrderByNumber(orderNumber, {
-        payment_status: "checkout_error",
-        payment_status_detail: "preference_creation_failed",
-      })
-    } catch {
-      // The order may not have been inserted yet, or storage may be temporarily unavailable.
+    if (error instanceof CheckoutFlowValidationError) {
+      return jsonResponse(
+        { error: "O frete ou os dados do pedido não são mais válidos. Calcule o frete novamente." },
+        400,
+      )
     }
 
-    return NextResponse.json(
+    if (error instanceof ShippingUnavailableError) {
+      return jsonResponse(
+        { error: "Não foi possível atualizar o frete agora. Confira o CEP e tente novamente." },
+        503,
+      )
+    }
+
+    if (error instanceof CheckoutFlowProviderError) {
+      return jsonResponse(
+        { error: "Não foi possível iniciar o pagamento agora. Você pode tentar novamente ou usar o WhatsApp." },
+        503,
+      )
+    }
+
+    console.error("Checkout creation failed", {
+      errorName: error instanceof Error ? error.name : "unknown",
+    })
+    return jsonResponse(
       { error: "Não foi possível iniciar o pagamento agora. Você pode tentar novamente ou usar o WhatsApp." },
-      { status: 503 },
+      503,
     )
   }
 }
