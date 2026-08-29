@@ -78,13 +78,13 @@ A cotação por produto envia, para cada item confiável do catálogo:
 O deck atual usa provisoriamente:
 
 ```text
-Peso:        0,25 kg
+Peso:        0,50 kg
 Comprimento: 25 cm
 Largura:     19 cm
 Altura:      4 cm
 ```
 
-Esses valores representam a estimativa do conjunto embalado com o material atual e podem ser alterados depois no cadastro do produto sem mudar a arquitetura do checkout. Assim que houver balança e medidas reais do pacote pronto, substitua os valores provisórios pelos medidos.
+Esses valores representam uma estimativa provisória do conjunto já embalado e podem ser alterados depois no cadastro do produto sem mudar a arquitetura do checkout. Assim que houver balança e medidas reais do pacote pronto, substitua os valores provisórios pelos medidos.
 
 Produtos futuros devem possuir seu próprio perfil de peso/dimensões no catálogo. O backend reconstrói esses dados pelo ID do produto e ignora peso ou dimensão enviados pelo navegador.
 
