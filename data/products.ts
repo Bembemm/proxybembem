@@ -44,7 +44,7 @@ export const products: Product[] = [
       {
         title: "COMO ENVIAR SUA LISTA",
         paragraphs: [
-          "Após iniciar o pedido no WhatsApp, envie o link da sua lista pelo Moxfield, LigaMagic ou MPCFill.",
+          "Após concluir o pedido, envie o link da sua lista pelo WhatsApp usando Moxfield, LigaMagic ou MPCFill.",
         ],
       },
       {
