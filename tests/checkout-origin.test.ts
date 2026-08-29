@@ -1,41 +1,55 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import * as envModule from "../lib/server/env.ts"
+import { isAllowedCheckoutOrigin, resolvePublicSiteUrl } from "../lib/server/env.ts"
 
-type CheckoutOriginValidator = (
-  originHeader: string | null,
-  configuredSiteUrl: string,
-  requestOrigin: string,
-) => boolean
+const configured = "https://www.proxybembem.com.br"
+const preview = "https://proxybembem-cm4fqr1of-team.vercel.app"
 
-function checkoutOriginValidator(): CheckoutOriginValidator {
-  const candidate = (envModule as unknown as Record<string, unknown>).isAllowedCheckoutOrigin
-  assert.equal(typeof candidate, "function", "isAllowedCheckoutOrigin must be exported")
-  return candidate as CheckoutOriginValidator
-}
+test("production accepts only the configured canonical HTTPS origin", () => {
+  const base = {
+    configuredSiteUrl: configured,
+    requestOrigin: preview,
+    nodeEnv: "production",
+    vercelEnv: "production",
+  }
 
-test("accepts the current Vercel deployment origin when the configured URL is the stable branch URL", () => {
-  const isAllowedCheckoutOrigin = checkoutOriginValidator()
-
-  assert.equal(
-    isAllowedCheckoutOrigin(
-      "https://proxybembem-cm4fqr1of-team.vercel.app",
-      "https://proxybembem-git-feat-checkout-team.vercel.app",
-      "https://proxybembem-cm4fqr1of-team.vercel.app",
-    ),
-    true,
-  )
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: configured }), true)
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: null }), false)
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: preview }), false)
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: "https://evil.example" }), false)
 })
 
-test("still rejects an unrelated external origin", () => {
-  const isAllowedCheckoutOrigin = checkoutOriginValidator()
+test("preview accepts configured or current deployment origin but rejects third parties", () => {
+  const base = {
+    configuredSiteUrl: configured,
+    requestOrigin: preview,
+    nodeEnv: "production",
+    vercelEnv: "preview",
+  }
 
-  assert.equal(
-    isAllowedCheckoutOrigin(
-      "https://evil.example",
-      "https://proxybembem-git-feat-checkout-team.vercel.app",
-      "https://proxybembem-cm4fqr1of-team.vercel.app",
-    ),
-    false,
-  )
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: preview }), true)
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: configured }), true)
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: "https://evil.example" }), false)
+  assert.equal(isAllowedCheckoutOrigin({ ...base, originHeader: "not a url" }), false)
+})
+
+test("production public site URL cannot silently fall back to request origin", () => {
+  const previousSite = process.env.NEXT_PUBLIC_SITE_URL
+  const previousVercel = process.env.VERCEL_ENV
+  const previousNode = process.env.NODE_ENV
+
+  delete process.env.NEXT_PUBLIC_SITE_URL
+  process.env.VERCEL_ENV = "production"
+  process.env.NODE_ENV = "production"
+
+  try {
+    assert.throws(() => resolvePublicSiteUrl(preview), /NEXT_PUBLIC_SITE_URL/)
+  } finally {
+    if (previousSite === undefined) delete process.env.NEXT_PUBLIC_SITE_URL
+    else process.env.NEXT_PUBLIC_SITE_URL = previousSite
+    if (previousVercel === undefined) delete process.env.VERCEL_ENV
+    else process.env.VERCEL_ENV = previousVercel
+    if (previousNode === undefined) delete process.env.NODE_ENV
+    else process.env.NODE_ENV = previousNode
+  }
 })
