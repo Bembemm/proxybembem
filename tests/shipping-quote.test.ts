@@ -42,7 +42,7 @@ async function withShippingEnv(run: () => Promise<void>) {
   }
 }
 
-test("builds trusted signed freight options and keeps provider packages server-side", async (t) => {
+test("builds trusted mixed-product freight options and keeps provider packages server-side", async (t) => {
   await withShippingEnv(async () => {
     t.mock.method(
       globalThis,
@@ -60,6 +60,15 @@ test("builds trusted signed freight options and keeps provider packages server-s
             length: 25,
             weight: 0.5,
             insurance_value: 119.9,
+            quantity: 1,
+          },
+          {
+            id: "2",
+            width: 19,
+            height: 4,
+            length: 25,
+            weight: 0.5,
+            insurance_value: 69.99,
             quantity: 2,
           },
         ])
@@ -93,6 +102,12 @@ test("builds trusted signed freight options and keeps provider packages server-s
       items: [
         {
           productId: 1,
+          quantity: 1,
+          price: 0.01,
+          shipping: { weightKg: 0.001, widthCm: 1, heightCm: 1, lengthCm: 1 },
+        },
+        {
+          productId: 2,
           quantity: 2,
           price: 0.01,
           shipping: { weightKg: 0.001, widthCm: 1, heightCm: 1, lengthCm: 1 },
@@ -102,7 +117,10 @@ test("builds trusted signed freight options and keeps provider packages server-s
 
     assert.equal(
       result.cartFingerprint,
-      createCartFingerprint([{ productId: 1, quantity: 2 }]),
+      createCartFingerprint([
+        { productId: 1, quantity: 1 },
+        { productId: 2, quantity: 2 },
+      ]),
     )
     assert.deepEqual(
       result.options.map(({ serviceId, priceCents, deliveryDays, packages }) => ({
