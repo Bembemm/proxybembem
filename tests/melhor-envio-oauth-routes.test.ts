@@ -174,14 +174,15 @@ test("OAuth start stores only SHA-256(state) for ten minutes and redirects to le
     assert.ok(rawState)
     assert.match(rawState, /^[A-Za-z0-9_-]{43}$/)
 
-    assert.ok(stateInsert)
-    assert.equal(stateInsert.environment, "sandbox")
+    const persistedState = stateInsert as Record<string, unknown> | null
+    assert.ok(persistedState)
+    assert.equal(persistedState.environment, "sandbox")
     assert.equal(
-      stateInsert.state_hash,
+      persistedState.state_hash,
       createHash("sha256").update(rawState).digest("hex"),
     )
-    assert.notEqual(stateInsert.state_hash, rawState)
-    const expiresAt = Date.parse(String(stateInsert.expires_at))
+    assert.notEqual(persistedState.state_hash, rawState)
+    const expiresAt = Date.parse(String(persistedState.expires_at))
     assert.ok(expiresAt >= before + 10 * 60 * 1000)
     assert.ok(expiresAt <= after + 10 * 60 * 1000)
     assert.doesNotMatch(location, /client-secret-never-leak|admin-secret/)
@@ -197,13 +198,14 @@ test("OAuth callback rejects malformed/provider-denied callbacks without touchin
     })
 
     const { GET } = await loadCallbackRoute()
-    for (const query of [
+    const invalidQueries: Array<Record<string, string>> = [
       {},
       { error: "access_denied", state: "s".repeat(43) },
       { code: "", state: "s".repeat(43) },
       { code: "code", state: "short" },
       { code: "x".repeat(2049), state: "s".repeat(43) },
-    ]) {
+    ]
+    for (const query of invalidQueries) {
       const response = await GET(callbackRequest(query))
       assert.equal(response.status, 303)
       assert.equal(
@@ -294,13 +296,14 @@ test("OAuth callback exchanges only after state consumption and atomically persi
     assert.equal(redirect.searchParams.get("status"), "connected")
     assert.deepEqual(order, ["consume-state", "exchange-code", "upsert-credential"])
 
-    assert.ok(upsertBody)
-    assert.equal(upsertBody.p_environment, "sandbox")
-    assert.notEqual(upsertBody.p_access_token_envelope, "live-access-token")
-    assert.notEqual(upsertBody.p_refresh_token_envelope, "live-refresh-token")
+    const persistedCredential = upsertBody as Record<string, unknown> | null
+    assert.ok(persistedCredential)
+    assert.equal(persistedCredential.p_environment, "sandbox")
+    assert.notEqual(persistedCredential.p_access_token_envelope, "live-access-token")
+    assert.notEqual(persistedCredential.p_refresh_token_envelope, "live-refresh-token")
     assert.equal(
       decryptMelhorEnvioToken({
-        envelope: String(upsertBody.p_access_token_envelope),
+        envelope: String(persistedCredential.p_access_token_envelope),
         environment: "sandbox",
         kind: "access",
         encryptionKeyHex: ENCRYPTION_KEY,
@@ -309,14 +312,14 @@ test("OAuth callback exchanges only after state consumption and atomically persi
     )
     assert.equal(
       decryptMelhorEnvioToken({
-        envelope: String(upsertBody.p_refresh_token_envelope),
+        envelope: String(persistedCredential.p_refresh_token_envelope),
         environment: "sandbox",
         kind: "refresh",
         encryptionKeyHex: ENCRYPTION_KEY,
       }),
       "live-refresh-token",
     )
-    assert.ok(Date.parse(String(upsertBody.p_access_token_expires_at)) > Date.now())
+    assert.ok(Date.parse(String(persistedCredential.p_access_token_expires_at)) > Date.now())
     assert.doesNotMatch(response.headers.get("location")!, /live-access-token|live-refresh-token/)
   })
 })
