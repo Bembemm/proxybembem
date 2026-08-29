@@ -99,7 +99,7 @@ test("rejects ciphertext and authentication-tag tampering without leaking token 
     const tampered = [...parts]
     const value = tampered[index]
     assert.ok(value)
-    tampered[index] = `${value.slice(0, -1)}${value.endsWith("A") ? "B" : "A"}`
+    tampered[index] = `${value.startsWith("A") ? "B" : "A"}${value.slice(1)}`
 
     assert.throws(
       () =>
