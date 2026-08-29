@@ -66,6 +66,15 @@ export interface CreateOrderInput {
   checkoutFingerprint?: string
 }
 
+export interface PaymentEventResult {
+  outcome: "updated" | "ignored" | "manual_review" | "not_found"
+  order_number: string | null
+  payment_status: string | null
+  payment_id: string | null
+  expected_cents: number | null
+  received_cents: number
+}
+
 export class OrderConflictError extends Error {
   readonly code: "checkout_attempt_conflict"
 
@@ -277,4 +286,68 @@ export async function getOrderByPublicToken(publicToken: string): Promise<OrderR
   const response = await supabaseRequest(`orders?${params.toString()}`)
   const rows = (await response.json()) as OrderRecord[]
   return rows[0] ?? null
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string"
+}
+
+function isNullableSafeInteger(value: unknown): value is number | null {
+  return value === null || (typeof value === "number" && Number.isSafeInteger(value))
+}
+
+export async function applyMercadoPagoPaymentEvent(input: {
+  orderNumber: string
+  paymentId: string
+  incomingStatus: string
+  statusDetail: string | null
+  paidCents: number
+  currencyId: string
+}): Promise<PaymentEventResult> {
+  if (
+    !/^PB-[A-F0-9]{12}$/.test(input.orderNumber) ||
+    !/^\d{1,32}$/.test(input.paymentId) ||
+    !input.incomingStatus ||
+    input.incomingStatus.length > 100 ||
+    (input.statusDetail !== null && input.statusDetail.length > 200) ||
+    !Number.isSafeInteger(input.paidCents) ||
+    input.paidCents < 0 ||
+    !/^[A-Z]{3}$/.test(input.currencyId)
+  ) {
+    throw new Error("Invalid payment event input")
+  }
+
+  const response = await supabaseRequest("rpc/apply_mercadopago_payment_event", {
+    method: "POST",
+    body: JSON.stringify({
+      p_order_number: input.orderNumber,
+      p_payment_id: input.paymentId,
+      p_incoming_status: input.incomingStatus,
+      p_status_detail: input.statusDetail,
+      p_paid_cents: input.paidCents,
+      p_currency_id: input.currencyId,
+    }),
+  })
+
+  const payload = (await response.json()) as unknown
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("Payment event RPC returned an invalid response")
+  }
+
+  const result = payload as Partial<PaymentEventResult>
+  if (
+    !["updated", "ignored", "manual_review", "not_found"].includes(
+      String(result.outcome),
+    ) ||
+    !isNullableString(result.order_number) ||
+    !isNullableString(result.payment_status) ||
+    !isNullableString(result.payment_id) ||
+    !isNullableSafeInteger(result.expected_cents) ||
+    typeof result.received_cents !== "number" ||
+    !Number.isSafeInteger(result.received_cents)
+  ) {
+    throw new Error("Payment event RPC returned an invalid response")
+  }
+
+  return result as PaymentEventResult
 }
