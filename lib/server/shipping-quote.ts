@@ -1,6 +1,10 @@
 import { buildCheckoutOrder } from "./checkout-order.ts"
 import { getMelhorEnvioEnv } from "./env.ts"
-import { quoteMelhorEnvio, type ShippingQuoteOption } from "./melhor-envio.ts"
+import {
+  MelhorEnvioProviderError,
+  quoteMelhorEnvio,
+  type ShippingQuoteOption,
+} from "./melhor-envio.ts"
 import {
   createCartFingerprint,
   createShippingQuoteToken,
@@ -101,11 +105,21 @@ export async function buildShippingQuoteResult(input: {
         quantity: item.quantity,
       })),
     })
-  } catch {
+  } catch (error) {
+    if (error instanceof MelhorEnvioProviderError) {
+      console.error("Melhor Envio quote request failed", {
+        providerStatus: error.status,
+      })
+    } else {
+      console.error("Shipping quote configuration or internal failure", {
+        errorType: error instanceof Error ? error.name : "unknown",
+      })
+    }
     throw new ShippingUnavailableError()
   }
 
   if (providerOptions.length === 0) {
+    console.error("Melhor Envio quote returned no valid services")
     throw new ShippingUnavailableError()
   }
 
