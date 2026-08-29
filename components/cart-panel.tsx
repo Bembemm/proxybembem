@@ -22,6 +22,7 @@ import {
   selectShippingOption,
   type ShippingClientState,
 } from "@/lib/shipping-client"
+import { isAllowedMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
 import type { PublicShippingOption } from "@/lib/server/shipping-quote"
 
 const EMPTY_CHECKOUT: CheckoutData = {
@@ -282,16 +283,14 @@ export function CartPanel() {
         return
       }
 
-      if (typeof result?.checkoutUrl !== "string") {
-        throw new Error("Checkout URL missing")
+      if (
+        typeof result?.checkoutUrl !== "string" ||
+        !isAllowedMercadoPagoCheckoutUrl(result.checkoutUrl)
+      ) {
+        throw new Error("Unsafe checkout URL")
       }
 
-      const checkoutUrl = new URL(result.checkoutUrl)
-      if (checkoutUrl.protocol !== "https:") {
-        throw new Error("Checkout URL must use HTTPS")
-      }
-
-      window.location.assign(checkoutUrl.toString())
+      window.location.assign(result.checkoutUrl)
     } catch {
       setCheckoutError(
         "Não foi possível iniciar o pagamento. Tente novamente ou continue pelo WhatsApp.",
