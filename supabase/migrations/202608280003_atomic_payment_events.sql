@@ -1,10 +1,19 @@
--- Before applying this migration in an existing environment, run:
--- select payment_id, count(*) as occurrences
--- from public.orders
--- where payment_id is not null
--- group by payment_id
--- having count(*) > 1;
--- The expected result is zero rows. Resolve duplicates explicitly before continuing.
+-- Before applying this migration in an existing environment, duplicate payment IDs
+-- must be resolved explicitly. The executable guard below fails closed before the
+-- unique index or RPC are created.
+do $$
+begin
+  if exists (
+    select 1
+    from public.orders
+    where payment_id is not null
+    group by payment_id
+    having count(*) > 1
+  ) then
+    raise exception 'duplicate payment_id values exist in public.orders; resolve duplicates before applying this migration';
+  end if;
+end;
+$$;
 
 create unique index if not exists orders_payment_id_uidx
   on public.orders (payment_id)
