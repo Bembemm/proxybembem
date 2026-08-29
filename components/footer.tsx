@@ -104,7 +104,7 @@ export function Footer() {
           <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
             <Lock className="w-4 h-4 text-[#8B5CF6]/70" />
             <p className="text-base text-slate-500 text-center">
-              Pagamento via Pix combinado no atendimento. O site não coleta dados bancários.
+              Pagamento processado pelo Mercado Pago. Dados bancários e do cartão não são armazenados pela ProxyBembem.
             </p>
           </div>
 
