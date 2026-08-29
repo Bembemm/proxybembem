@@ -51,6 +51,14 @@ function melhorEnvioEnvironment(): MelhorEnvioEnvironment {
   return value
 }
 
+function isProductionRuntime(
+  nodeEnv: string | undefined,
+  vercelEnv: string | undefined,
+) {
+  if (vercelEnv) return vercelEnv === "production"
+  return nodeEnv === "production"
+}
+
 export function getSupabaseEnv(): SupabaseEnv {
   const supabaseUrl = required("SUPABASE_URL")
   const parsedSupabaseUrl = new URL(supabaseUrl)
@@ -114,28 +122,43 @@ export function getServerEnv(): ServerEnv {
 
 export function resolvePublicSiteUrl(requestOrigin: string) {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim()
-  const url = new URL(configured || requestOrigin)
+  const production = isProductionRuntime(process.env.NODE_ENV, process.env.VERCEL_ENV)
 
-  if (process.env.NODE_ENV === "production" && url.protocol !== "https:") {
+  if (production && !configured) {
+    throw new Error("Production checkout requires NEXT_PUBLIC_SITE_URL")
+  }
+
+  const url = new URL(configured || requestOrigin)
+  if (production && url.protocol !== "https:") {
     throw new Error("Production checkout requires an HTTPS site URL")
   }
 
   return url.origin
 }
 
-export function isAllowedCheckoutOrigin(
-  originHeader: string | null,
-  configuredSiteUrl: string,
-  requestOrigin: string,
-) {
-  if (!originHeader) return true
+export function isAllowedCheckoutOrigin(input: {
+  originHeader: string | null
+  configuredSiteUrl: string
+  requestOrigin: string
+  nodeEnv: string | undefined
+  vercelEnv: string | undefined
+}) {
+  if (!input.originHeader) return false
 
   try {
-    const origin = new URL(originHeader).origin
-    return (
-      origin === new URL(configuredSiteUrl).origin ||
-      origin === new URL(requestOrigin).origin
-    )
+    const origin = new URL(input.originHeader).origin
+    const configuredOrigin = new URL(input.configuredSiteUrl).origin
+    const requestOrigin = new URL(input.requestOrigin).origin
+    const production = isProductionRuntime(input.nodeEnv, input.vercelEnv)
+
+    if (production) {
+      return (
+        new URL(input.configuredSiteUrl).protocol === "https:" &&
+        origin === configuredOrigin
+      )
+    }
+
+    return origin === configuredOrigin || origin === requestOrigin
   } catch {
     return false
   }
