@@ -1,11 +1,15 @@
 import { createHmac } from "node:crypto"
 import { getRateLimitEnv } from "./env.ts"
 
-export type RateLimitScope = "shipping-quote" | "checkout"
+export type RateLimitScope =
+  | "shipping-quote"
+  | "checkout"
+  | "melhor-envio-oauth-start"
 
 const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   "shipping-quote": { limit: 60, windowSeconds: 600 },
   checkout: { limit: 10, windowSeconds: 600 },
+  "melhor-envio-oauth-start": { limit: 5, windowSeconds: 900 },
 }
 
 function firstUsableForwardedValue(value: string | null): string | null {
