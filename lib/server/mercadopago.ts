@@ -29,7 +29,7 @@ export interface MercadoPagoPayment {
   statusDetail: string | null
   transactionAmount: number
   externalReference: string | null
-  currencyId: string | null
+  currencyId: string
 }
 
 interface WebhookSignatureInput {
@@ -141,15 +141,24 @@ export async function createMercadoPagoPreference(
   }
 }
 
+export function parseMercadoPagoPaymentId(value: string | null): string | null {
+  if (!value || !/^\d{1,32}$/.test(value)) return null
+  return value
+}
+
 export async function getMercadoPagoPayment(
   paymentId: string,
   accessToken: string,
 ): Promise<MercadoPagoPayment> {
-  if (!/^\d+$/.test(paymentId)) {
+  const normalizedPaymentId = parseMercadoPagoPaymentId(paymentId)
+  if (!normalizedPaymentId) {
     throw new Error("Invalid payment id")
   }
 
-  const response = await mercadoPagoFetch(`/v1/payments/${encodeURIComponent(paymentId)}`, accessToken)
+  const response = await mercadoPagoFetch(
+    `/v1/payments/${encodeURIComponent(normalizedPaymentId)}`,
+    accessToken,
+  )
   const data = (await response.json()) as {
     id?: unknown
     status?: unknown
@@ -159,22 +168,40 @@ export async function getMercadoPagoPayment(
     currency_id?: unknown
   }
 
+  const providerPaymentId =
+    typeof data.id === "number" || typeof data.id === "string"
+      ? parseMercadoPagoPaymentId(String(data.id))
+      : null
+
   if (
-    (typeof data.id !== "number" && typeof data.id !== "string") ||
+    !providerPaymentId ||
+    providerPaymentId !== normalizedPaymentId ||
     typeof data.status !== "string" ||
-    typeof data.transaction_amount !== "number"
+    !data.status ||
+    data.status.length > 100 ||
+    typeof data.transaction_amount !== "number" ||
+    !Number.isFinite(data.transaction_amount) ||
+    data.transaction_amount < 0 ||
+    typeof data.currency_id !== "string" ||
+    !/^[A-Z]{3}$/.test(data.currency_id) ||
+    (data.status_detail !== undefined &&
+      data.status_detail !== null &&
+      typeof data.status_detail !== "string") ||
+    (data.external_reference !== undefined &&
+      data.external_reference !== null &&
+      typeof data.external_reference !== "string")
   ) {
     throw new Error("Payment provider returned an invalid payment")
   }
 
   return {
-    id: String(data.id),
+    id: providerPaymentId,
     status: data.status,
     statusDetail: typeof data.status_detail === "string" ? data.status_detail : null,
     transactionAmount: data.transaction_amount,
     externalReference:
       typeof data.external_reference === "string" ? data.external_reference : null,
-    currencyId: typeof data.currency_id === "string" ? data.currency_id : null,
+    currencyId: data.currency_id,
   }
 }
 
