@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server.js"
-import { getMercadoPagoEnv } from "@/lib/server/env"
+import { getMercadoPagoEnv } from "../../../../lib/server/env.ts"
 import {
   getMercadoPagoPayment,
   parseMercadoPagoPaymentId,
   validateMercadoPagoWebhookSignature,
-} from "@/lib/server/mercadopago"
-import { applyMercadoPagoPaymentEvent } from "@/lib/server/orders"
-import { readJsonBody } from "@/lib/server/request-body"
+} from "../../../../lib/server/mercadopago.ts"
+import { applyMercadoPagoPaymentEvent } from "../../../../lib/server/orders.ts"
+import { readJsonBody } from "../../../../lib/server/request-body.ts"
 
 export const runtime = "nodejs"
 
