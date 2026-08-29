@@ -13,7 +13,6 @@ const KEYS = [
   "SHIPPING_ORIGIN_CEP",
   "SHIPPING_QUOTE_SECRET",
   "CRON_SECRET",
-  "MELHOR_ENVIO_ACCESS_TOKEN",
 ] as const
 
 function withMelhorEnvioEnv(
@@ -70,7 +69,7 @@ function getCronSecret(): string {
   return (candidate as () => string)()
 }
 
-test("returns the OAuth Melhor Envio server configuration without a permanent access token", () => {
+test("returns the complete OAuth Melhor Envio server configuration", () => {
   withMelhorEnvioEnv(valid, () => {
     assert.deepEqual(getOAuthEnv(), {
       environment: "sandbox",
@@ -83,12 +82,6 @@ test("returns the OAuth Melhor Envio server configuration without a permanent ac
       originCep: "86730000",
       quoteSecret: "c".repeat(64),
     })
-  })
-})
-
-test("does not require MELHOR_ENVIO_ACCESS_TOKEN for OAuth configuration", () => {
-  withMelhorEnvioEnv({ ...valid, MELHOR_ENVIO_ACCESS_TOKEN: undefined }, () => {
-    assert.doesNotThrow(() => getOAuthEnv())
   })
 })
 
