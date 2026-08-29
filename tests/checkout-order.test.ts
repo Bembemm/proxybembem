@@ -42,30 +42,23 @@ test("builds a trusted mixed-product order from two catalog products", () => {
     } as never,
   ])
 
-  assert.deepEqual(
-    result.items.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-      shipping: item.shipping,
-    })),
-    [
-      {
-        productId: 1,
-        quantity: 1,
-        shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
-      },
-      {
-        productId: 2,
-        quantity: 2,
-        shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
-      },
-    ],
-  )
-  assert.equal(
-    result.subtotalCents,
-    result.items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0),
-  )
-  assert.ok(result.items[1].unitPriceCents > 0)
+  assert.deepEqual(result.items, [
+    {
+      productId: 1,
+      title: "Deck Commander Proxy 100 Cartas",
+      unitPriceCents: 11990,
+      quantity: 1,
+      shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+    },
+    {
+      productId: 2,
+      title: "Deck Proxy 60 Cartas",
+      unitPriceCents: 6999,
+      quantity: 2,
+      shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+    },
+  ])
+  assert.equal(result.subtotalCents, 25988)
 })
 
 test("merges duplicate product lines before calculating totals", () => {
