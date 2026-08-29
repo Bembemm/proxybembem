@@ -3,6 +3,7 @@ import test from "node:test"
 import {
   ShippingUnavailableError,
   buildShippingQuoteResult,
+  formatShippingUnavailableMessage,
   toPublicShippingOptions,
 } from "../lib/server/shipping-quote.ts"
 import {
@@ -170,5 +171,47 @@ test("returns a controlled unavailable error when the provider has no valid serv
         }),
       (error: unknown) => error instanceof ShippingUnavailableError,
     )
+  })
+})
+
+test("classifies safe preview diagnostics without exposing them in production", async (t) => {
+  await withShippingEnv(async () => {
+    t.mock.method(globalThis, "fetch", async () => new Response("unauthorized", { status: 401 }))
+
+    let providerError: ShippingUnavailableError | null = null
+    try {
+      await buildShippingQuoteResult({
+        destinationCep: "01001000",
+        items: [{ productId: 1, quantity: 1 }],
+      })
+    } catch (error) {
+      assert.ok(error instanceof ShippingUnavailableError)
+      providerError = error
+    }
+
+    assert.ok(providerError)
+    assert.equal(providerError.diagnosticCode, "provider_401")
+    assert.match(formatShippingUnavailableMessage(providerError, "preview"), /provider_401/)
+    assert.doesNotMatch(formatShippingUnavailableMessage(providerError, "production"), /provider_401/)
+  })
+})
+
+test("classifies invalid Melhor Envio configuration as config", async () => {
+  await withShippingEnv(async () => {
+    delete process.env.MELHOR_ENVIO_ENVIRONMENT
+
+    let configError: ShippingUnavailableError | null = null
+    try {
+      await buildShippingQuoteResult({
+        destinationCep: "01001000",
+        items: [{ productId: 1, quantity: 1 }],
+      })
+    } catch (error) {
+      assert.ok(error instanceof ShippingUnavailableError)
+      configError = error
+    }
+
+    assert.ok(configError)
+    assert.equal(configError.diagnosticCode, "config")
   })
 })
