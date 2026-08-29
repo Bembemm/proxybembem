@@ -13,11 +13,8 @@ export interface MercadoPagoEnv {
 
 export type MelhorEnvioEnvironment = "sandbox" | "production"
 
-// Legacy Sandbox bridge. This remains only until the freight client is migrated
-// to the OAuth token manager later in Task 3.1. It must not become an OAuth fallback.
 export interface MelhorEnvioEnv {
   environment: MelhorEnvioEnvironment
-  accessToken: string
   userAgent: string
   originCep: string
   quoteSecret: string
@@ -157,7 +154,6 @@ export function getCronSecret() {
 export function getMelhorEnvioEnv(): MelhorEnvioEnv {
   return {
     environment: melhorEnvioEnvironment(),
-    accessToken: required("MELHOR_ENVIO_ACCESS_TOKEN"),
     userAgent: required("MELHOR_ENVIO_USER_AGENT"),
     originCep: shippingOriginCep(),
     quoteSecret: shippingQuoteSecret(),
