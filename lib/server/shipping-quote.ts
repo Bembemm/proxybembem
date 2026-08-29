@@ -29,9 +29,49 @@ export interface ShippingQuoteResult {
 }
 
 export class ShippingUnavailableError extends Error {
-  constructor() {
+  readonly diagnosticCode: string
+
+  constructor(diagnosticCode = "unknown") {
     super("Shipping unavailable")
     this.name = "ShippingUnavailableError"
+    this.diagnosticCode = diagnosticCode
+  }
+}
+
+const GENERIC_SHIPPING_MESSAGE =
+  "Não foi possível calcular o frete agora. Confira o CEP e tente novamente."
+
+export function formatShippingUnavailableMessage(
+  error: ShippingUnavailableError,
+  vercelEnv: string | undefined,
+) {
+  return vercelEnv === "preview"
+    ? `${GENERIC_SHIPPING_MESSAGE} [${error.diagnosticCode}]`
+    : GENERIC_SHIPPING_MESSAGE
+}
+
+function configDiagnosticCode(error: unknown) {
+  if (!(error instanceof Error)) return "config"
+
+  switch (error.message) {
+    case "Missing required server environment variable: MELHOR_ENVIO_ENVIRONMENT":
+      return "config_missing_environment"
+    case "Missing required server environment variable: MELHOR_ENVIO_ACCESS_TOKEN":
+      return "config_missing_access_token"
+    case "Missing required server environment variable: MELHOR_ENVIO_USER_AGENT":
+      return "config_missing_user_agent"
+    case "Missing required server environment variable: SHIPPING_ORIGIN_CEP":
+      return "config_missing_origin_cep"
+    case "Missing required server environment variable: SHIPPING_QUOTE_SECRET":
+      return "config_missing_quote_secret"
+    case "MELHOR_ENVIO_ENVIRONMENT must be sandbox or production":
+      return "config_invalid_environment"
+    case "SHIPPING_ORIGIN_CEP must contain exactly 8 digits":
+      return "config_invalid_origin_cep"
+    case "SHIPPING_QUOTE_SECRET must contain at least 32 characters":
+      return "config_quote_secret_too_short"
+    default:
+      return "config"
   }
 }
 
@@ -110,17 +150,21 @@ export async function buildShippingQuoteResult(input: {
       console.error("Melhor Envio quote request failed", {
         providerStatus: error.status,
       })
-    } else {
-      console.error("Shipping quote configuration or internal failure", {
-        errorType: error instanceof Error ? error.name : "unknown",
-      })
+      throw new ShippingUnavailableError(
+        error.status === null ? "provider_network" : `provider_${error.status}`,
+      )
     }
-    throw new ShippingUnavailableError()
+
+    const diagnosticCode = configDiagnosticCode(error)
+    console.error("Shipping quote configuration or internal failure", {
+      diagnosticCode,
+    })
+    throw new ShippingUnavailableError(diagnosticCode)
   }
 
   if (providerOptions.length === 0) {
     console.error("Melhor Envio quote returned no valid services")
-    throw new ShippingUnavailableError()
+    throw new ShippingUnavailableError("no_services")
   }
 
   const sorted = [...providerOptions].sort(
