@@ -58,7 +58,7 @@ test("builds trusted signed freight options and keeps provider packages server-s
             width: 19,
             height: 4,
             length: 25,
-            weight: 0.25,
+            weight: 0.5,
             insurance_value: 119.9,
             quantity: 2,
           },
