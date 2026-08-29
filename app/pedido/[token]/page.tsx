@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { OrderStatus } from "@/components/order-status"
+import { toOrderDisplayData } from "@/lib/order-display"
 import { getOrderByPublicToken } from "@/lib/server/orders"
 
 export const dynamic = "force-dynamic"
@@ -27,12 +28,7 @@ export default async function OrderPage({
   return (
     <section className="relative pt-20 sm:pt-24 pb-12 min-h-screen">
       <div className="container mx-auto px-3 sm:px-4 relative z-10">
-        <OrderStatus
-          orderNumber={order.order_number}
-          status={order.payment_status}
-          subtotalCents={order.subtotal_cents}
-          items={order.items}
-        />
+        <OrderStatus order={toOrderDisplayData(order)} />
       </div>
     </section>
   )
