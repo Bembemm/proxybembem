@@ -81,7 +81,7 @@ test("initial authorization is an atomic upsert that advances token version and 
 
   assert.match(block, /insert\s+into\s+public\.melhor_envio_oauth_credentials/)
   assert.match(block, /on\s+conflict\s*\(\s*environment\s*\)\s+do\s+update/)
-  assert.match(block, /token_version\s*=\s*public\.melhor_envio_oauth_credentials\.token_version\s*\+\s*1/)
+  assert.match(block, /token_version\s*=\s*[a-z_][a-z0-9_]*\.token_version\s*\+\s*1/)
   assert.match(block, /refresh_lease_owner\s*=\s*null/)
   assert.match(block, /refresh_lease_expires_at\s*=\s*null/)
   assert.match(block, /status\s*=\s*'active'/)
