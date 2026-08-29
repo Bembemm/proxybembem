@@ -8,6 +8,7 @@ import {
 import {
   ShippingUnavailableError,
   buildShippingQuoteResult,
+  formatShippingUnavailableMessage,
   toPublicShippingOptions,
 } from "@/lib/server/shipping-quote"
 
@@ -73,10 +74,7 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     if (error instanceof ShippingUnavailableError) {
-      return jsonError(
-        "Não foi possível calcular o frete agora. Confira o CEP e tente novamente.",
-        503,
-      )
+      return jsonError(formatShippingUnavailableMessage(error, process.env.VERCEL_ENV), 503)
     }
 
     return jsonError("Confira o CEP e os produtos do carrinho.", 400)
