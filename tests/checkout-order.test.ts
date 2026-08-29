@@ -15,7 +15,7 @@ test("rebuilds price and title from the server catalog", () => {
       unitPriceCents: 11990,
       quantity: 2,
       shipping: {
-        weightKg: 0.25,
+        weightKg: 0.5,
         lengthCm: 25,
         widthCm: 19,
         heightCm: 4,
@@ -50,7 +50,7 @@ test("rebuilds shipping metadata from the server catalog", () => {
   ])
 
   assert.deepEqual(result.items[0].shipping, {
-    weightKg: 0.25,
+    weightKg: 0.5,
     lengthCm: 25,
     widthCm: 19,
     heightCm: 4,
