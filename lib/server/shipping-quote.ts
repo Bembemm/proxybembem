@@ -3,6 +3,7 @@ import { getMelhorEnvioEnv } from "./env.ts"
 import {
   MelhorEnvioProviderError,
   quoteMelhorEnvio,
+  type ShippingProductInput,
   type ShippingQuoteOption,
 } from "./melhor-envio.ts"
 import {
@@ -82,74 +83,89 @@ function toTrustedOption(
   }
 }
 
-export async function buildShippingQuoteResult(input: {
-  items: unknown
+type ShippingQuoteProvider = (input: {
   destinationCep: string
-}): Promise<ShippingQuoteResult> {
-  if (typeof input.destinationCep !== "string") {
-    throw new Error("CEP de destino inválido")
-  }
+  products: ShippingProductInput[]
+}) => Promise<ShippingQuoteOption[]>
 
-  const destinationCep = normalizeDestinationCep(input.destinationCep)
-  const checkoutOrder = buildCheckoutOrder(input.items)
-  const cartFingerprint = createCartFingerprint(
-    checkoutOrder.items.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-    })),
-  )
+export function createShippingQuoteBuilder(deps: {
+  quoteProvider: ShippingQuoteProvider
+  getQuoteSecret: () => string
+}) {
+  return async function build(input: {
+    items: unknown
+    destinationCep: string
+  }): Promise<ShippingQuoteResult> {
+    if (typeof input.destinationCep !== "string") {
+      throw new Error("CEP de destino inválido")
+    }
 
-  let quoteSecret: string
-  let providerOptions: ShippingQuoteOption[]
-  try {
-    quoteSecret = getMelhorEnvioEnv().quoteSecret
-    providerOptions = await quoteMelhorEnvio({
-      destinationCep,
-      products: checkoutOrder.items.map((item) => ({
-        id: String(item.productId),
-        widthCm: item.shipping.widthCm,
-        heightCm: item.shipping.heightCm,
-        lengthCm: item.shipping.lengthCm,
-        weightKg: item.shipping.weightKg,
-        insuranceValue: item.unitPriceCents / 100,
+    const destinationCep = normalizeDestinationCep(input.destinationCep)
+    const checkoutOrder = buildCheckoutOrder(input.items)
+    const cartFingerprint = createCartFingerprint(
+      checkoutOrder.items.map((item) => ({
+        productId: item.productId,
         quantity: item.quantity,
       })),
-    })
-  } catch (error) {
-    if (error instanceof MelhorEnvioProviderError) {
-      console.error("Melhor Envio quote request failed", {
-        providerStatus: error.status,
-      })
-    } else {
-      console.error("Shipping quote configuration or internal failure", {
-        errorType: error instanceof Error ? error.name : "unknown",
-      })
-    }
-    throw new ShippingUnavailableError()
-  }
+    )
 
-  if (providerOptions.length === 0) {
-    console.error("Melhor Envio quote returned no valid services")
-    throw new ShippingUnavailableError()
-  }
-
-  const sorted = [...providerOptions].sort(
-    (a, b) => a.priceCents - b.priceCents || a.deliveryDays - b.deliveryDays,
-  )
-  const nowMs = Date.now()
-
-  return {
-    cartFingerprint,
-    options: sorted.map((option) =>
-      toTrustedOption(option, {
+    let quoteSecret: string
+    let providerOptions: ShippingQuoteOption[]
+    try {
+      quoteSecret = deps.getQuoteSecret()
+      providerOptions = await deps.quoteProvider({
         destinationCep,
-        cartFingerprint,
-        quoteSecret,
-        nowMs,
-      }),
-    ),
+        products: checkoutOrder.items.map((item) => ({
+          id: String(item.productId),
+          widthCm: item.shipping.widthCm,
+          heightCm: item.shipping.heightCm,
+          lengthCm: item.shipping.lengthCm,
+          weightKg: item.shipping.weightKg,
+          insuranceValue: item.unitPriceCents / 100,
+          quantity: item.quantity,
+        })),
+      })
+    } catch (error) {
+      if (error instanceof MelhorEnvioProviderError) {
+        console.error("Melhor Envio quote request failed", {
+          providerStatus: error.status,
+        })
+      } else {
+        console.error("Shipping quote configuration or internal failure", {
+          errorType: error instanceof Error ? error.name : "unknown",
+        })
+      }
+      throw new ShippingUnavailableError()
+    }
+
+    if (providerOptions.length === 0) {
+      console.error("Melhor Envio quote returned no valid services")
+      throw new ShippingUnavailableError()
+    }
+
+    const sorted = [...providerOptions].sort(
+      (a, b) => a.priceCents - b.priceCents || a.deliveryDays - b.deliveryDays,
+    )
+    const nowMs = Date.now()
+
+    return {
+      cartFingerprint,
+      options: sorted.map((option) =>
+        toTrustedOption(option, {
+          destinationCep,
+          cartFingerprint,
+          quoteSecret,
+          nowMs,
+        }),
+      ),
+    }
   }
 }
+
+export const buildShippingQuoteResult = createShippingQuoteBuilder({
+  quoteProvider: quoteMelhorEnvio,
+  getQuoteSecret: () => getMelhorEnvioEnv().quoteSecret,
+})
 
 export function toPublicShippingOptions(
   result: ShippingQuoteResult,
