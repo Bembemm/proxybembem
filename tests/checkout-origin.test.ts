@@ -34,22 +34,23 @@ test("preview accepts configured or current deployment origin but rejects third 
 })
 
 test("production public site URL cannot silently fall back to request origin", () => {
-  const previousSite = process.env.NEXT_PUBLIC_SITE_URL
-  const previousVercel = process.env.VERCEL_ENV
-  const previousNode = process.env.NODE_ENV
+  const env = process.env as Record<string, string | undefined>
+  const previousSite = env.NEXT_PUBLIC_SITE_URL
+  const previousVercel = env.VERCEL_ENV
+  const previousNode = env.NODE_ENV
 
-  delete process.env.NEXT_PUBLIC_SITE_URL
-  process.env.VERCEL_ENV = "production"
-  process.env.NODE_ENV = "production"
+  delete env.NEXT_PUBLIC_SITE_URL
+  env.VERCEL_ENV = "production"
+  env.NODE_ENV = "production"
 
   try {
     assert.throws(() => resolvePublicSiteUrl(preview), /NEXT_PUBLIC_SITE_URL/)
   } finally {
-    if (previousSite === undefined) delete process.env.NEXT_PUBLIC_SITE_URL
-    else process.env.NEXT_PUBLIC_SITE_URL = previousSite
-    if (previousVercel === undefined) delete process.env.VERCEL_ENV
-    else process.env.VERCEL_ENV = previousVercel
-    if (previousNode === undefined) delete process.env.NODE_ENV
-    else process.env.NODE_ENV = previousNode
+    if (previousSite === undefined) delete env.NEXT_PUBLIC_SITE_URL
+    else env.NEXT_PUBLIC_SITE_URL = previousSite
+    if (previousVercel === undefined) delete env.VERCEL_ENV
+    else env.VERCEL_ENV = previousVercel
+    if (previousNode === undefined) delete env.NODE_ENV
+    else env.NODE_ENV = previousNode
   }
 })
