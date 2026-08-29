@@ -4,6 +4,8 @@ import test from "node:test"
 const ENV_KEYS = ["SUPABASE_URL", "SUPABASE_SECRET_KEY"] as const
 
 type Environment = "sandbox" | "production"
+type FetchInput = Parameters<typeof fetch>[0]
+type FetchInit = Parameters<typeof fetch>[1]
 
 type RepositoryModule = {
   createOAuthState(input: {
@@ -80,7 +82,7 @@ async function withSupabaseEnv(run: () => Promise<void>) {
   }
 }
 
-function assertCommonRequest(input: Parameters<typeof fetch>[0], init: Parameters<typeof fetch>[1]) {
+function assertCommonRequest(input: FetchInput, init: FetchInit) {
   const url = String(input)
   assert.ok(url.startsWith("https://project.supabase.co/rest/v1/"))
   const headers = new Headers(init?.headers)
@@ -93,7 +95,7 @@ function assertCommonRequest(input: Parameters<typeof fetch>[0], init: Parameter
 
 test("creates an OAuth state through the backend-only table with minimal response", async (t) => {
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: FetchInput, init?: FetchInit) => {
       const { url, headers } = assertCommonRequest(input, init)
       assert.equal(url, "https://project.supabase.co/rest/v1/melhor_envio_oauth_states")
       assert.equal(init?.method, "POST")
@@ -118,7 +120,7 @@ test("creates an OAuth state through the backend-only table with minimal respons
 
 test("consumes OAuth state only through the atomic RPC and parses a strict boolean", async (t) => {
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: FetchInput, init?: FetchInit) => {
       const { url, headers } = assertCommonRequest(input, init)
       assert.equal(
         url,
@@ -146,7 +148,7 @@ test("consumes OAuth state only through the atomic RPC and parses a strict boole
 
 test("loads only the requested environment and maps one strict credential row", async (t) => {
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: FetchInput, init?: FetchInit) => {
       const { url } = assertCommonRequest(input, init)
       const parsed = new URL(url)
       assert.equal(parsed.pathname, "/rest/v1/melhor_envio_oauth_credentials")
@@ -196,13 +198,13 @@ test("returns null only when the credential query returns no row", async (t) => 
 
 test("stores initial authorization only through the atomic credential upsert RPC", async (t) => {
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: FetchInput, init?: FetchInit) => {
       const { url } = assertCommonRequest(input, init)
       assert.equal(
         url,
         "https://project.supabase.co/rest/v1/rpc/upsert_melhor_envio_authorized_credential",
       )
-      assert.doesNotMatch(url, /melhor_envio_oauth_credentials\?/) 
+      assert.doesNotMatch(url, /melhor_envio_oauth_credentials\?/)
       assert.equal(init?.method, "POST")
       assert.deepEqual(JSON.parse(String(init?.body)), {
         p_environment: "sandbox",
@@ -226,7 +228,7 @@ test("stores initial authorization only through the atomic credential upsert RPC
 test("calls refresh lease RPCs with exact compare-and-set payloads", async (t) => {
   await withSupabaseEnv(async () => {
     const seen: Array<{ path: string; body: unknown }> = []
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: FetchInput, init?: FetchInit) => {
       const { url } = assertCommonRequest(input, init)
       seen.push({ path: new URL(url).pathname, body: JSON.parse(String(init?.body)) })
       return Response.json(true)
