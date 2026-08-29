@@ -137,3 +137,35 @@ test("returns false when the Supabase rate-limit RPC denies the request", async 
     )
   })
 })
+
+test("uses a separate 5-per-15-minute bucket for Melhor Envio OAuth starts", async (t) => {
+  await withEnv(async () => {
+    const rawIp = "192.0.2.10"
+    const expectedBucket = createHmac("sha256", RATE_SECRET)
+      .update(`melhor-envio-oauth-start:${rawIp}`)
+      .digest("hex")
+
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        assert.deepEqual(JSON.parse(String(init?.body)), {
+          p_bucket_key: expectedBucket,
+          p_limit: 5,
+          p_window_seconds: 900,
+        })
+        return new Response("true", { status: 200 })
+      },
+    )
+
+    assert.equal(
+      await consumeRateLimit({
+        request: new Request("https://store.test/api/internal/melhor-envio/oauth/start", {
+          headers: { "x-real-ip": rawIp },
+        }),
+        scope: "melhor-envio-oauth-start",
+      }),
+      true,
+    )
+  })
+})
