@@ -1,19 +1,28 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ArrowLeft, ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CartItems } from "@/components/cart-items"
 import { CheckoutForm } from "@/components/checkout-form"
 import { OrderSummary } from "@/components/order-summary"
+import { ShippingOptions } from "@/components/shipping-options"
 import { useCart } from "@/contexts/cart-context"
 import {
   buildWhatsAppOrderMessage,
   buildWhatsAppOrderUrl,
+  digitsOnly,
   validateCheckout,
   type CheckoutData,
   type CheckoutErrors,
 } from "@/lib/checkout"
+import {
+  applyShippingChanged,
+  invalidateCheckoutSelection,
+  selectShippingOption,
+  type ShippingClientState,
+} from "@/lib/shipping-client"
+import type { PublicShippingOption } from "@/lib/server/shipping-quote"
 
 const EMPTY_CHECKOUT: CheckoutData = {
   nome: "",
@@ -27,10 +36,54 @@ const EMPTY_CHECKOUT: CheckoutData = {
   uf: "",
 }
 
+const EMPTY_SHIPPING: ShippingClientState = {
+  shippingOptions: [],
+  selectedShipping: null,
+  shippingError: null,
+  checkoutAttemptId: null,
+}
+
 interface CheckoutResponse {
   checkoutUrl?: unknown
   error?: unknown
+  code?: unknown
   fieldErrors?: CheckoutErrors
+  options?: unknown
+}
+
+interface ShippingQuoteResponse {
+  options?: unknown
+  error?: unknown
+}
+
+function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
+  if (!Array.isArray(value)) return null
+
+  const options: PublicShippingOption[] = []
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") return null
+    const candidate = entry as Partial<PublicShippingOption>
+    if (
+      typeof candidate.serviceId !== "string" ||
+      !candidate.serviceId ||
+      typeof candidate.serviceName !== "string" ||
+      !candidate.serviceName ||
+      typeof candidate.carrierName !== "string" ||
+      !candidate.carrierName ||
+      !Number.isSafeInteger(candidate.priceCents) ||
+      (candidate.priceCents ?? 0) <= 0 ||
+      !Number.isSafeInteger(candidate.deliveryDays) ||
+      (candidate.deliveryDays ?? -1) < 0 ||
+      typeof candidate.quoteToken !== "string" ||
+      !candidate.quoteToken
+    ) {
+      return null
+    }
+
+    options.push(candidate as PublicShippingOption)
+  }
+
+  return options
 }
 
 export function CartPanel() {
@@ -45,8 +98,21 @@ export function CartPanel() {
 
   const [checkout, setCheckout] = useState<CheckoutData>(EMPTY_CHECKOUT)
   const [errors, setErrors] = useState<CheckoutErrors>({})
+  const [shipping, setShipping] = useState<ShippingClientState>(EMPTY_SHIPPING)
+  const [isQuoting, setIsQuoting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+
+  const destinationCep = digitsOnly(checkout.cep)
+  const hasValidCep = /^\d{8}$/.test(destinationCep)
+  const cartQuoteKey = useMemo(
+    () =>
+      items
+        .map((item) => `${item.product.id}:${item.quantity}`)
+        .sort()
+        .join("|"),
+    [items],
+  )
 
   useEffect(() => {
     if (!isCartOpen) return
@@ -67,21 +133,114 @@ export function CartPanel() {
     }
   }, [isCartOpen, isSubmitting, setIsCartOpen])
 
+  useEffect(() => {
+    if (!isCartOpen) return
+
+    setShipping((current) => invalidateCheckoutSelection(current))
+    setCheckoutError(null)
+
+    if (!hasValidCep || items.length === 0) {
+      setIsQuoting(false)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setIsQuoting(true)
+
+      try {
+        const response = await fetch("/api/shipping/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((item) => ({
+              productId: item.product.id,
+              quantity: item.quantity,
+            })),
+            destinationCep,
+          }),
+          signal: controller.signal,
+        })
+
+        const result = (await response.json().catch(() => null)) as ShippingQuoteResponse | null
+        if (!response.ok) {
+          throw new Error(
+            typeof result?.error === "string"
+              ? result.error
+              : "Não foi possível calcular o frete. Tente novamente.",
+          )
+        }
+
+        const options = parseShippingOptions(result?.options)
+        if (!options || options.length === 0) {
+          throw new Error("Nenhuma opção de frete disponível para este CEP.")
+        }
+
+        setShipping((current) => ({
+          ...current,
+          shippingOptions: options,
+          selectedShipping: null,
+          shippingError: null,
+          checkoutAttemptId: null,
+        }))
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setShipping((current) => ({
+          ...current,
+          shippingOptions: [],
+          selectedShipping: null,
+          shippingError:
+            error instanceof Error
+              ? error.message
+              : "Não foi possível calcular o frete. Tente novamente.",
+          checkoutAttemptId: null,
+        }))
+      } finally {
+        if (!controller.signal.aborted) setIsQuoting(false)
+      }
+    }, 400)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [cartQuoteKey, destinationCep, hasValidCep, isCartOpen, items])
+
   const handleCheckoutChange = (field: keyof CheckoutData, value: string) => {
     setCheckout((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
     setCheckoutError(null)
+
+    setShipping((current) =>
+      field === "cep"
+        ? invalidateCheckoutSelection(current)
+        : { ...current, checkoutAttemptId: null },
+    )
+  }
+
+  const handleShippingSelect = (option: PublicShippingOption) => {
+    setShipping((current) => selectShippingOption(current, option))
+    setCheckoutError(null)
   }
 
   const handleCheckout = async () => {
-    if (items.length === 0 || isSubmitting) return
+    if (items.length === 0 || isSubmitting || isQuoting) return
 
     const nextErrors = validateCheckout(checkout)
     setErrors(nextErrors)
     setCheckoutError(null)
 
     if (Object.keys(nextErrors).length > 0) return
+    if (!shipping.selectedShipping) {
+      setShipping((current) => ({
+        ...current,
+        shippingError: "Escolha uma opção de frete antes de continuar.",
+      }))
+      return
+    }
 
+    const attemptId = shipping.checkoutAttemptId ?? crypto.randomUUID()
+    setShipping((current) => ({ ...current, checkoutAttemptId: attemptId }))
     setIsSubmitting(true)
 
     try {
@@ -94,6 +253,8 @@ export function CartPanel() {
             quantity: item.quantity,
           })),
           customer: checkout,
+          selectedQuoteToken: shipping.selectedShipping.quoteToken,
+          checkoutAttemptId: attemptId,
         }),
       })
 
@@ -101,6 +262,18 @@ export function CartPanel() {
 
       if (!response.ok) {
         if (result?.fieldErrors) setErrors(result.fieldErrors)
+
+        if (result?.code === "shipping_changed") {
+          const options = parseShippingOptions(result.options)
+          if (options) {
+            setShipping((current) => applyShippingChanged(current, options))
+          } else {
+            setShipping((current) => invalidateCheckoutSelection(current))
+          }
+        } else if (result?.code === "checkout_attempt_conflict") {
+          setShipping((current) => ({ ...current, checkoutAttemptId: null }))
+        }
+
         setCheckoutError(
           typeof result?.error === "string"
             ? result.error
@@ -133,7 +306,7 @@ export function CartPanel() {
   }
 
   const whatsappFallbackUrl = buildWhatsAppOrderUrl(
-    buildWhatsAppOrderMessage(items, totalPrice, checkout),
+    buildWhatsAppOrderMessage(items, totalPrice, checkout, shipping.selectedShipping),
   )
 
   if (!isCartOpen) return null
@@ -151,7 +324,7 @@ export function CartPanel() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-panel-title"
-        aria-busy={isSubmitting}
+        aria-busy={isSubmitting || isQuoting}
       >
         <div className="flex items-center justify-between p-4 border-b border-[#8B5CF6]/20 bg-slate-900 sticky top-0 z-10">
           <div className="flex items-center gap-3">
@@ -207,8 +380,19 @@ export function CartPanel() {
 
               <CheckoutForm data={checkout} errors={errors} onChange={handleCheckoutChange} />
 
+              <ShippingOptions
+                options={shipping.shippingOptions}
+                selected={shipping.selectedShipping}
+                isLoading={isQuoting}
+                error={shipping.shippingError}
+                hasValidCep={hasValidCep}
+                onSelect={handleShippingSelect}
+              />
+
               <OrderSummary
                 totalPrice={totalPrice}
+                selectedShipping={shipping.selectedShipping}
+                isQuoting={isQuoting}
                 isSubmitting={isSubmitting}
                 checkoutError={checkoutError}
                 whatsappFallbackUrl={whatsappFallbackUrl}
