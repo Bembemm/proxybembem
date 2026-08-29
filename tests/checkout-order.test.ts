@@ -24,6 +24,50 @@ test("rebuilds price and title from the server catalog", () => {
   ])
 })
 
+test("builds a trusted mixed-product order from two catalog products", () => {
+  const result = buildCheckoutOrder([
+    {
+      productId: 1,
+      quantity: 1,
+      price: 0.01,
+      title: "Fake 100",
+      shipping: { weightKg: 0.001, lengthCm: 1, widthCm: 1, heightCm: 1 },
+    } as never,
+    {
+      productId: 2,
+      quantity: 2,
+      price: 0.01,
+      title: "Fake 60",
+      shipping: { weightKg: 0.001, lengthCm: 1, widthCm: 1, heightCm: 1 },
+    } as never,
+  ])
+
+  assert.deepEqual(
+    result.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      shipping: item.shipping,
+    })),
+    [
+      {
+        productId: 1,
+        quantity: 1,
+        shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+      },
+      {
+        productId: 2,
+        quantity: 2,
+        shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+      },
+    ],
+  )
+  assert.equal(
+    result.subtotalCents,
+    result.items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0),
+  )
+  assert.ok(result.items[1].unitPriceCents > 0)
+})
+
 test("merges duplicate product lines before calculating totals", () => {
   const result = buildCheckoutOrder([
     { productId: 1, quantity: 1 },
