@@ -1,9 +1,12 @@
 import { AlertCircle, CreditCard, Loader2, Lock, MessageCircle, Truck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatPrice } from "@/lib/checkout"
+import type { PublicShippingOption } from "@/lib/server/shipping-quote"
 
 interface OrderSummaryProps {
   totalPrice: number
+  selectedShipping: PublicShippingOption | null
+  isQuoting: boolean
   isSubmitting: boolean
   checkoutError: string | null
   whatsappFallbackUrl: string
@@ -12,25 +15,43 @@ interface OrderSummaryProps {
 
 export function OrderSummary({
   totalPrice,
+  selectedShipping,
+  isQuoting,
   isSubmitting,
   checkoutError,
   whatsappFallbackUrl,
   onCheckout,
 }: OrderSummaryProps) {
+  const shippingPrice = selectedShipping ? selectedShipping.priceCents / 100 : 0
+  const finalTotal = totalPrice + shippingPrice
+  const paymentDisabled = isSubmitting || isQuoting || !selectedShipping
+
   return (
     <div className="pt-4 pb-8 space-y-4">
-      <div className="flex justify-between items-center py-4 border-t border-b border-[#8B5CF6]/20">
-        <span className="text-slate-400 font-medium text-lg">Subtotal (produtos):</span>
-        <span className="text-2xl font-bold text-[#8B5CF6]">{formatPrice(totalPrice)}</span>
+      <div className="space-y-2 border-t border-b border-[#8B5CF6]/20 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-slate-400 font-medium">Produtos</span>
+          <span className="font-semibold text-white">{formatPrice(totalPrice)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-slate-400 font-medium">Frete</span>
+          <span className="font-semibold text-white">
+            {selectedShipping ? formatPrice(shippingPrice) : isQuoting ? "Calculando..." : "Selecione"}
+          </span>
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+          <span className="text-lg font-semibold text-white">Total</span>
+          <span className="text-2xl font-bold text-[#8B5CF6]">{formatPrice(finalTotal)}</span>
+        </div>
       </div>
 
       <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4">
         <div className="flex items-start gap-3">
           <Truck className="w-6 h-6 text-[#8B5CF6] shrink-0 mt-0.5" />
           <div>
-            <p className="text-white text-lg font-semibold mb-1">Frete calculado separadamente</p>
+            <p className="text-white text-lg font-semibold mb-1">Frete incluído no pagamento</p>
             <p className="text-gray-400 text-base leading-relaxed">
-              O pagamento abaixo cobre os produtos. O frete será calculado pelo CEP e combinado no atendimento antes do envio.
+              Escolha uma opção de entrega antes de pagar. O Mercado Pago cobrará produtos e frete juntos.
             </p>
           </div>
         </div>
@@ -38,7 +59,7 @@ export function OrderSummary({
 
       <Button
         onClick={onCheckout}
-        disabled={isSubmitting}
+        disabled={paymentDisabled}
         className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-14 text-lg font-semibold rounded-xl active:scale-[0.98] transition-transform disabled:opacity-60"
         type="button"
       >
@@ -47,10 +68,15 @@ export function OrderSummary({
             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
             Preparando pagamento...
           </>
+        ) : isQuoting ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Calculando frete...
+          </>
         ) : (
           <>
             <CreditCard className="w-5 h-5 mr-2" />
-            Finalizar com Mercado Pago
+            {selectedShipping ? "Finalizar com Mercado Pago" : "Escolha o frete para continuar"}
           </>
         )}
       </Button>
