@@ -55,7 +55,7 @@ export const products: Product[] = [
       },
     ],
     shipping: {
-      weightKg: 0.25,
+      weightKg: 0.5,
       lengthCm: 25,
       widthCm: 19,
       heightCm: 4,
