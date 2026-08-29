@@ -154,9 +154,12 @@ test("returns refreshed options and creates no order when freight price changed"
 })
 
 test("reserves trusted subtotal plus freight and creates one payment preference", async () => {
-  let reserved: Parameters<CheckoutFlowDependencies["reserveOrder"]>[0] | null = null
-  let preferenceInput: Parameters<CheckoutFlowDependencies["createPreference"]>[0] | null = null
-  const updates: Array<{ orderNumber: string; patch: Record<string, unknown> }> = []
+  const reservedInputs: Array<Parameters<CheckoutFlowDependencies["reserveOrder"]>[0]> = []
+  const preferenceInputs: Array<Parameters<CheckoutFlowDependencies["createPreference"]>[0]> = []
+  const updates: Array<{
+    orderNumber: string
+    patch: Parameters<CheckoutFlowDependencies["updateOrder"]>[1]
+  }> = []
 
   const result = await executeCheckoutFlow(
     {
@@ -170,7 +173,7 @@ test("reserves trusted subtotal plus freight and creates one payment preference"
     },
     makeDependencies({
       reserveOrder: async (input) => {
-        reserved = input
+        reservedInputs.push(input)
         return {
           orderNumber: input.orderNumber,
           publicToken: input.publicToken,
@@ -179,7 +182,7 @@ test("reserves trusted subtotal plus freight and creates one payment preference"
         }
       },
       createPreference: async (input) => {
-        preferenceInput = input
+        preferenceInputs.push(input)
         return {
           id: "pref-1",
           initPoint: "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=pref-1",
@@ -192,12 +195,16 @@ test("reserves trusted subtotal plus freight and creates one payment preference"
     }),
   )
 
+  const reserved = reservedInputs[0]
+  const preferenceInput = preferenceInputs[0]
+  assert.ok(reserved)
+  assert.ok(preferenceInput)
   assert.equal(result.kind, "created")
-  assert.equal(reserved?.subtotalCents, 11990)
-  assert.equal(reserved?.shipping?.amountCents, 1842)
-  assert.equal(reserved?.totalCents, 13832)
-  assert.equal(reserved?.shipping?.snapshot && typeof reserved.shipping.snapshot, "object")
-  assert.equal(preferenceInput?.shipping.amountCents, 1842)
+  assert.equal(reserved.subtotalCents, 11990)
+  assert.equal(reserved.shipping?.amountCents, 1842)
+  assert.equal(reserved.totalCents, 13832)
+  assert.equal(reserved.shipping?.snapshot && typeof reserved.shipping.snapshot, "object")
+  assert.equal(preferenceInput.shipping.amountCents, 1842)
   assert.equal(updates.length, 1)
   assert.equal(updates[0]?.patch.checkout_url, result.kind === "created" ? result.checkoutUrl : null)
 })
