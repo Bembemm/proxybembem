@@ -196,7 +196,7 @@ test("classifies safe preview diagnostics without exposing them in production", 
   })
 })
 
-test("classifies invalid Melhor Envio configuration as config", async () => {
+test("identifies a missing Melhor Envio environment without exposing values", async () => {
   await withShippingEnv(async () => {
     delete process.env.MELHOR_ENVIO_ENVIRONMENT
 
@@ -212,6 +212,6 @@ test("classifies invalid Melhor Envio configuration as config", async () => {
     }
 
     assert.ok(configError)
-    assert.equal(configError.diagnosticCode, "config")
+    assert.equal(configError.diagnosticCode, "config_missing_environment")
   })
 })
