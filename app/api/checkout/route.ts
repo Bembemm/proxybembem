@@ -5,6 +5,7 @@ import {
   CheckoutFlowValidationError,
   executeCheckoutFlow,
 } from "@/lib/server/checkout-flow"
+import { isAllowedMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
 import {
   getServerEnv,
   isAllowedCheckoutOrigin,
@@ -161,6 +162,16 @@ export async function POST(request: NextRequest) {
           code: "checkout_attempt_conflict",
         },
         409,
+      )
+    }
+
+    if (!isAllowedMercadoPagoCheckoutUrl(result.checkoutUrl)) {
+      console.error("Unsafe Mercado Pago checkout URL blocked", {
+        orderNumber: result.orderNumber,
+      })
+      return jsonResponse(
+        { error: "Não foi possível iniciar o pagamento com segurança. Tente novamente." },
+        503,
       )
     }
 
