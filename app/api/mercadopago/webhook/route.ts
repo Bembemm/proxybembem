@@ -2,37 +2,45 @@ import { NextRequest, NextResponse } from "next/server"
 import { getMercadoPagoEnv } from "@/lib/server/env"
 import {
   getMercadoPagoPayment,
+  parseMercadoPagoPaymentId,
   validateMercadoPagoWebhookSignature,
 } from "@/lib/server/mercadopago"
-import { getOrderByNumber, updateOrderByNumber } from "@/lib/server/orders"
-import { derivePaymentUpdate } from "@/lib/server/payment-status"
+import { applyMercadoPagoPaymentEvent } from "@/lib/server/orders"
+import { readJsonBody } from "@/lib/server/request-body"
 
 export const runtime = "nodejs"
 
+function paymentAmountToCents(value: number) {
+  const scaled = value * 100
+  const rounded = Math.round(scaled)
+  if (
+    !Number.isFinite(scaled) ||
+    !Number.isSafeInteger(rounded) ||
+    rounded < 0 ||
+    Math.abs(scaled - rounded) > 1e-6
+  ) {
+    throw new Error("Invalid Mercado Pago transaction amount")
+  }
+  return rounded
+}
+
+function topicFromBody(body: unknown) {
+  if (!body || typeof body !== "object") return null
+  const candidate = body as { type?: unknown }
+  return typeof candidate.type === "string" ? candidate.type : null
+}
+
 export async function POST(request: NextRequest) {
-  const dataId = request.nextUrl.searchParams.get("data.id")
+  const rawDataId = request.nextUrl.searchParams.get("data.id")
   const xSignature = request.headers.get("x-signature")
   const xRequestId = request.headers.get("x-request-id")
-
-  let body: unknown = null
-  try {
-    body = await request.json()
-  } catch {
-    // Signature and resource lookup use headers/query params.
-  }
-
-  const topic =
-    request.nextUrl.searchParams.get("type") ||
-    (body && typeof body === "object" && "type" in body && typeof body.type === "string"
-      ? body.type
-      : null)
 
   try {
     const env = getMercadoPagoEnv()
     const validSignature = validateMercadoPagoWebhookSignature({
       xSignature,
       xRequestId,
-      dataId,
+      dataId: rawDataId,
       secret: env.mercadoPagoWebhookSecret,
     })
 
@@ -40,11 +48,26 @@ export async function POST(request: NextRequest) {
       return new NextResponse(null, { status: 401 })
     }
 
-    if (topic !== "payment" || !dataId) {
+    let topic = request.nextUrl.searchParams.get("type")
+    if (!topic) {
+      try {
+        topic = topicFromBody(await readJsonBody(request, 8_192))
+      } catch {
+        topic = null
+      }
+    }
+
+    if (topic !== "payment") {
       return new NextResponse(null, { status: 200 })
     }
 
-    const payment = await getMercadoPagoPayment(dataId, env.mercadoPagoAccessToken)
+    const paymentId = parseMercadoPagoPaymentId(rawDataId)
+    if (!paymentId) {
+      console.warn("Mercado Pago webhook carried an invalid payment id")
+      return new NextResponse(null, { status: 200 })
+    }
+
+    const payment = await getMercadoPagoPayment(paymentId, env.mercadoPagoAccessToken)
     const orderNumber = payment.externalReference
 
     if (!orderNumber || !/^PB-[A-F0-9]{12}$/.test(orderNumber)) {
@@ -54,51 +77,36 @@ export async function POST(request: NextRequest) {
       return new NextResponse(null, { status: 200 })
     }
 
-    const order = await getOrderByNumber(orderNumber)
-    if (!order) {
-      console.warn("Mercado Pago webhook referenced an unknown order", {
-        paymentId: payment.id,
-        orderNumber,
-      })
-      return new NextResponse(null, { status: 200 })
-    }
-
-    const paidCents = Math.round(payment.transactionAmount * 100)
-    const amountMatches = paidCents === order.subtotal_cents && payment.currencyId === "BRL"
-    const update = derivePaymentUpdate({
-      currentStatus: order.payment_status,
-      currentPaymentId: order.payment_id,
+    const paidCents = paymentAmountToCents(payment.transactionAmount)
+    const result = await applyMercadoPagoPaymentEvent({
+      orderNumber,
+      paymentId: payment.id,
       incomingStatus: payment.status,
-      incomingPaymentId: payment.id,
-      amountMatches,
       statusDetail: payment.statusDetail,
+      paidCents,
+      currencyId: payment.currencyId,
     })
 
-    if (!update) {
-      return new NextResponse(null, { status: 200 })
-    }
-
-    if (update.paymentStatus === "manual_review") {
-      console.warn("Mercado Pago approved amount did not match the order", {
+    if (result.outcome === "manual_review") {
+      console.warn("Mercado Pago payment requires manual review", {
         orderNumber,
         paymentId: payment.id,
-        expectedCents: order.subtotal_cents,
-        receivedCents: paidCents,
+        expectedCents: result.expected_cents,
+        receivedCents: result.received_cents,
         currencyId: payment.currencyId,
       })
+    } else if (result.outcome === "not_found") {
+      console.warn("Mercado Pago webhook referenced an unknown order", {
+        orderNumber,
+        paymentId: payment.id,
+      })
     }
-
-    await updateOrderByNumber(orderNumber, {
-      payment_id: update.paymentId,
-      payment_status: update.paymentStatus,
-      payment_status_detail: update.paymentStatusDetail,
-    })
 
     return new NextResponse(null, { status: 200 })
   } catch (error) {
     console.error("Mercado Pago webhook processing failed", {
-      dataId,
-      error: error instanceof Error ? error.message : "unknown",
+      dataId: parseMercadoPagoPaymentId(rawDataId),
+      errorName: error instanceof Error ? error.name : "unknown",
     })
     return new NextResponse(null, { status: 500 })
   }
