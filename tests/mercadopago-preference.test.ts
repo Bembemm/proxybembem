@@ -41,6 +41,10 @@ test("adds trusted mixed products and freight as explicit Mercado Pago preferenc
         external_reference: string
       }
 
+      assert.equal(
+        new Headers(init?.headers).get("x-idempotency-key"),
+        baseInput.orderNumber,
+      )
       assert.deepEqual(payload.items, [
         {
           id: "1",
