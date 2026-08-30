@@ -65,16 +65,24 @@ function dependencies(environment: "sandbox" | "production") {
 
 test("sandbox requests only its OAuth-test services and rejects other provider results", async (t) => {
   const quote = createMelhorEnvioQuoter(dependencies("sandbox"))
-  let requestBody: Record<string, unknown> | null = null
+  let requestedServices: unknown
 
-  t.mock.method(globalThis, "fetch", async (_input, init) => {
-    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
-    return mixedServicesResponse()
-  })
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (
+      _input: Parameters<typeof fetch>[0],
+      init?: Parameters<typeof fetch>[1],
+    ) => {
+      const requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+      requestedServices = requestBody.services
+      return mixedServicesResponse()
+    },
+  )
 
   const result = await quote({ destinationCep: "01001000", products })
 
-  assert.equal(requestBody?.services, "3,4")
+  assert.equal(requestedServices, "3,4")
   assert.deepEqual(
     result.map((option) => option.serviceId),
     ["3", "4"],
@@ -83,16 +91,24 @@ test("sandbox requests only its OAuth-test services and rejects other provider r
 
 test("production requests and accepts only Correios PAC and SEDEX service ids", async (t) => {
   const quote = createMelhorEnvioQuoter(dependencies("production"))
-  let requestBody: Record<string, unknown> | null = null
+  let requestedServices: unknown
 
-  t.mock.method(globalThis, "fetch", async (_input, init) => {
-    requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
-    return mixedServicesResponse()
-  })
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (
+      _input: Parameters<typeof fetch>[0],
+      init?: Parameters<typeof fetch>[1],
+    ) => {
+      const requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
+      requestedServices = requestBody.services
+      return mixedServicesResponse()
+    },
+  )
 
   const result = await quote({ destinationCep: "01001000", products })
 
-  assert.equal(requestBody?.services, "1,2")
+  assert.equal(requestedServices, "1,2")
   assert.deepEqual(
     result.map((option) => option.serviceId),
     ["1", "2"],
