@@ -74,11 +74,11 @@ function successQuote() {
   return new Response(
     JSON.stringify([
       {
-        id: 1,
-        name: "PAC",
+        id: 3,
+        name: ".Package",
         custom_price: "18.42",
         custom_delivery_time: 6,
-        company: { name: "Correios" },
+        company: { name: "Jadlog" },
         packages: [{ price: "18.42" }],
       },
     ]),
@@ -125,6 +125,7 @@ test("quotes sandbox freight with a token-manager credential and trusted product
           },
         ],
         options: { receipt: false, own_hand: false },
+        services: "3,4",
       })
       return successQuote()
     },
@@ -132,9 +133,9 @@ test("quotes sandbox freight with a token-manager credential and trusted product
 
   assert.deepEqual(await quote({ destinationCep: "01001000", products }), [
     {
-      serviceId: "1",
-      serviceName: "PAC",
-      carrierName: "Correios",
+      serviceId: "3",
+      serviceName: ".Package",
+      carrierName: "Jadlog",
       priceCents: 1842,
       deliveryDays: 6,
       packages: [{ price: "18.42" }],
