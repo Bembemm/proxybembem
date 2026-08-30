@@ -1,11 +1,23 @@
 const isProductionDeployment = process.env.VERCEL_ENV === "production"
 
+function melhorEnvioFormActionOrigin() {
+  if (process.env.MELHOR_ENVIO_ENVIRONMENT === "sandbox") {
+    return "https://sandbox.melhorenvio.com.br"
+  }
+  if (process.env.MELHOR_ENVIO_ENVIRONMENT === "production") {
+    return "https://melhorenvio.com.br"
+  }
+  return null
+}
+
+const melhorEnvioOAuthOrigin = melhorEnvioFormActionOrigin()
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
-  "form-action 'self'",
+  `form-action 'self'${melhorEnvioOAuthOrigin ? ` ${melhorEnvioOAuthOrigin}` : ""}`,
   "img-src 'self' data: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
