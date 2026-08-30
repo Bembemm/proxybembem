@@ -52,6 +52,10 @@ interface MelhorEnvioQuoteDependencies {
 const REQUEST_TIMEOUT_MS = 10_000
 const MAX_ACCESS_TOKEN_LENGTH = 8192
 const MAX_AUTH_ERROR_BYTES = 4096
+const ALLOWED_SERVICE_IDS: Record<MelhorEnvioEnvironment, readonly string[]> = {
+  sandbox: ["3", "4"],
+  production: ["1", "2"],
+}
 
 function parsePriceCents(value: unknown): number | null {
   if (typeof value === "number") {
@@ -145,6 +149,7 @@ function buildRequestBody(input: {
   originCep: string
   destinationCep: string
   products: ShippingProductInput[]
+  serviceIds: readonly string[]
 }) {
   return JSON.stringify({
     from: { postal_code: input.originCep },
@@ -159,6 +164,7 @@ function buildRequestBody(input: {
       quantity: product.quantity,
     })),
     options: { receipt: false, own_hand: false },
+    services: input.serviceIds.join(","),
   })
 }
 
@@ -233,7 +239,10 @@ async function isAuthenticationFailure(response: Response) {
   return (await readBoundedErrorMessage(response)) === "Unauthenticated."
 }
 
-async function parseSuccessfulQuote(response: Response): Promise<ShippingQuoteOption[]> {
+async function parseSuccessfulQuote(
+  response: Response,
+  allowedServiceIds: ReadonlySet<string>,
+): Promise<ShippingQuoteOption[]> {
   let payload: unknown
   try {
     payload = await response.json()
@@ -247,7 +256,7 @@ async function parseSuccessfulQuote(response: Response): Promise<ShippingQuoteOp
 
   return payload.flatMap((entry) => {
     const normalized = normalizeQuoteEntry(entry)
-    return normalized ? [normalized] : []
+    return normalized && allowedServiceIds.has(normalized.serviceId) ? [normalized] : []
   })
 }
 
@@ -257,6 +266,8 @@ export function createMelhorEnvioQuoter(deps: MelhorEnvioQuoteDependencies) {
     products: ShippingProductInput[]
   }): Promise<ShippingQuoteOption[]> {
     const config = deps.getConfig()
+    const serviceIds = ALLOWED_SERVICE_IDS[config.environment]
+    const allowedServiceIds = new Set(serviceIds)
     const destinationCep = input.destinationCep.replace(/\D/g, "")
     if (!/^\d{8}$/.test(destinationCep)) {
       throw new Error("Invalid destination CEP")
@@ -269,6 +280,7 @@ export function createMelhorEnvioQuoter(deps: MelhorEnvioQuoteDependencies) {
       originCep: config.originCep,
       destinationCep,
       products: input.products,
+      serviceIds,
     })
 
     let credential = validateAccessToken(await deps.getAccessToken())
@@ -303,7 +315,7 @@ export function createMelhorEnvioQuoter(deps: MelhorEnvioQuoteDependencies) {
       }
     }
 
-    return parseSuccessfulQuote(response)
+    return parseSuccessfulQuote(response, allowedServiceIds)
   }
 }
 
