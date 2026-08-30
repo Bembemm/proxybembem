@@ -107,9 +107,6 @@ export async function createMercadoPagoPreference(
 
   const response = await mercadoPagoFetch("/checkout/preferences", input.accessToken, {
     method: "POST",
-    headers: {
-      "X-Idempotency-Key": input.orderNumber,
-    },
     body: JSON.stringify({
       items: preferenceItems,
       payer: {
