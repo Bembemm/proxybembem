@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import type { CheckoutData } from "../lib/checkout.ts"
+import { OrderConflictError } from "../lib/server/orders.ts"
 import { createCartFingerprint, createShippingQuoteToken } from "../lib/server/shipping-quote-token.ts"
 import {
   executeCheckoutFlow,
@@ -72,6 +73,18 @@ function makeDependencies(overrides: Partial<CheckoutFlowDependencies> = {}): Ch
     generateOrderNumber: () => "PB-TESTE123456",
     generatePublicToken: () => "a".repeat(64),
     ...overrides,
+  }
+}
+
+function checkoutInput(attemptId: string) {
+  return {
+    items: ITEMS,
+    customer: CUSTOMER,
+    selectedQuoteToken: makeQuoteToken(),
+    checkoutAttemptId: attemptId,
+    siteUrl: "https://preview.example.com",
+    mercadoPagoAccessToken: "test-token",
+    mercadoPagoEnvironment: "sandbox" as const,
   }
 }
 
@@ -292,4 +305,67 @@ test("reuses an existing URL for the same attempt and rejects a changed fingerpr
   assert.equal(same.kind, "reused")
   if (same.kind === "reused") assert.equal(same.checkoutUrl, existingUrl)
   assert.equal(paymentCalls, 0)
+})
+
+test("concurrent requests for one checkout attempt create only one payment preference", async () => {
+  type SharedOrder = {
+    orderNumber: string
+    publicToken: string
+    checkoutFingerprint: string | null
+    checkoutUrl: string | null
+  }
+
+  let sharedOrder: SharedOrder | null = null
+  let preferenceCalls = 0
+
+  const deps = makeDependencies({
+    findOrderByAttempt: async () => sharedOrder,
+    reserveOrder: async (input) => {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      if (sharedOrder) {
+        throw new OrderConflictError("checkout_attempt_conflict")
+      }
+      sharedOrder = {
+        orderNumber: input.orderNumber,
+        publicToken: input.publicToken,
+        checkoutFingerprint: input.checkoutFingerprint ?? null,
+        checkoutUrl: null,
+      }
+      return sharedOrder
+    },
+    createPreference: async () => {
+      preferenceCalls += 1
+      const id = `pref-${preferenceCalls}`
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return {
+        id,
+        initPoint: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${id}`,
+        sandboxInitPoint: null,
+      }
+    },
+    updateOrder: async (_orderNumber, patch) => {
+      if (sharedOrder && patch.checkout_url) {
+        sharedOrder.checkoutUrl = patch.checkout_url
+      }
+    },
+  })
+
+  const attemptId = "550e8400-e29b-41d4-a716-446655440099"
+  const [first, second] = await Promise.all([
+    executeCheckoutFlow(checkoutInput(attemptId), deps),
+    executeCheckoutFlow(checkoutInput(attemptId), deps),
+  ])
+
+  assert.equal(preferenceCalls, 1)
+  assert.notEqual(first.kind, "shipping_changed")
+  assert.notEqual(second.kind, "shipping_changed")
+  assert.notEqual(first.kind, "attempt_conflict")
+  assert.notEqual(second.kind, "attempt_conflict")
+  if (
+    (first.kind === "created" || first.kind === "reused") &&
+    (second.kind === "created" || second.kind === "reused")
+  ) {
+    assert.equal(first.orderNumber, second.orderNumber)
+    assert.equal(first.checkoutUrl, second.checkoutUrl)
+  }
 })
