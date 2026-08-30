@@ -317,6 +317,7 @@ test("concurrent requests for one checkout attempt create only one payment prefe
 
   let sharedOrder: SharedOrder | null = null
   let preferenceCalls = 0
+  let leaseHeld = false
 
   const deps = makeDependencies({
     findOrderByAttempt: async () => sharedOrder,
@@ -333,6 +334,25 @@ test("concurrent requests for one checkout attempt create only one payment prefe
       }
       return sharedOrder
     },
+    claimPreference: async () => {
+      if (sharedOrder?.checkoutUrl) {
+        return { outcome: "ready", checkoutUrl: sharedOrder.checkoutUrl }
+      }
+      if (leaseHeld) return { outcome: "busy" }
+      leaseHeld = true
+      return { outcome: "claimed" }
+    },
+    completePreference: async ({ checkoutUrl }) => {
+      if (!leaseHeld || !sharedOrder) return false
+      sharedOrder.checkoutUrl = checkoutUrl
+      leaseHeld = false
+      return true
+    },
+    markPreferenceError: async () => true,
+    generateLeaseId: () => "550e8400-e29b-41d4-a716-446655440123",
+    sleep: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+    },
     createPreference: async () => {
       preferenceCalls += 1
       const id = `pref-${preferenceCalls}`
@@ -341,11 +361,6 @@ test("concurrent requests for one checkout attempt create only one payment prefe
         id,
         initPoint: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${id}`,
         sandboxInitPoint: null,
-      }
-    },
-    updateOrder: async (_orderNumber, patch) => {
-      if (sharedOrder && patch.checkout_url) {
-        sharedOrder.checkoutUrl = patch.checkout_url
       }
     },
   })
