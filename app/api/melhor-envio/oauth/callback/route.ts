@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto"
 import { NextRequest } from "next/server.js"
-import { getMelhorEnvioOAuthEnv } from "../../../../../lib/server/env.ts"
+import {
+  getMelhorEnvioOAuthEnv,
+  resolvePublicSiteUrl,
+} from "../../../../../lib/server/env.ts"
 import { exchangeMelhorEnvioAuthorizationCode } from "../../../../../lib/server/melhor-envio-oauth-client.ts"
 import {
   consumeOAuthState,
@@ -16,7 +19,17 @@ const CODE_MAX_LENGTH = 2048
 const STATE_PATTERN = /^[A-Za-z0-9_-]+$/
 
 function redirectToAdmin(request: NextRequest, status: "connected" | "failed") {
-  const target = new URL("/admin/integrations/melhor-envio", request.nextUrl.origin)
+  let siteUrl: string
+  try {
+    siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
+  } catch {
+    return new Response(null, {
+      status: 503,
+      headers: { "Cache-Control": "no-store" },
+    })
+  }
+
+  const target = new URL("/admin/integrations/melhor-envio", siteUrl)
   target.searchParams.set("status", status)
   return new Response(null, {
     status: 303,
