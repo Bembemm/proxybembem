@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto"
+import { randomBytes, randomUUID } from "node:crypto"
 import {
   normalizeCheckoutData,
   validateCheckout,
@@ -7,6 +7,12 @@ import {
 import { buildCheckoutOrder } from "./checkout-order.ts"
 import { selectMercadoPagoCheckoutUrl, type MercadoPagoEnvironment } from "./checkout-url.ts"
 import { createCheckoutFingerprint, parseCheckoutAttemptId } from "./checkout-idempotency.ts"
+import {
+  claimCheckoutPreference,
+  completeCheckoutPreference,
+  markCheckoutPreferenceError,
+  type CheckoutPreferenceClaim,
+} from "./checkout-preference-lease.ts"
 import { getMelhorEnvioEnv } from "./env.ts"
 import {
   createMercadoPagoPreference,
@@ -88,6 +94,24 @@ export interface CheckoutFlowDependencies {
   ) => string
   generateOrderNumber: () => string
   generatePublicToken: () => string
+  claimPreference?: (input: {
+    orderNumber: string
+    checkoutFingerprint: string
+    leaseId: string
+  }) => Promise<CheckoutPreferenceClaim>
+  completePreference?: (input: {
+    orderNumber: string
+    checkoutFingerprint: string
+    leaseId: string
+    preferenceId: string
+    checkoutUrl: string
+  }) => Promise<boolean>
+  markPreferenceError?: (input: {
+    orderNumber: string
+    leaseId: string
+  }) => Promise<boolean>
+  generateLeaseId?: () => string
+  sleep?: (milliseconds: number) => Promise<void>
 }
 
 export interface CheckoutFlowInput {
@@ -156,6 +180,11 @@ function createDefaultDependencies(): CheckoutFlowDependencies {
     selectCheckoutUrl: selectMercadoPagoCheckoutUrl,
     generateOrderNumber: () => `PB-${randomBytes(6).toString("hex").toUpperCase()}`,
     generatePublicToken: () => randomBytes(32).toString("hex"),
+    claimPreference: claimCheckoutPreference,
+    completePreference: completeCheckoutPreference,
+    markPreferenceError: markCheckoutPreferenceError,
+    generateLeaseId: () => randomUUID(),
+    sleep: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
   }
 }
 
@@ -194,6 +223,25 @@ function existingAttemptResult(
       orderNumber: existing.orderNumber,
     }
   }
+  return null
+}
+
+async function waitForConcurrentPreference(input: {
+  deps: CheckoutFlowDependencies
+  attemptId: string
+  checkoutFingerprint: string
+}): Promise<CheckoutFlowResult | null> {
+  const sleep = input.deps.sleep ?? ((milliseconds: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, milliseconds)))
+
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    await sleep(100)
+    const order = await input.deps.findOrderByAttempt(input.attemptId)
+    if (!order) continue
+    const resolved = existingAttemptResult(order, input.checkoutFingerprint)
+    if (resolved) return resolved
+  }
+
   return null
 }
 
@@ -326,6 +374,42 @@ export async function executeCheckoutFlow(
 
   const orderNumber = reserved.orderNumber
   const returnUrl = `${input.siteUrl}/pedido/${reserved.publicToken}`
+  const leaseId = (deps.generateLeaseId ?? (() => randomUUID()))()
+  const claimPreference = deps.claimPreference ?? (async () => ({ outcome: "claimed" as const }))
+
+  let claim: CheckoutPreferenceClaim
+  try {
+    claim = await claimPreference({
+      orderNumber,
+      checkoutFingerprint,
+      leaseId,
+    })
+  } catch {
+    throw new CheckoutFlowProviderError()
+  }
+
+  if (claim.outcome === "conflict") {
+    return { kind: "attempt_conflict" }
+  }
+  if (claim.outcome === "not_found") {
+    throw new CheckoutFlowProviderError()
+  }
+  if (claim.outcome === "ready") {
+    return {
+      kind: "reused",
+      checkoutUrl: claim.checkoutUrl,
+      orderNumber,
+    }
+  }
+  if (claim.outcome === "busy") {
+    const concurrentResult = await waitForConcurrentPreference({
+      deps,
+      attemptId,
+      checkoutFingerprint,
+    })
+    if (concurrentResult) return concurrentResult
+    throw new CheckoutFlowProviderError()
+  }
 
   try {
     const preference = await deps.createPreference({
@@ -347,12 +431,32 @@ export async function executeCheckoutFlow(
       input.mercadoPagoEnvironment,
     )
 
-    await deps.updateOrder(orderNumber, {
-      preference_id: preference.id,
-      checkout_url: checkoutUrl,
-      payment_status: "pending",
-      payment_status_detail: null,
-    })
+    let completed = true
+    if (deps.completePreference) {
+      completed = await deps.completePreference({
+        orderNumber,
+        checkoutFingerprint,
+        leaseId,
+        preferenceId: preference.id,
+        checkoutUrl,
+      })
+    } else {
+      await deps.updateOrder(orderNumber, {
+        preference_id: preference.id,
+        checkout_url: checkoutUrl,
+        payment_status: "pending",
+        payment_status_detail: null,
+      })
+    }
+
+    if (!completed) {
+      const concurrent = await deps.findOrderByAttempt(attemptId)
+      if (concurrent) {
+        const resolved = existingAttemptResult(concurrent, checkoutFingerprint)
+        if (resolved) return resolved
+      }
+      throw new Error("Checkout preference lease completion failed")
+    }
 
     return {
       kind: "created",
@@ -361,10 +465,14 @@ export async function executeCheckoutFlow(
     }
   } catch {
     try {
-      await deps.updateOrder(orderNumber, {
-        payment_status: "checkout_error",
-        payment_status_detail: "preference_creation_failed",
-      })
+      if (deps.markPreferenceError) {
+        await deps.markPreferenceError({ orderNumber, leaseId })
+      } else {
+        await deps.updateOrder(orderNumber, {
+          payment_status: "checkout_error",
+          payment_status_detail: "preference_creation_failed",
+        })
+      }
     } catch {
       // Keep the original provider/storage failure as the checkout error.
     }
