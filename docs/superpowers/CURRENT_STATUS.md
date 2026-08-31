@@ -10,13 +10,13 @@ This is the canonical continuation checkpoint. Read this file before using old p
 - Branch: `feat/checkout-mercadopago`
 - PR: `#2` — open, draft, not merged
 - Never merge `main` without explicit owner approval.
-- Current rollout phase: **Preview/Sandbox accepted, including Admin Auth/MFA; Production provider guard implemented; Melhor Envio Production app created; Production environment values entered manually in Vercel; Production runtime not yet validated**.
-- `main` remains untouched by the Preview acceptance work.
+- Current rollout phase: **Production deployed from the checkout branch; Admin Auth/MFA validated in Production; Melhor Envio Production OAuth authorized and active; Production freight quote is the next gate**.
+- `main` remains untouched.
 - Temporary Preview diagnostic routes from earlier checkout acceptance must remain absent.
 
-## Admin Auth foundation — COMPLETE IN PREVIEW
+## Admin Auth foundation — COMPLETE IN PREVIEW AND SMOKE-TESTED IN PRODUCTION
 
-The `/admin` area now uses Supabase Auth with a single owner account and mandatory Authenticator TOTP.
+The `/admin` area uses Supabase Auth with a single owner account and mandatory Authenticator TOTP.
 
 ### Security model now implemented
 
@@ -80,30 +80,9 @@ The admin UI was also separated from the storefront shell:
 - the admin area has its own responsive visual shell/dashboard;
 - the public storefront still renders its normal chrome.
 
-### Melhor Envio through the authenticated admin
-
-The protected admin integration flow was exercised successfully in Preview/Sandbox.
-
-Vercel runtime evidence included:
-
-- `POST /api/internal/melhor-envio/oauth/start` → HTTP `303`;
-- `GET /api/melhor-envio/oauth/callback` → HTTP `303`;
-- `GET /admin/integrations/melhor-envio` → HTTP `200`.
-
-Supabase credential evidence after that authorization:
-
-- environment `sandbox`;
-- status `active`;
-- token version `7`;
-- access-token expiry `2026-09-30 12:15:07+00`;
-- no refresh lease held;
-- no recorded auth failure.
-
-No manual admin-secret field is part of this flow anymore.
-
 ## Production provider fail-closed guard — COMPLETE
 
-Production runtime now refuses to use Sandbox provider modes for both payment and freight.
+Production runtime refuses to use Sandbox provider modes for both payment and freight.
 
 Rules:
 
@@ -115,13 +94,13 @@ Rules:
 
 Regression coverage lives in `tests/production-provider-env.test.ts` and explicitly covers Preview, Vercel Production and non-Vercel Production behavior.
 
-## Production environment preparation — MANUALLY ENTERED, NOT RUNTIME-VALIDATED
+## Production environment preparation — DEPLOYED, PARTIALLY RUNTIME-VALIDATED
 
-The owner reported entering the required Production environment values directly in Vercel on 2026-08-31. Secret values were not shared in chat or committed.
+The owner entered the required Production environment values directly in Vercel on 2026-08-31. Secret values were not shared in chat or committed.
 
 ### Melhor Envio Production
 
-The separate Production application has been created. The following Production-only configuration is reported present in Vercel:
+The separate Production application has been created. The following Production-only configuration is present in Vercel:
 
 - `MELHOR_ENVIO_ENVIRONMENT=production`;
 - `MELHOR_ENVIO_CLIENT_ID`;
@@ -137,7 +116,7 @@ Do not reuse Sandbox Client ID, Client Secret, tokens or the fresh Production-on
 
 ### Production base / Supabase
 
-The following Production values are also reported present in Vercel:
+The following Production values are present in Vercel:
 
 - `NEXT_PUBLIC_SITE_URL=https://www.proxybembem.com.br`;
 - `NEXT_PUBLIC_SUPABASE_URL`;
@@ -149,7 +128,7 @@ The following Production values are also reported present in Vercel:
 
 ### Mercado Pago Production
 
-The following Production values are reported present in Vercel:
+The following Production values are present in Vercel:
 
 - `MERCADO_PAGO_ENVIRONMENT=production`;
 - `MERCADO_PAGO_ACCESS_TOKEN` as secret;
@@ -159,9 +138,42 @@ The Production webhook URL configured for the integration is:
 
 `https://www.proxybembem.com.br/api/mercadopago/webhook`
 
-These entries have **not yet been validated by a Production deployment/runtime**. Do not call Production ready merely because the variables were entered.
+The Production deployment has validated that the application boots with the Production environment and serves the storefront/admin. Mercado Pago payment/webhook behavior still requires the controlled real transaction gate and must not be called accepted yet.
 
-## Melhor Envio Production preparation — APP CREATED, NOT AUTHORIZED
+## Production deployment and admin/Melhor Envio validation — COMPLETE THROUGH OAUTH
+
+Controlled Production redeploy evidence:
+
+- deployment `dpl_C2642ZG5NJofEitrwXoGkpD9gw1t`;
+- target `production`;
+- source branch `feat/checkout-mercadopago`;
+- deployed code commit `c5dea101151e37394bd25beec942b8cec5b0f9b7`;
+- Vercel state `READY`;
+- final aliases include `www.proxybembem.com.br` and `proxybembem.com.br`;
+- final domain returned HTTP `200` after deployment;
+- CI `#630` for `c5dea101151e37394bd25beec942b8cec5b0f9b7` completed successfully.
+
+Production admin smoke test:
+
+- `/admin/login` returned HTTP `200` on the final domain;
+- owner completed password login plus mandatory Authenticator TOTP;
+- authenticated `/admin` access succeeded.
+
+Melhor Envio Production OAuth validation:
+
+- owner opened `/admin/integrations/melhor-envio` while authenticated at AAL2;
+- `Conectar Melhor Envio` completed successfully through the provider authorization flow;
+- database row now exists for environment `production`;
+- status `active`;
+- token version `1`;
+- access-token expiry `2026-09-30 15:39:53.453+00`;
+- no refresh lease held;
+- no recorded auth failure;
+- Sandbox row remains separately active with token version `7`.
+
+No token/envelope value was read or exposed during validation.
+
+## Melhor Envio Production preparation — APP CREATED AND AUTHORIZED
 
 The Production rollout procedure is pinned in `docs/shipping-setup.md` and protected by `tests/melhor-envio-config-docs.test.ts`.
 
@@ -171,10 +183,10 @@ Production decisions that must not be rediscovered:
 - exact Melhor Envio Production callback is `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback`;
 - Production uses a separate Melhor Envio application, Client ID and Client Secret;
 - the owner manually created the Melhor Envio Production application on 2026-08-31;
-- credentials/secrets were entered directly in the Vercel Production environment and still require runtime validation;
+- credentials/secrets were entered directly in the Vercel Production environment;
+- Production OAuth authorization is complete and the stored credential is active;
 - no real credential value belongs in chat, screenshots, commits or docs;
-- Preview/Sandbox credentials stay intact;
-- no Melhor Envio Production OAuth authorization has been completed yet.
+- Preview/Sandbox credentials stay intact.
 
 TDD evidence for this runbook preparation:
 
@@ -244,20 +256,18 @@ The stable Sandbox callback/Preview redirect remains:
 
 ## Exact next project work
 
-Do not rebuild completed Preview/Sandbox systems. Production values are entered but have not been runtime-validated.
+Do not rebuild completed Preview/Sandbox systems or repeat the Production deploy/admin/OAuth gates.
 
 Recommended continuation order:
 
-1. Verify current branch HEAD and CI after this checkpoint commit.
-2. Perform a controlled Vercel Production deployment from the reviewed checkout branch **without merging `main`** and verify the final domain resolves to that deployment.
-3. Smoke-test the Production admin login/MFA and fail-closed environment loading without initiating a customer payment.
-4. Authorize Melhor Envio Production through the MFA-protected admin and verify the stored credential is `production` + active without exposing tokens.
-5. Perform a controlled Production freight quote and confirm only Correios PAC/SEDEX service IDs `1/2` are accepted.
-6. Verify the Mercado Pago Production webhook endpoint/configuration and create a controlled real checkout only when the preceding freight/admin gates pass.
-7. Perform one controlled real Production transaction and verify payment → webhook → order/database state.
-8. Run the final whole-branch review and take PR #2 out of draft only when the Production rollout gate passes.
-9. Merge to `main` only with explicit owner approval.
-10. Only after checkout/payment/freight Production rollout is finished and validated, begin the planned KingHost migration.
+1. Perform a controlled Production freight quote from the final storefront and confirm only Correios PAC/SEDEX service IDs `1/2` are accepted.
+2. Inspect Production runtime logs for that quote and confirm no auth/config/provider failure.
+3. Verify the Mercado Pago Production webhook endpoint/configuration without initiating a payment if a non-payment verification path is available.
+4. Create one controlled real Production checkout only after the freight gate passes.
+5. Perform one controlled real Production transaction and verify payment → webhook → order/database state.
+6. Run the final whole-branch review and take PR #2 out of draft only when the Production rollout gate passes.
+7. Merge to `main` only with explicit owner approval.
+8. Only after checkout/payment/freight Production rollout is finished and validated, begin the planned KingHost migration.
 
 ## Post-checkout objective: KingHost
 
@@ -297,4 +307,4 @@ Every meaningful session must update this file with:
 - relevant HEAD/deployment evidence;
 - decisions future sessions must not rediscover.
 
-**Resume point:** Production environment values for Melhor Envio, Supabase/base app and Mercado Pago were entered manually in Vercel with secrets kept out of chat. They are not yet runtime-validated. Next perform a controlled Production deployment from `feat/checkout-mercadopago` without merging `main`, then validate admin/MFA, authorize Melhor Envio Production, validate PAC/SEDEX quote, and only then run the controlled real Mercado Pago transaction.
+**Resume point:** Production is deployed from `feat/checkout-mercadopago`; the final domain and admin login/MFA work; Melhor Envio Production OAuth is authorized and stored as `production` + `active` with no auth failure. Next perform the controlled Production PAC/SEDEX quote, then validate Mercado Pago Production with one controlled real transaction. Do not merge `main` without explicit owner approval.
