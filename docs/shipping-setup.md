@@ -45,9 +45,9 @@ https://<preview-estavel>/api/melhor-envio/oauth/callback
 
 A URL configurada no Melhor Envio e a variável do site devem coincidir exatamente. Não reutilize Client ID/Secret do Sandbox em Production.
 
-## 3. Variáveis server-side
+## 3. Variáveis e segredos
 
-O contrato final do Melhor Envio é:
+O contrato do Melhor Envio é:
 
 ```text
 MELHOR_ENVIO_ENVIRONMENT=sandbox
@@ -55,40 +55,66 @@ MELHOR_ENVIO_CLIENT_ID=
 MELHOR_ENVIO_CLIENT_SECRET=
 MELHOR_ENVIO_REDIRECT_URI=
 MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY=
-MELHOR_ENVIO_OAUTH_ADMIN_SECRET=
 MELHOR_ENVIO_USER_AGENT=ProxyBembem (contato@proxybembem.com.br)
 SHIPPING_ORIGIN_CEP=86730000
 SHIPPING_QUOTE_SECRET=
 CRON_SECRET=
 ```
 
-Todos esses valores, exceto os identificadores/configurações explicitamente públicas, ficam apenas no servidor. Nenhum segredo pode usar prefixo `NEXT_PUBLIC_`.
+A área administrativa usa também Supabase Auth:
 
-Gere **valores independentes** para a chave de criptografia, segredo administrativo, assinatura de cotação e Cron. Uma forma local é executar separadamente para cada segredo:
+```text
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+ADMIN_USER_ID=
+```
+
+`NEXT_PUBLIC_SUPABASE_URL` e a chave publishable são configuração pública do cliente Auth e não concedem privilégio administrativo por si só. `ADMIN_USER_ID` é server-only e fixa o único UUID autorizado como proprietário. As credenciais privilegiadas do Supabase usadas pelo backend continuam exclusivamente no servidor.
+
+O antigo campo de segredo manual para iniciar o OAuth administrativo foi removido. O início da autorização agora depende da sessão autenticada do proprietário com MFA e AAL2.
+
+Gere **valores independentes** para a chave de criptografia, assinatura de cotação, Cron e demais segredos server-side. Uma forma local é executar separadamente para cada segredo:
 
 ```bash
 openssl rand -hex 32
 ```
 
-`MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` exige exatamente 64 caracteres hexadecimais, correspondentes a 256 bits. Não reutilize o mesmo valor entre `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `MELHOR_ENVIO_OAUTH_ADMIN_SECRET`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` ou `RATE_LIMIT_SECRET`.
+`MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` exige exatamente 64 caracteres hexadecimais, correspondentes a 256 bits. Não reutilize o mesmo valor entre `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` ou `RATE_LIMIT_SECRET`.
 
 **Nunca envie esses valores em chat, screenshot, commit, issue, documentação ou mensagem.** Configure-os diretamente no provedor de hospedagem/secret store apropriado.
 
-## 4. Autorização inicial do proprietário
+## 4. Login administrativo, Authenticator e autorização inicial
 
-Depois que as variáveis Sandbox estiverem configuradas e a migration OAuth estiver aplicada:
+O fluxo administrativo esperado no Preview é:
 
-1. abra, por HTTPS, a página `/admin/integrations/melhor-envio` no Preview estável;
-2. informe `MELHOR_ENVIO_OAUTH_ADMIN_SECRET` no formulário administrativo;
-3. o servidor valida a origem, aplica rate limit e compara o segredo de forma timing-safe;
-4. o site gera um `state` aleatório e armazena no banco **somente o SHA-256**, com validade de 10 minutos;
-5. o navegador é redirecionado ao Melhor Envio pedindo apenas `shipping-calculate`;
-6. após autorizar, o Melhor Envio retorna ao callback;
-7. o callback consome o `state` uma única vez antes de trocar o código por tokens;
-8. access token e refresh token são criptografados antes de serem persistidos;
-9. o retorno final mostra apenas um status genérico `connected` ou `failed`.
+```text
+/admin/login -> email + senha -> Authenticator -> /admin ->
+Integração Melhor Envio -> Conectar Melhor Envio
+```
 
-O segredo administrativo não é gravado em localStorage, sessionStorage ou cookies pelo site.
+Existe apenas uma conta administrativa, criada manualmente no Supabase Auth. O site não oferece cadastro público de administrador.
+
+No primeiro acesso, depois da senha, o proprietário configura TOTP em `/admin/setup-mfa`, escaneando o QR code com um aplicativo Authenticator. Nos acessos seguintes, `/admin/mfa` exige um código TOTP válido. Senha sem o segundo fator permanece em AAL1 e não libera páginas nem ações administrativas protegidas.
+
+Depois da validação do segundo fator, o servidor ativa uma sessão administrativa própria vinculada à sessão do Supabase. Essa sessão expira após **30 minutos de inatividade**. Somente navegação ou ações administrativas autenticadas e significativas renovam `last_activity_at`; atualização de token feita pelo Proxy e verificações de fundo não mantêm a sessão viva. Não existe opção de "lembrar este dispositivo" para pular o Authenticator.
+
+Se o telefone com o Authenticator for perdido, a recuperação é manual pela administração do Supabase e deve ocorrer fora do fluxo normal de login. Não existe botão de bypass, fallback por SMS nem recuperação pública que transforme senha sozinha em acesso administrativo.
+
+Depois que as variáveis Sandbox estiverem configuradas, as migrations OAuth e `admin_sessions` estiverem aplicadas e a conta administrativa estiver provisionada:
+
+1. abra `/admin/login` por HTTPS no Preview estável;
+2. entre com email e senha da conta administrativa;
+3. conclua o Authenticator e confirme que `/admin` foi liberado;
+4. abra `/admin/integrations/melhor-envio` e clique em **Conectar Melhor Envio**;
+5. o servidor valida mesma origem, rate limit, proprietário, AAL2 e a sessão administrativa ativa;
+6. o site gera um `state` aleatório e armazena no banco **somente o SHA-256**, com validade de 10 minutos;
+7. o navegador é redirecionado ao Melhor Envio pedindo apenas `shipping-calculate`;
+8. após autorizar, o Melhor Envio retorna ao callback;
+9. o callback consome o `state` uma única vez antes de trocar o código por tokens;
+10. access token e refresh token são criptografados antes de serem persistidos;
+11. o retorno final mostra apenas um status genérico `connected` ou `failed`.
+
+O callback do Melhor Envio continua público porque é chamado pelo provedor; a segurança dele depende do `state` aleatório, hasheado, temporário e one-shot. Ele não exige que o provedor possua uma sessão de navegador do admin.
 
 ## 5. Armazenamento e renovação automática
 
@@ -198,10 +224,14 @@ Antes de Production, confirme:
 - aplicativo Sandbox separado;
 - callback estável e idêntico ao `MELHOR_ENVIO_REDIRECT_URI`;
 - somente a permissão `shipping-calculate`;
-- migration OAuth aplicada com RLS/grants verificados;
+- migrations OAuth e `admin_sessions` aplicadas com RLS/grants verificados;
+- exatamente uma conta administrativa provisionada no Supabase Auth;
+- login em `/admin/login` exige senha e Authenticator antes de liberar `/admin`;
+- sessão administrativa expira após 30 minutos de inatividade;
+- senha sozinha, TOTP inválido e sessão expirada não liberam páginas protegidas;
 - todas as variáveis Sandbox configuradas somente no Preview;
 - segredos independentes gerados localmente e nunca enviados por chat;
-- autorização concluída em `/admin/integrations/melhor-envio`;
+- autorização concluída em `/admin/integrations/melhor-envio` sem campo de segredo manual;
 - credencial persistida como ciphertext `v1.*`, sem plaintext;
 - cotação real Sandbox funcionando para CEP válido;
 - produto individual, quantidade maior que 1 e carrinho misto cotando normalmente;
@@ -215,4 +245,6 @@ Antes de Production, confirme:
 
 Production deve usar **outro aplicativo/credenciais do Melhor Envio** e `MELHOR_ENVIO_ENVIRONMENT=production`. Configure o callback produtivo HTTPS exato e gere segredos próprios para Production; não copie segredos do Preview apenas por conveniência.
 
-A troca só deve acontecer depois que o fluxo completo de Preview/Sandbox estiver verde, incluindo OAuth, persistência criptografada, cotação real e verificação de segurança do Supabase. A configuração de Production será feita em uma etapa posterior e não exige alterar a arquitetura do checkout.
+Preview e Production também devem manter configuração de Auth e credenciais operacionais separadas. Não use o gate de Preview como justificativa para ativar Production automaticamente.
+
+A troca só deve acontecer depois que o fluxo completo de Preview/Sandbox estiver verde, incluindo Authenticator, sessão administrativa de 30 minutos, OAuth, persistência criptografada, cotação real e verificação de segurança do Supabase. A configuração de Production será feita em uma etapa posterior e não exige alterar a arquitetura do checkout.
