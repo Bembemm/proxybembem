@@ -57,12 +57,35 @@ function requireStrongSecret(name: string) {
   return value
 }
 
+function isProductionRuntime(
+  nodeEnv: string | undefined,
+  vercelEnv: string | undefined,
+) {
+  if (vercelEnv) return vercelEnv === "production"
+  return nodeEnv === "production"
+}
+
+function requireProductionProviderEnvironment<T extends "sandbox" | "production">(
+  providerName: string,
+  environment: T,
+): T {
+  if (
+    isProductionRuntime(process.env.NODE_ENV, process.env.VERCEL_ENV) &&
+    environment !== "production"
+  ) {
+    throw new Error(
+      `Production runtime requires ${providerName} environment to be production`,
+    )
+  }
+  return environment
+}
+
 function mercadoPagoEnvironment(): MercadoPagoEnvironment {
   const value = required("MERCADO_PAGO_ENVIRONMENT")
   if (value !== "sandbox" && value !== "production") {
     throw new Error("MERCADO_PAGO_ENVIRONMENT must be sandbox or production")
   }
-  return value
+  return requireProductionProviderEnvironment("Mercado Pago", value)
 }
 
 function melhorEnvioEnvironment(): MelhorEnvioEnvironment {
@@ -70,7 +93,7 @@ function melhorEnvioEnvironment(): MelhorEnvioEnvironment {
   if (value !== "sandbox" && value !== "production") {
     throw new Error("MELHOR_ENVIO_ENVIRONMENT must be sandbox or production")
   }
-  return value
+  return requireProductionProviderEnvironment("Melhor Envio", value)
 }
 
 function shippingOriginCep() {
@@ -83,14 +106,6 @@ function shippingOriginCep() {
 
 function shippingQuoteSecret() {
   return requireStrongSecret("SHIPPING_QUOTE_SECRET")
-}
-
-function isProductionRuntime(
-  nodeEnv: string | undefined,
-  vercelEnv: string | undefined,
-) {
-  if (vercelEnv) return vercelEnv === "production"
-  return nodeEnv === "production"
 }
 
 export function getSupabaseEnv(): SupabaseEnv {
