@@ -17,7 +17,7 @@ const faqs = [
   {
     question: "Qual o prazo de produção e envio?",
     answer:
-      "Após a confirmação do pagamento via Pix, o prazo de produção é de 1 a 3 dias úteis. O envio é feito pelos Correios e o prazo de entrega varia de acordo com a sua região, geralmente entre 5 a 15 dias úteis para todo o Brasil.",
+      "Após a confirmação do pagamento, o prazo de produção é de até 5 dias úteis. Depois da postagem, o prazo de entrega varia conforme o serviço de frete e a sua região.",
   },
   {
     question: "Como recebo o meu código de rastreio?",
@@ -31,7 +31,7 @@ export function FaqSection() {
     <section className="relative py-12 sm:py-16 bg-gradient-to-b from-transparent to-white/30">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-8 sm:mb-10">
-<div className="inline-flex items-center gap-2 bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 rounded-full px-4 py-1.5 mb-4">
+          <div className="inline-flex items-center gap-2 bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 rounded-full px-4 py-1.5 mb-4">
             <HelpCircle className="w-5 h-5 text-[#8B5CF6]" />
             <span className="text-sm sm:text-base text-[#8B5CF6] font-medium">
               Tire suas dúvidas
@@ -53,7 +53,7 @@ export function FaqSection() {
                 value={`item-${index}`}
                 className="bg-white/70 backdrop-blur-sm border border-slate-200/60 rounded-lg px-4 sm:px-6 shadow-sm"
               >
-<AccordionTrigger className="text-left text-base sm:text-lg font-medium text-slate-800 hover:text-[#8B5CF6] transition-colors py-4 [&[data-state=open]]:text-[#8B5CF6]">
+                <AccordionTrigger className="text-left text-base sm:text-lg font-medium text-slate-800 hover:text-[#8B5CF6] transition-colors py-4 [&[data-state=open]]:text-[#8B5CF6]">
                   {faq.question}
                 </AccordionTrigger>
                 <AccordionContent className="text-slate-600 text-base leading-relaxed pb-4">
