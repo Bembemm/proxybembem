@@ -85,6 +85,32 @@ test("adds trusted mixed products and freight as explicit Mercado Pago preferenc
   assert.equal(result.id, "pref-1")
 })
 
+test("forces Mercado Pago preference notifications to Webhooks only", async (t) => {
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const payload = JSON.parse(String(init?.body)) as { notification_url?: unknown }
+      assert.equal(
+        payload.notification_url,
+        "https://store.test/api/mercadopago/webhook?source_news=webhooks",
+      )
+
+      return new Response(
+        JSON.stringify({
+          id: "pref-webhooks-only",
+          init_point:
+            "https://www.mercadopago.com/checkout/v1/redirect?pref_id=pref-webhooks-only",
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      )
+    },
+  )
+
+  const result = await createMercadoPagoPreference(baseInput)
+  assert.equal(result.id, "pref-webhooks-only")
+})
+
 test("rejects invalid freight amounts before calling Mercado Pago", async (t) => {
   const fetchMock = t.mock.method(globalThis, "fetch", async () => new Response("{}"))
 
