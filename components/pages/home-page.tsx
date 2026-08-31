@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { Check, Eye, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProductDetailModal } from "@/components/product-detail-modal"
@@ -90,17 +89,6 @@ export function HomePage() {
             <p className="text-lg sm:text-xl md:text-2xl text-slate-700 max-w-2xl mx-auto leading-relaxed text-pretty px-2 mb-5 sm:mb-7">
               Escolha a quantidade de cartas, envie sua lista e receba proxies de alta qualidade prontas para jogar.
             </p>
-
-            <Button
-              asChild
-              size="lg"
-              className="h-12 sm:h-14 px-7 sm:px-9 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-base sm:text-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
-            >
-              <Link href="#produtos">
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Ver produtos
-              </Link>
-            </Button>
           </div>
         </div>
       </section>
