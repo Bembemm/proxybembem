@@ -24,6 +24,12 @@ test("home storefront renders the complete trusted product catalog in a products
   assert.match(home, /products\.map\s*\(/)
 })
 
+test("home hero does not render a redundant Ver produtos button", () => {
+  const home = source("components/pages/home-page.tsx")
+
+  assert.doesNotMatch(home, />\s*Ver produtos\s*</)
+})
+
 test("Produtos navigation points directly to the home storefront section", () => {
   const navbar = source("components/navbar.tsx")
 
