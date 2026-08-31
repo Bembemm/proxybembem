@@ -101,3 +101,21 @@ test("activation and logout are POST-only same-origin no-store server routes", a
   assert.match(logout, /\/admin\/login/)
   assert.match(logout, /private,\s*no-store/i)
 })
+
+test("only meaningful protected admin interactions refresh inactivity", async () => {
+  const adminPage = await source("../app/admin/page.tsx")
+  const integrationPage = await source("../app/admin/integrations/melhor-envio/page.tsx")
+  const oauthStart = await source("../app/api/internal/melhor-envio/oauth/start/route.ts")
+  const loginPage = await source("../app/admin/login/page.tsx")
+  const rootProxy = await source("../proxy.ts")
+
+  assert.match(adminPage, /requireAdminPageAccess\s*\(\s*\{\s*touch:\s*true\s*\}\s*\)/)
+  assert.match(
+    integrationPage,
+    /requireAdminPageAccess\s*\(\s*\{\s*touch:\s*true\s*\}\s*\)/,
+  )
+  assert.match(oauthStart, /authorizeAdminAccess\s*\(\s*\{\s*touch:\s*true\s*\}\s*\)/)
+
+  assert.match(loginPage, /authorizeAdminAccess\s*\(\s*\{\s*touch:\s*false\s*\}\s*\)/)
+  assert.doesNotMatch(rootProxy, /authorizeAdminAccess|requireAdminPageAccess|touch:\s*true/)
+})
