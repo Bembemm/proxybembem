@@ -16,7 +16,10 @@ const FORBIDDEN_CLIENT_SECRETS =
   /ADMIN_USER_ID|SUPABASE_SECRET_KEY|service_role|MELHOR_ENVIO_|localStorage/
 
 function assertMappedStatus(text: string, status: number) {
-  assert.match(text, new RegExp(`(?:response\\(\\s*${status}\\s*\\)|status:\\s*${status})`))
+  assert.match(
+    text,
+    new RegExp(`(?:response\\(\\s*${status}\\s*(?:,|\\))|status:\\s*${status})`),
+  )
 }
 
 test("password login exposes no signup or recovery bypass", async () => {
