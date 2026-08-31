@@ -1,6 +1,8 @@
 # Shipping Checkout Hardening Execution Manifest
 
-**Status:** Final self-review completed on 2026-08-28. This manifest resolves the execution-level ambiguities found while reviewing the four detailed implementation plans. Where wording in a child plan could be read two ways, the exact decision below controls.
+> **Continuity note (2026-08-31):** Before using this historical execution manifest, read `docs/superpowers/CURRENT_STATUS.md`. Live progress and the exact resume point are tracked there. The original static Melhor Envio bearer-token decision in **Resolution A** was later superseded by the approved single-account OAuth design/implementation in `docs/superpowers/specs/2026-08-29-melhor-envio-oauth-single-account-design.md` and `docs/superpowers/plans/2026-08-29-melhor-envio-oauth-single-account.md`. Do not revert the implemented OAuth lifecycle back to `MELHOR_ENVIO_ACCESS_TOKEN`.
+
+**Status:** Final self-review completed on 2026-08-28. This manifest resolves the execution-level ambiguities found while reviewing the four detailed implementation plans. Where wording in a child plan could be read two ways, the exact decision below controls except where a later approved design explicitly supersedes it, as noted above.
 
 **Spec:** `docs/superpowers/specs/2026-08-28-shipping-checkout-security-design.md`
 
@@ -22,6 +24,8 @@
 - Preview/Sandbox must pass end-to-end before Production configuration.
 
 ## Resolution A — Melhor Envio authentication for this single-store integration
+
+**Historical decision — superseded on 2026-08-29.** The text below records the original first-release choice but is no longer the active authentication architecture. The active implementation uses the later approved single-account OAuth lifecycle referenced in the continuity note above.
 
 Use a server-side Melhor Envio bearer token generated for the store account and configured as `MELHOR_ENVIO_ACCESS_TOKEN`. This is deliberate for the first single-merchant, quote-only release: there is no customer-facing multi-merchant authorization flow and no need to persist rotating OAuth refresh tokens in application storage.
 
@@ -158,7 +162,7 @@ Every approved requirement maps to one or more detailed plans:
 
 ### Placeholder/ambiguity scan
 
-The execution decisions that were previously conditional are fixed by Resolutions A-F above. There is no implementation-time choice left for provider quote boundaries, rate-limit IP precedence, duplicate checkout behavior, payment-ID uniqueness preflight, or live multi-product acceptance scope.
+The execution decisions that were previously conditional are fixed by Resolutions A-F above, subject to later approved superseding designs such as the Melhor Envio OAuth plan. There is no implementation-time choice left for provider quote boundaries, rate-limit IP precedence, duplicate checkout behavior, payment-ID uniqueness preflight, or live multi-product acceptance scope.
 
 ### Type consistency
 
@@ -166,4 +170,4 @@ Plan execution must use the exact `PublicShippingOption`, `TrustedShippingOption
 
 ## Final planning gate
 
-Planning is complete. Implementation may begin only after the user selects the execution mode. No source-code implementation has been performed by this planning sequence.
+Planning is complete. Implementation may begin only after the user selects the execution mode. No source-code implementation had been performed by this planning sequence at the time this manifest was originally written. For live implementation status, always use `docs/superpowers/CURRENT_STATUS.md`.
