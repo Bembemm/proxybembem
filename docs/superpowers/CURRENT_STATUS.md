@@ -10,8 +10,8 @@ This is the canonical continuation checkpoint. Read this file before using old p
 - Branch: `feat/checkout-mercadopago`
 - PR: `#2` — open, draft, not merged
 - Never merge `main` without explicit owner approval.
-- Current rollout phase: **Preview/Sandbox accepted, including Admin Auth/MFA**.
-- Production has not started.
+- Current rollout phase: **Preview/Sandbox accepted, including Admin Auth/MFA; Production provider guard implemented**.
+- Production credentials/provider rollout has not started.
 - `main` remains untouched by the Preview acceptance work.
 - Temporary Preview diagnostic routes from earlier checkout acceptance must remain absent.
 
@@ -102,17 +102,33 @@ Supabase credential evidence after that authorization:
 
 No manual admin-secret field is part of this flow anymore.
 
+## Production provider fail-closed guard — COMPLETE
+
+Production runtime now refuses to use Sandbox provider modes for both payment and freight.
+
+Rules:
+
+- Vercel `VERCEL_ENV=preview` may continue using Mercado Pago Sandbox and Melhor Envio Sandbox even though Next.js builds with `NODE_ENV=production`;
+- Vercel `VERCEL_ENV=production` requires `MERCADO_PAGO_ENVIRONMENT=production` and `MELHOR_ENVIO_ENVIRONMENT=production`;
+- outside Vercel, `NODE_ENV=production` is the fallback Production signal and enforces the same requirement;
+- a mismatched Production/Sandbox configuration throws before provider work, failing closed;
+- Production provider configuration remains allowed when both provider modes are `production`.
+
+Regression coverage lives in `tests/production-provider-env.test.ts` and explicitly covers Preview, Vercel Production and non-Vercel Production behavior.
+
+A first Vercel build of this change exposed only a TypeScript issue in the new test helper because Next's env typing treats `NODE_ENV` as readonly. The runtime guard itself was not the cause. The test helper was corrected to manipulate an indexed env record; no Production runtime logic was weakened.
+
 ### Current Preview / CI evidence
 
 Current accepted feature-branch code before this status-only commit:
 
-- HEAD: `4368c03112b3e0a14d08fe5a1240cbaa7ca6bd81`;
-- Vercel deployment: `dpl_5U2M1RGLMnCDMTNJKnCkWdWG2tip`;
+- HEAD: `cdceeb1fca43760b58197261825400ede82a6149`;
+- Vercel deployment: `dpl_EPA9mrCmJ8tGw9on7x8fFQQb1X4R`;
 - deployment state: `READY`;
 - branch alias remains the stable `feat/checkout-mercadopago` Preview alias;
-- current deployment had no `warning`, `error`, or `fatal` runtime logs during the Admin Auth acceptance window;
-- GitHub Actions CI `#610`: success;
-- CI verified `pnpm test`, typecheck and build.
+- GitHub Actions CI `#618`: success;
+- CI verified all tests, typecheck and build;
+- the new provider guard regression confirms Preview/Sandbox remains allowed while Production/Sandbox is blocked.
 
 ## Completed checkout / shipping work
 
@@ -173,17 +189,16 @@ The stable Sandbox callback/Preview redirect remains:
 
 ## Exact next project work
 
-Admin Auth and checkout/shipping are accepted in Preview/Sandbox. Do not rebuild either subsystem when resuming.
+Admin Auth and checkout/shipping are accepted in Preview/Sandbox, and the Production/Sandbox provider mismatch guard is implemented. Do not rebuild those completed subsystems when resuming.
 
 Recommended continuation order:
 
-1. Add Production runtime/provider hardening so Vercel Production fails closed if Mercado Pago or Melhor Envio is accidentally configured as Sandbox.
-2. Configure a separate Melhor Envio Production app/credentials/OAuth and verify Production accepts only Correios service IDs `1/2` (PAC/SEDEX); fail closed otherwise.
-3. Configure separate Mercado Pago Production credentials/webhook and the final public site URL.
-4. Perform one controlled real Production transaction and verify payment → webhook → order/database state.
-5. Run the final whole-branch review and take PR #2 out of draft only when the Production rollout gate passes.
-6. Merge to `main` only with explicit owner approval.
-7. Only after checkout/payment/freight Production rollout is finished and validated, begin the planned KingHost migration.
+1. Configure a separate Melhor Envio Production app/credentials/OAuth and verify Production accepts only Correios service IDs `1/2` (PAC/SEDEX); fail closed otherwise.
+2. Configure separate Mercado Pago Production credentials/webhook and the final public site URL.
+3. Perform one controlled real Production transaction and verify payment → webhook → order/database state.
+4. Run the final whole-branch review and take PR #2 out of draft only when the Production rollout gate passes.
+5. Merge to `main` only with explicit owner approval.
+6. Only after checkout/payment/freight Production rollout is finished and validated, begin the planned KingHost migration.
 
 ## Post-checkout objective: KingHost
 
@@ -223,4 +238,4 @@ Every meaningful session must update this file with:
 - relevant HEAD/deployment evidence;
 - decisions future sessions must not rediscover.
 
-**Resume point:** Admin Auth/MFA and checkout/shipping are complete in Preview/Sandbox. Production has not started. Continue with Production fail-closed runtime/provider hardening; do not merge to `main` without explicit owner approval.
+**Resume point:** Admin Auth/MFA and checkout/shipping are complete in Preview/Sandbox, and Production provider fail-closed hardening is complete. Production credentials/provider rollout has not started. Next configure the separate Melhor Envio Production app/credentials/OAuth; do not merge to `main` without explicit owner approval.
