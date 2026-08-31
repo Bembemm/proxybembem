@@ -5,6 +5,10 @@ export interface SupabaseEnv {
   supabaseSecretKey: string
 }
 
+export interface AdminAuthEnv {
+  adminUserId: string
+}
+
 export interface MercadoPagoEnv {
   mercadoPagoAccessToken: string
   mercadoPagoWebhookSecret: string
@@ -102,6 +106,18 @@ export function getSupabaseEnv(): SupabaseEnv {
     supabaseUrl: parsedSupabaseUrl.origin,
     supabaseSecretKey: required("SUPABASE_SECRET_KEY"),
   }
+}
+
+export function getAdminAuthEnv(): AdminAuthEnv {
+  const adminUserId = required("ADMIN_USER_ID").toLowerCase()
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+      adminUserId,
+    )
+  ) {
+    throw new Error("ADMIN_USER_ID must be a canonical UUID")
+  }
+  return { adminUserId }
 }
 
 export function getMercadoPagoEnv(): MercadoPagoEnv {
