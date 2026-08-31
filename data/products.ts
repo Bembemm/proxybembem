@@ -65,7 +65,7 @@ export const products: Product[] = [
     id: 2,
     title: "Deck Proxy 60 Cartas",
     image: "/products/deck-commander.png",
-    originalPrice: 69.99,
+    originalPrice: 99.99,
     discountPrice: 69.99,
     tag: null,
     category: "Decks",
