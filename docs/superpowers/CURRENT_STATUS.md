@@ -69,6 +69,39 @@ Preview evidence for code HEAD `b9af67934e1f38c97e48d93dc50b9852cc63d362`:
 
 Important: this storefront consolidation has **not** been promoted to Production yet. Production remains on the previously accepted cleanup deployment/commit until the owner explicitly approves/promotes the new Preview. The trusted server checkout price for product ID 2 remains R$ 69,99 because checkout uses `discountPrice`; only the displayed original/reference price changed.
 
+## Product-detail modal refresh — PREVIEW VALIDATED, NOT YET PRODUCTION
+
+The owner approved rewriting and reorganizing the product modal so the offer is easier to understand and the non-official proxy disclosure remains clear without dominating or repeating the whole modal.
+
+Implemented for both 60-card and 100-card products:
+
+- compact quick highlights near the price: card count, customer-chosen list and production in up to 3 business days;
+- buyer-first short description;
+- details reorganized as `O QUE VOCÊ RECEBE`, `QUALIDADE`, `VERSO`, `COMO ESCOLHER AS CARTAS` and `ARTES`;
+- quality copy states photographic paper with lamination;
+- reverse copy states white back and recommends opaque sleeves;
+- separate `IMPORTANTE` section states the product is a non-official proxy and is not for sanctioned tournaments;
+- separate `PRAZO` section states production/posting in up to 3 business days;
+- old large yellow `IMPORTANTE: LEIA ANTES DE COMPRAR` treatment removed;
+- modal now uses calmer bordered information blocks and quick-highlight chips.
+
+TDD evidence:
+
+- RED commit `29dc4a4c0e6d95e977d859413e412d75c4e4249f`;
+- RED CI `#682`: 222 tests total, 219 passed and exactly the three new product-detail tests failed;
+- product highlight type commit `25f057e1bab088e43f4a7412f1d1b20ce93cb2c3`;
+- copy commit `86d878cc6540281f52d46cfaa510caa7996a9efc`;
+- modal layout commit `cb085033c1a7083536cbd3fc3d0ec633486b54bd`;
+- GREEN CI `#688` passed tests, typecheck and build.
+
+Preview evidence:
+
+- deployment `dpl_CR6GeXSSDDbhGDo5JBaSwc8TMjdP` for `cb085033...` is `READY`;
+- Preview `/` returned HTTP `200` and exposes the updated buyer-first descriptions for both products;
+- modal behavior/copy has regression coverage, but the server-side Preview fetch cannot click the client-only modal, so a quick manual browser look is still appropriate before Production promotion.
+
+This change affects storefront presentation/copy only. Checkout, Mercado Pago, Melhor Envio and trusted server prices were not changed.
+
 ## Mercado Pago Webhooks-only cleanup — COMPLETE
 
 During the controlled real payment, valid signed Webhooks were accepted with HTTP `200`, while additional legacy-style unsigned notifications reached the same endpoint and correctly failed HMAC validation with `401`.
@@ -194,21 +227,22 @@ The PR description was refreshed after review to include all seven migrations, A
 
 ## PR / integration state
 
-PR `#2` is open, mergeable, ready for review, and unmerged. Its branch now also contains the Preview-validated storefront consolidation described above.
+PR `#2` is open, mergeable, ready for review, and unmerged. Its branch now also contains the Preview-validated home/storefront consolidation and product-detail modal refresh described above.
 
 The next safe steps are:
 
 1. Wait for CI/Preview on this documentation-only checkpoint HEAD.
-2. If green/`READY`, ask the owner for explicit Production promotion approval for the storefront consolidation.
-3. After promotion, verify the final domain home shows both products/prices and `/produtos` redirects to the home product section.
-4. Update this checkpoint with Production evidence.
-5. Do **not** merge to `main` until the owner explicitly approves the merge.
-6. Only after branch finalization should the planned KingHost migration begin as a separate risk-isolated phase.
+2. If green/`READY`, let the owner manually review the latest Preview modal on mobile/desktop if desired.
+3. Ask the owner for explicit Production promotion approval for the storefront + product-detail presentation changes.
+4. After promotion, verify the final domain home shows both products/prices, `/produtos` redirects to the home product section, and manually confirm the modal presentation.
+5. Update this checkpoint with Production evidence.
+6. Do **not** merge to `main` until the owner explicitly approves the merge.
+7. Only after branch finalization should the planned KingHost migration begin as a separate risk-isolated phase.
 
-No new real Mercado Pago payment is required for this storefront-only change because the trusted discounted checkout price of the 60-card product remains R$ 69,99 and payment/freight processing code was not changed.
+No new real Mercado Pago payment is required for these storefront-only changes because the trusted discounted checkout price of the 60-card product remains R$ 69,99 and payment/freight processing code was not changed.
 
 ## End-of-session rule
 
 Every meaningful session must update this file with passed/failed evidence, blockers, exact next action, relevant HEAD/deployment evidence, and decisions future sessions must not rediscover.
 
-**Resume point:** checkout/payment/freight/Admin Production acceptance remains complete. A new home-as-storefront change is GREEN in CI `#678` and Preview `dpl_BVW7RMaWhJSarYSnncsSx2vGJEQ5` at code commit `b9af679...`; it is not yet live in Production. Wait for CI/Preview on this documentation checkpoint, then ask for explicit Production promotion approval. Never merge `main` without explicit owner approval.
+**Resume point:** checkout/payment/freight/Admin Production acceptance remains complete. Storefront consolidation plus the product-detail modal refresh are GREEN and Preview-validated but not live in Production. Latest code Preview is `dpl_CR6GeXSSDDbhGDo5JBaSwc8TMjdP` at `cb085033...`; wait for CI/Preview on this documentation checkpoint, then get explicit owner approval before Production promotion. Never merge `main` without explicit owner approval.
