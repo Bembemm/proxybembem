@@ -10,8 +10,8 @@ This is the canonical continuation checkpoint. Read this file before using old p
 - Branch: `feat/checkout-mercadopago`
 - PR: `#2` — open, draft, not merged
 - Never merge `main` without explicit owner approval.
-- Current rollout phase: **Preview/Sandbox accepted, including Admin Auth/MFA; Production provider guard implemented; Melhor Envio Production runbook prepared**.
-- Production credentials/provider authorization has not started.
+- Current rollout phase: **Preview/Sandbox accepted, including Admin Auth/MFA; Production provider guard implemented; Melhor Envio Production runbook prepared; Production app manually created**.
+- Melhor Envio Production credentials/provider authorization are not configured yet.
 - `main` remains untouched by the Preview acceptance work.
 - Temporary Preview diagnostic routes from earlier checkout acceptance must remain absent.
 
@@ -118,15 +118,17 @@ Regression coverage lives in `tests/production-provider-env.test.ts` and explici
 
 A first Vercel build of this change exposed only a TypeScript issue in the new test helper because Next's env typing treats `NODE_ENV` as readonly. The runtime guard itself was not the cause. The test helper was corrected to manipulate an indexed env record; no Production runtime logic was weakened.
 
-## Melhor Envio Production preparation — RUNBOOK READY, NOT ACTIVATED
+## Melhor Envio Production preparation — APP CREATED, NOT AUTHORIZED
 
-The Production rollout procedure is now pinned in `docs/shipping-setup.md` and protected by `tests/melhor-envio-config-docs.test.ts`.
+The Production rollout procedure is pinned in `docs/shipping-setup.md` and protected by `tests/melhor-envio-config-docs.test.ts`.
 
 Production decisions that must not be rediscovered:
 
 - canonical public domain is `https://www.proxybembem.com.br`;
 - exact Melhor Envio Production callback is `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback`;
-- Production must use a separate Melhor Envio application, Client ID and Client Secret;
+- Production uses a separate Melhor Envio application, Client ID and Client Secret;
+- the owner manually created the Melhor Envio Production application on 2026-08-31;
+- its credentials have not yet been configured in the Production environment and must never be pasted into chat;
 - do not reuse Sandbox Client ID, Client Secret, tokens or server-side secrets;
 - Production must generate its own `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` and other server-side secrets;
 - only `shipping-calculate` remains authorized; label purchase/generation/printing stays manual;
@@ -143,7 +145,7 @@ TDD evidence for this runbook preparation:
 - Vercel Preview deployment `dpl_6SKEfLSGkL6a6Na24i7RDWp9AWeS` is `READY`;
 - stable Preview branch alias remains unchanged.
 
-No Melhor Envio Production application has been created or authorized by this step, and no Production credentials have been configured yet.
+No Melhor Envio Production authorization has been completed yet, and no Production credential value has been stored by the application yet.
 
 ## Completed checkout / shipping work
 
@@ -204,12 +206,12 @@ The stable Sandbox callback/Preview redirect remains:
 
 ## Exact next project work
 
-Admin Auth and checkout/shipping are accepted in Preview/Sandbox, the Production/Sandbox provider mismatch guard is implemented, and the Melhor Envio Production runbook is ready. Do not rebuild those completed subsystems when resuming.
+Admin Auth and checkout/shipping are accepted in Preview/Sandbox, the Production/Sandbox provider mismatch guard is implemented, the Melhor Envio Production runbook is ready, and the separate Production application has been manually created. Do not rebuild those completed subsystems when resuming.
 
 Recommended continuation order:
 
-1. In the Melhor Envio Production account, create a separate Production application with callback exactly `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback` and only `shipping-calculate`. Do not paste Client Secret into chat.
-2. Configure the resulting Melhor Envio Production credentials and fresh Production-only secrets directly in the Production secret store, with `MELHOR_ENVIO_ENVIRONMENT=production`.
+1. Configure the Melhor Envio Production application's Client ID/Client Secret and fresh Production-only secrets directly in the Production secret store, with `MELHOR_ENVIO_ENVIRONMENT=production`; never paste secret values into chat.
+2. Keep `MELHOR_ENVIO_REDIRECT_URI=https://www.proxybembem.com.br/api/melhor-envio/oauth/callback` exactly and leave Preview/Sandbox variables untouched.
 3. Authorize Melhor Envio through the MFA-protected admin and verify the stored credential is `production` + active without exposing tokens.
 4. Perform a controlled Production freight quote and confirm only Correios PAC/SEDEX service IDs `1/2` are accepted.
 5. Configure separate Mercado Pago Production credentials/webhook and the final public site URL.
@@ -256,4 +258,4 @@ Every meaningful session must update this file with:
 - relevant HEAD/deployment evidence;
 - decisions future sessions must not rediscover.
 
-**Resume point:** Admin Auth/MFA and checkout/shipping are complete in Preview/Sandbox, Production provider fail-closed hardening is complete, and the Melhor Envio Production rollout runbook is ready. Production credentials/provider authorization has not started. Next create the separate Melhor Envio Production application with the exact canonical callback and only `shipping-calculate`; do not merge to `main` without explicit owner approval.
+**Resume point:** Admin Auth/MFA and checkout/shipping are complete in Preview/Sandbox, Production provider fail-closed hardening is complete, the Melhor Envio Production rollout runbook is ready, and the separate Production application has been manually created. Next configure its Production-only credentials/secrets directly in the Production environment, then authorize it; do not merge to `main` without explicit owner approval.
