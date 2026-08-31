@@ -38,7 +38,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <img src="/icon.svg" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
+              <img src="/brand/pb.png" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
               <span className="text-xl sm:text-2xl font-[family-name:var(--font-display)] text-black tracking-wide">
                 ProxyBembem
               </span>
