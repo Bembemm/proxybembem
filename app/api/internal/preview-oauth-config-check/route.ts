@@ -1,4 +1,4 @@
-import { getMelhorEnvioOAuthEnv } from "../../../../../lib/server/env.ts"
+import { getMelhorEnvioOAuthEnv } from "../../../../lib/server/env.ts"
 
 export const runtime = "nodejs"
 
