@@ -1,7 +1,5 @@
 import type { Product } from "@/contexts/cart-context"
 
-export const VALIDATION_PRODUCT_ID = 9001
-
 export const products: Product[] = [
   {
     id: 1,
@@ -122,49 +120,6 @@ export const products: Product[] = [
       heightCm: 4,
     },
   },
-  {
-    id: VALIDATION_PRODUCT_ID,
-    title: "Validação de pagamento",
-    image: "/products/deck-commander.png",
-    originalPrice: 5,
-    discountPrice: 5,
-    tag: null,
-    category: "Validação",
-    featured: false,
-    validationOnly: true,
-    notice: "ITEM TEMPORÁRIO DE VALIDAÇÃO",
-    description:
-      "Item temporário usado somente para validar o checkout de produção. Não é um produto comercial da vitrine.",
-    details: [
-      {
-        label: "VALOR",
-        value: "R$ 5,00 para uma transação controlada de validação.",
-      },
-      {
-        label: "FRETE",
-        value: "Mantém o cálculo real de PAC/SEDEX para validar o fluxo completo.",
-      },
-    ],
-    sections: [
-      {
-        title: "USO TEMPORÁRIO",
-        paragraphs: [
-          "Este item existe apenas durante a validação do pagamento em produção e será removido depois do teste.",
-        ],
-      },
-    ],
-    shipping: {
-      weightKg: 0.5,
-      lengthCm: 25,
-      widthCm: 19,
-      heightCm: 4,
-    },
-  },
 ]
 
-export const validationProduct = products.find(
-  (product) => product.id === VALIDATION_PRODUCT_ID,
-) as Product
-
-export const storefrontProducts = products.filter((product) => !product.validationOnly)
-export const featuredProducts = storefrontProducts.filter((product) => product.featured)
+export const featuredProducts = products.filter((product) => product.featured)
