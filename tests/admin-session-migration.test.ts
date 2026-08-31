@@ -74,10 +74,11 @@ test("authorization atomically expires at 30 minutes and touches only when reque
   const end = text.indexOf("function public.revoke_admin_session", start)
   const block = text.slice(start, end)
 
+  assert.match(block, /select\s+id\s*,\s*last_activity_at\s*,\s*revoked_at[\s\S]*?into\s+v_id\s*,\s*v_last_activity\s*,\s*v_revoked_at/)
   assert.match(block, /for\s+update/)
   assert.match(block, /return\s+'missing'/)
   assert.match(block, /return\s+'revoked'/)
-  assert.match(block, /last_activity_at\s*<=\s*now\s*\(\s*\)\s*-\s*interval\s+'30 minutes'/)
+  assert.match(block, /v_last_activity\s*<=\s*now\s*\(\s*\)\s*-\s*interval\s+'30 minutes'/)
   assert.match(block, /set\s+revoked_at\s*=\s*now\s*\(\s*\)/)
   assert.match(block, /return\s+'expired'/)
   assert.match(block, /if\s+p_touch\s+then[\s\S]*?last_activity_at\s*=\s*now\s*\(\s*\)/)
