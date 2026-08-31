@@ -7,7 +7,7 @@ import { Check, Eye, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProductDetailModal } from "@/components/product-detail-modal"
 import { useCart, type Product } from "@/contexts/cart-context"
-import { products } from "@/data/products"
+import { featuredProducts } from "@/data/products"
 
 function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -96,7 +96,7 @@ export function HomePage() {
               size="lg"
               className="h-12 sm:h-14 px-7 sm:px-9 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-base sm:text-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
             >
-              <Link href="#produtos">
+              <Link href="/produtos">
                 <ShoppingCart className="w-4 h-4 mr-2" />
                 Ver produtos
               </Link>
@@ -105,22 +105,22 @@ export function HomePage() {
         </div>
       </section>
 
-      <section id="produtos" className="relative py-5 sm:py-9 scroll-mt-20">
+      <section className="relative py-5 sm:py-9">
         <div className="container mx-auto px-3 sm:px-4 relative z-10">
           <div className="text-center mb-6 sm:mb-9 max-w-2xl mx-auto">
             <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-[#8B5CF6] mb-2">
-              Catálogo completo
+              Em destaque
             </p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-[family-name:var(--font-display)] text-slate-900 mb-3 tracking-wide text-balance">
-              Escolha seu deck
+              Proxies em Destaque
             </h2>
             <p className="text-slate-700 text-base sm:text-lg px-2">
-              Todos os produtos estão aqui. Veja os detalhes, escolha o tamanho ideal e adicione direto ao carrinho.
+              Confira nossa seleção especial e acesse a página de produtos para ver o catálogo completo.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-5xl mx-auto">
-            {products.map((product) => {
+            {featuredProducts.map((product) => {
               const discount = discountPercent(product)
 
               return (
@@ -215,6 +215,16 @@ export function HomePage() {
                 </article>
               )
             })}
+          </div>
+
+          <div className="text-center mt-6 sm:mt-8">
+            <Button
+              asChild
+              size="lg"
+              className="w-full sm:w-auto bg-transparent border border-[#8B5CF6] text-[#8B5CF6] px-6 sm:px-8 h-14 tracking-wide hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 text-base sm:text-lg active:scale-[0.98]"
+            >
+              <Link href="/produtos">Ver Todos os Produtos</Link>
+            </Button>
           </div>
         </div>
       </section>
