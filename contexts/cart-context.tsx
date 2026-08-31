@@ -31,7 +31,6 @@ export interface Product {
   category: string
   colors?: string[]
   featured?: boolean
-  validationOnly?: boolean
   notice?: string
   description: string
   details: ProductDetail[]
