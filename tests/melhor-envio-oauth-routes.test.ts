@@ -175,11 +175,12 @@ test("OAuth start stores only SHA-256(state) for ten minutes after rate limit an
   await withEnv(async () => {
     const { createMelhorEnvioOAuthStartHandler } = await loadStartHandlerFactory()
     const order: string[] = []
-    let stateInsert: {
+    type StateInsert = {
       stateHash: string
       environment: "sandbox" | "production"
       expiresAt: string
-    } | null = null
+    }
+    let stateInsert: StateInsert | null = null
 
     const POST = createMelhorEnvioOAuthStartHandler({
       authorizeAdmin: async () => {
@@ -213,14 +214,15 @@ test("OAuth start stores only SHA-256(state) for ten minutes after rate limit an
     assert.ok(rawState)
     assert.match(rawState, /^[A-Za-z0-9_-]{43}$/)
 
-    assert.ok(stateInsert)
-    assert.equal(stateInsert.environment, "sandbox")
+    const persistedState = stateInsert as StateInsert | null
+    assert.ok(persistedState)
+    assert.equal(persistedState.environment, "sandbox")
     assert.equal(
-      stateInsert.stateHash,
+      persistedState.stateHash,
       createHash("sha256").update(rawState).digest("hex"),
     )
-    assert.notEqual(stateInsert.stateHash, rawState)
-    const expiresAt = Date.parse(stateInsert.expiresAt)
+    assert.notEqual(persistedState.stateHash, rawState)
+    const expiresAt = Date.parse(persistedState.expiresAt)
     assert.ok(expiresAt >= before + 10 * 60 * 1000)
     assert.ok(expiresAt <= after + 10 * 60 * 1000)
     assert.doesNotMatch(location, /client-secret-never-leak|admin-secret/)
