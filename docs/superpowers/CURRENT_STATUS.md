@@ -1,139 +1,124 @@
-# ProxyBembem Checkout Continuity Status
+# ProxyBembem Checkout — Current Status
 
-**Last updated:** 2026-08-31
+**Updated:** 2026-08-31
 
-This file is the canonical continuation checkpoint for the checkout/freight work. Future sessions must read this file before inferring progress from old plan checkboxes.
+This is the canonical continuation checkpoint. Read this file before using old plan checkboxes.
 
-## Repository state
+## Repository
 
-- Repository: `Bembemm/proxybembem`
-- Working branch: `feat/checkout-mercadopago`
-- PR: `#2` — `feat: adicionar checkout seguro com Mercado Pago`
-- PR state: open, draft, not merged
-- Last code-changing functional commit: `803d1483ff2c59d067520044477758900be659c9`
-- `1b8dc27a61dab32cb326f9c7713a550b09728431` is an empty `chore: retrigger Vercel preview` commit with the same functional tree as `803d148...`.
-- Later commits through `a0a0565ba43359c203fc702b961b63fc1207c22e` are continuity/documentation-only changes; they do not change checkout/OAuth runtime behavior.
-- Latest runtime validation in this checkpoint was performed against Vercel deployment `dpl_CryNnUFhKXxa5iKMapfQ4MX6uJAt`, commit `a0a0565...`, state `READY`.
-- GitHub Actions CI for `a0a0565...`: run `#427`, conclusion `success`.
-- Stable branch alias: `proxybembem-git-feat-che-d3796d-brenobembemm1802-7300s-projects.vercel.app`
-- Environment phase: **Preview/Sandbox only**. Production is not approved for rollout yet.
+- Repo: `Bembemm/proxybembem`
+- Branch: `feat/checkout-mercadopago`
+- PR: `#2` — open, draft, not merged
+- Functional checkout/OAuth tree was completed through `803d1483ff2c59d067520044477758900be659c9`.
+- `1b8dc27a61dab32cb326f9c7713a550b09728431` was an empty Vercel retrigger with the same functional tree.
+- Subsequent documentation/diagnostic commits do not represent new checkout functionality.
+- Never merge `main` without explicit owner approval.
+- Current phase: **Preview/Sandbox**, not Production.
 
-## Historical task numbering and exact continuation point
-
-The working-session numbering used before the Vercel quota block was not fully persisted into the original implementation plans. Preserve these labels here for continuity:
+## Completed historical work
 
 ### `3.1.11d` — local fallback validation — COMPLETE
 
-This block was executed because Vercel Preview was temporarily blocked by `build-rate-limit`. Work did not stop; runtime/provider behavior was validated locally against Sandbox and the development Supabase state.
+This was done while Vercel Preview was blocked by the build-rate limit.
 
-What this block covered:
+Validated locally:
 
-#### Melhor Envio OAuth single-account lifecycle
-
-The static `MELHOR_ENVIO_ACCESS_TOKEN` approach was superseded by the approved OAuth single-account implementation in:
-
-- `docs/superpowers/specs/2026-08-29-melhor-envio-oauth-single-account-design.md`
-- `docs/superpowers/plans/2026-08-29-melhor-envio-oauth-single-account.md`
-
-Implemented/validated behavior includes:
-
-- separate Sandbox/Production provider environments; no cross-environment fallback;
-- OAuth scope limited to `shipping-calculate` while labels remain manual;
-- protected OAuth start route, one-shot callback and maintenance refresh route;
-- OAuth state stored as SHA-256, 10 minute TTL and atomic single-use consumption;
-- access/refresh token persistence encrypted with AES-256-GCM and environment/token-kind AAD;
-- automatic refresh through Supabase lease + token-version compare-and-set coordination;
-- forced-refresh retry behavior for provider authentication failure;
-- daily Vercel Cron protected by `CRON_SECRET` and using the same token-manager refresh path;
-- OAuth tables/RPCs protected for trusted `service_role` use, with RLS/fail-closed grants;
-- real Melhor Envio Sandbox quotation working with the Sandbox service policy (technical IDs `3/4` / Jadlog in Sandbox);
-- legacy permanent access-token configuration no longer required by the runtime contract.
-
-The corresponding OAuth migration is already part of the applied Preview/Sandbox migration set:
-
-- `202608290002_melhor_envio_oauth.sql`
-
-The user also configured the required OAuth-oriented environment variables during this phase. **Never record their secret values in this repository or in chat.** The variable names/contracts are documented in `.env.example` and `docs/shipping-setup.md`.
-
-#### Local checkout / Mercado Pago / Supabase acceptance
-
-Fresh local verification included:
-
-- `pnpm test`
-- `pnpm typecheck`
-- `pnpm build`
-- real Sandbox shipping quote;
-- checkout-side shipping requote;
+- full Melhor Envio single-account OAuth lifecycle;
+- OAuth state SHA-256, 10-minute TTL and one-shot consumption;
+- OAuth tokens encrypted with AES-256-GCM before Supabase persistence;
+- automatic token refresh with lease + compare-and-set;
+- protected maintenance refresh/Cron path;
+- real Melhor Envio Sandbox quote;
+- checkout shipping requote;
 - Mercado Pago Sandbox preference creation;
-- checkout retry behavior;
-- live concurrent checkout requests for the same attempt;
-- Supabase persistence verification.
+- checkout retry/idempotency;
+- concurrent checkout behavior;
+- Supabase order/preference persistence;
+- `pnpm test`, typecheck and build.
 
-The live concurrency test confirmed:
+### `3.1.11d.18d` — Mercado Pago concurrent preference race — COMPLETE
 
-- shipping quote returned HTTP `200`;
-- both concurrent calls resolved to the same order;
-- both concurrent calls resolved to the same Mercado Pago checkout URL;
-- retry returned HTTP `200` and reused the same order/URL;
-- expected final database state was one order + one persisted preference + cleared lease.
+A live local race could create two preferences. It was fixed with the Supabase checkout-preference lease migration:
 
-### `3.1.11d.18d` — concurrent Mercado Pago preference race — COMPLETE
+- `202608300001_checkout_preference_lease.sql`
 
-A live local concurrency test exposed a race where two preference creations could occur (`2 !== 1`). The fix moved the concurrency guarantee to the server/database rather than relying on Mercado Pago's client idempotency header:
+Final behavior validated locally: same checkout attempt reuses one order/preference and leaves no stale lease.
 
-- added an atomic checkout-preference lease in Supabase with a 30 second lease window;
-- restricted the lease RPCs to trusted `service_role` execution with `SECURITY DEFINER` and fixed `search_path` hardening;
-- added migration `202608300001_checkout_preference_lease.sql`;
-- verified claim → busy → reclaim-after-expiry → complete behavior;
-- stopped requiring `X-Idempotency-Key` in tests;
-- removed `X-Idempotency-Key` from the Mercado Pago preference request;
-- final functional commit for this change: `803d1483ff2c59d067520044477758900be659c9` (`fix: rely on server lease for preference concurrency`).
+The implementation intentionally no longer relies on Mercado Pago `X-Idempotency-Key`; concurrency ownership is server/database-side.
 
-### `3.1.11b` — Preview/Vercel runtime acceptance — IN PROGRESS
+## Current task
 
-This was the task originally blocked by the Vercel daily build-rate limit. The block is cleared. Do **not** repeat the completed OAuth implementation or the local concurrency work unless a Preview failure specifically points back to them.
+### `3.1.11b` — Preview/Vercel runtime acceptance — BLOCKED ON PREVIEW ENV
 
-## `3.1.11b` progress — 2026-08-31
+The old Vercel build-rate block is resolved. Current work is validating the already-tested functional tree in real Preview runtime.
 
-Completed against the current functional tree on Preview:
+### Preview checks already passed
 
-- [x] Confirmed branch Preview is `READY` on the stable branch alias.
-- [x] Confirmed current GitHub Actions CI success (`#427`).
-- [x] Storefront `/` returns HTTP `200` on Preview.
-- [x] `/admin/integrations/melhor-envio` returns HTTP `200` and still shows the expected owner-secret bootstrap form.
-- [x] Existing valid approved order page returns HTTP `200` from Preview and successfully reads the trusted Supabase order snapshot, including approved status, products, totals, freight and delivery data.
-- [x] Supabase project is `ACTIVE_HEALTHY` in `sa-east-1`.
-- [x] Melhor Envio Sandbox OAuth credential row is `active`, token version `5`, access token expiry `2026-09-29`, no refresh lease and no recorded auth failure.
-- [x] Recent checkout orders have no stale checkout-preference lease.
-- [x] Unauthenticated `GET /api/internal/melhor-envio/refresh` returns HTTP `401 {"ok":false}` as designed.
-- [x] Current deployment build error filter contains no build error; build completed successfully.
-- [x] Current deployment runtime logs for the checks above contain expected `200/401` results and no unexpected runtime error.
+- Vercel Preview deploys are building and reaching `READY`.
+- GitHub CI was confirmed successful before the latest temporary diagnostics.
+- Storefront `/` returns HTTP 200.
+- `/admin/integrations/melhor-envio` returns HTTP 200.
+- Existing approved order page successfully reads the trusted Supabase snapshot and renders payment/product/freight/address data.
+- Supabase project is `ACTIVE_HEALTHY` in `sa-east-1`.
+- Melhor Envio credential row in Supabase is `sandbox`, `active`, token version 5, access token expiry 2026-09-29, no refresh lease and no recorded auth failure.
+- Recent checkout orders have no stale checkout-preference lease.
+- Unauthenticated maintenance refresh returns HTTP 401 as designed.
+- Current build/runtime checks did not expose unrelated application errors.
 
-Still required before marking `3.1.11b` complete:
+## Current blocker discovered on 2026-08-31
 
-- [ ] Real `POST /api/shipping/quote` against the **current** Preview deployment, confirming expected Sandbox service policy.
-- [ ] Preview checkout acceptance with `quantity=1`: quote → checkout requote → Mercado Pago Sandbox preference → order/return page.
-- [ ] Preview checkout acceptance with `quantity=2`.
-- [ ] Preview retry/idempotency check proving the same checkout attempt reuses the same order/preference URL.
-- [ ] Authenticated Cron/refresh check using the deployed secret without exposing it, expecting HTTP `200` when authorized.
-- [ ] Final Supabase verification after those new Preview checkouts: no duplicate order/preference and no stale preference lease.
-- [ ] Final runtime-log review after the POST acceptance tests.
+A temporary Preview-only acceptance probe was deployed to execute the real handlers inside Vercel, because the connected Vercel fetch action itself can only issue GET requests.
 
-### Tooling limitation recorded for continuity
+The probe called the real `/api/shipping/quote` handler for quantity 1 and quantity 2. Both returned HTTP 503 before checkout could start.
 
-In the 2026-08-31 ChatGPT session, the connected Vercel fetch action can access protected Preview pages but supports GET requests only. The available local shell has no external DNS/network access. Therefore this session cannot directly issue the protected Preview `POST` requests required for shipping quote and checkout acceptance, nor can it send the authenticated Cron secret without reading/exposing that secret.
+Safe diagnostics established:
 
-A project-wide runtime log did show a `POST /api/shipping/quote 200` at 03:14:32, but it belonged to older deployment `dpl_3i7mr13QKGJxbfDVF79F9aX7Pabs` / commit `b67da843...`, not the current Preview deployment, so it **does not count** as current-head acceptance.
+- `VERCEL_ENV = preview`
+- `MELHOR_ENVIO_ENVIRONMENT = sandbox`
+- base shipping configuration loads successfully;
+- the Melhor Envio OAuth token manager cannot initialize;
+- all required OAuth env variable names are present;
+- `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` is present but **does not match the required 64-hex-character format**;
+- `MELHOR_ENVIO_OAUTH_ADMIN_SECRET` length is valid;
+- `MELHOR_ENVIO_REDIRECT_URI` is an absolute URL.
 
-A future session with interactive browser/Cloud Browser/agent-browser access to the protected Preview, or an authorized runner that can POST to it without exposing secrets, should continue with the unchecked items above. Do not restart from `3.1.11d`.
+Therefore the immediate Preview failure is configuration, not the shipping CEP/service logic and not Mercado Pago.
 
-### Completion gate for `3.1.11b`
+### Important encryption-key rule
 
-Mark `3.1.11b` complete only when the remaining current-Preview POST checks pass. A green build and GET-only runtime checks are not the full acceptance gate.
+`MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` must be exactly 256 bits represented as **64 hexadecimal characters**.
 
-## Current migrations applied to Preview/Sandbox
+Do not replace it with a new key blindly. The OAuth tokens currently stored in Supabase were encrypted with the key that existed when authorization succeeded.
 
-In order:
+Preferred recovery:
+
+1. If the original 64-hex key used during the successful local/OAuth setup still exists in the owner's local environment or password manager, set that **same key** as the Vercel Preview `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`.
+2. Redeploy Preview.
+3. Re-run the Preview acceptance quote.
+4. If the original key has been lost, create a new valid 64-hex key in the owner's secure environment, configure it in Vercel Preview, then perform a new Melhor Envio Sandbox OAuth authorization so fresh tokens are encrypted with the new key.
+
+Never paste this key in chat, docs, commits or screenshots.
+
+The connected Vercel tooling in this chat can inspect deployments/logs but cannot edit project environment variables, so this env correction requires the owner/Vercel dashboard (or another authorized Vercel environment-management surface).
+
+## Exact next action
+
+**Fix only the Preview value of `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` first. Do not move to Production and do not rebuild OAuth code.**
+
+After the corrected key is deployed, resume `3.1.11b` in this order:
+
+1. Real Preview quote quantity 1; expect HTTP 200 and only Sandbox-allowed service IDs `3/4`.
+2. Real Preview quote quantity 2.
+3. Checkout quantity 1: quote → requote → Mercado Pago Sandbox preference.
+4. Retry the exact same checkout attempt; verify same order and same checkout URL.
+5. Checkout quantity 2.
+6. Open resulting order/return page.
+7. Verify Supabase: no duplicate order/preference and no stale preference lease.
+8. Authenticated Cron/refresh test using the deployed `CRON_SECRET` without exposing it.
+9. Final Vercel runtime-log review.
+10. Mark `3.1.11b` complete only after all checks pass.
+
+## Applied Preview/Sandbox migrations
 
 1. `202608280001_create_orders.sql`
 2. `202608280002_shipping_checkout_hardening.sql`
@@ -142,118 +127,62 @@ In order:
 5. `202608290002_melhor_envio_oauth.sql`
 6. `202608300001_checkout_preference_lease.sql`
 
-## Current environment contract (names only)
+## Melhor Envio OAuth vs site admin Auth
 
-Do not store values in this file.
+These are separate:
 
-### Mercado Pago
+- **Melhor Envio OAuth:** implemented and locally validated.
+- **Site `/admin` login with Supabase Auth:** not implemented yet. The admin integration page still uses `MELHOR_ENVIO_OAUTH_ADMIN_SECRET` as the owner bootstrap mechanism.
 
-- `MERCADO_PAGO_ENVIRONMENT`
-- `MERCADO_PAGO_ACCESS_TOKEN`
-- `MERCADO_PAGO_WEBHOOK_SECRET`
+Do not describe the Melhor Envio OAuth implementation as incomplete because Supabase Auth for `/admin` is still future work.
 
-### Supabase
+## After Preview acceptance
 
-- `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
+Do not begin these until `3.1.11b` passes unless the owner explicitly changes priority:
 
-### Melhor Envio OAuth / shipping
+- Supabase Auth-based admin login/session;
+- Production runtime/provider hardening to prevent accidental Sandbox provider configuration in Vercel Production;
+- separate Melhor Envio Production credentials/OAuth;
+- verify Production shipping exposes Correios IDs `1/2` (PAC/SEDEX), otherwise fail closed;
+- separate Mercado Pago Production credentials/webhook;
+- controlled first real transaction and webhook/database verification;
+- take PR #2 out of draft only after final review;
+- merge `main` only with explicit owner approval.
 
-- `MELHOR_ENVIO_ENVIRONMENT`
-- `MELHOR_ENVIO_CLIENT_ID`
-- `MELHOR_ENVIO_CLIENT_SECRET`
-- `MELHOR_ENVIO_REDIRECT_URI`
-- `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`
-- `MELHOR_ENVIO_OAUTH_ADMIN_SECRET`
-- `MELHOR_ENVIO_USER_AGENT`
-- `SHIPPING_ORIGIN_CEP`
-- `SHIPPING_QUOTE_SECRET`
-- `CRON_SECRET`
+## Post-checkout objective: KingHost
 
-### Other server security
+The long-term destination is KingHost after checkout/payment/freight is finished and validated. Vercel + Supabase remain the active development/validation platform for now.
 
-- `RATE_LIMIT_SECRET`
+The later migration must inventory and replace, without weakening security:
 
-Preview/Sandbox and Production provider credentials must remain separate.
-
-## Important distinction: Melhor Envio OAuth vs site admin authentication
-
-**Melhor Envio OAuth is implemented and was part of the completed local validation.**
-
-The site's `/admin` area, however, is **not yet using Supabase Auth**. At this checkpoint, `app/admin/integrations/melhor-envio/page.tsx` still asks for the `MELHOR_ENVIO_OAUTH_ADMIN_SECRET` to bootstrap the owner OAuth action.
-
-Replacing that admin secret form with a real authenticated admin session is a separate future design/change. Do not describe the existing Melhor Envio OAuth implementation as incomplete just because Supabase Auth for `/admin` has not been added.
-
-## Post-checkout objective: migrate Vercel + Supabase to KingHost
-
-The owner has an active KingHost plan and the intended long-term infrastructure is **not** to keep Vercel + Supabase permanently. After the checkout/payment/freight work is finished and validated, plan and execute a separate migration phase to KingHost.
-
-This is a **post-checkout objective**, not the current task. Do not interrupt `3.1.11b` or the remaining checkout rollout gates to begin this migration unless the owner explicitly changes priority.
-
-The migration phase must first inventory the functionality currently supplied by Vercel and Supabase, then choose the exact KingHost architecture before moving anything. At minimum, account for:
-
-- Next.js storefront and server/API routes currently hosted by Vercel;
-- environment variables and server secrets;
-- custom domain, DNS, HTTPS/TLS and rollout/cutover behavior;
-- Vercel Cron replacement for Melhor Envio token maintenance;
-- Supabase PostgreSQL schema, migrations and production data;
-- RLS/grants, RPC functions, leases and atomic payment/order operations currently implemented in PostgreSQL;
-- Supabase Auth if admin authentication has been added by that point;
-- server-side privileged database access equivalent to the current Supabase service-role model;
-- Melhor Envio OAuth callback URLs and stored encrypted credential state;
+- Next.js hosting/API routes;
+- environment variables/secrets;
+- PostgreSQL schema, migrations, data, RLS/grants and RPCs;
+- leases/atomic order and payment operations;
+- Supabase Auth if implemented by then;
+- Cron replacement;
+- Melhor Envio OAuth state/tokens/callbacks;
 - Mercado Pago webhook/return URLs;
-- backups, migration validation, rollback plan and low-risk DNS cutover;
-- removal of old Vercel/Supabase dependencies only after the KingHost replacement has been validated.
+- DNS, TLS, backups, validation and rollback.
 
-Do **not** assume today that every Supabase feature has a one-to-one KingHost equivalent. The migration must be designed from the actual KingHost plan/capabilities available at that future point and should preserve the existing security guarantees instead of weakening them for convenience.
+Do not assume KingHost has one-to-one equivalents for every Supabase feature; design that migration from the actual KingHost plan/capabilities at that future point.
 
-Future sessions should treat KingHost as the planned final hosting/infrastructure destination after checkout completion, while Vercel + Supabase remain the active development/validation platform for the current work.
+## Documentation order for future sessions
 
-## Not yet approved / not yet complete
+1. Read this file first.
+2. Verify the actual branch HEAD and current Vercel state.
+3. Read `docs/shipping-setup.md` for the current Melhor Envio runbook.
+4. Read `docs/payments-setup.md` for Mercado Pago.
+5. Use older files under `docs/superpowers/plans/` as historical implementation plans, not as live progress trackers.
 
-Do not start these before finishing the Preview gate unless the owner explicitly changes priority:
+## End-of-session rule
 
-- Production rollout.
-- Production Mercado Pago credentials/webhook.
-- Production Melhor Envio credentials/OAuth authorization.
-- Production verification that Melhor Envio returns Correios service IDs `1/2` (PAC/SEDEX); do not silently launch Production shipping with Sandbox/Jadlog assumptions.
-- First controlled real Mercado Pago transaction and Production webhook verification.
-- Supabase Auth-based admin login/session (separate future change).
-- Post-checkout KingHost migration design/execution.
-- Marking PR #2 ready for review.
-- Merging PR #2 into `main`.
+Every meaningful session must update this file with:
 
-Never merge `main` without explicit owner approval.
+- what passed/failed;
+- any blocker;
+- exact next action;
+- relevant HEAD/deployment evidence;
+- decisions future sessions must not rediscover.
 
-## Documentation map
-
-Read in this order when resuming work:
-
-1. **This file:** `docs/superpowers/CURRENT_STATUS.md` — live continuation checkpoint and current task.
-2. `docs/superpowers/plans/2026-08-29-melhor-envio-oauth-single-account.md` — OAuth implementation plan; its unchecked boxes are historical planning state, not proof that code is missing.
-3. `docs/shipping-setup.md` — current Melhor Envio setup/runbook.
-4. `docs/payments-setup.md` — Mercado Pago setup/runbook.
-5. `docs/superpowers/plans/2026-08-28-implementation-manifest.md` — original checkout/freight hardening execution decisions.
-6. Relevant design specs under `docs/superpowers/specs/`.
-
-## Rule for every future work session
-
-Before coding:
-
-1. read this file;
-2. verify the branch HEAD and current provider/deployment state;
-3. continue from **Current task**, not from unchecked boxes in older plans;
-4. do not repeat a completed acceptance block unless evidence shows a regression.
-
-Before ending a meaningful work session, update this file with:
-
-- last functional/tested HEAD;
-- task just completed;
-- tests/acceptance evidence;
-- blocker if any;
-- exact next task/action;
-- any decision that a future session must not rediscover.
-
-## Next-session instruction
-
-**Continue `3.1.11b` from the remaining unchecked POST/Cron acceptance items above.** Do not rebuild Melhor Envio OAuth and do not redo `3.1.11d` local concurrency tests unless a current Preview regression specifically requires it.
+**Resume point:** `3.1.11b` is blocked only by the invalid Preview `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` configuration. Fix that env first, then restart at Preview quote quantity 1.
