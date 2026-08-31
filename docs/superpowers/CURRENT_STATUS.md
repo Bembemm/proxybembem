@@ -172,6 +172,31 @@ The site's `/admin` area, however, is **not yet using Supabase Auth**. At this c
 
 Replacing that admin secret form with a real authenticated admin session is a separate future design/change. Do not describe the existing Melhor Envio OAuth implementation as incomplete just because Supabase Auth for `/admin` has not been added.
 
+## Post-checkout objective: migrate Vercel + Supabase to KingHost
+
+The owner has an active KingHost plan and the intended long-term infrastructure is **not** to keep Vercel + Supabase permanently. After the checkout/payment/freight work is finished and validated, plan and execute a separate migration phase to KingHost.
+
+This is a **post-checkout objective**, not the current task. Do not interrupt `3.1.11b` or the remaining checkout rollout gates to begin this migration unless the owner explicitly changes priority.
+
+The migration phase must first inventory the functionality currently supplied by Vercel and Supabase, then choose the exact KingHost architecture before moving anything. At minimum, account for:
+
+- Next.js storefront and server/API routes currently hosted by Vercel;
+- environment variables and server secrets;
+- custom domain, DNS, HTTPS/TLS and rollout/cutover behavior;
+- Vercel Cron replacement for Melhor Envio token maintenance;
+- Supabase PostgreSQL schema, migrations and production data;
+- RLS/grants, RPC functions, leases and atomic payment/order operations currently implemented in PostgreSQL;
+- Supabase Auth if admin authentication has been added by that point;
+- server-side privileged database access equivalent to the current Supabase service-role model;
+- Melhor Envio OAuth callback URLs and stored encrypted credential state;
+- Mercado Pago webhook/return URLs;
+- backups, migration validation, rollback plan and low-risk DNS cutover;
+- removal of old Vercel/Supabase dependencies only after the KingHost replacement has been validated.
+
+Do **not** assume today that every Supabase feature has a one-to-one KingHost equivalent. The migration must be designed from the actual KingHost plan/capabilities available at that future point and should preserve the existing security guarantees instead of weakening them for convenience.
+
+Future sessions should treat KingHost as the planned final hosting/infrastructure destination after checkout completion, while Vercel + Supabase remain the active development/validation platform for the current work.
+
 ## Not yet approved / not yet complete
 
 Do not start these before finishing the Preview gate unless the owner explicitly changes priority:
@@ -182,6 +207,7 @@ Do not start these before finishing the Preview gate unless the owner explicitly
 - Production verification that Melhor Envio returns Correios service IDs `1/2` (PAC/SEDEX); do not silently launch Production shipping with Sandbox/Jadlog assumptions.
 - First controlled real Mercado Pago transaction and Production webhook verification.
 - Supabase Auth-based admin login/session (separate future change).
+- Post-checkout KingHost migration design/execution.
 - Marking PR #2 ready for review.
 - Merging PR #2 into `main`.
 
