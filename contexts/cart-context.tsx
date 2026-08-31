@@ -32,6 +32,7 @@ export interface Product {
   colors?: string[]
   featured?: boolean
   notice?: string
+  highlights?: string[]
   description: string
   details: ProductDetail[]
   sections: ProductSection[]
