@@ -46,7 +46,6 @@ const valid = {
   MELHOR_ENVIO_CLIENT_SECRET: "client-secret",
   MELHOR_ENVIO_REDIRECT_URI: "https://preview.example/api/melhor-envio/oauth/callback",
   MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY: "a".repeat(64),
-  MELHOR_ENVIO_OAUTH_ADMIN_SECRET: "b".repeat(64),
   MELHOR_ENVIO_USER_AGENT: "ProxyBembem (contato@proxybembem.com.br)",
   SHIPPING_ORIGIN_CEP: "86730-000",
   SHIPPING_QUOTE_SECRET: "c".repeat(64),
@@ -69,7 +68,7 @@ function getCronSecret(): string {
   return (candidate as () => string)()
 }
 
-test("returns the complete OAuth Melhor Envio server configuration", () => {
+test("returns the complete OAuth Melhor Envio server configuration without a manual admin secret", () => {
   withMelhorEnvioEnv(valid, () => {
     assert.deepEqual(getOAuthEnv(), {
       environment: "sandbox",
@@ -77,12 +76,21 @@ test("returns the complete OAuth Melhor Envio server configuration", () => {
       clientSecret: "client-secret",
       redirectUri: "https://preview.example/api/melhor-envio/oauth/callback",
       tokenEncryptionKey: "a".repeat(64),
-      oauthAdminSecret: "b".repeat(64),
       userAgent: "ProxyBembem (contato@proxybembem.com.br)",
       originCep: "86730000",
       quoteSecret: "c".repeat(64),
     })
   })
+})
+
+test("OAuth configuration ignores the obsolete manual admin secret when present", () => {
+  withMelhorEnvioEnv(
+    { ...valid, MELHOR_ENVIO_OAUTH_ADMIN_SECRET: "legacy-value-that-must-not-be-used" },
+    () => {
+      const oauth = getOAuthEnv()
+      assert.equal("oauthAdminSecret" in oauth, false)
+    },
+  )
 })
 
 test("requires an eight digit shipping origin CEP", () => {
@@ -130,12 +138,8 @@ test("requires HTTPS redirect URI in production", () => {
   )
 })
 
-test("requires strong quote, admin and cron secrets", () => {
-  for (const key of [
-    "SHIPPING_QUOTE_SECRET",
-    "MELHOR_ENVIO_OAUTH_ADMIN_SECRET",
-    "CRON_SECRET",
-  ] as const) {
+test("requires strong quote and cron secrets", () => {
+  for (const key of ["SHIPPING_QUOTE_SECRET", "CRON_SECRET"] as const) {
     withMelhorEnvioEnv({ ...valid, [key]: "too-short" }, () => {
       const action = key === "CRON_SECRET" ? getCronSecret : getOAuthEnv
       assert.throws(() => action(), new RegExp(key))
