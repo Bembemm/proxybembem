@@ -7,17 +7,19 @@ const AUTH_FLOW_PATHS = new Set([
   "/admin/mfa",
   "/admin/setup-mfa",
 ])
+const REDIRECT_CACHE_HEADERS = ["cache-control", "expires", "pragma"] as const
 
 function copySupabaseState(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) {
     target.cookies.set(cookie)
   }
 
-  source.headers.forEach((value, key) => {
-    if (key.toLowerCase() !== "location") {
-      target.headers.set(key, value)
+  for (const name of REDIRECT_CACHE_HEADERS) {
+    const value = source.headers.get(name)
+    if (value !== null) {
+      target.headers.set(name, value)
     }
-  })
+  }
 
   return target
 }
