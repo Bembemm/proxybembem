@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation"
 import {
   activateAdminSession,
   authorizeAdminSession,
@@ -11,7 +10,6 @@ import {
   type AdminPrincipal,
 } from "./admin-auth-core.ts"
 import { getAdminAuthEnv } from "./env.ts"
-import { createSupabaseServerClient } from "../supabase/server.ts"
 
 export type AdminAccessFailure =
   | "unauthenticated"
@@ -188,6 +186,7 @@ export async function revokeCurrentAdminSessionWithDependencies(
 }
 
 async function createProductionDependencies(): Promise<AdminAuthDependencies> {
+  const { createSupabaseServerClient } = await import("../supabase/server.ts")
   const supabase = await createSupabaseServerClient()
   const { adminUserId } = getAdminAuthEnv()
 
@@ -242,6 +241,11 @@ export async function revokeCurrentAdminSession(): Promise<void> {
   await revokeCurrentAdminSessionWithDependencies(deps)
 }
 
+async function redirectAdmin(path: string): Promise<never> {
+  const { redirect } = await import("next/navigation")
+  return redirect(path)
+}
+
 export async function requireAdminPageAccess(
   input: { touch?: boolean } = {},
 ): Promise<AdminPrincipal> {
@@ -249,12 +253,12 @@ export async function requireAdminPageAccess(
   if (result.ok) return result.principal
 
   if (result.reason === "mfa_required") {
-    redirect("/admin/mfa")
+    return redirectAdmin("/admin/mfa")
   }
 
   if (result.reason === "unavailable") {
     throw new Error("Admin access unavailable")
   }
 
-  redirect("/admin/login")
+  return redirectAdmin("/admin/login")
 }
