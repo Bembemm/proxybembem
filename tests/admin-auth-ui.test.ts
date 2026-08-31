@@ -128,3 +128,25 @@ test("CSP permits browser auth only to the configured Supabase origin", async ()
   assert.match(config, /connect-src[^\n]*supabase(?:Browser|Auth)Origin/)
   assert.doesNotMatch(config, /\*\.supabase\.co/)
 })
+
+test("admin routes use a dedicated shell instead of storefront chrome", async () => {
+  const rootLayout = await source("../app/layout.tsx")
+  const siteShell = await source("../components/site-shell.tsx")
+  const adminPage = await source("../app/admin/page.tsx")
+
+  assert.match(rootLayout, /SiteShell/)
+  assert.doesNotMatch(rootLayout, /FaqSection|CartFloatingButton|CartPanel|Navbar/)
+
+  assert.match(siteShell, /usePathname/)
+  assert.match(siteShell, /pathname\s*===\s*["']\/admin["']/)
+  assert.match(siteShell, /pathname\.startsWith\(\s*["']\/admin\/["']\s*\)/)
+  assert.match(siteShell, /Navbar/)
+  assert.match(siteShell, /FaqSection/)
+  assert.match(siteShell, /CartFloatingButton/)
+  assert.match(siteShell, /CartPanel/)
+
+  assert.match(adminPage, /Painel administrativo/)
+  assert.match(adminPage, /Integrações/)
+  assert.match(adminPage, /Melhor Envio/)
+  assert.match(adminPage, />Sair</)
+})
