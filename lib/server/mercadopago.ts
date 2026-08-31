@@ -64,6 +64,12 @@ async function mercadoPagoFetch(path: string, accessToken: string, init?: Reques
   return response
 }
 
+function webhooksOnlyNotificationUrl(value: string) {
+  const url = new URL(value)
+  url.searchParams.set("source_news", "webhooks")
+  return url.toString()
+}
+
 export async function createMercadoPagoPreference(
   input: MercadoPagoPreferenceInput,
 ): Promise<MercadoPagoPreference> {
@@ -113,7 +119,7 @@ export async function createMercadoPagoPreference(
         name: input.payerName,
       },
       external_reference: input.orderNumber,
-      notification_url: input.notificationUrl,
+      notification_url: webhooksOnlyNotificationUrl(input.notificationUrl),
       back_urls: {
         success: input.returnUrl,
         pending: input.returnUrl,
