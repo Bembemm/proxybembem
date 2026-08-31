@@ -119,3 +119,12 @@ test("only meaningful protected admin interactions refresh inactivity", async ()
   assert.match(loginPage, /authorizeAdminAccess\s*\(\s*\{\s*touch:\s*false\s*\}\s*\)/)
   assert.doesNotMatch(rootProxy, /authorizeAdminAccess|requireAdminPageAccess|touch:\s*true/)
 })
+
+test("CSP permits browser auth only to the configured Supabase origin", async () => {
+  const config = await source("../next.config.mjs")
+
+  assert.match(config, /NEXT_PUBLIC_SUPABASE_URL/)
+  assert.match(config, /supabase(?:Browser|Auth)Origin/)
+  assert.match(config, /connect-src[^\n]*supabase(?:Browser|Auth)Origin/)
+  assert.doesNotMatch(config, /\*\.supabase\.co/)
+})
