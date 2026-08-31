@@ -28,14 +28,15 @@ function withEnv(
   values: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>,
   run: () => void,
 ) {
+  const env = process.env as Record<string, string | undefined>
   const previous = new Map<string, string | undefined>()
   for (const key of ENV_KEYS) {
-    previous.set(key, process.env[key])
-    delete process.env[key]
+    previous.set(key, env[key])
+    delete env[key]
   }
 
   for (const [key, value] of Object.entries(values)) {
-    if (value !== undefined) process.env[key] = value
+    if (value !== undefined) env[key] = value
   }
 
   try {
@@ -43,8 +44,8 @@ function withEnv(
   } finally {
     for (const key of ENV_KEYS) {
       const value = previous.get(key)
-      if (value === undefined) delete process.env[key]
-      else process.env[key] = value
+      if (value === undefined) delete env[key]
+      else env[key] = value
     }
   }
 }
