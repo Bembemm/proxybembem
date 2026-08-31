@@ -24,8 +24,8 @@ export const metadata: Metadata = {
   description:
     "Decks completos, cartas avulsas e proxies de alta qualidade para Commander, Modern e outros formatos. Envio para todo o Brasil.",
   icons: {
-    icon: "/icon.svg",
-    apple: "/apple-icon.png",
+    icon: "/brand/pb.png",
+    apple: "/brand/pb.png",
   },
 }
 
