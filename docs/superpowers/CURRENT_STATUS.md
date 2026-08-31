@@ -2,105 +2,75 @@
 
 **Updated:** 2026-08-31
 
-This is the canonical continuation checkpoint. Read this file before using old plan checkboxes.
+This is the canonical continuation checkpoint. Read this file before old plan checkboxes.
 
 ## Repository
 
 - Repo: `Bembemm/proxybembem`
 - Branch: `feat/checkout-mercadopago`
-- PR: `#2` — open, draft, not merged
+- PR `#2`: open, draft, not merged.
 - Never merge `main` without explicit owner approval.
-- Current rollout phase: **Production deployed from the checkout branch; Admin Auth/MFA validated in Production; Melhor Envio Production OAuth authorized and active; Production freight quote is the next gate**.
 - `main` remains untouched.
-- Temporary Preview diagnostic routes from earlier checkout acceptance must remain absent.
 
-## Admin Auth foundation — COMPLETE IN PREVIEW AND SMOKE-TESTED IN PRODUCTION
+## Current rollout phase
 
-The `/admin` area uses Supabase Auth with a single owner account and mandatory Authenticator TOTP.
+Production has been deployed from the checkout branch and is live on the final domain.
 
-### Security model now implemented
+Validated in Production:
 
-- exactly one manually provisioned admin account;
+- final domain `https://www.proxybembem.com.br` returns HTTP `200`;
+- Admin login works with password + mandatory Authenticator TOTP;
+- Melhor Envio Production OAuth authorization completed successfully;
+- stored Melhor Envio credential is `production` + `active`, token version `1`, with no auth failure and no refresh lease held;
+- Preview/Sandbox Melhor Envio credential remains separately active;
+- Production freight quote works and exposes only Correios PAC/SEDEX service IDs `1/2`;
+- multiple `/api/shipping/quote` calls returned HTTP `200` after authorization;
+- two quote attempts returned provider `422` during manual testing, followed by successful HTTP `200` quotes; the accepted storefront result displayed only PAC/SEDEX;
+- Mercado Pago Production checkout preference creation has been validated up to the provider checkout page, but no real payment has been completed yet.
+
+## Production deployment evidence
+
+Controlled Production deployment:
+
+- deployment `dpl_C2642ZG5NJofEitrwXoGkpD9gw1t`;
+- target `production`;
+- source branch `feat/checkout-mercadopago`;
+- deployed code commit `c5dea101151e37394bd25beec942b8cec5b0f9b7`;
+- state `READY`;
+- aliases include `www.proxybembem.com.br` and `proxybembem.com.br`;
+- CI `#630` for that deployed commit completed successfully.
+
+## Admin Auth
+
+Admin Auth is complete in Preview and smoke-tested in Production.
+
+Security model:
+
+- one manually provisioned admin account;
 - public signup disabled;
-- immutable owner authorization by Supabase user UUID through server-only `ADMIN_USER_ID`;
+- authorization by immutable Supabase user UUID through server-only `ADMIN_USER_ID`;
 - password first factor;
 - mandatory TOTP Authenticator second factor / AAL2;
-- no SMS fallback;
-- no remembered/trusted-device bypass;
-- no public signup/reset flow in the admin UI;
-- browser receives only Supabase URL + publishable key;
-- `SUPABASE_SECRET_KEY` and `ADMIN_USER_ID` stay server-only;
-- one active application-level admin session per owner;
+- no SMS fallback or trusted-device bypass;
+- one active application-level session;
 - 30-minute server-side inactivity timeout;
-- revoked/expired Supabase `session_id` cannot reactivate an old admin session;
-- fresh app-session activation requires recent password + TOTP AMR evidence;
+- revoked/expired session IDs cannot reactivate;
+- fresh activation requires recent password + TOTP AMR evidence;
 - failures are fail-closed;
-- Melhor Envio OAuth start is protected by authenticated AAL2 admin access;
-- the old visible/manual `MELHOR_ENVIO_OAUTH_ADMIN_SECRET` gate is removed;
-- Melhor Envio callback remains provider-callable and protected by one-shot hashed OAuth state;
-- TOTP recovery has no in-app bypass and is manual through Supabase administration.
-
-### Preview provisioning / database evidence
-
-- Supabase project has exactly one Auth user;
-- exactly one TOTP factor exists and it is verified;
-- `admin_sessions` migration is applied;
-- `admin_sessions` and its RPCs are backend/service-role only;
-- repeated logins from PC/mobile kept only one active admin session at a time;
-- historical admin-session rows are revoked rather than reused.
+- Melhor Envio OAuth start is protected by AAL2 admin access;
+- callback is provider-callable and protected by one-shot hashed OAuth state.
 
 Applied Admin Auth migration:
 
-7. `admin_sessions` / committed file `202608310001_admin_sessions.sql`
+- `202608310001_admin_sessions.sql`
 
-### Live Preview acceptance evidence
+## Production environment
 
-First-time and repeated login were exercised against the real Preview:
-
-- password login succeeded;
-- mandatory TOTP was enrolled and verified;
-- `/api/admin/session/activate` returned HTTP `204` for valid AAL2 activation;
-- invalid 6-digit TOTP was rejected in the UI and created no new admin-session row;
-- logout returned HTTP `303` and the previous application-level session was revoked;
-- subsequent login required password + Authenticator again;
-- repeated PC/mobile logins continued to leave only one active admin session.
-
-The 30-minute inactivity rule was verified against the live Preview/Sandbox database by aging the active row by 31 minutes and invoking the exact `authorize_admin_session` RPC used by the server guard. It returned `expired`, revoked the row, and left `0` active admin sessions. The protected-page redirect/fail-closed path is additionally covered by the automated admin-auth regression suite.
-
-### Browser/runtime issues found during acceptance and fixed
-
-Two real browser-only issues were found and fixed before acceptance:
-
-1. CSP initially blocked browser calls to Supabase Auth. `connect-src` now permits only the exact configured Supabase HTTPS origin, not a wildcard.
-2. `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` were initially accessed dynamically, which was not safe for Next.js browser bundling. They now use statically analyzable `process.env.NEXT_PUBLIC_*` references and are present in the real client bundle.
-
-The admin UI was also separated from the storefront shell:
-
-- `/admin/*` no longer renders the public Navbar, FAQ, footer, floating cart or cart panel;
-- the admin area has its own responsive visual shell/dashboard;
-- the public storefront still renders its normal chrome.
-
-## Production provider fail-closed guard — COMPLETE
-
-Production runtime refuses to use Sandbox provider modes for both payment and freight.
-
-Rules:
-
-- Vercel `VERCEL_ENV=preview` may continue using Mercado Pago Sandbox and Melhor Envio Sandbox even though Next.js builds with `NODE_ENV=production`;
-- Vercel `VERCEL_ENV=production` requires `MERCADO_PAGO_ENVIRONMENT=production` and `MELHOR_ENVIO_ENVIRONMENT=production`;
-- outside Vercel, `NODE_ENV=production` is the fallback Production signal and enforces the same requirement;
-- a mismatched Production/Sandbox configuration throws before provider work, failing closed;
-- Production provider configuration remains allowed when both provider modes are `production`.
-
-Regression coverage lives in `tests/production-provider-env.test.ts` and explicitly covers Preview, Vercel Production and non-Vercel Production behavior.
-
-## Production environment preparation — DEPLOYED, PARTIALLY RUNTIME-VALIDATED
-
-The owner entered the required Production environment values directly in Vercel on 2026-08-31. Secret values were not shared in chat or committed.
+The owner entered the required Production environment values directly in Vercel. Secret values were never shared in chat or committed.
 
 ### Melhor Envio Production
 
-The separate Production application has been created. The following Production-only configuration is present in Vercel:
+Present in Vercel Production:
 
 - `MELHOR_ENVIO_ENVIRONMENT=production`;
 - `MELHOR_ENVIO_CLIENT_ID`;
@@ -112,11 +82,11 @@ The separate Production application has been created. The following Production-o
 - fresh `SHIPPING_QUOTE_SECRET` secret;
 - fresh `CRON_SECRET` secret.
 
-Do not reuse Sandbox Client ID, Client Secret, tokens or the fresh Production-only secrets above. Only `shipping-calculate` remains authorized; label purchase/generation/printing stays manual. Production freight accepts only Correios service IDs `1/2` (PAC/SEDEX).
+Production uses a separate Melhor Envio application and credentials. Only `shipping-calculate` is authorized; label purchase/generation/printing remains manual.
 
-### Production base / Supabase
+### Base / Supabase Production
 
-The following Production values are present in Vercel:
+Present in Vercel Production:
 
 - `NEXT_PUBLIC_SITE_URL=https://www.proxybembem.com.br`;
 - `NEXT_PUBLIC_SUPABASE_URL`;
@@ -128,123 +98,94 @@ The following Production values are present in Vercel:
 
 ### Mercado Pago Production
 
-The following Production values are present in Vercel:
+Present in Vercel Production:
 
 - `MERCADO_PAGO_ENVIRONMENT=production`;
 - `MERCADO_PAGO_ACCESS_TOKEN` as secret;
 - `MERCADO_PAGO_WEBHOOK_SECRET` as secret.
 
-The Production webhook URL configured for the integration is:
+Webhook URL:
 
 `https://www.proxybembem.com.br/api/mercadopago/webhook`
 
-The Production deployment has validated that the application boots with the Production environment and serves the storefront/admin. Mercado Pago payment/webhook behavior still requires the controlled real transaction gate and must not be called accepted yet.
+## Production provider fail-closed guard
 
-## Production deployment and admin/Melhor Envio validation — COMPLETE THROUGH OAUTH
+Complete.
 
-Controlled Production redeploy evidence:
+Rules:
 
-- deployment `dpl_C2642ZG5NJofEitrwXoGkpD9gw1t`;
-- target `production`;
-- source branch `feat/checkout-mercadopago`;
-- deployed code commit `c5dea101151e37394bd25beec942b8cec5b0f9b7`;
-- Vercel state `READY`;
-- final aliases include `www.proxybembem.com.br` and `proxybembem.com.br`;
-- final domain returned HTTP `200` after deployment;
-- CI `#630` for `c5dea101151e37394bd25beec942b8cec5b0f9b7` completed successfully.
+- Vercel Preview may use Sandbox providers;
+- Vercel Production requires both `MERCADO_PAGO_ENVIRONMENT=production` and `MELHOR_ENVIO_ENVIRONMENT=production`;
+- outside Vercel, `NODE_ENV=production` enforces the same requirement;
+- mismatches fail before provider work.
 
-Production admin smoke test:
+Regression coverage: `tests/production-provider-env.test.ts`.
 
-- `/admin/login` returned HTTP `200` on the final domain;
-- owner completed password login plus mandatory Authenticator TOTP;
-- authenticated `/admin` access succeeded.
+## Melhor Envio Production acceptance
 
-Melhor Envio Production OAuth validation:
+Production OAuth acceptance:
 
-- owner opened `/admin/integrations/melhor-envio` while authenticated at AAL2;
-- `Conectar Melhor Envio` completed successfully through the provider authorization flow;
-- database row now exists for environment `production`;
-- status `active`;
+- admin opened `/admin/integrations/melhor-envio` while authenticated at AAL2;
+- `Conectar Melhor Envio` completed successfully;
+- database row for environment `production` is `active`;
 - token version `1`;
-- access-token expiry `2026-09-30 15:39:53.453+00`;
-- no refresh lease held;
+- no refresh lease;
 - no recorded auth failure;
-- Sandbox row remains separately active with token version `7`.
+- no token/envelope value was exposed.
 
-No token/envelope value was read or exposed during validation.
+Production freight acceptance:
 
-## Melhor Envio Production preparation — APP CREATED AND AUTHORIZED
+- storefront displayed only Correios PAC/SEDEX;
+- accepted service IDs are `1/2` only;
+- multiple Production `/api/shipping/quote` requests returned HTTP `200`;
+- the earlier Sandbox Jadlog services remain historical Preview evidence only and are not accepted in Production.
 
-The Production rollout procedure is pinned in `docs/shipping-setup.md` and protected by `tests/melhor-envio-config-docs.test.ts`.
+## Mercado Pago Production checkout — PREFLIGHT PASSED, PAYMENT NOT YET DONE
 
-Production decisions that must not be rediscovered:
+A controlled Production checkout was initiated only up to the Mercado Pago checkout page.
 
-- canonical public domain is `https://www.proxybembem.com.br`;
-- exact Melhor Envio Production callback is `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback`;
-- Production uses a separate Melhor Envio application, Client ID and Client Secret;
-- the owner manually created the Melhor Envio Production application on 2026-08-31;
-- credentials/secrets were entered directly in the Vercel Production environment;
-- Production OAuth authorization is complete and the stored credential is active;
-- no real credential value belongs in chat, screenshots, commits or docs;
-- Preview/Sandbox credentials stay intact.
+Evidence:
 
-TDD evidence for this runbook preparation:
+- `POST /api/checkout` returned HTTP `201` on the Production deployment;
+- latest Production order created: `PB-353342240711`;
+- payment provider: `mercadopago`;
+- payment status: `pending`;
+- Mercado Pago preference ID exists;
+- checkout URL exists;
+- shipping provider: `melhor_envio`;
+- carrier: `Correios`;
+- service ID `2` / `SEDEX`;
+- delivery estimate: `2` days;
+- shipping: R$ 15,16;
+- order total: R$ 135,06;
+- checkout preference lease is cleared;
+- Mercado Pago Checkout Pro page opened successfully;
+- no payment has been completed yet.
 
-- RED commit `320383393448a72851f936b4d7e645b4f23d89c3`;
-- CI `#622` failed with 213 passing / 1 failing test because the exact Production callback was not yet documented;
-- GREEN commit `3472cfcf394d038941414f214b0e66e4040bf748` updated only the runbook;
-- CI `#624` passed tests, typecheck and build;
-- Vercel Preview deployment `dpl_6SKEfLSGkL6a6Na24i7RDWp9AWeS` is `READY`;
-- stable Preview branch alias remains unchanged.
+Do not call Mercado Pago Production fully accepted until one real controlled payment is completed and the webhook/order transition is verified.
 
-## Completed checkout / shipping work
+## Preview/Sandbox historical acceptance
 
-### `3.1.11d` — local fallback validation — COMPLETE
+Completed earlier:
 
-Validated locally:
-
-- full Melhor Envio single-account OAuth lifecycle;
-- OAuth state SHA-256, 10-minute TTL and one-shot consumption;
-- OAuth tokens encrypted with AES-256-GCM before Supabase persistence;
-- automatic token refresh with lease + compare-and-set;
-- protected maintenance refresh/Cron path;
-- real Melhor Envio Sandbox quote;
-- checkout shipping requote;
-- Mercado Pago Sandbox preference creation;
+- checkout/shipping runtime acceptance;
+- Melhor Envio Sandbox OAuth lifecycle;
+- token encryption and refresh lease/CAS;
 - checkout retry/idempotency;
-- concurrent checkout behavior;
 - Supabase order/preference persistence;
-- tests, typecheck and build.
+- concurrent Mercado Pago preference race fixed with `202608300001_checkout_preference_lease.sql`;
+- Admin Auth/MFA Preview acceptance.
 
-### `3.1.11d.18d` — Mercado Pago concurrent preference race — COMPLETE
+Important historical commits:
 
-A live local race that could create two preferences was fixed with the Supabase checkout-preference lease migration:
+- Admin Auth spec `9a377082983cb6535b8558a5ebdd93a48f454389`;
+- Admin Auth plan `92d1656125ed90a56bc48f24e3a6f6fe69d54087`;
+- Admin Auth implementation/tests `97cbefb6cc497363c0286f37fd09043d0cce343e`;
+- Production provider guard GREEN `234018dfeebcf3d45589da295a2d10179c8d8d88`;
+- provider-env test typing fix `cdceeb1fca43760b58197261825400ede82a6149`;
+- Melhor Envio Production runbook GREEN `3472cfcf394d038941414f214b0e66e4040bf748`.
 
-- `202608300001_checkout_preference_lease.sql`
-
-The same checkout attempt now reuses one order/preference and leaves no stale lease. Concurrency ownership is server/database-side.
-
-### `3.1.11b` — Preview/Vercel checkout runtime acceptance — COMPLETE
-
-Checkout/shipping acceptance completed on 2026-08-31.
-
-Key live evidence retained from the accepted run:
-
-- Melhor Envio Sandbox OAuth credential active;
-- maintenance refresh/Cron authenticated path HTTP `200`;
-- unauthenticated maintenance path HTTP `401`;
-- quantity 1 quote: Jadlog `.Com` R$18.15 / 4 days and `.Package` R$22.08 / 5 days;
-- quantity 2 quote: `.Package` R$25.06 / 5 days and `.Com` R$25.60 / 4 days;
-- quantity 1 checkout order `PB-CC97DEC33CF1`, total R$138.05, retry reused the same order and checkout URL;
-- quantity 2 checkout order `PB-D3A19617185E`, total R$264.86, retry reused the same order and checkout URL;
-- checkout-preference leases cleared after completion;
-- no temporary diagnostic endpoint belongs in Production.
-
-The stable Sandbox callback/Preview redirect remains:
-
-`https://proxybembem-git-feat-che-d3796d-brenobembemm1802-7300s-projects.vercel.app/api/melhor-envio/oauth/callback`
-
-## Applied Preview/Sandbox migrations
+Applied migrations:
 
 1. `202608280001_create_orders.sql`
 2. `202608280002_shipping_checkout_hardening.sql`
@@ -256,55 +197,23 @@ The stable Sandbox callback/Preview redirect remains:
 
 ## Exact next project work
 
-Do not rebuild completed Preview/Sandbox systems or repeat the Production deploy/admin/OAuth gates.
-
-Recommended continuation order:
-
-1. Perform a controlled Production freight quote from the final storefront and confirm only Correios PAC/SEDEX service IDs `1/2` are accepted.
-2. Inspect Production runtime logs for that quote and confirm no auth/config/provider failure.
-3. Verify the Mercado Pago Production webhook endpoint/configuration without initiating a payment if a non-payment verification path is available.
-4. Create one controlled real Production checkout only after the freight gate passes.
-5. Perform one controlled real Production transaction and verify payment → webhook → order/database state.
-6. Run the final whole-branch review and take PR #2 out of draft only when the Production rollout gate passes.
+1. Complete one controlled real Mercado Pago Production payment for the already-created pending checkout, using a legitimate buyer/payment method and not a prohibited self-payment setup.
+2. After payment, verify Vercel `/api/mercadopago/webhook` runtime activity, signature validation, provider lookup and HTTP result.
+3. Verify in Supabase that the exact Production order transitions from `pending` to the expected paid/approved state with payment ID, amount and currency checks passing.
+4. Verify the public order page reflects the database state and not only redirect parameters.
+5. If payment/webhook acceptance passes, run final whole-branch review and verification on the same HEAD.
+6. Take PR `#2` out of draft only after the Production rollout gate passes.
 7. Merge to `main` only with explicit owner approval.
-8. Only after checkout/payment/freight Production rollout is finished and validated, begin the planned KingHost migration.
+8. Only after checkout/payment/freight Production rollout is fully validated, begin the planned KingHost migration.
 
 ## Post-checkout objective: KingHost
 
-After checkout/payment/freight is finished and validated, the long-term goal is to migrate the services currently hosted by Vercel and Supabase to KingHost.
+Do not start migration yet. Vercel + Supabase remain the active platform until Production checkout/payment/freight validation is complete.
 
-Vercel + Supabase remain the active development/validation platform until the checkout rollout is complete.
-
-The future KingHost migration must inventory and replace, without weakening security:
-
-- Next.js hosting/API routes;
-- environment variables/secrets;
-- PostgreSQL schema, migrations, data, RLS/grants and RPCs;
-- leases/atomic order and payment operations;
-- Supabase Auth / TOTP admin model;
-- Cron replacement;
-- Melhor Envio OAuth state/tokens/callbacks;
-- Mercado Pago webhook/return URLs;
-- DNS, TLS, backups, validation and rollback.
-
-Do not assume KingHost has one-to-one equivalents for every Supabase feature; design that migration from the actual KingHost plan/capabilities when that phase begins.
-
-## Documentation order for future sessions
-
-1. Read this file first.
-2. Verify actual branch HEAD, CI and Vercel state.
-3. Read `docs/shipping-setup.md` for the current Melhor Envio/admin/Production runbook.
-4. Read `docs/payments-setup.md` for Mercado Pago.
-5. Use older files under `docs/superpowers/plans/` as historical implementation plans, not live progress trackers.
+The future migration must account for Next.js hosting/API routes, env/secrets, PostgreSQL schema/data/RLS/RPCs, auth/TOTP, cron, OAuth tokens/callbacks, Mercado Pago webhooks/returns, DNS/TLS, backups and rollback.
 
 ## End-of-session rule
 
-Every meaningful session must update this file with:
+Every meaningful session must update this file with what passed/failed, blockers, exact next action, relevant HEAD/deployment evidence, and decisions future sessions must not rediscover.
 
-- what passed/failed;
-- any blocker;
-- exact next action;
-- relevant HEAD/deployment evidence;
-- decisions future sessions must not rediscover.
-
-**Resume point:** Production is deployed from `feat/checkout-mercadopago`; the final domain and admin login/MFA work; Melhor Envio Production OAuth is authorized and stored as `production` + `active` with no auth failure. Next perform the controlled Production PAC/SEDEX quote, then validate Mercado Pago Production with one controlled real transaction. Do not merge `main` without explicit owner approval.
+**Resume point:** Production deployment, Admin Auth/MFA, Melhor Envio OAuth and PAC/SEDEX freight are validated. Mercado Pago Production preference creation and redirect to Checkout Pro are validated with order `PB-353342240711` still `pending`. Next complete one controlled legitimate real payment, then verify webhook → provider lookup → database order transition. Never merge `main` without explicit owner approval.
