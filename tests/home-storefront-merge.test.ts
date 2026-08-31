@@ -15,32 +15,35 @@ test("60-card deck advertises R$ 99,99 original price and R$ 69,99 sale price", 
   assert.equal(product.discountPrice, 69.99)
 })
 
-test("home storefront renders the complete trusted product catalog in a products section", () => {
+test("home returns to a featured-products preview instead of rendering the full catalog", () => {
   const home = source("components/pages/home-page.tsx")
 
-  assert.match(home, /import\s*\{\s*products\s*\}\s*from\s*["']@\/data\/products["']/)
-  assert.doesNotMatch(home, /featuredProducts/)
-  assert.match(home, /id=["']produtos["']/)
-  assert.match(home, /products\.map\s*\(/)
+  assert.match(home, /import\s*\{\s*featuredProducts\s*\}\s*from\s*["']@\/data\/products["']/)
+  assert.doesNotMatch(home, /id=["']produtos["']/)
+  assert.match(home, /featuredProducts\.map\s*\(/)
+  assert.match(home, /href=["']\/produtos["']/)
+  assert.match(home, />\s*Ver Todos os Produtos\s*</)
 })
 
-test("home hero renders the Ver produtos shortcut to the products section", () => {
-  const home = source("components/pages/home-page.tsx")
-
-  assert.match(home, /href=["']#produtos["']/)
-  assert.match(home, />\s*Ver produtos\s*</)
-})
-
-test("Produtos navigation points directly to the home storefront section", () => {
+test("Produtos navigation points to the dedicated products page", () => {
   const navbar = source("components/navbar.tsx")
 
-  assert.match(navbar, /label:\s*["']Produtos["']\s*,\s*href:\s*["']\/#produtos["']/)
+  assert.match(navbar, /label:\s*["']Produtos["']\s*,\s*href:\s*["']\/produtos["']/)
+  assert.doesNotMatch(navbar, /href:\s*["']\/#produtos["']/)
 })
 
-test("legacy /produtos route redirects to the home storefront section", () => {
+test("/produtos renders the dedicated ProductsPage instead of redirecting home", () => {
   const route = source("app/produtos/page.tsx")
 
-  assert.match(route, /from\s*["']next\/navigation["']/)
-  assert.match(route, /redirect\s*\(\s*["']\/#produtos["']\s*\)/)
-  assert.doesNotMatch(route, /<ProductsPage\s*\/>/)
+  assert.match(route, /import\s*\{\s*ProductsPage\s*\}\s*from\s*["']@\/components\/pages\/products-page["']/)
+  assert.match(route, /return\s*<ProductsPage\s*\/>/)
+  assert.doesNotMatch(route, /redirect\s*\(/)
+})
+
+test("dedicated ProductsPage keeps catalog filters and the full product list", () => {
+  const page = source("components/pages/products-page.tsx")
+
+  assert.match(page, /Filtros/)
+  assert.match(page, /filteredProducts\.map\s*\(/)
+  assert.match(page, /ProductDetailModal/)
 })
