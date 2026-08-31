@@ -15,6 +15,10 @@ const CLIENT_FILES = [
 const FORBIDDEN_CLIENT_SECRETS =
   /ADMIN_USER_ID|SUPABASE_SECRET_KEY|service_role|MELHOR_ENVIO_|localStorage/
 
+function assertMappedStatus(text: string, status: number) {
+  assert.match(text, new RegExp(`(?:response\\(\\s*${status}\\s*\\)|status:\\s*${status})`))
+}
+
 test("password login exposes no signup or recovery bypass", async () => {
   const form = await source("../app/admin/login/login-form.tsx")
   const page = await source("../app/admin/login/page.tsx")
@@ -80,17 +84,17 @@ test("activation and logout are POST-only same-origin no-store server routes", a
   assert.match(activate, /resolvePublicSiteUrl/)
   assert.match(activate, /isAllowedCheckoutOrigin/)
   assert.match(activate, /activateCurrentAdminSession/)
-  assert.match(activate, /status:\s*204/)
-  assert.match(activate, /status:\s*503/)
-  assert.match(activate, /status:\s*403/)
-  assert.match(activate, /status:\s*401/)
+  assertMappedStatus(activate, 204)
+  assertMappedStatus(activate, 503)
+  assertMappedStatus(activate, 403)
+  assertMappedStatus(activate, 401)
   assert.match(activate, /Cache-Control["']?\s*[,\]:].*no-store/i)
 
   assert.match(logout, /export\s+async\s+function\s+POST|export\s+const\s+POST/)
   assert.match(logout, /resolvePublicSiteUrl/)
   assert.match(logout, /isAllowedCheckoutOrigin/)
   assert.match(logout, /revokeCurrentAdminSession/)
-  assert.match(logout, /status:\s*303/)
+  assertMappedStatus(logout, 303)
   assert.match(logout, /\/admin\/login/)
   assert.match(logout, /private,\s*no-store/i)
 })
