@@ -5,9 +5,11 @@ import test from "node:test"
 import { NextRequest } from "next/server.js"
 import { decryptMelhorEnvioToken } from "../lib/server/melhor-envio-token-crypto.ts"
 
-const ADMIN_SECRET = "admin-secret-1234567890123456789012345678901234567890"
+const LEGACY_ADMIN_SECRET = "admin-secret-1234567890123456789012345678901234567890"
 const RATE_SECRET = "rate-limit-secret-1234567890123456789012345678901234567890"
 const ENCRYPTION_KEY = "a".repeat(64)
+const ADMIN_USER_ID = "11111111-1111-4111-8111-111111111111"
+const AUTH_SESSION_ID = "22222222-2222-4222-8222-222222222222"
 
 const ENV_KEYS = [
   "NEXT_PUBLIC_SITE_URL",
@@ -41,7 +43,7 @@ async function withEnv(run: () => Promise<void>) {
   process.env.MELHOR_ENVIO_REDIRECT_URI =
     "https://preview.example/api/melhor-envio/oauth/callback"
   process.env.MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY = ENCRYPTION_KEY
-  process.env.MELHOR_ENVIO_OAUTH_ADMIN_SECRET = ADMIN_SECRET
+  process.env.MELHOR_ENVIO_OAUTH_ADMIN_SECRET = LEGACY_ADMIN_SECRET
   process.env.MELHOR_ENVIO_USER_AGENT = "ProxyBembem (contato@proxybembem.com.br)"
   process.env.SHIPPING_ORIGIN_CEP = "86730000"
   process.env.SHIPPING_QUOTE_SECRET = "q".repeat(64)
@@ -57,18 +59,13 @@ async function withEnv(run: () => Promise<void>) {
   }
 }
 
-function startRequest(input?: { origin?: string; adminSecret?: string; body?: string }) {
-  const body =
-    input?.body ??
-    new URLSearchParams({ adminSecret: input?.adminSecret ?? ADMIN_SECRET }).toString()
+function startRequest(input?: { origin?: string }) {
   return new NextRequest("https://preview.example/api/internal/melhor-envio/oauth/start", {
     method: "POST",
     headers: {
       origin: input?.origin ?? "https://preview.example",
-      "content-type": "application/x-www-form-urlencoded",
       "x-real-ip": "192.0.2.10",
     },
-    body,
   })
 }
 
@@ -78,92 +75,134 @@ function callbackRequest(query: Record<string, string>) {
   return new NextRequest(url)
 }
 
-async function loadStartRoute() {
-  return import("../app/api/internal/melhor-envio/oauth/start/route.ts")
+async function loadStartHandlerFactory() {
+  return import("../lib/server/melhor-envio-oauth-start.ts")
 }
 
 async function loadCallbackRoute() {
   return import("../app/api/melhor-envio/oauth/callback/route.ts")
 }
 
-test("OAuth start rejects a cross-site Origin before rate limit, secret parsing or provider work", async (t) => {
+function allowedPrincipal() {
+  return {
+    ok: true as const,
+    principal: {
+      userId: ADMIN_USER_ID,
+      authSessionId: AUTH_SESSION_ID,
+      aal: "aal2" as const,
+    },
+  }
+}
+
+test("OAuth start rejects a cross-site Origin before rate limit, admin auth or provider work", async () => {
   await withEnv(async () => {
-    let fetchCalls = 0
-    t.mock.method(globalThis, "fetch", async () => {
-      fetchCalls += 1
-      throw new Error("must not fetch")
+    const { createMelhorEnvioOAuthStartHandler } = await loadStartHandlerFactory()
+    const calls: string[] = []
+    const POST = createMelhorEnvioOAuthStartHandler({
+      authorizeAdmin: async () => {
+        calls.push("auth")
+        return allowedPrincipal()
+      },
+      consumeRateLimit: async () => {
+        calls.push("rate")
+        return true
+      },
+      createOAuthState: async () => {
+        calls.push("state")
+      },
     })
 
-    const { POST } = await loadStartRoute()
     const response = await POST(startRequest({ origin: "https://evil.example" }))
     assert.equal(response.status, 403)
-    assert.equal(fetchCalls, 0)
-    assert.doesNotMatch(await response.text(), new RegExp(ADMIN_SECRET))
+    assert.deepEqual(calls, [])
   })
 })
 
-test("OAuth start rate-limits before accepting the owner secret and never echoes it", async (t) => {
+test("OAuth start rate-limits before admin authorization", async () => {
   await withEnv(async () => {
-    let calls = 0
-    t.mock.method(globalThis, "fetch", async (input: Parameters<typeof fetch>[0]) => {
-      calls += 1
-      assert.equal(
-        new URL(String(input)).pathname,
-        "/rest/v1/rpc/consume_api_rate_limit",
-      )
-      return Response.json(true)
+    const { createMelhorEnvioOAuthStartHandler } = await loadStartHandlerFactory()
+    const calls: string[] = []
+    const POST = createMelhorEnvioOAuthStartHandler({
+      authorizeAdmin: async () => {
+        calls.push("auth")
+        return allowedPrincipal()
+      },
+      consumeRateLimit: async () => {
+        calls.push("rate")
+        return false
+      },
+      createOAuthState: async () => {
+        calls.push("state")
+      },
     })
 
-    const { POST } = await loadStartRoute()
-    const response = await POST(startRequest({ adminSecret: "wrong-secret-value" }))
-    assert.equal(response.status, 401)
-    assert.equal(calls, 1)
-    const text = await response.text()
-    assert.doesNotMatch(text, /wrong-secret-value/)
-    assert.doesNotMatch(text, new RegExp(ADMIN_SECRET))
-  })
-})
-
-test("OAuth start returns 429 when the protected rate-limit bucket denies the attempt", async (t) => {
-  await withEnv(async () => {
-    t.mock.method(globalThis, "fetch", async () => Response.json(false))
-
-    const { POST } = await loadStartRoute()
     const response = await POST(startRequest())
     assert.equal(response.status, 429)
     assert.equal(response.headers.get("retry-after"), "900")
+    assert.deepEqual(calls, ["rate"])
   })
 })
 
-test("OAuth start stores only SHA-256(state) for ten minutes and redirects to least-privilege authorization", async (t) => {
+test("OAuth start requires an AAL2 active admin session and maps failures generically", async () => {
   await withEnv(async () => {
-    let stateInsert: Record<string, unknown> | null = null
-    let calls = 0
+    const { createMelhorEnvioOAuthStartHandler } = await loadStartHandlerFactory()
 
-    t.mock.method(
-      globalThis,
-      "fetch",
-      async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-        calls += 1
-        const url = new URL(String(input))
-        if (url.pathname === "/rest/v1/rpc/consume_api_rate_limit") {
-          return Response.json(true)
-        }
-        if (url.pathname === "/rest/v1/melhor_envio_oauth_states") {
-          stateInsert = JSON.parse(String(init?.body)) as Record<string, unknown>
-          return new Response(null, { status: 201 })
-        }
-        throw new Error(`unexpected fetch ${url}`)
+    for (const [reason, expectedStatus] of [
+      ["mfa_required", 401],
+      ["unauthenticated", 401],
+      ["session_expired", 401],
+      ["not_admin", 403],
+      ["unavailable", 503],
+    ] as const) {
+      let stateCalls = 0
+      const POST = createMelhorEnvioOAuthStartHandler({
+        authorizeAdmin: async () => ({ ok: false as const, reason }),
+        consumeRateLimit: async () => true,
+        createOAuthState: async () => {
+          stateCalls += 1
+        },
+      })
+
+      const response = await POST(startRequest())
+      assert.equal(response.status, expectedStatus, reason)
+      assert.equal(stateCalls, 0, reason)
+      assert.equal(await response.text(), "")
+    }
+  })
+})
+
+test("OAuth start stores only SHA-256(state) for ten minutes after rate limit and admin authorization", async () => {
+  await withEnv(async () => {
+    const { createMelhorEnvioOAuthStartHandler } = await loadStartHandlerFactory()
+    const order: string[] = []
+    let stateInsert: {
+      stateHash: string
+      environment: "sandbox" | "production"
+      expiresAt: string
+    } | null = null
+
+    const POST = createMelhorEnvioOAuthStartHandler({
+      authorizeAdmin: async () => {
+        order.push("auth")
+        return allowedPrincipal()
       },
-    )
+      consumeRateLimit: async () => {
+        order.push("rate")
+        return true
+      },
+      createOAuthState: async (input) => {
+        order.push("state")
+        stateInsert = input
+      },
+    })
 
     const before = Date.now()
-    const { POST } = await loadStartRoute()
     const response = await POST(startRequest())
     const after = Date.now()
 
     assert.equal(response.status, 303)
-    assert.equal(calls, 2)
+    assert.deepEqual(order, ["rate", "auth", "state"])
+
     const location = response.headers.get("location")
     assert.ok(location)
     const authorize = new URL(location)
@@ -174,15 +213,14 @@ test("OAuth start stores only SHA-256(state) for ten minutes and redirects to le
     assert.ok(rawState)
     assert.match(rawState, /^[A-Za-z0-9_-]{43}$/)
 
-    const persistedState = stateInsert as Record<string, unknown> | null
-    assert.ok(persistedState)
-    assert.equal(persistedState.environment, "sandbox")
+    assert.ok(stateInsert)
+    assert.equal(stateInsert.environment, "sandbox")
     assert.equal(
-      persistedState.state_hash,
+      stateInsert.stateHash,
       createHash("sha256").update(rawState).digest("hex"),
     )
-    assert.notEqual(persistedState.state_hash, rawState)
-    const expiresAt = Date.parse(String(persistedState.expires_at))
+    assert.notEqual(stateInsert.stateHash, rawState)
+    const expiresAt = Date.parse(stateInsert.expiresAt)
     assert.ok(expiresAt >= before + 10 * 60 * 1000)
     assert.ok(expiresAt <= after + 10 * 60 * 1000)
     assert.doesNotMatch(location, /client-secret-never-leak|admin-secret/)
@@ -324,16 +362,16 @@ test("OAuth callback exchanges only after state consumption and atomically persi
   })
 })
 
-test("owner integration page uses a non-persistent password POST form", async () => {
+test("owner integration page is protected and contains no manual secret input", async () => {
   const source = await readFile(
     new URL("../app/admin/integrations/melhor-envio/page.tsx", import.meta.url),
     "utf8",
   )
 
-  assert.match(source, /type=["']password["']/)
-  assert.match(source, /name=["']adminSecret["']/)
-  assert.match(source, /autoComplete=["']off["']/)
+  assert.match(source, /requireAdminPageAccess/)
+  assert.match(source, /touch:\s*true/)
   assert.match(source, /method=["']post["']/)
   assert.match(source, /action=["']\/api\/internal\/melhor-envio\/oauth\/start["']/)
+  assert.doesNotMatch(source, /adminSecret|type=["']password["']|Segredo administrativo/i)
   assert.doesNotMatch(source, /localStorage|sessionStorage|document\.cookie/)
 })
