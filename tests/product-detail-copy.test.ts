@@ -20,7 +20,7 @@ test("60-card product explains the offer in buyer-first order", () => {
   assert.deepEqual(product.highlights, [
     "60 cartas",
     "Lista escolhida por você",
-    "Produção em até 3 dias úteis",
+    "Produção em até 5 dias úteis",
   ])
   assert.match(product.description, /Você escolhe as 60 cartas da sua lista/i)
   assert.deepEqual(
@@ -42,7 +42,7 @@ test("product detail keeps the non-official proxy notice clear but non-repetitiv
 
     const prazoSection = product.sections.find((section) => section.title === "PRAZO")
     assert.ok(prazoSection)
-    assert.match(prazoSection.paragraphs.join(" "), /3 dias úteis/i)
+    assert.match(prazoSection.paragraphs.join(" "), /5 dias úteis/i)
 
     assert.equal(product.description.toLocaleUpperCase("pt-BR").includes("NÃO SÃO CARTAS ORIGINAIS"), false)
   }
