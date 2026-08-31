@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 
 const navItems = [
   { label: "Início", href: "/" },
-  { label: "Produtos", href: "/#produtos" },
+  { label: "Produtos", href: "/produtos" },
   { label: "Contato", href: "/contato" },
 ] as const
 
@@ -16,10 +16,8 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
 
-  const isActive = (href: string) => {
-    if (href.includes("#")) return false
-    return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
-  }
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
