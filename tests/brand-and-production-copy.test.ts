@@ -9,7 +9,7 @@ const faqSource = readFileSync(new URL("../components/faq-section.tsx", import.m
 
 test("site uses the ProxyBembem PB artwork for its shared brand mark", () => {
   assert.match(iconSource, /<title>ProxyBembem PB<\/title>/)
-  assert.match(iconSource, /data:image\/png;base64,/)
+  assert.match(iconSource, /data:image\/(?:png|webp);base64,/)
   assert.match(navbarSource, /src="\/icon\.svg"/)
   assert.match(footerSource, /src="\/icon\.svg"/)
 })
