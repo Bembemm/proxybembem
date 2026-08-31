@@ -82,11 +82,12 @@ export function hasFreshPasswordAndTotp(input: {
   if (!row || !Array.isArray(row.amr)) return false
   if (!Number.isSafeInteger(input.nowSeconds)) return false
 
+  const amr = row.amr
   const maxAgeSeconds = input.maxAgeSeconds ?? DEFAULT_FRESHNESS_SECONDS
   if (!Number.isSafeInteger(maxAgeSeconds) || maxAgeSeconds < 0) return false
 
   const fresh = (method: "password" | "totp") =>
-    row.amr.some((value) =>
+    amr.some((value) =>
       isFreshAmrEntry({
         value,
         method,
