@@ -15,7 +15,7 @@ export const products: Product[] = [
     highlights: [
       "100 cartas",
       "Lista escolhida por você",
-      "Produção em até 3 dias úteis",
+      "Produção em até 5 dias úteis",
     ],
     description:
       "Deck com 100 cartas proxy personalizadas, produzido em alta qualidade para jogos casuais, testes e montagem de decks. Você escolhe as 100 cartas da sua lista.",
@@ -53,7 +53,7 @@ export const products: Product[] = [
       },
       {
         title: "PRAZO",
-        paragraphs: ["Produção e postagem em até 3 dias úteis."],
+        paragraphs: ["Produção e postagem em até 5 dias úteis."],
       },
     ],
     shipping: {
@@ -76,7 +76,7 @@ export const products: Product[] = [
     highlights: [
       "60 cartas",
       "Lista escolhida por você",
-      "Produção em até 3 dias úteis",
+      "Produção em até 5 dias úteis",
     ],
     description:
       "Deck com 60 cartas proxy personalizadas, produzido em alta qualidade para jogos casuais, testes e montagem de decks. Você escolhe as 60 cartas da sua lista.",
@@ -114,7 +114,7 @@ export const products: Product[] = [
       },
       {
         title: "PRAZO",
-        paragraphs: ["Produção e postagem em até 3 dias úteis."],
+        paragraphs: ["Produção e postagem em até 5 dias úteis."],
       },
     ],
     shipping: {
