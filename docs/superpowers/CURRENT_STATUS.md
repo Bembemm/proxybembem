@@ -8,7 +8,7 @@ This is the canonical continuation checkpoint. Read this file before older plan 
 
 - Repo: `Bembemm/proxybembem`
 - Active branch: `feat/checkout-mercadopago`
-- PR `#2`: `feat: adicionar checkout seguro com Mercado Pago`, base `main`.
+- PR `#2`: `feat: adicionar checkout seguro com Mercado Pago`, base `main`, open and ready for review.
 - Never merge `main` without explicit owner approval.
 - No provider, Supabase, password or TOTP secrets belong in chat, screenshots, logs, docs or commits.
 - Production rollout was deliberately performed from the reviewed feature branch before merge.
@@ -33,6 +33,41 @@ Validated in Production:
 - no runtime error/fatal cluster was found around the accepted flow.
 
 The controlled acceptance transaction used a temporary R$ 5 validation item plus real SEDEX, totaling R$ 19,22. The temporary item and route have since been completely removed. Historical test/pending orders remain as database history and must not be confused with the accepted payment.
+
+## Storefront consolidation — PREVIEW VALIDATED, NOT YET PRODUCTION
+
+The owner approved consolidating the small product catalog into the home page instead of keeping a separate full products experience.
+
+Approved behavior:
+
+- home is the main storefront and renders the complete trusted product catalog;
+- the hero now leads directly into the product section;
+- product section uses anchor `#produtos` and the navbar `Produtos` item points to `/#produtos`;
+- legacy `/produtos` redirects to `/#produtos`;
+- product cards are larger/more interactive and show discount percentage plus savings;
+- 60-card deck remains R$ 69,99 checkout price but now advertises an original R$ 99,99 crossed-out price;
+- Commander remains R$ 150,00 → R$ 119,90.
+
+TDD evidence:
+
+- RED commit `3e748b94f3f2fdb606921db7be664924a1b4e00e`;
+- RED CI `#670`: 219 tests total, 215 passed and exactly four new storefront-contract tests failed for the four missing behaviors;
+- price commit `e7d66cbe27e2d42e20a54d849f6018cd670fb851`;
+- home storefront commit `db413273c203d3c565657266e74eed19cdbda5eb`;
+- navbar anchor commit `7edb873e6b1db29d611ce97244de8d97fbe470ab`;
+- `/produtos` redirect commit `b9af67934e1f38c97e48d93dc50b9852cc63d362`;
+- GREEN CI `#678` passed `pnpm test`, `pnpm typecheck` and `pnpm build`.
+
+Preview evidence for code HEAD `b9af67934e1f38c97e48d93dc50b9852cc63d362`:
+
+- deployment `dpl_BVW7RMaWhJSarYSnncsSx2vGJEQ5` is `READY`;
+- Preview `/` returned HTTP `200` and rendered both real products;
+- 60-card card displayed R$ 99,99 crossed out, R$ 69,99 current price, `-30%`, and `Economize R$ 30,00`;
+- Commander displayed R$ 150,00 crossed out, R$ 119,90 current price, `-20%`, and `Economize R$ 30,10`;
+- navbar `Produtos` points to `/#produtos`;
+- Preview `/produtos` resolved to the home storefront as designed.
+
+Important: this storefront consolidation has **not** been promoted to Production yet. Production remains on the previously accepted cleanup deployment/commit until the owner explicitly approves/promotes the new Preview. The trusted server checkout price for product ID 2 remains R$ 69,99 because checkout uses `discountPrice`; only the displayed original/reference price changed.
 
 ## Mercado Pago Webhooks-only cleanup — COMPLETE
 
@@ -159,19 +194,21 @@ The PR description was refreshed after review to include all seven migrations, A
 
 ## PR / integration state
 
-PR `#2` is open and mergeable. At the time immediately before this checkpoint commit it was still a draft and unmerged.
+PR `#2` is open, mergeable, ready for review, and unmerged. Its branch now also contains the Preview-validated storefront consolidation described above.
 
-The next safe integration steps are:
+The next safe steps are:
 
-1. Let CI and Preview finish for this documentation-only checkpoint commit.
-2. If green/`READY`, mark PR `#2` ready for review.
-3. Do **not** merge to `main` until the owner explicitly approves the merge.
-4. After the owner decides/finalizes the branch integration, begin the planned KingHost migration as a separate risk-isolated phase.
+1. Wait for CI/Preview on this documentation-only checkpoint HEAD.
+2. If green/`READY`, ask the owner for explicit Production promotion approval for the storefront consolidation.
+3. After promotion, verify the final domain home shows both products/prices and `/produtos` redirects to the home product section.
+4. Update this checkpoint with Production evidence.
+5. Do **not** merge to `main` until the owner explicitly approves the merge.
+6. Only after branch finalization should the planned KingHost migration begin as a separate risk-isolated phase.
 
-This checkpoint commit changes documentation only; it does not require another real payment or another Production promotion to validate runtime behavior.
+No new real Mercado Pago payment is required for this storefront-only change because the trusted discounted checkout price of the 60-card product remains R$ 69,99 and payment/freight processing code was not changed.
 
 ## End-of-session rule
 
 Every meaningful session must update this file with passed/failed evidence, blockers, exact next action, relevant HEAD/deployment evidence, and decisions future sessions must not rediscover.
 
-**Resume point:** Production payment/freight/Admin rollout is accepted, the Webhooks-only fix is live, and the temporary R$ 5 helper is removed from Production. Final branch review found no blocker. Wait for CI/Preview on this documentation checkpoint, then mark PR #2 ready for review if green. Never merge `main` without explicit owner approval.
+**Resume point:** checkout/payment/freight/Admin Production acceptance remains complete. A new home-as-storefront change is GREEN in CI `#678` and Preview `dpl_BVW7RMaWhJSarYSnncsSx2vGJEQ5` at code commit `b9af679...`; it is not yet live in Production. Wait for CI/Preview on this documentation checkpoint, then ask for explicit Production promotion approval. Never merge `main` without explicit owner approval.
