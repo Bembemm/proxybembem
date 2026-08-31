@@ -52,3 +52,16 @@ test("shipping setup documents authorization, automatic refresh and MFA admin ha
   assert.match(source, /nunca.*chat/i)
   assert.match(source, /reauthor/i)
 })
+
+test("production rollout pins the canonical callback and keeps provider credentials isolated", async () => {
+  const source = await readFile(new URL("../docs/shipping-setup.md", import.meta.url), "utf8")
+
+  assert.ok(
+    source.includes("https://www.proxybembem.com.br/api/melhor-envio/oauth/callback"),
+    "Production callback must be documented exactly",
+  )
+  assert.match(source, /aplicativo[^\n]*Production[^\n]*separad|Production[^\n]*aplicativo[^\n]*separad/i)
+  assert.match(source, /segredos?[^\n]*Production[^\n]*(pr[oó]pri|independent)|Production[^\n]*segredos?[^\n]*(pr[oó]pri|independent)/i)
+  assert.match(source, /(?:IDs?|servi[cç]os?)[^\n]*1[^\n]*2[^\n]*(?:PAC|SEDEX)|(?:PAC|SEDEX)[^\n]*1[^\n]*2/i)
+  assert.match(source, /n[aã]o (?:reutilize|copie)[^\n]*(?:Client ID|Client Secret|segredo|credencial)/i)
+})
