@@ -10,12 +10,11 @@ This file is the canonical continuation checkpoint for the checkout/freight work
 - Working branch: `feat/checkout-mercadopago`
 - PR: `#2` — `feat: adicionar checkout seguro com Mercado Pago`
 - PR state: open, draft, not merged
-- Last functional/tested HEAD before this documentation-only checkpoint: `1b8dc27a61dab32cb326f9c7713a550b09728431`
 - Last code-changing functional commit: `803d1483ff2c59d067520044477758900be659c9`
-- Tree is unchanged between `803d148...` and `1b8dc27...`; `1b8dc27...` is an empty `chore: retrigger Vercel preview` commit created only to restart Preview after the Vercel build-rate limit cleared.
-- The commit that adds/updates this continuity documentation is intentionally documentation-only. Future sessions must verify the actual branch HEAD before making changes instead of assuming the SHA written here is still the tip.
-- GitHub CI on `1b8dc27...`: passing.
-- Vercel Preview on `1b8dc27...`: `READY`.
+- `1b8dc27a61dab32cb326f9c7713a550b09728431` is an empty `chore: retrigger Vercel preview` commit with the same functional tree as `803d148...`.
+- Later commits through `a0a0565ba43359c203fc702b961b63fc1207c22e` are continuity/documentation-only changes; they do not change checkout/OAuth runtime behavior.
+- Latest runtime validation in this checkpoint was performed against Vercel deployment `dpl_CryNnUFhKXxa5iKMapfQ4MX6uJAt`, commit `a0a0565...`, state `READY`.
+- GitHub Actions CI for `a0a0565...`: run `#427`, conclusion `success`.
 - Stable branch alias: `proxybembem-git-feat-che-d3796d-brenobembemm1802-7300s-projects.vercel.app`
 - Environment phase: **Preview/Sandbox only**. Production is not approved for rollout yet.
 
@@ -90,34 +89,47 @@ A live local concurrency test exposed a race where two preference creations coul
 - removed `X-Idempotency-Key` from the Mercado Pago preference request;
 - final functional commit for this change: `803d1483ff2c59d067520044477758900be659c9` (`fix: rely on server lease for preference concurrency`).
 
-### `3.1.11b` — Preview/Vercel runtime acceptance — CURRENT TASK
+### `3.1.11b` — Preview/Vercel runtime acceptance — IN PROGRESS
 
-This was the task that was originally blocked by the Vercel daily build-rate limit. The block is now cleared and a Preview for the last functional/tested HEAD is `READY`, so work resumes here.
+This was the task originally blocked by the Vercel daily build-rate limit. The block is cleared. Do **not** repeat the completed OAuth implementation or the local concurrency work unless a Preview failure specifically points back to them.
 
-Do **not** repeat the already-completed OAuth implementation or the local concurrency work unless a Preview failure specifically points back to them.
+## `3.1.11b` progress — 2026-08-31
 
-## Current task: `3.1.11b` Preview/Vercel acceptance
+Completed against the current functional tree on Preview:
 
-Use the stable Preview branch alias and validate the current functional tree in Vercel runtime.
+- [x] Confirmed branch Preview is `READY` on the stable branch alias.
+- [x] Confirmed current GitHub Actions CI success (`#427`).
+- [x] Storefront `/` returns HTTP `200` on Preview.
+- [x] `/admin/integrations/melhor-envio` returns HTTP `200` and still shows the expected owner-secret bootstrap form.
+- [x] Existing valid approved order page returns HTTP `200` from Preview and successfully reads the trusted Supabase order snapshot, including approved status, products, totals, freight and delivery data.
+- [x] Supabase project is `ACTIVE_HEALTHY` in `sa-east-1`.
+- [x] Melhor Envio Sandbox OAuth credential row is `active`, token version `5`, access token expiry `2026-09-29`, no refresh lease and no recorded auth failure.
+- [x] Recent checkout orders have no stale checkout-preference lease.
+- [x] Unauthenticated `GET /api/internal/melhor-envio/refresh` returns HTTP `401 {"ok":false}` as designed.
+- [x] Current deployment build error filter contains no build error; build completed successfully.
+- [x] Current deployment runtime logs for the checks above contain expected `200/401` results and no unexpected runtime error.
 
-Recommended order:
+Still required before marking `3.1.11b` complete:
 
-1. Confirm the current branch HEAD and that Vercel Preview is `READY`.
-2. Load the storefront and the admin integration page in Preview.
-3. Do **not** reauthorize Melhor Envio just because a new Preview exists. Existing Sandbox OAuth credentials should be reused while valid.
-4. If a new OAuth authorization is genuinely required, first make sure the Melhor Envio Sandbox callback and `MELHOR_ENVIO_REDIRECT_URI` point to the stable Preview alias callback exactly; do not use a disposable deployment hostname.
-5. Execute a real Melhor Envio Sandbox quote from Preview and confirm only the expected Sandbox service policy is exposed.
-6. Execute Preview checkout with `quantity=1`: quote → checkout requote → Mercado Pago Sandbox preference → return/order page.
-7. Execute the live acceptance case with `quantity=2` as required by the rollout manifest.
-8. Verify retry/idempotency behavior still reuses the existing order/preference URL.
-9. Verify the maintenance refresh/Cron route in Vercel runtime with its auth behavior. Never expose `CRON_SECRET` in logs or chat.
-10. Verify the resulting Supabase rows remain consistent: no duplicate order/preference for the same checkout attempt and no stale preference lease.
-11. Review Vercel runtime/build logs for unexpected errors.
-12. Update this file with the exact result and next task before ending the work session.
+- [ ] Real `POST /api/shipping/quote` against the **current** Preview deployment, confirming expected Sandbox service policy.
+- [ ] Preview checkout acceptance with `quantity=1`: quote → checkout requote → Mercado Pago Sandbox preference → order/return page.
+- [ ] Preview checkout acceptance with `quantity=2`.
+- [ ] Preview retry/idempotency check proving the same checkout attempt reuses the same order/preference URL.
+- [ ] Authenticated Cron/refresh check using the deployed secret without exposing it, expecting HTTP `200` when authorized.
+- [ ] Final Supabase verification after those new Preview checkouts: no duplicate order/preference and no stale preference lease.
+- [ ] Final runtime-log review after the POST acceptance tests.
+
+### Tooling limitation recorded for continuity
+
+In the 2026-08-31 ChatGPT session, the connected Vercel fetch action can access protected Preview pages but supports GET requests only. The available local shell has no external DNS/network access. Therefore this session cannot directly issue the protected Preview `POST` requests required for shipping quote and checkout acceptance, nor can it send the authenticated Cron secret without reading/exposing that secret.
+
+A project-wide runtime log did show a `POST /api/shipping/quote 200` at 03:14:32, but it belonged to older deployment `dpl_3i7mr13QKGJxbfDVF79F9aX7Pabs` / commit `b67da843...`, not the current Preview deployment, so it **does not count** as current-head acceptance.
+
+A future session with interactive browser/Cloud Browser/agent-browser access to the protected Preview, or an authorized runner that can POST to it without exposing secrets, should continue with the unchecked items above. Do not restart from `3.1.11d`.
 
 ### Completion gate for `3.1.11b`
 
-Mark `3.1.11b` complete only when the current Preview tree passes the runtime acceptance checks above. A green build alone is not the full acceptance gate.
+Mark `3.1.11b` complete only when the remaining current-Preview POST checks pass. A green build and GET-only runtime checks are not the full acceptance gate.
 
 ## Current migrations applied to Preview/Sandbox
 
@@ -244,4 +256,4 @@ Before ending a meaningful work session, update this file with:
 
 ## Next-session instruction
 
-**Start at `3.1.11b` Preview/Vercel runtime acceptance.** The Vercel build-rate blocker is resolved and the last functional/tested Preview is `READY`; the next work is runtime acceptance, not rebuilding OAuth or redoing `3.1.11d` local concurrency tests.
+**Continue `3.1.11b` from the remaining unchecked POST/Cron acceptance items above.** Do not rebuild Melhor Envio OAuth and do not redo `3.1.11d` local concurrency tests unless a current Preview regression specifically requires it.
