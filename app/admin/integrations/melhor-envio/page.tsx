@@ -1,3 +1,5 @@
+import { requireAdminPageAccess } from "../../../../lib/server/admin-auth.ts"
+
 type PageSearchParams = Promise<{
   status?: string | string[]
 }>
@@ -9,6 +11,8 @@ export default async function MelhorEnvioIntegrationPage({
 }: {
   searchParams: PageSearchParams
 }) {
+  await requireAdminPageAccess({ touch: true })
+
   const params = await searchParams
   const rawStatus = Array.isArray(params.status) ? params.status[0] : params.status
   const message =
@@ -33,24 +37,7 @@ export default async function MelhorEnvioIntegrationPage({
         </p>
       ) : null}
 
-      <form
-        method="post"
-        action="/api/internal/melhor-envio/oauth/start"
-        className="space-y-4"
-      >
-        <div className="space-y-2">
-          <label htmlFor="adminSecret" className="block text-sm font-medium">
-            Segredo administrativo
-          </label>
-          <input
-            id="adminSecret"
-            type="password"
-            name="adminSecret"
-            autoComplete="off"
-            required
-            className="w-full rounded-md border px-3 py-2"
-          />
-        </div>
+      <form method="post" action="/api/internal/melhor-envio/oauth/start">
         <button type="submit" className="rounded-md border px-4 py-2 text-sm font-medium">
           Conectar Melhor Envio
         </button>
