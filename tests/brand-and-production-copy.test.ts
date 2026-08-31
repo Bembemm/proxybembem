@@ -2,16 +2,21 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const iconSource = readFileSync(new URL("../public/icon.svg", import.meta.url), "utf8")
 const navbarSource = readFileSync(new URL("../components/navbar.tsx", import.meta.url), "utf8")
 const footerSource = readFileSync(new URL("../components/footer.tsx", import.meta.url), "utf8")
+const layoutSource = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8")
+const brandRouteSource = readFileSync(new URL("../app/brand/pb.png/route.ts", import.meta.url), "utf8")
 const faqSource = readFileSync(new URL("../components/faq-section.tsx", import.meta.url), "utf8")
 
-test("site uses the ProxyBembem PB artwork for its shared brand mark", () => {
-  assert.match(iconSource, /<title>ProxyBembem PB<\/title>/)
-  assert.match(iconSource, /data:image\/(?:png|webp);base64,/)
-  assert.match(navbarSource, /src="\/icon\.svg"/)
-  assert.match(footerSource, /src="\/icon\.svg"/)
+test("shared PB brand mark uses a direct PNG response instead of raster inside SVG", () => {
+  assert.match(brandRouteSource, /Content-Type["']?:\s*["']image\/png/i)
+  assert.match(brandRouteSource, /Buffer\.from\([^,]+,\s*["']base64["']\)/)
+  assert.match(navbarSource, /src="\/brand\/pb\.png"/)
+  assert.match(footerSource, /src="\/brand\/pb\.png"/)
+  assert.match(layoutSource, /icon:\s*"\/brand\/pb\.png"/)
+  assert.match(layoutSource, /apple:\s*"\/brand\/pb\.png"/)
+  assert.equal(navbarSource.includes("/icon.svg"), false)
+  assert.equal(footerSource.includes("/icon.svg"), false)
 })
 
 test("customer-facing production copy consistently says up to five business days", () => {
