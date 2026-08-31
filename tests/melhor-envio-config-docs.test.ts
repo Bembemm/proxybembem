@@ -26,23 +26,29 @@ test("environment example documents the final OAuth contract without obsolete to
   assert.equal(source.includes(OBSOLETE_ADMIN_SECRET), false)
 })
 
-test("shipping setup documents authorization, automatic refresh and secret handling", async () => {
+test("shipping setup documents authorization, automatic refresh and MFA admin handling", async () => {
   const source = await readFile(new URL("../docs/shipping-setup.md", import.meta.url), "utf8")
 
   for (const expected of [
     "shipping-calculate",
+    "/admin/login",
     "/admin/integrations/melhor-envio",
     "/api/melhor-envio/oauth/callback",
+    "Authenticator",
+    "30 minutos",
     "refresh_token",
     "CRON_SECRET",
     "openssl rand -hex 32",
     "Sandbox",
     "Production",
+    "Supabase",
   ]) {
     assert.ok(source.includes(expected), `shipping setup must include ${expected}`)
   }
 
   assert.equal(source.includes(LEGACY_TOKEN_NAME), false)
+  assert.equal(source.includes(OBSOLETE_ADMIN_SECRET), false)
+  assert.match(source, /recupera[^\n]*Supabase|Supabase[^\n]*recupera/i)
   assert.match(source, /nunca.*chat/i)
   assert.match(source, /reauthor/i)
 })
