@@ -137,16 +137,28 @@ Security model remains unchanged:
 6. `202608300001_checkout_preference_lease.sql`
 7. `202608310001_admin_sessions.sql`
 
+## Hero `Ver produtos` shortcut — RESTORED, GREEN, PREVIEW-ONLY
+
+The hero shortcut was temporarily removed in `c8cfa6c52039cb18c2678bfcfe85577e40fd06a1`, but the owner reversed that presentation decision and explicitly requested it back. The navbar `Produtos` entry was never removed.
+
+TDD evidence for the restoration:
+
+- RED contract commit `77561f5b35ee2e5b27066e7411b75685ffed3901`;
+- RED CI `#723`: 225 tests total, 224 passed and exactly one expected failure because the home hero lacked `href="#produtos"` / `Ver produtos`;
+- implementation `6304a68efebdd5f52b0742d7eb5123686197ff5e` restores the original hero button and `next/link` import;
+- GREEN CI `#725`: `pnpm test`, `pnpm typecheck` and `pnpm build` all passed;
+- checkout/payment/freight code was not changed by this presentation reversal.
+
 ## PR / integration state
 
-PR `#2` remains open and unmerged. The branch contains the Production-accepted checkout stack plus Preview-only storefront consolidation, modal refresh, five-business-day production copy and PB branding.
+PR `#2` remains open and unmerged. The branch contains the Production-accepted checkout stack plus Preview-only storefront consolidation, modal refresh, five-business-day production copy, PB branding and the restored hero `Ver produtos` shortcut.
 
 Next safe steps:
 
 1. Wait for CI/Preview on this documentation checkpoint HEAD.
 2. Owner opens the newest Preview on the same Android/browser that showed the broken image and confirms the PB renders.
 3. If visually accepted, ask for explicit owner approval before any Production promotion of the presentation bundle.
-4. After future Production promotion, verify canonical-domain home, prices, `/produtos` redirect, PB header/footer/favicon, five-day copy and no runtime error cluster.
+4. After future Production promotion, verify canonical-domain home, prices, `/produtos` redirect, hero `Ver produtos`, PB header/footer/favicon, five-day copy and no runtime error cluster.
 5. Do **not** merge to `main` without explicit owner approval.
 6. Begin KingHost migration only after branch finalization as a separate risk-isolated phase.
 
@@ -156,4 +168,4 @@ No new real Mercado Pago payment is required for these presentation/copy/brandin
 
 Every meaningful session must update this file with passed/failed evidence, blockers, exact next action, relevant HEAD/deployment evidence and decisions future sessions must not rediscover.
 
-**Resume point:** checkout/payment/freight/Admin Production acceptance is complete. New storefront/modal/five-day/PB work remains Preview-only. The nested WebP-inside-SVG PB method failed on the owner's Android browser and has been replaced by a direct PNG response. Code commit `6be47614...` is GREEN (CI `#716`) and Preview `dpl_5PMwYjf2Qsp5Sw5rrRh1qLKqRgzC` is `READY`. Next action is manual confirmation on the affected phone, then explicit Production approval if accepted. Never merge `main` without explicit owner approval.
+**Resume point:** checkout/payment/freight/Admin Production acceptance is complete. New storefront/modal/five-day/PB work remains Preview-only. The hero `Ver produtos` shortcut was restored by owner decision in `6304a68...` and is GREEN in CI `#725`; the navbar `Produtos` entry was never removed. The nested WebP-inside-SVG PB method failed on the owner's Android browser and has been replaced by a direct PNG response. Manual PB confirmation on the affected phone remains pending, followed by explicit Production approval if accepted. Never merge `main` without explicit owner approval.
