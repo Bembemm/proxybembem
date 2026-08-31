@@ -32,6 +32,14 @@ test("proxy validates claims instead of trusting getSession and never touches ad
   assert.match(text, /\/admin\/setup-mfa/)
 })
 
+test("proxy redirect copies only explicit cache-safety headers, never internal control headers", async () => {
+  const text = await source("../lib/supabase/proxy.ts")
+  assert.match(text, /cache-control/i)
+  assert.match(text, /expires/i)
+  assert.match(text, /pragma/i)
+  assert.doesNotMatch(text, /source\.headers\.forEach/)
+})
+
 test("root Next proxy is narrowly matched to admin auth surfaces", async () => {
   const text = await source("../proxy.ts")
   assert.match(text, /updateSupabaseSession/)
