@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto"
 import { NextRequest } from "next/server"
 import { POST as checkoutPost } from "@/app/api/checkout/route"
 import { POST as shippingQuotePost } from "@/app/api/shipping/quote/route"
+import { getMelhorEnvioEnv } from "@/lib/server/env"
+import { getMelhorEnvioAccessToken } from "@/lib/server/melhor-envio-token-manager"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -28,6 +30,50 @@ async function readJson(response: Response) {
     return (await response.json()) as Record<string, unknown>
   } catch {
     return {} as Record<string, unknown>
+  }
+}
+
+async function authDiagnostic() {
+  let environment: string | null = null
+  let configOk = false
+  try {
+    const config = getMelhorEnvioEnv()
+    environment = config.environment
+    configOk = true
+  } catch (error) {
+    return {
+      configOk: false,
+      environment,
+      tokenOk: false,
+      tokenVersion: null,
+      errorName: error instanceof Error ? error.name : "unknown",
+      errorCode: null,
+    }
+  }
+
+  try {
+    const token = await getMelhorEnvioAccessToken()
+    return {
+      configOk,
+      environment,
+      tokenOk: true,
+      tokenVersion: token.tokenVersion,
+      errorName: null,
+      errorCode: null,
+    }
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error && typeof error.code === "string"
+        ? error.code
+        : null
+    return {
+      configOk,
+      environment,
+      tokenOk: false,
+      tokenVersion: null,
+      errorName: error instanceof Error ? error.name : "unknown",
+      errorCode: code,
+    }
   }
 }
 
@@ -119,7 +165,7 @@ function tokenForService(options: unknown[], serviceId: unknown) {
 async function acceptedCheckout(quantity: number, initialQuote: Awaited<ReturnType<typeof quote>>) {
   const firstOption = initialQuote.rawOptions[0] as Record<string, unknown> | undefined
   if (!firstOption || typeof firstOption.quoteToken !== "string") {
-    return { first: null, retry: null, attemptId: null }
+    return { first: null, retry: null }
   }
 
   const attemptId = randomUUID()
@@ -138,7 +184,7 @@ async function acceptedCheckout(quantity: number, initialQuote: Awaited<ReturnTy
     ? await checkout({ quantity, selectedQuoteToken, checkoutAttemptId: attemptId })
     : null
 
-  return { first, retry, attemptId }
+  return { first, retry }
 }
 
 export async function GET() {
@@ -146,6 +192,7 @@ export async function GET() {
     return Response.json({ ok: false, error: "not_preview" }, { status: 404 })
   }
 
+  const auth = await authDiagnostic()
   const q1 = await quote(1)
   const q2 = await quote(2)
   const checkout1 = q1.status === 200 ? await acceptedCheckout(1, q1) : null
@@ -183,6 +230,7 @@ export async function GET() {
     {
       ok: true,
       environment: process.env.VERCEL_ENV,
+      melhorEnvioAuth: auth,
       quote1: { status: q1.status, options: q1.options, error: q1.error },
       quote2: { status: q2.status, options: q2.options, error: q2.error },
       checkout1: sanitizedCheckout(checkout1),
