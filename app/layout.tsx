@@ -1,13 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Crimson_Text, MedievalSharp } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
-import { AnimatedBackground } from "@/components/animated-background"
-import { CartPanel } from "@/components/cart-panel"
-import { FaqSection } from "@/components/faq-section"
-import { Footer } from "@/components/footer"
-import { Navbar } from "@/components/navbar"
-import { CartFloatingButton } from "@/components/whatsapp-button"
-import { CartProvider } from "@/contexts/cart-context"
+import { SiteShell } from "@/components/site-shell"
 import "./globals.css"
 
 const medievalSharp = MedievalSharp({
@@ -45,17 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="pt-BR" className={`${medievalSharp.variable} ${crimsonText.variable} bg-slate-50`}>
       <body className="font-serif antialiased bg-slate-50 min-h-screen overflow-x-hidden">
-        <CartProvider>
-          <main className="min-h-screen relative w-full overflow-x-hidden">
-            <AnimatedBackground />
-            <Navbar />
-            {children}
-            <FaqSection />
-            <Footer />
-            <CartFloatingButton />
-            <CartPanel />
-          </main>
-        </CartProvider>
+        <SiteShell>{children}</SiteShell>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
