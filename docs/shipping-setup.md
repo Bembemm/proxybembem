@@ -243,8 +243,47 @@ Antes de Production, confirme:
 
 ## 11. Migração para Production
 
-Production deve usar **outro aplicativo/credenciais do Melhor Envio** e `MELHOR_ENVIO_ENVIRONMENT=production`. Configure o callback produtivo HTTPS exato e gere segredos próprios para Production; não copie segredos do Preview apenas por conveniência.
+Production usa o domínio canônico `https://www.proxybembem.com.br` e deve ter um **aplicativo Production separado** no Melhor Envio. Não reutilize Client ID, Client Secret, token, segredo ou credencial do Sandbox.
 
-Preview e Production também devem manter configuração de Auth e credenciais operacionais separadas. Não use o gate de Preview como justificativa para ativar Production automaticamente.
+O callback exato a cadastrar no aplicativo Production e a configurar em `MELHOR_ENVIO_REDIRECT_URI` é:
 
-A troca só deve acontecer depois que o fluxo completo de Preview/Sandbox estiver verde, incluindo Authenticator, sessão administrativa de 30 minutos, OAuth, persistência criptografada, cotação real e verificação de segurança do Supabase. A configuração de Production será feita em uma etapa posterior e não exige alterar a arquitetura do checkout.
+```text
+https://www.proxybembem.com.br/api/melhor-envio/oauth/callback
+```
+
+A URL acima deve coincidir exatamente entre o painel do Melhor Envio e o runtime de Production. Não use o callback do Preview e não troque `www.proxybembem.com.br` por outro host durante a autorização.
+
+O contrato de runtime para Production é:
+
+```text
+MELHOR_ENVIO_ENVIRONMENT=production
+MELHOR_ENVIO_CLIENT_ID=<configurar diretamente no secret store>
+MELHOR_ENVIO_CLIENT_SECRET=<configurar diretamente no secret store>
+MELHOR_ENVIO_REDIRECT_URI=https://www.proxybembem.com.br/api/melhor-envio/oauth/callback
+MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY=<novo valor Production>
+SHIPPING_QUOTE_SECRET=<novo valor Production>
+CRON_SECRET=<novo valor Production>
+```
+
+Use **segredos Production próprios e independentes**. Não copie `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` ou outros segredos do Preview/Sandbox apenas por conveniência. Os valores reais devem ser inseridos diretamente no secret store da hospedagem e nunca registrados neste arquivo.
+
+O aplicativo Production continua solicitando somente o scope `shipping-calculate`. Compra, geração e impressão de etiqueta permanecem manuais nesta versão.
+
+Em Production, o código solicita e aceita somente os **serviços IDs 1 e 2 do Correios: PAC e SEDEX**. Resultado de outro serviço deve ser descartado; ausência de PAC/SEDEX válidos faz a cotação falhar de forma controlada, sem fallback para modalidades inesperadas.
+
+### Ordem de ativação Production
+
+1. manter o Preview/Sandbox atual funcionando e não alterar suas credenciais;
+2. criar o aplicativo Production separado no Melhor Envio;
+3. cadastrar exatamente `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback`;
+4. habilitar somente `shipping-calculate`;
+5. configurar no ambiente Production as credenciais e segredos próprios, sem enviar valores por chat ou commit;
+6. confirmar `MELHOR_ENVIO_ENVIRONMENT=production` antes de qualquer autorização real;
+7. entrar no admin por senha + Authenticator e iniciar a autorização do Melhor Envio;
+8. confirmar que a credencial persistida pertence ao ambiente `production` e está ativa, sem expor tokens;
+9. fazer uma cotação controlada e aceitar somente PAC/SEDEX IDs `1/2`;
+10. verificar Cron/refresh e logs sanitizados antes de avançar para o Mercado Pago Production.
+
+Preview e Production também devem manter configuração de Auth e credenciais operacionais separadas. A trava fail-closed já impede um runtime Production de operar com `MELHOR_ENVIO_ENVIRONMENT=sandbox`; não use essa proteção como justificativa para copiar credenciais ou ativar Production automaticamente.
+
+A ativação real só deve acontecer depois que o fluxo completo de Preview/Sandbox estiver verde. Esta etapa prepara o procedimento e o contrato, mas não cria credenciais, não autoriza Production e não altera a arquitetura do checkout.
