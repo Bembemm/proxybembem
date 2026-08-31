@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto"
 import { NextRequest } from "next/server"
 import { POST as checkoutPost } from "@/app/api/checkout/route"
+import { GET as refreshGet } from "@/app/api/internal/melhor-envio/refresh/route"
 import { POST as shippingQuotePost } from "@/app/api/shipping/quote/route"
+import { getCronSecret } from "@/lib/server/env"
 import { getMelhorEnvioAccessToken } from "@/lib/server/melhor-envio-token-manager"
 
 export const runtime = "nodejs"
@@ -9,9 +11,13 @@ export const dynamic = "force-dynamic"
 
 const DESTINATION_CEP = "01001000"
 
+function configuredOrigin() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+  return siteUrl ? new URL(siteUrl).origin : "https://preview.proxybembem.invalid"
+}
+
 function makeRequest(path: string, body: unknown, scope: string) {
-  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL?.trim()
-  const origin = configuredOrigin ? new URL(configuredOrigin).origin : "https://preview.proxybembem.invalid"
+  const origin = configuredOrigin()
 
   return new NextRequest(`${origin}${path}`, {
     method: "POST",
@@ -45,6 +51,20 @@ async function tokenDiagnostic() {
           ? error.code
           : null,
     }
+  }
+}
+
+async function cronDiagnostic() {
+  try {
+    const response = await refreshGet(
+      new Request(`${configuredOrigin()}/api/internal/melhor-envio/refresh`, {
+        headers: { authorization: `Bearer ${getCronSecret()}` },
+      }),
+    )
+    const body = await readJson(response)
+    return { status: response.status, ok: body.ok === true }
+  } catch {
+    return { status: 503, ok: false }
   }
 }
 
@@ -160,6 +180,7 @@ export async function GET() {
   }
 
   const token = await tokenDiagnostic()
+  const cron = await cronDiagnostic()
   const q1 = await quote(1)
   const q2 = await quote(2)
   const checkout1 = q1.status === 200 ? await acceptedCheckout(1, q1) : null
@@ -198,11 +219,12 @@ export async function GET() {
       ok: true,
       environment: process.env.VERCEL_ENV,
       token,
+      cron,
       quote1: { status: q1.status, options: q1.options, error: q1.error },
       quote2: { status: q2.status, options: q2.options, error: q2.error },
       checkout1: sanitize(checkout1),
       checkout2: sanitize(checkout2),
     },
-    { headers: { "Cache-Control": "no-store" } },
+    { headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } },
   )
 }
