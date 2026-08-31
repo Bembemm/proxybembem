@@ -8,9 +8,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { ProductDetailModal } from "@/components/product-detail-modal"
 import { useCart, type Product } from "@/contexts/cart-context"
-import { products } from "@/data/products"
+import { storefrontProducts } from "@/data/products"
 
-const categories = Array.from(new Set(products.map((product) => product.category)))
+const categories = Array.from(
+  new Set(storefrontProducts.map((product) => product.category)),
+)
 
 function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -81,7 +83,7 @@ export function ProductsPage() {
     )
   }
 
-  const filteredProducts = products.filter(
+  const filteredProducts = storefrontProducts.filter(
     (product) =>
       selectedCategories.length === 0 || selectedCategories.includes(product.category),
   )
