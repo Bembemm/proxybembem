@@ -10,8 +10,8 @@ This is the canonical continuation checkpoint. Read this file before using old p
 - Branch: `feat/checkout-mercadopago`
 - PR: `#2` — open, draft, not merged
 - Never merge `main` without explicit owner approval.
-- Current rollout phase: **Preview/Sandbox accepted, including Admin Auth/MFA; Production provider guard implemented**.
-- Production credentials/provider rollout has not started.
+- Current rollout phase: **Preview/Sandbox accepted, including Admin Auth/MFA; Production provider guard implemented; Melhor Envio Production runbook prepared**.
+- Production credentials/provider authorization has not started.
 - `main` remains untouched by the Preview acceptance work.
 - Temporary Preview diagnostic routes from earlier checkout acceptance must remain absent.
 
@@ -118,17 +118,32 @@ Regression coverage lives in `tests/production-provider-env.test.ts` and explici
 
 A first Vercel build of this change exposed only a TypeScript issue in the new test helper because Next's env typing treats `NODE_ENV` as readonly. The runtime guard itself was not the cause. The test helper was corrected to manipulate an indexed env record; no Production runtime logic was weakened.
 
-### Current Preview / CI evidence
+## Melhor Envio Production preparation — RUNBOOK READY, NOT ACTIVATED
 
-Current accepted feature-branch code before this status-only commit:
+The Production rollout procedure is now pinned in `docs/shipping-setup.md` and protected by `tests/melhor-envio-config-docs.test.ts`.
 
-- HEAD: `cdceeb1fca43760b58197261825400ede82a6149`;
-- Vercel deployment: `dpl_EPA9mrCmJ8tGw9on7x8fFQQb1X4R`;
-- deployment state: `READY`;
-- branch alias remains the stable `feat/checkout-mercadopago` Preview alias;
-- GitHub Actions CI `#618`: success;
-- CI verified all tests, typecheck and build;
-- the new provider guard regression confirms Preview/Sandbox remains allowed while Production/Sandbox is blocked.
+Production decisions that must not be rediscovered:
+
+- canonical public domain is `https://www.proxybembem.com.br`;
+- exact Melhor Envio Production callback is `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback`;
+- Production must use a separate Melhor Envio application, Client ID and Client Secret;
+- do not reuse Sandbox Client ID, Client Secret, tokens or server-side secrets;
+- Production must generate its own `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` and other server-side secrets;
+- only `shipping-calculate` remains authorized; label purchase/generation/printing stays manual;
+- Production freight accepts only Correios service IDs `1/2` (PAC/SEDEX), with no fallback to unexpected services;
+- Preview/Sandbox credentials stay intact while Production is prepared;
+- no real credential value belongs in chat, screenshots, commits or docs.
+
+TDD evidence for this runbook preparation:
+
+- RED commit `320383393448a72851f936b4d7e645b4f23d89c3`;
+- CI `#622` failed with 213 passing / 1 failing test because the exact Production callback was not yet documented;
+- GREEN commit `3472cfcf394d038941414f214b0e66e4040bf748` updated only the runbook;
+- CI `#624` passed tests, typecheck and build;
+- Vercel Preview deployment `dpl_6SKEfLSGkL6a6Na24i7RDWp9AWeS` is `READY`;
+- stable Preview branch alias remains unchanged.
+
+No Melhor Envio Production application has been created or authorized by this step, and no Production credentials have been configured yet.
 
 ## Completed checkout / shipping work
 
@@ -189,16 +204,19 @@ The stable Sandbox callback/Preview redirect remains:
 
 ## Exact next project work
 
-Admin Auth and checkout/shipping are accepted in Preview/Sandbox, and the Production/Sandbox provider mismatch guard is implemented. Do not rebuild those completed subsystems when resuming.
+Admin Auth and checkout/shipping are accepted in Preview/Sandbox, the Production/Sandbox provider mismatch guard is implemented, and the Melhor Envio Production runbook is ready. Do not rebuild those completed subsystems when resuming.
 
 Recommended continuation order:
 
-1. Configure a separate Melhor Envio Production app/credentials/OAuth and verify Production accepts only Correios service IDs `1/2` (PAC/SEDEX); fail closed otherwise.
-2. Configure separate Mercado Pago Production credentials/webhook and the final public site URL.
-3. Perform one controlled real Production transaction and verify payment → webhook → order/database state.
-4. Run the final whole-branch review and take PR #2 out of draft only when the Production rollout gate passes.
-5. Merge to `main` only with explicit owner approval.
-6. Only after checkout/payment/freight Production rollout is finished and validated, begin the planned KingHost migration.
+1. In the Melhor Envio Production account, create a separate Production application with callback exactly `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback` and only `shipping-calculate`. Do not paste Client Secret into chat.
+2. Configure the resulting Melhor Envio Production credentials and fresh Production-only secrets directly in the Production secret store, with `MELHOR_ENVIO_ENVIRONMENT=production`.
+3. Authorize Melhor Envio through the MFA-protected admin and verify the stored credential is `production` + active without exposing tokens.
+4. Perform a controlled Production freight quote and confirm only Correios PAC/SEDEX service IDs `1/2` are accepted.
+5. Configure separate Mercado Pago Production credentials/webhook and the final public site URL.
+6. Perform one controlled real Production transaction and verify payment → webhook → order/database state.
+7. Run the final whole-branch review and take PR #2 out of draft only when the Production rollout gate passes.
+8. Merge to `main` only with explicit owner approval.
+9. Only after checkout/payment/freight Production rollout is finished and validated, begin the planned KingHost migration.
 
 ## Post-checkout objective: KingHost
 
@@ -224,7 +242,7 @@ Do not assume KingHost has one-to-one equivalents for every Supabase feature; de
 
 1. Read this file first.
 2. Verify actual branch HEAD, CI and Vercel state.
-3. Read `docs/shipping-setup.md` for the current Melhor Envio/admin runbook.
+3. Read `docs/shipping-setup.md` for the current Melhor Envio/admin/Production runbook.
 4. Read `docs/payments-setup.md` for Mercado Pago.
 5. Use older files under `docs/superpowers/plans/` as historical implementation plans, not live progress trackers.
 
@@ -238,4 +256,4 @@ Every meaningful session must update this file with:
 - relevant HEAD/deployment evidence;
 - decisions future sessions must not rediscover.
 
-**Resume point:** Admin Auth/MFA and checkout/shipping are complete in Preview/Sandbox, and Production provider fail-closed hardening is complete. Production credentials/provider rollout has not started. Next configure the separate Melhor Envio Production app/credentials/OAuth; do not merge to `main` without explicit owner approval.
+**Resume point:** Admin Auth/MFA and checkout/shipping are complete in Preview/Sandbox, Production provider fail-closed hardening is complete, and the Melhor Envio Production rollout runbook is ready. Production credentials/provider authorization has not started. Next create the separate Melhor Envio Production application with the exact canonical callback and only `shipping-calculate`; do not merge to `main` without explicit owner approval.
