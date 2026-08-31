@@ -30,7 +30,6 @@ export interface MelhorEnvioOAuthEnv {
   clientSecret: string
   redirectUri: string
   tokenEncryptionKey: string
-  oauthAdminSecret: string
   userAgent: string
   originCep: string
   quoteSecret: string
@@ -156,7 +155,6 @@ export function getMelhorEnvioOAuthEnv(): MelhorEnvioOAuthEnv {
     clientSecret: required("MELHOR_ENVIO_CLIENT_SECRET"),
     redirectUri,
     tokenEncryptionKey,
-    oauthAdminSecret: requireStrongSecret("MELHOR_ENVIO_OAUTH_ADMIN_SECRET"),
     userAgent: required("MELHOR_ENVIO_USER_AGENT"),
     originCep: shippingOriginCep(),
     quoteSecret: shippingQuoteSecret(),
