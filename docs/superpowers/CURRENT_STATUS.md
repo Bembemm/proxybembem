@@ -1,6 +1,6 @@
 # ProxyBembem Checkout — Current Status
 
-**Updated:** 2026-08-31
+**Updated:** 2026-09-01
 
 This is the canonical continuation checkpoint. Read this file before older plan checkboxes.
 
@@ -167,3 +167,38 @@ No new real Mercado Pago payment is required for these presentation/copy/brandin
 Every meaningful session must update this file with passed/failed evidence, blockers, exact next action, relevant HEAD/deployment evidence and decisions future sessions must not rediscover.
 
 **Resume point:** checkout/payment/freight/Admin Production acceptance is complete. The owner reversed the Home/catalog consolidation decision: Home is now featured-only again and `/produtos` is a dedicated full catalog page. Restoration is GREEN in CI `#735` through `896408b...`; documentation is the next HEAD checkpoint. Presentation work remains Preview-only. Manual current-Preview checks are still required for the restored navigation/catalog flow and for the PB on the affected Android browser. Never merge `main` without explicit owner approval.
+
+## 2026-09-01 presentation production promotion — COMPLETE
+
+This section supersedes the older `Preview-only`, `manual phone confirmation pending`, and `Production remains untouched` statements above for the presentation bundle. Those statements are retained only as historical evidence.
+
+Promotion evidence:
+
+- owner visually approved the current Preview on the affected Android phone;
+- approved Preview deployment: `dpl_Fi7y1xejJKZqjEMx4cVZhgRXuEma`;
+- approved Preview commit: `a702cf31a8e263781fbebf3c0593f2367e119ef1` (`chore: retrigger vercel preview`), an empty commit used only to retrigger Vercel after the Hobby build-rate limit reset;
+- CI `#740` completed successfully on that SHA with `pnpm test`, `pnpm typecheck`, and `pnpm build` all passing;
+- Production promotion deployment: `dpl_71TXqkwdGrR5ZkuLhaJETr14grho`;
+- Production deployment metadata records `action=promote` and `originalDeploymentId=dpl_Fi7y1xejJKZqjEMx4cVZhgRXuEma`, confirming promotion from the approved Preview;
+- Production state is `READY`, target `production`, with aliases including `www.proxybembem.com.br`, `proxybembem.com.br`, and `proxybembem.vercel.app`;
+- canonical `https://www.proxybembem.com.br/` returned HTTP `200` after promotion with the newer `Monte seu deck do seu jeito` hero, featured-only Home catalog, `/produtos` navigation, and `/brand/pb.png` branding;
+- canonical `https://www.proxybembem.com.br/produtos` returned HTTP `200`, rendered `ProductsPage`, showed both current products and the current prices (Commander R$ 119,90; 60-card deck R$ 69,99);
+- immediate post-promotion Production runtime query for `error`/`fatal` logs on the promoted deployment returned no matching logs;
+- checkout/payment/freight/Admin code was not changed as part of this presentation promotion and no new real Mercado Pago payment was required.
+
+Current integration state:
+
+- PR `#2` is still open and unmerged;
+- `main` was not merged or moved;
+- the presentation bundle is now Production-accepted, not Preview-only;
+- the PB direct-PNG fix is now manually confirmed on the affected phone and live in Production;
+- the dedicated `/produtos` architecture is live in Production.
+
+Next safe actions:
+
+1. Monitor Production for regressions/runtime errors during ordinary traffic.
+2. Keep PR `#2` open until the owner explicitly decides to merge it.
+3. Do **not** merge `main` without explicit owner approval.
+4. Treat any future hosting migration (KingHost/Render/Railway/self-hosting) as a separate risk-isolated project.
+
+**Latest resume point:** checkout/payment/freight/Admin and the newer presentation bundle are now both accepted in Production. Production deployment `dpl_71TXqkwdGrR5ZkuLhaJETr14grho` is `READY` and was promoted from the owner-approved Preview `dpl_Fi7y1xejJKZqjEMx4cVZhgRXuEma` on SHA `a702cf31...`, with CI `#740` green. Canonical Home and `/produtos` both returned HTTP `200`, the dedicated Products page is live, PB PNG branding is live and phone-confirmed, and no immediate Production error/fatal logs were observed. PR `#2` remains open/unmerged; never merge `main` without explicit owner approval.
