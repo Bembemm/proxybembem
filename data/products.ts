@@ -11,49 +11,118 @@ export const products: Product[] = [
     category: "Decks",
     colors: ["Azul", "Preto"],
     featured: true,
-    notice: "IMPORTANTE: LEIA ANTES DE COMPRAR",
+    notice: "Informações importantes",
+    highlights: [
+      "100 cartas",
+      "Lista escolhida por você",
+      "Produção em até 5 dias úteis",
+    ],
     description:
-      "Conjunto com 100 cartas proxy para uso casual, testes e montagem de decks. Não são cartas originais.",
+      "Deck com 100 cartas proxy personalizadas, produzido em alta qualidade para jogos casuais, testes e montagem de decks. Você escolhe as 100 cartas da sua lista.",
     details: [
       {
-        label: "O QUE É",
-        value: "PROXIES para teste e jogo casual. NÃO SÃO CARTAS ORIGINAIS.",
+        label: "O QUE VOCÊ RECEBE",
+        value: "100 cartas proxy no tamanho padrão de Magic: The Gathering.",
+      },
+      {
+        label: "QUALIDADE",
+        value:
+          "Impressão em papel fotográfico com laminação, proporcionando boa definição, cores vivas e maior durabilidade.",
       },
       {
         label: "VERSO",
-        value: "Branco, sem arte no verso.",
+        value: "Verso branco, sem arte. Recomendamos o uso de sleeves opacos.",
       },
       {
-        label: "SLEEVES",
-        value: "Não inclusos. Recomendamos sleeves com fundo colorido ou opaco.",
+        label: "COMO ESCOLHER AS CARTAS",
+        value:
+          "Após concluir o pedido, envie sua lista pelo WhatsApp. Pode ser por Moxfield, LigaMagic ou outro formato combinado no atendimento.",
       },
       {
         label: "ARTES",
         value:
-          "Trabalhamos com artes do nosso banco e artes personalizadas. Impressões personalizadas podem ter custo adicional, confirmado no atendimento.",
+          "Utilizamos as artes disponíveis em nosso banco. Artes ou impressões personalizadas podem ter custo adicional, sempre informado antes da produção.",
       },
     ],
     sections: [
       {
-        title: "O QUE ESTÁ INCLUSO",
+        title: "IMPORTANTE",
         paragraphs: [
-          "100 cartas de Magic: The Gathering em versão proxy + bônus surpresa.",
-          "A seleção das 100 cartas é feita por você: pode ser um deck completo ou cartas variadas.",
+          "Este produto é composto por cartas em versão proxy não oficial, destinadas a jogo casual e testes. Não são cartas oficiais de Magic: The Gathering e não devem ser utilizadas em torneios sancionados.",
         ],
       },
       {
-        title: "COMO ENVIAR SUA LISTA",
-        paragraphs: [
-          "Após iniciar o pedido no WhatsApp, envie o link da sua lista pelo Moxfield, LigaMagic ou MPCFill.",
-        ],
-      },
-      {
-        title: "QUALIDADE PROXYBEMBEM",
-        paragraphs: [
-          "Impressão premium em papel fotográfico de alta gramatura, com cores vibrantes, texto nítido e corte de precisão para uso em sleeves.",
-        ],
+        title: "PRAZO",
+        paragraphs: ["Produção e postagem em até 5 dias úteis."],
       },
     ],
+    shipping: {
+      weightKg: 0.5,
+      lengthCm: 25,
+      widthCm: 19,
+      heightCm: 4,
+    },
+  },
+  {
+    id: 2,
+    title: "Deck Proxy 60 Cartas",
+    image: "/products/deck-commander.png",
+    originalPrice: 99.99,
+    discountPrice: 69.99,
+    tag: null,
+    category: "Decks",
+    featured: false,
+    notice: "Informações importantes",
+    highlights: [
+      "60 cartas",
+      "Lista escolhida por você",
+      "Produção em até 5 dias úteis",
+    ],
+    description:
+      "Deck com 60 cartas proxy personalizadas, produzido em alta qualidade para jogos casuais, testes e montagem de decks. Você escolhe as 60 cartas da sua lista.",
+    details: [
+      {
+        label: "O QUE VOCÊ RECEBE",
+        value: "60 cartas proxy no tamanho padrão de Magic: The Gathering.",
+      },
+      {
+        label: "QUALIDADE",
+        value:
+          "Impressão em papel fotográfico com laminação, proporcionando boa definição, cores vivas e maior durabilidade.",
+      },
+      {
+        label: "VERSO",
+        value: "Verso branco, sem arte. Recomendamos o uso de sleeves opacos.",
+      },
+      {
+        label: "COMO ESCOLHER AS CARTAS",
+        value:
+          "Após concluir o pedido, envie sua lista pelo WhatsApp. Pode ser por Moxfield, LigaMagic ou outro formato combinado no atendimento.",
+      },
+      {
+        label: "ARTES",
+        value:
+          "Utilizamos as artes disponíveis em nosso banco. Artes ou impressões personalizadas podem ter custo adicional, sempre informado antes da produção.",
+      },
+    ],
+    sections: [
+      {
+        title: "IMPORTANTE",
+        paragraphs: [
+          "Este produto é composto por cartas em versão proxy não oficial, destinadas a jogo casual e testes. Não são cartas oficiais de Magic: The Gathering e não devem ser utilizadas em torneios sancionados.",
+        ],
+      },
+      {
+        title: "PRAZO",
+        paragraphs: ["Produção e postagem em até 5 dias úteis."],
+      },
+    ],
+    shipping: {
+      weightKg: 0.5,
+      lengthCm: 25,
+      widthCm: 19,
+      heightCm: 4,
+    },
   },
 ]
 

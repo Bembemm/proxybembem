@@ -16,6 +16,11 @@ function formatPrice(value: number) {
   })
 }
 
+function discountPercent(product: Product) {
+  if (product.originalPrice <= product.discountPrice) return 0
+  return Math.round((1 - product.discountPrice / product.originalPrice) * 100)
+}
+
 function AddToCartButton({ product }: { product: Product }) {
   const { addToCart, items } = useCart()
   const [justAdded, setJustAdded] = useState(false)
@@ -36,7 +41,7 @@ function AddToCartButton({ product }: { product: Product }) {
       className={`w-full tracking-wide text-sm sm:text-base h-12 transition-all duration-300 active:scale-[0.98] ${
         justAdded
           ? "bg-green-500 border-green-500 text-white hover:bg-green-600"
-          : "bg-transparent border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6]"
+          : "bg-[#8B5CF6] border border-[#8B5CF6] text-white hover:bg-[#7C3AED] hover:border-[#7C3AED]"
       }`}
     >
       {justAdded ? (
@@ -70,102 +75,146 @@ export function HomePage() {
 
   return (
     <>
-      <section className="relative flex items-center justify-center overflow-hidden pt-16 sm:pt-20 pb-2 sm:pb-4">
-        <div className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-6 text-center z-10">
-          <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-4 sm:p-6 md:p-8 max-w-2xl mx-auto rounded-lg">
+      <section className="relative flex items-center justify-center overflow-hidden pt-16 sm:pt-20 pb-3 sm:pb-6">
+        <div className="relative container mx-auto px-3 sm:px-4 py-5 sm:py-8 text-center z-10">
+          <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-5 sm:p-7 md:p-9 max-w-3xl mx-auto rounded-xl">
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-[#8B5CF6] mb-3">
+              ProxyBembem
+            </p>
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-[family-name:var(--font-display)] text-slate-900 mb-4 sm:mb-6 tracking-wide text-balance">
-              Seja Bem-Vindo
+              Monte seu deck do seu jeito
             </h1>
 
-            <div className="w-32 sm:w-48 mx-auto mb-4 sm:mb-8 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
+            <div className="w-32 sm:w-48 mx-auto mb-4 sm:mb-6 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
 
-            <p className="text-lg sm:text-xl md:text-2xl text-slate-700 max-w-xl mx-auto leading-relaxed text-pretty px-2">
-              Aqui você encontra tudo para jogar. Decks completos, cartas avulsas e proxies de alta qualidade para TCG.
+            <p className="text-lg sm:text-xl md:text-2xl text-slate-700 max-w-2xl mx-auto leading-relaxed text-pretty px-2 mb-5 sm:mb-7">
+              Escolha a quantidade de cartas, envie sua lista e receba proxies de alta qualidade prontas para jogar.
             </p>
+
+            <Button
+              asChild
+              size="lg"
+              className="h-12 sm:h-14 px-7 sm:px-9 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-base sm:text-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
+            >
+              <Link href="/produtos">
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                Ver produtos
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      <section className="relative py-2 sm:py-4">
+      <section className="relative py-5 sm:py-9">
         <div className="container mx-auto px-3 sm:px-4 relative z-10">
-          <div className="text-center mb-6 sm:mb-10 bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-4 sm:p-6 max-w-xl mx-auto rounded-lg">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-[family-name:var(--font-display)] text-slate-900 mb-2 sm:mb-3 tracking-wide text-balance">
+          <div className="text-center mb-6 sm:mb-9 max-w-2xl mx-auto">
+            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-[#8B5CF6] mb-2">
+              Em destaque
+            </p>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-[family-name:var(--font-display)] text-slate-900 mb-3 tracking-wide text-balance">
               Proxies em Destaque
             </h2>
-
-            <div className="w-16 sm:w-24 mx-auto mb-3 sm:mb-4 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
-
             <p className="text-slate-700 text-base sm:text-lg px-2">
-              Confira nossa seleção especial de decks e proxies de alta qualidade.
+              Confira nossa seleção especial e acesse a página de produtos para ver o catálogo completo.
             </p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 max-w-4xl mx-auto">
-            {featuredProducts.map((product) => (
-              <article
-                key={product.id}
-                className="group relative bg-white/60 backdrop-blur-md border border-white/50 shadow-lg overflow-hidden rounded-lg hover:shadow-xl hover:border-[#8B5CF6]/50 transition-all duration-300 w-full sm:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.75rem)] max-w-sm"
-              >
-                <button
-                  type="button"
-                  className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden cursor-pointer text-left"
-                  onClick={() => openProductModal(product)}
-                  aria-label={`Ver detalhes de ${product.title}`}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-5xl mx-auto">
+            {featuredProducts.map((product) => {
+              const discount = discountPercent(product)
+
+              return (
+                <article
+                  key={product.id}
+                  className="group relative bg-white/65 backdrop-blur-md border border-white/60 shadow-lg overflow-hidden rounded-xl hover:shadow-2xl hover:border-[#8B5CF6]/50 hover:-translate-y-1 transition-all duration-300"
                 >
-                  <Image
-                    src={product.image}
-                    alt={product.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                  />
+                  <button
+                    type="button"
+                    className="relative aspect-[16/10] w-full bg-slate-100 overflow-hidden cursor-pointer text-left"
+                    onClick={() => openProductModal(product)}
+                    aria-label={`Ver detalhes de ${product.title}`}
+                  >
+                    <Image
+                      src={product.image}
+                      alt={product.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+                    />
 
-                  <span className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent opacity-60" />
+                    <span className="absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent" />
 
-                  <span className="absolute inset-0 bg-[#8B5CF6]/0 group-hover:bg-[#8B5CF6]/20 transition-colors duration-300 flex items-center justify-center">
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 text-[#8B5CF6] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                      <Eye className="w-3.5 h-3.5" />
-                      Ver Detalhes
+                    <span className="absolute inset-0 bg-[#8B5CF6]/0 group-hover:bg-[#8B5CF6]/15 transition-colors duration-300 flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 bg-white/95 text-[#8B5CF6] text-sm font-semibold px-4 py-2 rounded-full flex items-center gap-1.5 shadow-lg">
+                        <Eye className="w-4 h-4" />
+                        Ver detalhes
+                      </span>
                     </span>
-                  </span>
 
-                  {product.tag && (
-                    <span className="absolute top-2 left-2 bg-[#8B5CF6] text-white text-xs sm:text-sm font-semibold px-2.5 py-1 tracking-wider uppercase rounded">
-                      {product.tag}
-                    </span>
-                  )}
-                </button>
+                    <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
+                      {product.tag ? (
+                        <span className="bg-[#8B5CF6] text-white text-xs sm:text-sm font-semibold px-3 py-1.5 tracking-wider uppercase rounded-full shadow">
+                          {product.tag}
+                        </span>
+                      ) : (
+                        <span />
+                      )}
 
-                <div className="p-3 sm:p-4 relative">
-                  <h3 className="font-semibold text-slate-900 text-lg sm:text-xl mb-2 line-clamp-2 min-h-[3rem] leading-snug">
-                    {product.title}
-                  </h3>
+                      {discount > 0 && (
+                        <span className="bg-white/95 text-[#7C3AED] text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full shadow">
+                          -{discount}%
+                        </span>
+                      )}
+                    </div>
+                  </button>
 
-                  <div className="flex items-baseline gap-2 mb-3">
-                    <span className="text-base text-slate-500 line-through opacity-70">
-                      {formatPrice(product.originalPrice)}
-                    </span>
-                    <span className="text-xl sm:text-2xl font-bold text-[#8B5CF6]">
-                      {formatPrice(product.discountPrice)}
-                    </span>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-slate-500 mb-1">
+                          {product.category}
+                        </p>
+                        <h3 className="font-semibold text-slate-900 text-xl sm:text-2xl leading-snug">
+                          {product.title}
+                        </h3>
+                      </div>
+                    </div>
+
+                    <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-4 line-clamp-2">
+                      {product.description}
+                    </p>
+
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
+                      <span className="text-sm sm:text-base text-slate-500 line-through opacity-75">
+                        {formatPrice(product.originalPrice)}
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-bold text-[#8B5CF6]">
+                        {formatPrice(product.discountPrice)}
+                      </span>
+                      {product.originalPrice > product.discountPrice && (
+                        <span className="text-xs sm:text-sm font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full">
+                          Economize {formatPrice(product.originalPrice - product.discountPrice)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                      <AddToCartButton product={product} />
+                      <Button
+                        onClick={() => openProductModal(product)}
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="h-12 px-4 border-[#8B5CF6]/30 text-[#8B5CF6] hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED] active:scale-[0.98]"
+                      >
+                        <Eye className="w-4 h-4 mr-1.5" />
+                        Detalhes
+                      </Button>
+                    </div>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <AddToCartButton product={product} />
-                    <Button
-                      onClick={() => openProductModal(product)}
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      className="w-full text-sm h-10 text-slate-500 hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/5 active:scale-[0.98]"
-                    >
-                      <Eye className="w-3 h-3 mr-1" />
-                      Ver Detalhes
-                    </Button>
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              )
+            })}
           </div>
 
           <div className="text-center mt-6 sm:mt-8">

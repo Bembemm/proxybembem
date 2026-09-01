@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Instagram, Lock, Mail } from "lucide-react"
 
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -37,7 +38,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <img src="/icon.svg" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
+              <img src="/brand/pb.png" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
               <span className="text-xl sm:text-2xl font-[family-name:var(--font-display)] text-black tracking-wide">
                 ProxyBembem
               </span>
@@ -101,12 +102,30 @@ export function Footer() {
         </div>
 
         <div className="border-t border-slate-200/50 mt-8 sm:mt-12 pt-6 sm:pt-8">
-          <div className="flex items-center justify-center gap-2 mb-4 sm:mb-6">
+          <div className="flex items-center justify-center gap-2 mb-4">
             <Lock className="w-4 h-4 text-[#8B5CF6]/70" />
             <p className="text-base text-slate-500 text-center">
-              Pagamento via Pix combinado no atendimento. O site não coleta dados bancários.
+              Pagamento processado pelo Mercado Pago. Dados bancários e do cartão não são armazenados pela ProxyBembem.
             </p>
           </div>
+
+          <nav
+            aria-label="Políticas da loja"
+            className="mb-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm sm:text-base"
+          >
+            <Link className="text-slate-500 hover:text-[#8B5CF6] transition-colors" href="/privacidade">
+              Privacidade
+            </Link>
+            <Link className="text-slate-500 hover:text-[#8B5CF6] transition-colors" href="/termos">
+              Termos
+            </Link>
+            <Link
+              className="text-slate-500 hover:text-[#8B5CF6] transition-colors"
+              href="/trocas-e-reembolsos"
+            >
+              Trocas e reembolsos
+            </Link>
+          </nav>
 
           <p className="text-base sm:text-lg text-slate-500 text-center">
             © {new Date().getFullYear()} ProxyBembem. Todos os direitos reservados.
