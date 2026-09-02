@@ -11,7 +11,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASK 1 RED VALID; TASK 2 GREEN MIGRATION NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-3 TDD COMPLETE; TASK 4 RED NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Verified baseline
@@ -49,7 +49,7 @@ Plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
 
 Initial plan commit: `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
 
-Plan self-review found no `TODO`, `TBD`, `implement later`, or `Similar to` placeholders. The planned migration is `supabase/migrations/202609020003_customer_accounts_orders.sql` and must remain Git-only until the full Phase 3 candidate is reviewed and owner explicitly approves DDL application.
+The planned migration is `supabase/migrations/202609020003_customer_accounts_orders.sql` and must remain Git-only until the full Phase 3 candidate is reviewed and owner explicitly approves DDL application.
 
 ## Phase 3 Task 1 — migration contract RED: VALID
 
@@ -73,7 +73,66 @@ Canonical RED:
 
 This is the final valid TDD RED. No Phase 3 SQL existed when it was captured.
 
-The RED contract requires additive nullable ownership/email fields, no historical identity backfill, minimal RLS `customer_profiles`, customer list/detail RPCs deriving ownership from `auth.uid()`, no broad authenticated order access, and a service-role-only locked verified-email + token claim that may set only the correctly matched order's `customer_id`. Existing Phase 1 `order_events.source` already accepts `customer`.
+## Phase 3 Task 2 — additive account/order migration: GREEN, GIT-ONLY
+
+Migration: `supabase/migrations/202609020003_customer_accounts_orders.sql`.
+
+The migration adds only compatibility-safe nullable customer ownership/email data and narrow customer RPC/profile boundaries. It does not backfill historical customer identity and it has **not** been applied to Supabase.
+
+Implementation history:
+
+- migration commit `e0fdcfda04e3cedfcd27fece9b82d8e94f1d51ff`;
+- first GREEN CI exposed one test false positive: the safe constant phrase `verified_email_and_public_token` was incorrectly interpreted by a regex as secret token leakage;
+- the SQL remained unchanged and only the test expectation was narrowed to reject actual token/email keys or values while explicitly requiring the safe claim-method marker;
+- final Task 2 candidate commit `032c65102c9204688fb51937a250bf98a0dd1795`;
+- CI run `33667341942`;
+- job `100372226704`;
+- 295 tests PASS;
+- `pnpm typecheck` PASS;
+- `pnpm build` PASS;
+- workflow SUCCESS.
+
+Task 2 migration remains **Git-only**. Do not apply it before the Phase 3 full-candidate owner gate.
+
+## Phase 3 Task 3 — mandatory checkout email: RED/GREEN COMPLETE
+
+New contract:
+
+- `CheckoutData.email` is required;
+- checkout email is trimmed/lowercased;
+- conservative validation requires a non-whitespace `local@domain` shape with maximum 254 characters;
+- checkout UI has an accessible required `type="email"` field;
+- `/api/checkout` requires email as a strict string customer field;
+- normalized email participates in checkout idempotency fingerprint;
+- WhatsApp fallback summary includes the normalized contact email;
+- there is no permissive fallback for missing email.
+
+Canonical RED:
+
+- test: `tests/checkout-email.test.ts`;
+- commit `f128b6df56531e8c396ade327e0d12842c937575`;
+- CI run `33667562183`;
+- total tests: 299;
+- PASS: 295;
+- FAIL: exactly 4, all four new Task 3 email tests;
+- failures proved missing email normalization/validation, fingerprint identity, UI field, and API parser;
+- no unrelated existing test failed.
+
+GREEN implementation included `lib/checkout.ts`, `components/checkout-form.tsx`, `components/cart-panel.tsx`, `app/api/checkout/route.ts`, and `lib/server/checkout-idempotency.ts`.
+
+Intermediate verification at commit `f9021bd960bab1333aa9ef942a464a175848cc79`, CI `33668433926`, job `100375790994`, found 13 failures. Systematic debugging established that all four new Task 3 tests already passed and every remaining failure came from four legacy test fixtures constructing `CheckoutData` without the newly mandatory `email`, causing `normalizeCheckoutEmail(undefined)` before those tests reached their intended behavior. Runtime was **not** weakened with a missing-email fallback; only the stale fixtures were corrected.
+
+Final Task 3 candidate:
+
+- commit `70319add3f2a8c139b25fdb4ca5a3fefd80b14d9`;
+- CI run `33668791985`;
+- job `100376977017`;
+- `pnpm test`: 299 total, 299 PASS, 0 FAIL;
+- `pnpm typecheck`: PASS (`tsc --noEmit`);
+- `pnpm build`: PASS on Next.js 16.3.3; compiled successfully and generated 17/17 static pages;
+- workflow conclusion: SUCCESS.
+
+Task 3 is therefore the current verified runtime checkpoint. Phase 3 DDL is still unapplied.
 
 ## Current safety gates
 
@@ -83,9 +142,10 @@ The RED contract requires additive nullable ownership/email fields, no historica
 - Do not create/promote a new Production app deployment without explicit owner approval.
 - Do not delete the feature branch unless owner asks.
 - Do not start Phase 4 runtime work before Phase 3 completion.
+- Customer auth Task 4 must remain separate from `ADMIN_USER_ID`, AAL2 and `admin_sessions`.
 
 ## Resume point
 
-**Current Phase 3 status:** Task 1 RED VALID at `619db2cb...`; Task 2 not yet implemented.
+**Current Phase 3 status:** Tasks 1-3 complete with TDD evidence. Final verified Task 3 candidate is `70319add3f2a8c139b25fdb4ca5a3fefd80b14d9`, CI `33668791985`, job `100376977017`.
 
-**NEXT EXACT ACTION:** create only `supabase/migrations/202609020003_customer_accounts_orders.sql` according to the reviewed Phase 3 plan, run the focused migration contract to obtain GREEN, then run Phase 1/2 migration/payment regressions. Keep the migration in Git only; do not apply it to Supabase. If the focused test fails for a contract mismatch, debug the SQL/test before advancing to checkout-email Task 3.
+**NEXT EXACT ACTION:** Phase 3 Task 4 RED. Create only `tests/customer-auth.test.ts`, covering optional no-user identity, verified canonical customer identity, malformed/unverified rejection, strict separation from admin authorization/session state, and `/entrar` redirect for protected customer pages. Run `node --experimental-strip-types --test tests/customer-auth.test.ts` and capture expected module-missing RED **before** creating `lib/server/customer-auth.ts`. Then implement the minimum GREEN using `createSupabaseServerClient().auth.getUser()` and verify alongside `tests/admin-auth.test.ts`.
