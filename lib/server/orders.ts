@@ -1,5 +1,9 @@
 import type { CheckoutOrderItem } from "./checkout-order.ts"
 import { getSupabaseEnv } from "./env.ts"
+import {
+  isFulfillmentStatus,
+  type FulfillmentStatus,
+} from "./fulfillment.ts"
 
 export interface OrderRecord {
   id: string
@@ -32,6 +36,7 @@ export interface OrderRecord {
   payment_id: string | null
   payment_status: string
   payment_status_detail: string | null
+  fulfillment_status: FulfillmentStatus
   created_at: string
   updated_at: string
 }
@@ -73,6 +78,8 @@ export interface PaymentEventResult {
   payment_id: string | null
   expected_cents: number | null
   received_cents: number
+  fulfillment_status: FulfillmentStatus | null
+  fulfillment_transitioned: boolean
 }
 
 export class OrderConflictError extends Error {
@@ -127,6 +134,7 @@ const ORDER_SELECT = [
   "payment_id",
   "payment_status",
   "payment_status_detail",
+  "fulfillment_status",
   "created_at",
   "updated_at",
 ].join(",")
@@ -335,6 +343,7 @@ export async function applyMercadoPagoPaymentEvent(input: {
   }
 
   const result = payload as Partial<PaymentEventResult>
+  const fulfillmentStatus = result.fulfillment_status
   if (
     !["updated", "ignored", "manual_review", "not_found"].includes(
       String(result.outcome),
@@ -344,7 +353,9 @@ export async function applyMercadoPagoPaymentEvent(input: {
     !isNullableString(result.payment_id) ||
     !isNullableSafeInteger(result.expected_cents) ||
     typeof result.received_cents !== "number" ||
-    !Number.isSafeInteger(result.received_cents)
+    !Number.isSafeInteger(result.received_cents) ||
+    (fulfillmentStatus !== null && !isFulfillmentStatus(fulfillmentStatus)) ||
+    typeof result.fulfillment_transitioned !== "boolean"
   ) {
     throw new Error("Payment event RPC returned an invalid response")
   }

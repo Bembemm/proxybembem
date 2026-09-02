@@ -97,10 +97,19 @@ test("persists complete address, shipping, total and checkout identity", async (
           payment_provider: "mercadopago",
           payment_status: "pending",
         })
-        return new Response(JSON.stringify([{ ...body, id: "order-id" }]), {
-          status: 201,
-          headers: { "Content-Type": "application/json" },
-        })
+        return new Response(
+          JSON.stringify([
+            {
+              ...body,
+              id: "order-id",
+              fulfillment_status: "awaiting_payment",
+            },
+          ]),
+          {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          },
+        )
       },
     )
 
