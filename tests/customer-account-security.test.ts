@@ -147,8 +147,8 @@ test("customer read SQL derives ownership only from auth.uid and accepts no cust
   const detailSql = sqlFunction(sql, "customer_get_order", "claim_guest_order_for_customer")
 
   for (const section of [listSql, detailSql]) {
-    assert.match(section, /auth\.uid\(\)/)
-    assert.match(section, /customer_id\s*=\s*auth\.uid\(\)/)
+    assert.match(section, /v_customer_id\s+uuid\s*:=\s*auth\.uid\(\)/)
+    assert.match(section, /customer_id\s*=\s*v_customer_id/)
     assert.doesNotMatch(section, /p_customer_id/)
   }
 })
