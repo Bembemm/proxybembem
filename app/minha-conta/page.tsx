@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import { getOwnCustomerProfile } from "@/lib/server/customer-profiles"
 import { listOwnOrders } from "@/lib/server/customer-orders"
 
@@ -16,6 +17,7 @@ function formatMoney(cents: number | null) {
 }
 
 export default async function AccountOverviewPage() {
+  await requireCustomerPageAccess()
   const [profile, recent] = await Promise.all([
     getOwnCustomerProfile(),
     listOwnOrders({ page: 1, pageSize: 5 }),
