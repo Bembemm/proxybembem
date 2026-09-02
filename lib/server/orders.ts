@@ -10,6 +10,8 @@ export interface OrderRecord {
   order_number: string
   public_token: string
   customer_name: string
+  customer_email: string | null
+  customer_id: string | null
   whatsapp: string
   cep: string
   address_street: string | null
@@ -45,6 +47,8 @@ export interface CreateOrderInput {
   orderNumber: string
   publicToken: string
   customerName: string
+  customerEmail: string
+  customerId?: string | null
   whatsapp: string
   cep: string
   items: CheckoutOrderItem[]
@@ -108,6 +112,8 @@ const ORDER_SELECT = [
   "order_number",
   "public_token",
   "customer_name",
+  "customer_email",
+  "customer_id",
   "whatsapp",
   "cep",
   "address_street",
@@ -215,6 +221,8 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderRecord>
       order_number: input.orderNumber,
       public_token: input.publicToken,
       customer_name: input.customerName,
+      customer_email: input.customerEmail,
+      customer_id: input.customerId ?? null,
       whatsapp: input.whatsapp,
       cep: input.cep,
       ...addressFields,
