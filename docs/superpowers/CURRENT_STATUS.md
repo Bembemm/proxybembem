@@ -10,7 +10,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Branch: `feat/admin-dashboard-expansion`
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-13 COMPLETE/APPLIED/DB-VALIDATED; TASK 14 PREVIEW ACCEPTANCE NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-13 COMPLETE/APPLIED/DB-VALIDATED; TASK 14 AUTOMATED ACCEPTANCE IN PROGRESS / OWNER AUTH FLOW PENDING**
 - Phase 3 migration application: **APPROVED / APPLIED / VALIDATED**
 - Merge/new Production application deployment: **NOT APPROVED**
 
@@ -37,9 +37,9 @@ Phase 3 is now database-compatible on the current project. Do not reapply Phase 
 13. Mercado Pago remains the financial authority; customer account code does not mutate payment state.
 14. Phase 3 uses Supabase Auth verification/recovery email only. Transactional order-status email remains Phase 6.
 
-## Phase 3 reviewed runtime candidate
+## Phase 3 reviewed runtime candidates
 
-Exact runtime candidate: `1f2432bd000e7e01201d0f2d632cac51399f86d0`.
+Pre-DDL reviewed runtime candidate: `1f2432bd000e7e01201d0f2d632cac51399f86d0`.
 
 CI `33684404621`, job `100428283809`:
 
@@ -48,6 +48,17 @@ CI `33684404621`, job `100428283809`:
 - `pnpm typecheck`: PASS;
 - `pnpm build`: PASS, 28/28 static pages;
 - Task 12 full diff/security review found no runtime defect requiring application-code changes.
+
+Task 14 Preview acceptance found an App Router protected-page regression/noise issue after DDL compatibility: the protected layout redirected anonymous users correctly, but child Server Components could begin private reads concurrently before the layout redirect completed. This produced Preview errors such as `Customer profile access requires authentication` and `Customer order storage request failed` even though no customer data was exposed.
+
+TDD regression evidence:
+
+- RED commit: `b0017ea6d3606d478b221566268a2b17ff9480e7`;
+- RED CI `33689243076`, job `100443906774`: **360 tests / 359 PASS / exactly 1 FAIL**, only the new page-auth regression test;
+- GREEN page gates added before private reads in `/minha-conta`, `/minha-conta/pedidos`, `/minha-conta/pedidos/[id]`, and `/minha-conta/perfil`;
+- current GREEN runtime candidate: `14a6f337892876e47680a3c13fa671602b6e584e`;
+- GREEN CI `33689402542`, job `100444410430`: **360/360 PASS / 0 FAIL**, `pnpm typecheck` PASS, `pnpm build` PASS, 28/28 static pages;
+- `customer-account-page-auth.test.ts`: PASS, proving each protected customer page gates authentication before its customer-data read.
 
 Relevant earlier final candidates:
 
@@ -123,10 +134,36 @@ Performance advisor classification:
 - WARN `auth_rls_initplan` on the three `customer_profiles` own-row policies because they use direct `auth.uid()` instead of `(select auth.uid())`: performance-only optimization opportunity; authorization behavior is correct and the Task 13 matrix passed. Do not silently change the reviewed migration/runtime contract during Task 13;
 - INFO unused admin audit index: pre-existing/usage-dependent and unrelated to Phase 3 correctness.
 
+## Task 14 — Preview acceptance IN PROGRESS
+
+Automated evidence already completed:
+
+- READY Preview at docs-only descendant `07fd09835b124e42cd028df0e39ed82adb780942` after Phase 3 DDL compatibility returned 200 for `/` and `/produtos`;
+- invalid 64-character public token tracking returned a safe 404/noindex response;
+- unauthenticated `/minha-conta` and `/minha-conta/pedidos` redirected to `/entrar` and exposed no customer orders;
+- checkout tests confirm an accessible required email field and normalized mandatory email validation;
+- checkout route source validates/parses the customer, including email, and returns 400 on field errors **before** entering the block that resolves environment/customer identity and calls `executeCheckoutFlow`, so missing/invalid guest email cannot initiate Mercado Pago preference creation;
+- the initial Preview log review exposed the protected-child read race described above; TDD GREEN is now `14a6f337...` with 360/360 CI.
+
+Current deployment gate:
+
+- as of this checkpoint, Vercel had not yet emitted a new deployment newer than the RED Preview `b0017ea6...`; querying deployments strictly after that deployment timestamp returned zero results;
+- therefore runtime log regression verification for GREEN `14a6f337...` is still pending and must not be claimed complete until a READY Preview for that SHA or a docs-only descendant exists;
+- do not manually promote Production to satisfy this gate.
+
+Owner/manual acceptance still required by the Phase 3 plan after the automated smoke:
+
+1. owner creates/uses a test customer through the normal Supabase Auth verification flow; credentials/passwords/codes are never shared in chat;
+2. verify login, `/minha-conta`, own orders, own detail, profile and security page;
+3. verify a second account cannot access the first account's order by copied UUID;
+4. verify guest claim using a deliberately created safe test order only, with no real Mercado Pago payment;
+5. review Preview error/fatal logs after those checks.
+
 ## Current safety gates
 
 - Phase 3 DDL is **APPLIED and validated**; do not reapply it.
-- Task 14 Preview acceptance is next.
+- Task 14 Preview acceptance is **in progress**, not complete.
+- Current GREEN runtime candidate is `14a6f337892876e47680a3c13fa671602b6e584e`.
 - Do not merge `feat/admin-dashboard-expansion` without explicit owner approval.
 - Do not create/promote a new Production application deployment without explicit owner approval.
 - Do not delete the feature branch unless owner asks.
@@ -137,8 +174,8 @@ Performance advisor classification:
 
 ## Resume point
 
-**Current Phase 3 status:** Tasks 1-13 complete. Runtime candidate `1f2432bd000e7e01201d0f2d632cac51399f86d0` remains the reviewed application code; the current branch may contain docs-only descendants.
+**Current Phase 3 status:** Tasks 1-13 complete. Task 14 automated acceptance is partially complete; the anonymous protected-page race was found and fixed by TDD. GREEN candidate `14a6f337892876e47680a3c13fa671602b6e584e` has 360/360 tests, typecheck PASS and build PASS (28/28 pages).
 
 **Phase 3 DB:** `20260902220354_customer_accounts_orders` is applied to the current ProxyBembem Supabase project and validated with 10/10 rollback-only matrix + zero fixture residue.
 
-**NEXT EXACT ACTION:** Task 14 Preview acceptance. Use a READY Preview containing runtime candidate `1f2432bd...` or a docs-only descendant. Automated smoke must cover `/`, `/produtos`, required checkout email, missing/invalid guest email rejection without payment initiation, invalid public-token tracking safety, and unauthenticated redirects for protected customer routes. Then perform the plan's real verification/login and cross-account isolation acceptance without merging or promoting Production.
+**NEXT EXACT ACTION:** Wait only for Vercel's normal Git Preview pipeline to expose a READY deployment for `14a6f337...` or this docs-only descendant; then repeat `/`, `/produtos`, invalid-token and unauthenticated customer-route smoke and confirm the earlier customer profile/order errors are absent from that deployment's error/fatal logs. After that, stop at the explicit owner-auth acceptance step: owner must create/use the test customer through normal Supabase verification without sharing credentials, then perform the account/cross-account/guest-claim checks. No merge or Production promotion.
