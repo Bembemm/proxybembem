@@ -22,6 +22,11 @@ interface AccountPasswordUpdateInput {
   password: string
 }
 
+export interface AccountProfileMetadata {
+  name: string
+  whatsapp: string
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
@@ -106,6 +111,14 @@ export function parseAccountPasswordUpdateInput(
 ): AccountPasswordUpdateInput {
   const input = requireExactKeys(value, ["password"])
   return { password: validatePassword(input.password) }
+}
+
+export function parseAccountProfileMetadata(value: unknown): AccountProfileMetadata {
+  if (!isRecord(value)) throw new Error("Invalid account profile metadata")
+  return {
+    name: normalizeName(value.name),
+    whatsapp: normalizeWhatsapp(value.whatsapp),
+  }
 }
 
 export function isSameOriginAccountRequest(request: Request) {
