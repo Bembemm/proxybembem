@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { buildWhatsAppOrderUrl } from "@/lib/checkout"
+import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import {
   getOwnOrderById,
   type CustomerOrderTimelineEntry,
@@ -33,6 +34,7 @@ export default async function OrderDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCustomerPageAccess()
   const { id } = await params
   let order: Awaited<ReturnType<typeof getOwnOrderById>>
   try {
