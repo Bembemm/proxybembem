@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { ProfileForm } from "@/components/account/profile-form"
+import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import { getOwnCustomerProfile } from "@/lib/server/customer-profiles"
 
 export const metadata: Metadata = {
@@ -7,6 +8,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ProfilePage() {
+  await requireCustomerPageAccess()
   const profile = await getOwnCustomerProfile()
 
   return (
