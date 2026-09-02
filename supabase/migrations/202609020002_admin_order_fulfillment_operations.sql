@@ -335,7 +335,7 @@ begin
       'admin',
       jsonb_build_object('payment_status', v_order.payment_status)
     )
-    on conflict do nothing;
+    on conflict (order_id, code) where resolved_at is null do nothing;
   end if;
 
   return jsonb_build_object(
