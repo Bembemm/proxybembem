@@ -14,8 +14,11 @@ const VERIFIED_USER = {
 }
 
 class RedirectSignal extends Error {
-  constructor(readonly path: string) {
+  readonly path: string
+
+  constructor(path: string) {
     super(`redirect:${path}`)
+    this.path = path
   }
 }
 
