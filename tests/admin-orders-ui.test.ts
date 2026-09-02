@@ -240,3 +240,48 @@ test("order detail derives only approved fulfillment actions and uses hardcoded 
   assert.doesNotMatch(page, /name=["'](?:targetStatus|payment_status|payment_id)["']/)
   assert.doesNotMatch(page, /Marcar como pago|Aprovar pagamento|Forçar status|Forcar status|Refundar/i)
 })
+
+test("destructive confirmation opens safely and submits only from the explicit POST confirmation form", async () => {
+  const confirm = await source("../components/admin/danger-confirm-form.tsx")
+
+  assert.ok(confirm.length > 0, "missing destructive confirmation component")
+  assert.match(confirm, /^["']use client["']/m)
+  assert.match(confirm, /from\s+["']\.\.\/ui\/dialog["']/)
+  assert.match(confirm, /DialogTrigger/)
+  assert.match(confirm, /DialogContent/)
+  assert.match(confirm, /DialogTitle/)
+  assert.match(confirm, /DialogDescription/)
+  assert.match(confirm, /DialogClose/)
+
+  for (const prop of ["action", "buttonLabel", "title", "description", "confirmLabel"]) {
+    assert.match(confirm, new RegExp(`${prop}:\\s*string`))
+  }
+
+  assert.match(confirm, /<DialogTrigger\s+asChild>[\s\S]*?<button[\s\S]*?type=["']button["']/)
+  assert.match(confirm, /<form\s+method=["']post["']\s+action=\{action\}>/i)
+  assert.match(confirm, /<button[\s\S]*?type=["']submit["'][\s\S]*?>[\s\S]*?\{confirmLabel\}/)
+  assert.match(confirm, /<DialogClose\s+asChild>[\s\S]*?<button[\s\S]*?type=["']button["']/)
+  assert.doesNotMatch(confirm, /ADMIN_USER_ID|SUPABASE_SECRET_KEY|service_role|MELHOR_ENVIO_|MERCADO_PAGO_|payment_id|payment_status|localStorage/)
+  assert.doesNotMatch(confirm, /<input[^>]+type=["']hidden["']/)
+})
+
+test("order detail requires destructive confirmation only for cancellation", async () => {
+  const page = await source("../app/admin/pedidos/[id]/page.tsx")
+
+  assert.match(page, /DangerConfirmForm/)
+  const destructive = page.match(/<DangerConfirmForm[\s\S]*?\/>/)?.[0] ?? ""
+  assert.ok(destructive, "missing cancellation confirmation invocation")
+  assert.match(destructive, /\/api\/internal\/admin\/orders\/\$\{order\.id\}\/cancel/)
+  assert.match(destructive, /buttonLabel=["']Cancelar pedido["']/)
+  assert.match(destructive, /title=["']Confirmar cancelamento["']/)
+  assert.match(destructive, /description=\{CANCELLATION_COPY\}/)
+  assert.match(destructive, /confirmLabel=["']Sim, cancelar pedido["']/)
+  assert.doesNotMatch(destructive, /start-production|mark-ready-to-ship|mark-shipped|mark-completed/)
+
+  for (const action of ["start-production", "mark-ready-to-ship", "mark-shipped", "mark-completed"]) {
+    assert.match(
+      page,
+      new RegExp(`<ActionForm[\\s\\S]*?action=\\{\\`/api/internal/admin/orders/\\$\\{order\\.id\\}/${action}\\`\\}`),
+    )
+  }
+})
