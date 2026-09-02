@@ -2,177 +2,205 @@
 
 **Updated:** 2026-09-02
 
-This is the canonical repository-wide continuation checkpoint. For the active admin expansion, read this file, then `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`, then the active phase plan.
+Canonical continuation checkpoint. Read this file, then `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`, then the active phase plan.
 
-## Active project — Admin Dashboard + Customer Account Expansion
+## Active project
 
-- Branch: `feat/admin-dashboard-expansion`.
-- Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
-- Approved design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`.
-- Master Plan: `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`.
-- Active phase plan: `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`.
-- State: **PHASE 1 CODE + DATABASE FOUNDATION IMPLEMENTED AND VERIFIED; PREVIEW ADMIN SMOKE BLOCKED BY PREVIEW ENV CONFIGURATION**.
-- Production application code/deployment is unchanged; the approved additive Phase 1 migration is now applied to the existing Supabase project.
-- No merge of `feat/admin-dashboard-expansion` to `main` has been approved.
+**Admin Dashboard + Customer Account Expansion**
 
-## Phase 1 verified code candidate
+- Branch: `feat/admin-dashboard-expansion`
+- Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
+- Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
+- Master Plan: `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`
+- Active plan: `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
+- State: **PHASE 1 VERIFIED; PHASE 2 PLAN WRITTEN/REVIEWED; PHASE 2 RUNTIME NOT STARTED**
+- Merge/new Production application deployment: **NOT APPROVED**
 
-Implementation candidate before checkpoint/documentation commits:
+## Phase 1 — verified foundation
+
+Verified implementation candidate:
 
 `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`
 
-Exact CI for that code candidate:
+CI run `33590493640`, job `100123329614`:
 
-- run `33590493640`;
-- job `100123329614`;
-- `pnpm test`: PASS;
-- `pnpm typecheck`: PASS;
-- `pnpm build`: PASS.
+- `pnpm test`: PASS
+- `pnpm typecheck`: PASS
+- `pnpm build`: PASS
 
-Latest documentation checkpoint before database application:
+Documentation checkpoint `11eb39252cb8c00cdc64336582b53e69b5fb10a6` also passed all three gates in CI `33590734705`.
 
-`11eb39252cb8c00cdc64336582b53e69b5fb10a6`
+Implemented/verified:
 
-CI for that HEAD also passed all three gates (`pnpm test`, `pnpm typecheck`, `pnpm build`) in run `33590734705`.
+- compatibility-safe `orders.fulfillment_status`;
+- `order_events`;
+- `order_attention_flags`;
+- append-only `admin_audit_log`;
+- automatic trusted payment approval -> `awaiting_production` only;
+- refund/chargeback attention without rewinding physical state;
+- manual-review attention on amount/currency mismatch;
+- fulfillment transition vocabulary;
+- recursive safe metadata;
+- order event/attention/audit repositories;
+- strict branch payment-RPC response parser.
 
-Full branch diff review from `main` base `b7172e86...` to candidate `0ce3b371...` found only the approved planning docs, one additive Phase 1 migration, fulfillment/metadata/event/attention/audit server modules, narrow `orders.ts` contract changes, and relevant tests/fixtures. No storefront, catalog authority, customer-account UI, label flow, hosting, or admin UI changes entered Phase 1.
+Append-only DB privilege verification after Phase 1:
 
-### Implemented Phase 1 foundation
+- `service_role` can SELECT/INSERT `admin_audit_log`;
+- `service_role` cannot UPDATE/DELETE `admin_audit_log`;
+- `service_role` cannot UPDATE/DELETE `order_events`.
 
-- `supabase/migrations/202609020001_admin_order_operations_foundation.sql` is versioned in Git and has now been applied to the existing `ProxyBembem` Supabase project with explicit owner authorization.
-- Supabase recorded migration version `20260902091641`, name `admin_order_operations_foundation`.
-- Adds compatibility-safe `orders.fulfillment_status` and conservative backfill.
-- Adds `order_events`, `order_attention_flags`, and append-only `admin_audit_log` with RLS/browser-role restrictions.
-- Existing Mercado Pago payment RPC keeps the same input signature and now atomically handles the one allowed automatic fulfillment transition plus payment-related events/attention.
-- `lib/server/fulfillment.ts` provides stable fulfillment vocabulary/transition rules.
-- `lib/server/safe-metadata.ts` recursively blocks secret/internal metadata and unsafe JSON shapes.
-- `lib/server/order-events.ts` uses explicit `on_conflict=dedupe_key` only for real dedupe requests.
-- `lib/server/order-attention.ts` treats only the named partial-index `23505` duplicate as idempotent; unrelated conflicts fail.
-- `lib/server/admin-audit.ts` exposes append/list only, with no update/delete API.
-- Branch `lib/server/orders.ts` strictly validates the new RPC result while keeping the payment RPC request body unchanged.
-- Current `main` payment parser remains compatible with the RPC because it validates the existing fields and does not reject additional response fields.
+### Phase 1 TDD/debug evidence
 
-### TDD/debugging evidence
+- migration RED `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`;
+- migration GREEN `bdf02ffd76a3c63efd0fe617bada587965af7171`;
+- fulfillment GREEN `f880fa4a420932f6112cb3800ad86afdbb31f2ff`;
+- payment contract RED `dbd2496fc4416fba374da9addc058d370f0a6b5e`;
+- stabilized contract `1f1ba69dd61ed9c41d4abb4489f30d325a669be9` full CI PASS;
+- order events GREEN `186d34d109c4bc6a41a02c7b8b172ae8838303e4` full CI PASS;
+- attention RED `cadb3d30a46a1eea2d11ed9b43779a1fd9175abf`, GREEN `7ae5338b640f15f78554cb5c71ae5351643a5e3c` full CI PASS;
+- audit RED `2b6af16a5362d8d7e8e75d3a5850ee9708ae1da6`, GREEN `0ce3b371...` full CI PASS.
 
-- Migration RED: `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`, expected missing-file failures.
-- Migration GREEN: `bdf02ffd76a3c63efd0fe617bada587965af7171`, CI full PASS.
-- Fulfillment state machine completed RED -> GREEN.
-- Payment RPC contract RED: `dbd2496fc4416fba374da9addc058d370f0a6b5e`, expected unknown-status acceptance failure.
-- Systematic debugging found two stale test fixtures after the `OrderRecord` contract expansion; only fixture data changed, not webhook production logic.
-- Stabilized contract candidate `1f1ba69dd61ed9c41d4abb4489f30d325a669be9` passed full CI.
-- Order events GREEN `186d34d109c4bc6a41a02c7b8b172ae8838303e4`, full CI PASS.
-- Order attention RED `cadb3d30a46a1eea2d11ed9b43779a1fd9175abf`; GREEN `7ae5338b640f15f78554cb5c71ae5351643a5e3c`, full CI PASS.
-- Admin audit RED `2b6af16a5362d8d7e8e75d3a5850ee9708ae1da6`; GREEN `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, full CI PASS.
+Two temporary CI regressions during Phase 1 were traced with systematic debugging to stale test fixtures (`webhook-route.test.ts` and `order-display.test.ts`), not runtime webhook logic.
 
-## Supabase execution model and Phase 1 validation
+## Supabase execution model
 
-Connected Supabase state checked on 2026-09-02:
+Connected project:
 
-- one project exists: `ProxyBembem`;
-- project ref: `kicgoocozxzkuoqajqif`;
-- region: `sa-east-1`;
-- status: healthy;
-- development branches: none.
+- name: `ProxyBembem`
+- project ref: `kicgoocozxzkuoqajqif`
+- region: `sa-east-1`
+- healthy
+- development branches: none
 
-The owner explicitly clarified that this project has historically been evolved in place as features need schema changes and that no Supabase development branch has been used. Do **not** treat creation of a paid Supabase development branch as a requirement. Future DDL on the current Supabase project still requires explicit owner approval when it is a meaningful Production database change.
+Owner explicitly confirmed the established project workflow: use this existing Supabase project and add schema as needed. A paid Supabase development branch is **not** a prerequisite and must not be reintroduced as one.
 
-### Phase 1 database application evidence
+Meaningful DDL on the current project still stops for explicit owner approval before application.
 
-Migration `admin_order_operations_foundation` was applied successfully to the current Supabase project after explicit owner approval.
+### Applied Phase 1 migration
 
-Safe aggregate validation after application:
+Supabase migration record:
+
+`20260902091641_admin_order_operations_foundation`
+
+Post-application evidence:
 
 - existing orders checked: 25;
-- `fulfillment_status` NULL rows: 0;
-- approved orders with incorrect backfill: 0;
-- non-approved orders with incorrect backfill: 0;
-- `order_events`, `order_attention_flags`, `admin_audit_log`: present;
-- RLS enabled on all three new tables;
-- `anon` cannot read `order_events`;
-- `authenticated` cannot read `order_events`;
-- `service_role` can insert `order_events`;
-- fulfillment default is `awaiting_payment`;
-- allowed-status constraint exists;
-- partial active-attention unique index exists;
-- payment RPC remains `SECURITY DEFINER` with fixed/empty search path;
-- `anon`/`authenticated` cannot execute the payment RPC;
-- `service_role` can execute it.
+- fulfillment NULLs: 0;
+- approved wrong backfill: 0;
+- non-approved wrong backfill: 0;
+- new tables present and RLS enabled;
+- anon/authenticated cannot read operational history tables;
+- anon/authenticated cannot execute the payment RPC;
+- service_role has required access;
+- controlled transaction+rollback validated approval, replay idempotency, refund, chargeback, manual_review;
+- persistent validation fixture rows: 0.
 
-Controlled real-database RPC validation was executed inside a transaction and rolled back. It proved:
+Supabase advisor results were reviewed. Backend-only RLS/no-policy and just-created unused-index notices are intentional/expected. Pre-existing leaked-password protection warning is deferred to customer account/auth hardening.
 
-- pending + exact trusted approval -> `approved` + `awaiting_production` + `fulfillment_transitioned=true`;
-- repeating the same approval -> `ignored` and no duplicate operational event;
-- approved -> refunded keeps `awaiting_production` and opens critical `payment_refunded` attention;
-- approved -> charged_back keeps `awaiting_production` and opens critical `payment_charged_back` attention;
-- amount mismatch -> `manual_review`, remains `awaiting_payment`, opens critical `payment_manual_review` attention;
-- final persistent validation rows: 0.
+## Vercel state
 
-### Supabase advisor review
+Project: `prj_ltpEFQ1h55qeQKLdmiyZv2Oc21OI`
 
-Post-DDL security advisor findings:
+Team: `team_bwSLmhPDu6WucdPzwitIvS2P`
 
-- `RLS Enabled No Policy` appears for the new operational tables. This is intentional for these backend-only tables because browser roles are revoked and `service_role` is the allowed server access path. Remediation reference if architecture changes: https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy
-- Existing `Leaked Password Protection Disabled` warning remains. It is not caused by Phase 1 and should be reconsidered during the customer-account/auth hardening phase: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+Known branch Preview from Phase 1:
 
-Post-DDL performance advisor reports the new indexes as unused. That is expected immediately after creation; do not remove them based only on this initial lint. Reference: https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
+- deployment `dpl_Eb7dUhzmbN5JMzYUn5Knav85mUau`
+- READY
+- `/`: 200
+- `/admin`: 500
 
-## Preview and Production smoke state
-
-### Vercel Preview
-
-Latest branch Preview for documentation HEAD `11eb3925...`:
-
-- deployment `dpl_Eb7dUhzmbN5JMzYUn5Knav85mUau`;
-- state: READY;
-- `/`: HTTP 200;
-- `/admin`: HTTP 500.
-
-Root cause of Preview `/admin` failure is confirmed from runtime logs:
+Confirmed root cause:
 
 `Missing required public environment variable: NEXT_PUBLIC_SUPABASE_URL`
 
-This is a Preview-environment configuration issue, not a Phase 1 database/RPC regression. The available Vercel connector cannot mutate environment variables, so **Preview admin is not approved** yet. Do not hide or misclassify this blocker.
+The available Vercel connector cannot edit environment variables. Preview admin is **NOT APPROVED** until the Preview env contract is configured. At minimum the protected admin flow expects:
 
-### Current Production application after database migration
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ADMIN_USER_ID
+SUPABASE_URL
+SUPABASE_SECRET_KEY
+```
 
-- `https://www.proxybembem.com.br/admin`: HTTP 200 and correctly renders the protected admin login surface.
-- Production error/fatal runtime log query over the 30 minutes following validation returned no matching errors.
-- Production application code/deployment remains the pre-expansion `main`; only the explicitly approved additive database migration changed.
+Existing provider/integration routes may also require their already-documented env values.
 
-## Architectural decisions future chats must not rediscover
+Current Production application after Phase 1 DB migration:
 
-- Modular monolith in existing Next.js + Supabase app.
-- Keep `/admin`; security relies on server authorization, mandatory TOTP/AAL2, one active session, 30-minute inactivity, fail-closed behavior.
-- Payment is provider-authoritative; admin cannot force paid/refunded locally.
-- Fulfillment: `awaiting_payment -> awaiting_production -> in_production -> ready_to_ship -> shipped -> completed`; `canceled` exceptional/terminal where valid.
-- Only trusted approved payment automatically performs `awaiting_payment -> awaiting_production`.
-- Refund/chargeback creates attention without rewinding physical fulfillment.
+- `https://www.proxybembem.com.br/admin`: 200 protected login surface;
+- error/fatal runtime logs in validation window: none;
+- Production application code/deployment remains the pre-expansion main baseline.
+
+## Phase 2 — Admin Orders + Fulfillment
+
+Detailed plan:
+
+`docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
+
+Initial plan commit: `799bdba6a3ace3707054556d0f0f1c4aa50ff72a`
+
+Reviewed plan commit: `963c2d316451b62d43422d8685631a4cde33f177`
+
+Master checkpoint after review: `b7d3923359593f2b28f562c92d374fc18dd9fba1`
+
+### Phase 2 review decisions future chats must not rediscover
+
+- list RPC returns `{orders,total}`, including empty/out-of-range pages;
+- search input escapes `%`, `_`, and `\` as literal values;
+- admin date filters use `America/Sao_Paulo` calendar-day boundaries;
+- attention severity is deterministic `critical > warning > info`;
+- payment filters accept only safe exact status-code syntax, while unknown provider status display falls back neutrally;
+- transition target is fixed by the server route, never browser input;
+- DB row lock is final concurrency authority;
+- transition + event + audit + required attention are atomic;
+- paid cancellation does **not** refund and opens `canceled_paid_order`;
+- actual provider `refunded`/`charged_back` later resolves only `canceled_paid_order`; reversal-specific attention remains;
+- action handler uses one fixed redirect/error mapping, not implementation alternatives;
+- Next.js 16 dynamic `params`/`searchParams` are awaited;
+- login/MFA routes stay outside the shared protected content shell;
+- audit/order-events append-only privileges must remain unchanged;
+- Phase 2 DDL is not applied until the full code candidate is tested/re-reviewed and owner explicitly approves that exact migration.
+
+### Planned Phase 2 runtime
+
+- static bounded `admin_list_orders` RPC;
+- atomic `admin_transition_order_fulfillment` RPC;
+- paid-cancellation reversal observer;
+- backend admin order read repository;
+- strict fulfillment operation repository;
+- five narrow POST action routes;
+- shared current-style admin shell;
+- `/admin/pedidos`;
+- `/admin/pedidos/[id]`;
+- destructive cancel confirmation;
+- `/admin/producao`;
+- focused/full verification;
+- separate owner gate before current-Supabase Phase 2 DDL;
+- Preview smoke only after Preview env is fixed;
+- separate owner gate before merge/new Production application deployment.
+
+## Architectural decisions
+
+- Modular monolith.
+- `/admin` remains readable; authorization/MFA is the security boundary.
+- Payment is provider-authoritative.
+- Fulfillment is independent.
+- Automatic fulfillment transition only on trusted approved payment from awaiting-payment.
+- Refund/chargeback does not falsify physical state.
 - No generic arbitrary admin order/payment PATCH.
-- Order events and admin audit are append-oriented and separate.
-- Customer account optional: email + permanent password + email verification + reset; Auth UUID owns relationships.
-- Guest checkout/public-token tracking remain.
-- Catalog moves to Supabase in stages; checkout remains server-authoritative and historical snapshots immutable.
-- Label purchase never happens automatically after payment and always requires explicit admin confirmation.
-- Tracking may synchronize read-only when safe.
-- Transactional email uses outbox/job isolation.
-- Store settings expose no infrastructure secrets.
-- Migrations compatibility-first and no historical facts are fabricated.
-- `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED` are distinct.
-- No merge/high-risk Production action without explicit owner approval.
-- Do not delete feature branches unless owner explicitly requests cleanup.
-- Do not introduce a paid Supabase development branch merely because one was suggested; the owner explicitly chose the existing in-place Supabase workflow.
-
-## Production baseline
-
-- Repo: `Bembemm/proxybembem`.
-- Canonical `main`: `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
-- Existing Production deployment: `dpl_DFZhbQpkxZ8CRqJsLKx2jU8v9MAX`, READY.
-- Canonical domains: `https://www.proxybembem.com.br` and `https://proxybembem.com.br`.
-- Production application code remains unchanged by the expansion branch.
-- Production Supabase now includes migration `20260902091641_admin_order_operations_foundation` in addition to the prior seven migrations.
+- Customer account later remains optional; guest checkout remains.
+- Catalog later moves to Supabase in stages; browser price never trusted.
+- Label purchase always manual/explicit.
+- Transactional email later uses outbox isolation.
+- Store settings contain no infrastructure secrets.
+- No fabricated historical facts.
+- `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED` remain distinct.
+- Do not delete feature branches unless owner explicitly asks.
 
 ## End-of-session rule
 
-Every meaningful session must update this file with exact phase/task, fresh evidence, blockers, next action, branch/commit/Preview/Production state, and decisions future sessions must not rediscover.
+Every meaningful session updates this file with exact phase/task, fresh evidence, blocker, next action, branch/commit, database/Preview/Production state, and decisions that must not be rediscovered.
 
-**Resume point:** Phase 1 code and current Supabase database foundation are implemented and validated. Branch CI is green. The only remaining Phase 1 acceptance blocker is Vercel Preview admin configuration (`NEXT_PUBLIC_SUPABASE_URL` missing in Preview); Production current application remains healthy after the database migration. Do not merge to `main` yet. Next exact action is either (a) fix/confirm Preview environment configuration so the Phase 1 branch can receive a full Preview smoke check, or, if the owner explicitly accepts proceeding despite that pre-existing Preview configuration limitation, (b) write/review the Phase 2 Admin Orders + Fulfillment implementation plan before runtime Phase 2 changes.
+**Resume point:** Phase 1 is verified and applied to the current Supabase DB. Phase 2 design/implementation plan is reviewed. No Phase 2 runtime file or migration exists yet. Preview admin env blocker remains open. **NEXT EXACT ACTION:** create only `tests/admin-order-operations-migration.test.ts`, commit the RED, confirm failure is solely the missing `supabase/migrations/202609020002_admin_order_fulfillment_operations.sql`, then and only then write Phase 2 SQL.
