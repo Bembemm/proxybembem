@@ -79,7 +79,7 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 
 **Plan:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
 
-**State:** TASKS 1–12 CODE/TDD/SECURITY/SCOPE/DB VERIFIED. TASK 13 PREVIEW ACCEPTANCE NEXT.
+**State:** TASKS 1–12 VERIFIED; TASK 13 AUTOMATED PREVIEW SMOKE PASS, AUTHENTICATED OWNER SMOKE PENDING.
 
 ## Planning/contract decisions
 
@@ -105,7 +105,7 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 - [x] Task 10 — `/admin/producao` three oldest-first active queues (`40019e59...`, CI `33650042499` PASS).
 - [x] Task 11 — full suite/typecheck/build + exact scope/security/concurrency review.
 - [x] Task 12 — exact reviewed migration applied to current Supabase after owner approval; structure + rollback matrix + advisors validated.
-- [~] Task 13 — Preview acceptance.
+- [~] Task 13 — automated Preview checks pass; authenticated owner smoke remains.
 - [ ] Task 14 — Phase 2 completion gate and separate merge/Production decision.
 
 ## Task 11 findings and evidence
@@ -147,6 +147,38 @@ Current project:
 - [x] Security advisor reviewed: `rls_enabled_no_policy` INFO is intentional for current backend-only/service-role tables; leaked-password-protection WARN is separate Auth hardening, not caused by Phase 2 DDL.
 - [x] Performance advisor reviewed: fresh/unused `admin_audit_admin_created_idx` INFO retained; no premature index deletion.
 
+## Task 13 — Preview acceptance evidence
+
+Automated candidate:
+
+- deployment `dpl_3nTsAkpepNtZBe8CuBGpjR8gcqY7`;
+- READY Preview from `feat/admin-dashboard-expansion`;
+- deployed SHA `241863428129b7c0b1922be918cb35c4de7939a6`, descendant of runtime candidate `abe96b66...` with docs-only checkpoint commits after runtime verification;
+- branch alias `proxybembem-git-feat-adm-f67043-brenobembemm1802-7300s-projects.vercel.app`.
+
+Automated acceptance:
+
+- [x] Build errors-only log contains no build errors.
+- [x] `/` returns 200 and storefront renders.
+- [x] `/produtos` returns 200 and both current products render.
+- [x] `/admin` returns the admin login surface with private/no-store and noindex/nofollow.
+- [x] `/admin/pedidos` without session is intercepted to login and exposes no order data.
+- [x] `/admin/producao` without session is intercepted to login.
+- [x] `/admin/integrations/melhor-envio` without session is intercepted to login.
+- [x] `/pedido/<synthetic invalid token>` returns safe 404 with no customer/order disclosure.
+- [x] CSP contains configured Supabase project origin and sandbox Melhor Envio form action.
+- [x] Deployment-scoped Preview runtime logs after smoke contain zero `error`/`fatal` entries in the checked window.
+- [x] No payment, refund, fulfillment mutation, OAuth reauthorization, or label purchase was performed.
+
+Environment/owner boundary:
+
+- [x] Fresh login page + CSP prove browser-side Supabase Preview configuration is active.
+- [~] Server-only env names cannot be independently enumerated through the available Vercel connector because no env-list action is exposed; never expose secret values to compensate.
+- [ ] Owner must authenticate normally with existing password + TOTP and confirm protected server-side surfaces load. This is the remaining authoritative proof for server-only admin/storage env configuration.
+- [ ] After owner smoke, re-check Preview logs and close Task 13 only if clean.
+
+Owner smoke must remain read-only: `/admin`, `/admin/pedidos`, one existing order detail without submitting any action, `/admin/producao`, `/admin/integrations/melhor-envio`. Do not share password/TOTP in chat. Do not click cancellation/fulfillment mutation, reauthorize OAuth, purchase labels, or initiate real payment/refund for this check.
+
 ## Phase 2 transition truth
 
 ```text
@@ -163,12 +195,13 @@ Starting production requires `payment_status='approved'`.
 
 ## Phase 2 remaining acceptance sequence
 
-- [~] Task 13: inspect a READY Preview deployment containing the Phase 2 runtime candidate/descendant.
-- [ ] Verify Preview environment contract presence without printing secrets.
-- [ ] Smoke `/`, unauthenticated/protected admin surfaces, `/admin/pedidos`, safe detail, `/admin/producao`, existing Melhor Envio integration, storefront/tracking.
-- [ ] Do not perform real Mercado Pago payment, destructive production transitions, refund, or real label purchase during smoke.
-- [ ] Review Preview error/fatal logs.
-- [ ] Record Preview evidence.
+- [x] Inspect READY Preview containing verified runtime candidate/descendant.
+- [x] Automated public/protection smoke.
+- [x] Automated Preview error/fatal log review.
+- [~] Preview environment contract: browser config proven; server-only proof pending authenticated AAL2 owner session.
+- [ ] Owner authenticates and checks protected shell, orders list, one safe detail, production queue and Melhor Envio integration read-only.
+- [ ] Re-check logs after owner smoke.
+- [ ] Mark Task 13 complete only after authenticated check.
 - [ ] Task 14 final Phase 2 gate.
 - [ ] Separate explicit owner approval before merge/new Production application deployment.
 
@@ -270,10 +303,11 @@ Starting production requires `payment_status='approved'`.
 17. Paid-cancel duplicate suppression targets only the active partial index; generic conflict swallowing is forbidden.
 18. Phase 2 migration is applied as `20260902160658_admin_order_fulfillment_operations`; do not rediscover or reapply it.
 19. Task 12 rollback validation passed 16/16 and left zero fixtures.
+20. Task 13 automated Preview smoke is clean; only authenticated owner AAL2 smoke remains before Preview acceptance can be called complete.
 
 ## Current Session Checkpoint
 
-**Status:** PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–12 VERIFIED; TASK 13 PREVIEW ACCEPTANCE NEXT
+**Status:** PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–12 VERIFIED; TASK 13 AUTOMATED PREVIEW PASS / AUTHENTICATED OWNER CHECK PENDING
 
 **Current branch:** `feat/admin-dashboard-expansion`
 
@@ -281,6 +315,8 @@ Starting production requires `payment_status='approved'`.
 
 **Phase 2 Supabase migration:** `20260902160658_admin_order_fulfillment_operations` — APPLIED + STRUCTURAL VALIDATION PASS + 16/16 ROLLBACK MATRIX PASS + ZERO FIXTURES.
 
+**Task 13 automated Preview:** `dpl_3nTsAkpepNtZBe8CuBGpjR8gcqY7` / SHA `241863428129b7c0b1922be918cb35c4de7939a6` — READY; storefront/protection/tracking smoke PASS; zero error/fatal logs in checked window.
+
 **Merge/new Production application deployment:** NOT APPROVED.
 
-**NEXT EXACT ACTION:** execute Task 13 Preview acceptance only. Inspect a current READY Preview deployment, confirm required env contract without exposing values, smoke the read-only/protected admin surfaces and existing integrations without destructive business actions, inspect Preview error/fatal logs, then update checkpoints. Do not merge or promote Production.
+**NEXT EXACT ACTION:** owner opens the feature-branch Preview alias, logs in normally with existing password + TOTP, and performs only read-only checks of `/admin`, `/admin/pedidos`, one existing order detail, `/admin/producao`, and `/admin/integrations/melhor-envio`. Owner reports whether all load and whether any visible error occurs. Then inspect Preview error/fatal logs again, record Task 13 result, and only then proceed to Task 14. Do not share credentials, merge, or promote Production.
