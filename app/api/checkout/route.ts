@@ -6,6 +6,7 @@ import {
   executeCheckoutFlow,
 } from "@/lib/server/checkout-flow"
 import { isAllowedMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
+import { getOptionalCustomerIdentity } from "@/lib/server/customer-auth"
 import {
   getServerEnv,
   isAllowedCheckoutOrigin,
@@ -135,9 +136,11 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ error: "Origem de checkout inválida." }, 403)
     }
 
+    const customerIdentity = await getOptionalCustomerIdentity()
     const result = await executeCheckoutFlow({
       items: payload.items,
       customer,
+      customerIdentity,
       selectedQuoteToken: payload.selectedQuoteToken,
       checkoutAttemptId: payload.checkoutAttemptId,
       siteUrl,
