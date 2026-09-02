@@ -137,9 +137,7 @@ Initial Phase 3 plan commit: `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
 
 ## Planned Phase 3 database contract
 
-Migration filename:
-
-`supabase/migrations/202609020003_customer_accounts_orders.sql`
+Migration filename: `supabase/migrations/202609020003_customer_accounts_orders.sql`.
 
 **Current state:** file does not exist yet and no Phase 3 DDL has been applied.
 
@@ -185,23 +183,26 @@ Customer UI uses storefront visual identity, not admin styling.
 - [ ] Task 14 — Preview acceptance with real verification/login and cross-account isolation checks.
 - [ ] Task 15 — Phase 3 completion gate.
 
-## Task 1 — RED evidence
+## Task 1 — canonical RED evidence
 
-Test-only file: `tests/customer-account-migration.test.ts`.
+Test file: `tests/customer-account-migration.test.ts`.
 
-RED commit: `631565b4e2319b697db2ce42487a462ef4d333f2`.
+Initial RED at `631565b4...` proved the migration absent. Before SQL, review found an over-broad guard that would also have forbidden the legitimate claim RPC from setting `customer_id`. The test was narrowed to forbid historical backfill while explicitly requiring the allowed claim update.
 
-CI run `33666326422`, job `100368874030`:
+Canonical RED:
 
-- [x] `pnpm test` failed as expected.
-- [x] 295 total tests; 291 PASS; exactly 4 FAIL.
-- [x] All four failures are new Phase 3 migration-contract tests.
-- [x] Every failure is `ENOENT` for `supabase/migrations/202609020003_customer_accounts_orders.sql`.
-- [x] No unrelated test failed.
-- [x] `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the job; do not treat this commit as a full verification candidate.
-- [x] No Phase 3 SQL existed when RED was captured.
+- commit `619db2cb966b188cf759ed51ccd374dc60a53d0b`;
+- CI run `33666738154`;
+- job `100370241591`;
+- [x] `pnpm test` failed as expected;
+- [x] 295 total tests; 291 PASS; exactly 4 FAIL;
+- [x] all four failures are the Phase 3 migration-contract tests;
+- [x] every failure is `ENOENT` for `supabase/migrations/202609020003_customer_accounts_orders.sql`;
+- [x] no unrelated test failed;
+- [x] `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the job;
+- [x] no Phase 3 SQL existed when canonical RED was captured.
 
-The RED contract requires additive nullable ownership/email fields, no historical identity backfill, own-row RLS profile data, customer list/detail RPC ownership via `auth.uid()`, no broad authenticated order access, and service-role-only locked verified-email + token claim. Existing `order_events.source` already accepts `customer`.
+The RED contract requires additive nullable ownership/email fields, no historical identity backfill, own-row RLS profile data, customer list/detail ownership via `auth.uid()`, no broad authenticated order access, and a service-role-only row-locked verified-email + token claim that may update only the matched order's `customer_id`. Existing `order_events.source` already accepts `customer`.
 
 ## Phase 3 TDD/rollout gates
 
@@ -313,7 +314,7 @@ The RED contract requires additive nullable ownership/email fields, no historica
 20. Phase 2 migration `20260902160658_admin_order_fulfillment_operations` is already applied/validated; do not reapply it.
 21. Phase 2 rollback matrix passed 16/16 and left zero fixtures.
 22. Phase 2 Preview authenticated owner smoke passed 5/5 with zero checked error/fatal logs.
-23. Phase 3 Task 1 RED is valid at `631565b4...`, CI `33666326422`: 295 total, 291 pass, 4 expected ENOENT failures; typecheck/build skipped.
+23. Phase 3 Task 1 canonical RED is `619db2cb...`, CI `33666738154`, job `100370241591`: 295 total, 291 PASS, 4 expected ENOENT failures; typecheck/build skipped.
 24. Phase 3 migration has not been created/applied yet; Task 2 GREEN is next.
 
 ## Current Session Checkpoint
@@ -326,7 +327,7 @@ The RED contract requires additive nullable ownership/email fields, no historica
 
 **Phase 3 plan:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`.
 
-**Task 1 RED:** `631565b4e2319b697db2ce42487a462ef4d333f2`, CI `33666326422`, job `100368874030`, valid expected failure.
+**Task 1 canonical RED:** `619db2cb966b188cf759ed51ccd374dc60a53d0b`, CI `33666738154`, job `100370241591`.
 
 **Phase 3 DB:** NOT CREATED / NOT APPLIED.
 
