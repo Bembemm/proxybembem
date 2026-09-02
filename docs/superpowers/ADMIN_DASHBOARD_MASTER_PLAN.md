@@ -135,7 +135,7 @@ Preserve and inspect before changing behavior:
 
 ### Evidence gate
 
-- [ ] RED tests captured for each new unit.
+- [~] RED tests captured for each new unit. Task 1 migration RED captured; later units still pending.
 - [ ] Focused migration/state/repository tests PASS.
 - [ ] `pnpm test` PASS.
 - [ ] `pnpm typecheck` PASS.
@@ -143,6 +143,14 @@ Preserve and inspect before changing behavior:
 - [ ] Non-Production migration/RPC validation succeeds.
 - [ ] Preview smoke check confirms existing checkout/public order/admin-auth behavior.
 - [ ] Owner approval obtained before any Production migration/deploy.
+
+**Task 1 RED evidence (2026-09-02):**
+
+- test-only commit: `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`;
+- command: `node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`;
+- result: expected RED, 3 tests failed, 0 passed;
+- failure reason for all three tests: `ENOENT` because `supabase/migrations/202609020001_admin_order_operations_foundation.sql` does not exist;
+- no migration/runtime production code existed when RED was captured.
 
 **Rollback:** Additive schema can remain while Phase 1 code rolls back; do not drop existing checkout/payment data.
 
@@ -378,11 +386,11 @@ Preserve and inspect before changing behavior:
 
 # 12. Current Session Checkpoint
 
-**Status:** MASTER PLAN + PHASE 1 IMPLEMENTATION PLAN WRITTEN; RUNTIME IMPLEMENTATION NOT STARTED
+**Status:** PHASE 1 TASK 1 RED CAPTURED; PRODUCTION CODE NOT STARTED
 
 **Current phase:** Phase 1 — Data + Audit Foundation
 
-**Current task:** Planning gate complete; awaiting selection of implementation execution mode before Task 1 RED test is written.
+**Current task:** Task 1 complete at RED. Preparing Task 2 migration implementation.
 
 **Branch:** `feat/admin-dashboard-expansion`
 
@@ -394,30 +402,31 @@ Preserve and inspect before changing behavior:
 
 **Active phase plan:** `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`
 
-**Implementation:** NOT STARTED
+**Last test-only implementation commit:** `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`
 
 **Expansion migrations created/applied:** NONE
 
-**Planning evidence:**
+**Fresh RED verification:**
 
-- architectural spec reviewed and owner-approved;
-- Master Plan written and reviewed;
-- Phase 1 detailed plan written and self-reviewed;
-- self-review corrections: explicit PostgREST `dedupe_key` conflict target, correct partial-index duplicate handling for attention, recursive bounded secret-metadata validation.
+- command: `node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`;
+- tests: 3;
+- pass: 0;
+- fail: 3;
+- expected failure: `ENOENT` for missing `supabase/migrations/202609020001_admin_order_operations_foundation.sql`;
+- RED is valid because the feature/migration is absent.
 
-**Runtime verification:**
+**Full repository verification:**
 
-- focused runtime tests: not run — no runtime code changed;
-- `pnpm test`: not run — planning-only checkpoint;
-- `pnpm typecheck`: not run — planning-only checkpoint;
-- `pnpm build`: not run — planning-only checkpoint.
+- `pnpm test`: not run at RED-only checkpoint;
+- `pnpm typecheck`: not run at RED-only checkpoint;
+- `pnpm build`: not run at RED-only checkpoint.
 
-**Preview:** Not required for planning-only commits.
+**Preview:** Not applicable yet.
 
 **Production:** NOT APPROVED / NOT CHANGED.
 
-**Blockers:** None known.
+**Blockers:** None.
 
-**NEXT EXACT ACTION:** Begin Phase 1 Task 1 using the approved plan: write `tests/admin-order-foundation-migration.test.ts`, run it alone, capture the expected RED failure because migration `202609020001_admin_order_operations_foundation.sql` does not exist, and record that RED evidence before writing the migration.
+**NEXT EXACT ACTION:** Task 2 — create `supabase/migrations/202609020001_admin_order_operations_foundation.sql` with the compatibility-safe fulfillment column, backfill, event/attention/audit tables, and upgraded atomic Mercado Pago RPC, then rerun the focused migration test for GREEN.
 
-**DO NOT REDISCOVER:** Read Section 11 and the active Phase 1 plan before execution. Do not touch `/admin` UI, customer accounts, catalog authority, label purchase, or Production in Phase 1.
+**DO NOT REDISCOVER:** Do not touch `/admin` UI, customer accounts, catalog authority, label purchase, or Production in Phase 1. Payment-side event/attention/automatic fulfillment changes remain atomic inside the existing Mercado Pago RPC.
