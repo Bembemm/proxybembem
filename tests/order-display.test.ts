@@ -9,6 +9,8 @@ function baseOrder(overrides: Partial<OrderRecord> = {}): OrderRecord {
     order_number: "PB-A1B2C3D4E5F6",
     public_token: "a".repeat(64),
     customer_name: "Cliente",
+    customer_email: null,
+    customer_id: null,
     whatsapp: "44999999999",
     cep: "01001000",
     address_street: "Praça da Sé",
