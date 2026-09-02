@@ -18,6 +18,7 @@ const ITEMS = [
 const CART_FINGERPRINT = createCartFingerprint(ITEMS)
 const CUSTOMER: CheckoutData = {
   nome: "Cliente Teste",
+  email: "cliente@example.com",
   whatsapp: "11999999999",
   cep: "01001000",
   rua: "Praça da Sé",
