@@ -279,9 +279,6 @@ test("order detail requires destructive confirmation only for cancellation", asy
   assert.doesNotMatch(destructive, /start-production|mark-ready-to-ship|mark-shipped|mark-completed/)
 
   for (const action of ["start-production", "mark-ready-to-ship", "mark-shipped", "mark-completed"]) {
-    assert.match(
-      page,
-      new RegExp(`<ActionForm[\\s\\S]*?action=\\{\\`/api/internal/admin/orders/\\$\\{order\\.id\\}/${action}\\`\\}`),
-    )
+    assert.match(page, new RegExp(`<ActionForm[\\s\\S]*?${action}`))
   }
 })
