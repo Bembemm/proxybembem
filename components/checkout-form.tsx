@@ -1,4 +1,4 @@
-import { MapPin, MessageCircle, User } from "lucide-react"
+import { Mail, MapPin, MessageCircle, User } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -50,6 +50,35 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
           className={`${inputClass} ${errors.nome ? "border-red-400/70 focus:border-red-400" : ""}`}
         />
         {errorText("checkout-nome-error", errors.nome)}
+      </div>
+
+      <div>
+        <Label htmlFor="checkout-email" className="text-slate-400 text-sm font-medium">
+          E-mail *
+        </Label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <Input
+            id="checkout-email"
+            type="email"
+            autoComplete="email"
+            maxLength={254}
+            required
+            value={data.email}
+            onChange={(event) => onChange("email", event.target.value)}
+            placeholder="voce@exemplo.com"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "checkout-email-error" : "checkout-email-help"}
+            className={`${inputClass} pl-10 ${errors.email ? "border-red-400/70 focus:border-red-400" : ""}`}
+          />
+        </div>
+        {errors.email ? (
+          errorText("checkout-email-error", errors.email)
+        ) : (
+          <p id="checkout-email-help" className="text-slate-500 text-sm mt-1">
+            Usaremos este e-mail para identificar seu pedido e sua conta, caso você crie uma.
+          </p>
+        )}
       </div>
 
       <div>
