@@ -11,7 +11,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active plan: `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
-- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–12 CODE/TDD/SECURITY/DB VALIDATION COMPLETE; TASK 13 PREVIEW ACCEPTANCE NEXT**
+- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–12 COMPLETE; TASK 13 AUTOMATED PREVIEW SMOKE PASS, AUTHENTICATED OWNER SMOKE PENDING**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Phase 1 verified baseline
@@ -167,6 +167,37 @@ Performance advisor:
 
 - `unused_index` INFO for `admin_audit_admin_created_idx`; expected for a fresh/low-traffic audit index and not a reason to remove it during Phase 2.
 
+## Task 13 — Preview acceptance in progress
+
+Automated smoke candidate:
+
+- Vercel deployment `dpl_3nTsAkpepNtZBe8CuBGpjR8gcqY7`;
+- READY Preview, target `null`;
+- branch `feat/admin-dashboard-expansion`;
+- deployed Git SHA `241863428129b7c0b1922be918cb35c4de7939a6`, a descendant of runtime candidate `abe96b66...` with only checkpoint-document commits after the verified runtime;
+- branch alias `proxybembem-git-feat-adm-f67043-brenobembemm1802-7300s-projects.vercel.app`.
+
+Automated checks completed:
+
+- build errors-only log: no build errors; build completed successfully;
+- `/`: 200 storefront rendered;
+- `/produtos`: 200 and both current catalog products rendered;
+- `/admin`: 200 login surface, `x-matched-path=/admin/login`, private/no-store, noindex/nofollow;
+- `/admin/pedidos`: unauthenticated access returned the protected login surface, no order data exposed;
+- `/admin/producao`: unauthenticated access returned the protected login surface;
+- `/admin/integrations/melhor-envio`: unauthenticated access returned the protected login surface;
+- `/pedido/<synthetic-invalid-64-char-token>`: 404, no customer/order data disclosed, route matched `/pedido/[token]`;
+- Preview CSP contains the configured Supabase project origin and sandbox Melhor Envio form action;
+- runtime error/fatal query scoped to this Preview deployment after smoke: no matching logs.
+
+Environment verification status:
+
+- fresh `/admin` login and CSP prove the current public Supabase browser configuration is usable in Preview;
+- this Vercel connector does not expose an environment-variable listing action, so server-only variable presence cannot be independently enumerated without exposing/reading secrets;
+- the remaining authoritative server-side proof is an authenticated AAL2 admin request that reaches protected pages and server repositories successfully.
+
+Authenticated Preview acceptance is **pending owner interactive login** because the assistant does not possess and will not request/bypass the admin password or TOTP. Required owner-only smoke is read-only: login normally with password + TOTP, confirm protected shell, `/admin/pedidos`, one existing order detail without submitting any action, `/admin/producao`, and `/admin/integrations/melhor-envio`. Do not perform cancellation, fulfillment transition, real payment/refund, OAuth reauthorization, or label purchase during this acceptance check.
+
 ## Phase 2 target flow
 
 ```text
@@ -184,9 +215,10 @@ Starting production requires `payment_status = 'approved'`. Mercado Pago remains
 ## Safety gates
 
 - Phase 2 DDL is applied and validated.
+- Automated Preview public/unauthenticated smoke is PASS.
+- Authenticated owner Preview smoke is still required before Task 13/Phase 2 can be marked complete.
 - Do not merge the feature branch without explicit owner approval.
 - Do not promote/create a new Production application deployment without explicit owner approval.
-- Task 13 is Preview-only acceptance of the already-reviewed branch against the now-compatible database.
 
 ## Resume point
 
@@ -194,6 +226,8 @@ Starting production requires `payment_status = 'approved'`. Mercado Pago remains
 
 **Applied Phase 2 database migration:** `20260902160658_admin_order_fulfillment_operations` — structural validation PASS, controlled rollback matrix 16/16 PASS, zero fixtures.
 
-**Current task:** Phase 2 Task 13 — Preview acceptance.
+**Task 13 automated Preview candidate:** `dpl_3nTsAkpepNtZBe8CuBGpjR8gcqY7` at Git SHA `241863428129b7c0b1922be918cb35c4de7939a6` — READY, automated public/protection smoke PASS, zero error/fatal logs in checked window.
 
-**NEXT EXACT ACTION:** inspect the latest `feat/admin-dashboard-expansion` Preview deployment and Preview environment contract without printing secret values. Use a READY deployment that contains the Phase 2 runtime candidate or a descendant containing only checkpoint docs, then smoke `/`, protected `/admin`, `/admin/pedidos`, one safe existing order detail, `/admin/producao`, and existing Melhor Envio admin integration without performing real payments, label purchases, destructive order transitions, merge, or Production promotion. Review Preview error/fatal logs and record exact evidence.
+**Current blocker:** authenticated Preview smoke requires the owner to log in interactively with the existing admin password + TOTP. Do not request or share these credentials in chat.
+
+**NEXT EXACT ACTION:** owner opens the `feat/admin-dashboard-expansion` Preview branch alias, logs in normally, then read-only checks `/admin`, `/admin/pedidos`, one existing order detail, `/admin/producao`, and `/admin/integrations/melhor-envio`. Owner reports whether all five load correctly and whether any visible error appears. Then re-check Preview logs, record Task 13 PASS/FAIL, and proceed to Task 14 only if clean. No merge or Production promotion yet.
