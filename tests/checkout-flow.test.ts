@@ -223,6 +223,101 @@ test("reserves trusted subtotal plus freight and creates one payment preference"
   assert.equal(updates[0]?.patch.checkout_url, result.kind === "created" ? result.checkoutUrl : null)
 })
 
+test("guest checkout reserves normalized email with null customer ownership", async () => {
+  let reservedInput: Record<string, unknown> | null = null
+
+  const result = await executeCheckoutFlow(
+    {
+      ...checkoutInput("550e8400-e29b-41d4-a716-446655440010"),
+      customer: { ...CUSTOMER, email: "  BRENO@EXAMPLE.COM  " },
+    },
+    makeDependencies({
+      reserveOrder: async (input) => {
+        reservedInput = input as unknown as Record<string, unknown>
+        return {
+          orderNumber: input.orderNumber,
+          publicToken: input.publicToken,
+          checkoutFingerprint: input.checkoutFingerprint ?? null,
+          checkoutUrl: null,
+        }
+      },
+    }),
+  )
+
+  assert.equal(result.kind, "created")
+  assert.ok(reservedInput)
+  assert.equal(reservedInput.customerEmail, "breno@example.com")
+  assert.equal(reservedInput.customerId, null)
+})
+
+test("authenticated checkout reserves only trusted account id and canonical account email", async () => {
+  let reservedInput: Record<string, unknown> | null = null
+  const customerIdentity = {
+    userId: "550e8400-e29b-41d4-a716-446655440123",
+    email: "breno@example.com",
+    emailVerified: true as const,
+  }
+
+  const result = await executeCheckoutFlow(
+    {
+      ...checkoutInput("550e8400-e29b-41d4-a716-446655440011"),
+      customer: { ...CUSTOMER, email: " BRENO@EXAMPLE.COM " },
+      customerIdentity,
+    } as Parameters<typeof executeCheckoutFlow>[0] & { customerIdentity: typeof customerIdentity },
+    makeDependencies({
+      reserveOrder: async (input) => {
+        reservedInput = input as unknown as Record<string, unknown>
+        return {
+          orderNumber: input.orderNumber,
+          publicToken: input.publicToken,
+          checkoutFingerprint: input.checkoutFingerprint ?? null,
+          checkoutUrl: null,
+        }
+      },
+    }),
+  )
+
+  assert.equal(result.kind, "created")
+  assert.ok(reservedInput)
+  assert.equal(reservedInput.customerEmail, "breno@example.com")
+  assert.equal(reservedInput.customerId, customerIdentity.userId)
+})
+
+test("authenticated email mismatch fails before order reservation", async () => {
+  let reserveCalls = 0
+  const customerIdentity = {
+    userId: "550e8400-e29b-41d4-a716-446655440123",
+    email: "breno@example.com",
+    emailVerified: true as const,
+  }
+
+  await assert.rejects(
+    () =>
+      executeCheckoutFlow(
+        {
+          ...checkoutInput("550e8400-e29b-41d4-a716-446655440012"),
+          customer: { ...CUSTOMER, email: "outra@example.com" },
+          customerIdentity,
+        } as Parameters<typeof executeCheckoutFlow>[0] & { customerIdentity: typeof customerIdentity },
+        makeDependencies({
+          reserveOrder: async (input) => {
+            reserveCalls += 1
+            return {
+              orderNumber: input.orderNumber,
+              publicToken: input.publicToken,
+              checkoutFingerprint: input.checkoutFingerprint ?? null,
+              checkoutUrl: null,
+            }
+          },
+        }),
+      ),
+    (error: unknown) =>
+      error instanceof CheckoutFlowValidationError &&
+      error.message === "Authenticated email mismatch",
+  )
+  assert.equal(reserveCalls, 0)
+})
+
 test("reuses an existing URL for the same attempt and rejects a changed fingerprint", async () => {
   let paymentCalls = 0
   const existingUrl = "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=existing"
