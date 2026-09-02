@@ -11,26 +11,19 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Phase 2 plan: `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
-- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 COMPLETE/VERIFIED/PREVIEW ACCEPTED; FEATURE BRANCH NOT MERGED**
+- Active Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
+- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 COMPLETE/VERIFIED/PREVIEW ACCEPTED; PHASE 3 PLAN WRITTEN/REVIEWED; RUNTIME NOT STARTED**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Phase 1 verified baseline
 
 Phase 1 database foundation is applied to the existing Supabase project `ProxyBembem` (`kicgoocozxzkuoqajqif`) after explicit owner authorization.
 
-Verified:
+Verified: 25 existing orders were backfilled truthfully, no fabricated events were added, `order_events`/attention/audit are browser-isolated, payment approval/replay/refund/chargeback/manual-review were transaction-tested, zero validation fixtures remained, and Production `/admin` remained healthy after the additive migration.
 
-- 25 existing orders backfilled correctly at the Phase 1 validation point;
-- no fabricated historical events;
-- `order_events`, `order_attention_flags`, `admin_audit_log` isolated from browser roles;
-- audit/events append-only for service-role usage;
-- payment approval/replay/refund/chargeback/manual-review tested transactionally;
-- zero persistent validation fixtures;
-- Production `/admin` remained healthy after the additive migration.
+Owner workflow decision remains: evolve the existing Supabase project as schema is needed. No paid Supabase development branch is required. Meaningful DDL still requires explicit owner approval before application.
 
-Owner workflow decision: evolve the existing Supabase project as schema is needed. No paid Supabase development branch is required. Meaningful DDL still requires explicit owner approval before application.
-
-## Phase 2 runtime candidate
+## Phase 2 — COMPLETE
 
 Final reviewed runtime candidate:
 
@@ -43,64 +36,13 @@ Freshly re-verified CI `33650730746`, job `100316764581`:
 - `pnpm build`: PASS;
 - workflow conclusion: SUCCESS.
 
-Phase 2 implements:
-
-- backend-only `admin_list_orders(...) -> jsonb` with bounded static filtering/pagination and `America/Sao_Paulo` date boundaries;
-- backend-only locked `admin_transition_order_fulfillment(...) -> jsonb`;
-- atomic fulfillment transition + event + append-only admin audit + paid-cancellation attention;
-- narrow reversal observer resolving only `canceled_paid_order` after actual `refunded`/`charged_back` payment state;
-- five narrow same-origin/AAL2 admin POST actions with fixed server-side targets;
-- protected shared admin shell;
-- `/admin/pedidos`, `/admin/pedidos/[id]`, `/admin/producao`;
-- destructive confirmation for cancellation;
-- no browser payment mutation and no generic order/payment PATCH.
-
-Key implementation evidence:
-
-- Task 3 backend read repository: `f8ded33f97fb89ef4343caa77ee3457efbf3b79a`, CI `33634645304` PASS.
-- Task 4 fulfillment repository: `f27143474c531cf8da49f49c28be42e73a7d8921`, CI `33634997803` PASS.
-- Task 5 narrow mutation routes: `15fa3e176cc358e797e85b7bff7abdd73e66e580`, CI `33635899966` PASS.
-- Task 6 shared protected shell: `58b2fd70a719527a29752e61e2615cf129d77cb9`, CI `33636760106` PASS.
-- Task 7 `/admin/pedidos`: `f1aa1fc4e0d11d5e9b058b0544fc5656f15fa4e6`, CI `33645894040` PASS.
-- Task 8 order detail: `1dd2446bdd891ddb3de278d753ff5b947c1a227a`, CI `33646901907` PASS.
-- Task 9 destructive cancellation confirmation: `d9c1a49be7418ce0bcdb99d4a77ca09502ee0f99`, CI `33647900422` PASS.
-- Task 10 production queues: `40019e592bde1b13d65ba8e1ff16b23504a5827f`, CI `33650042499` PASS.
-- Task 11 final runtime/security/concurrency candidate: `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746` PASS.
-
-Security/scope review verified:
-
-- no browser payment mutation;
-- no browser-supplied admin UUID or arbitrary fulfillment target;
-- same-origin is checked before sensitive work and active AAL2 admin authorization is required;
-- list/detail DTOs exclude public token, checkout fingerprint/attempt/URL and raw shipping snapshot;
-- fulfillment RPC locks the order row with `FOR UPDATE`;
-- state + event + audit + paid-cancel attention are one database transaction;
-- cancellation never changes Mercado Pago payment state;
-- actual refund/chargeback resolves only cancellation-specific attention;
-- audit/event history remains append-only;
-- temporary Vercel `ignoreCommand` was removed from the Phase 2 candidate;
-- paid-cancel duplicate suppression targets only `(order_id, code) WHERE resolved_at IS NULL`.
-
-## Phase 2 Supabase application — PASS
+Phase 2 provides the protected admin order list/detail/production queues, narrow same-origin/AAL2 fulfillment actions, atomic DB transitions/event/audit/attention behavior, destructive cancellation confirmation, and provider-authoritative payment separation.
 
 Applied migration after explicit owner approval:
 
 `20260902160658_admin_order_fulfillment_operations`
 
-Project:
-
-`ProxyBembem` (`kicgoocozxzkuoqajqif`)
-
-Structural validation passed:
-
-- `admin_list_orders`, `admin_transition_order_fulfillment`, `resolve_canceled_paid_order_attention` are `SECURITY DEFINER` with fixed/empty search path;
-- admin list/transition RPCs execute only through `service_role`; `anon`/`authenticated` denied;
-- reversal trigger exists/enabled;
-- `order_events` and `admin_audit_log` remain append-only for service-role usage.
-
-Controlled rollback validation passed **16/16**, covering list/search escaping, valid/invalid transitions, approved-payment precondition, retry idempotency, completed-state rejection, paid cancellation, real refund/chargeback resolution behavior, non-reversal statuses and nonexistent order.
-
-Post-validation persistent fixtures:
+Controlled rollback validation passed **16/16** and left:
 
 ```text
 orders: 0
@@ -109,74 +51,86 @@ attention: 0
 audit: 0
 ```
 
-Advisor review produced no Phase 2 blocker. Existing backend-only `rls_enabled_no_policy` INFO remains intentional. Leaked-password protection is a separate future Auth-hardening item. Fresh unused audit index INFO is retained.
+Preview acceptance passed. Owner authenticated normally with existing password + TOTP and verified **5/5** protected surfaces: `/admin`, `/admin/pedidos`, one real order detail read-only, `/admin/producao`, and `/admin/integrations/melhor-envio`. Deployment-scoped logs after the smoke had no `error`/`fatal` entries. Phase 2 is complete but **not merged and not promoted to a new Production application deployment**.
 
-## Task 13 — Preview acceptance PASS
+## Phase 3 approved decisions
 
-Automated public/protection smoke passed on READY feature-branch Preview and then owner authenticated normally with existing password + TOTP.
+Owner explicitly decided on 2026-09-02:
 
-Automated checks:
+**Email is mandatory at checkout for every new order, including guest checkout.**
 
-- storefront `/`: PASS;
-- `/produtos`: PASS;
-- unauthenticated `/admin`, `/admin/pedidos`, `/admin/producao`, `/admin/integrations/melhor-envio`: protected login behavior PASS;
-- invalid synthetic `/pedido/<token>`: safe 404 PASS;
-- Preview CSP contains configured Supabase origin and sandbox Melhor Envio form action;
-- no payment/refund/fulfillment mutation/OAuth reauthorization/label purchase performed during smoke.
+This resolves the previous architecture blocker. The implementation plan locks the following consequences:
 
-Authenticated owner smoke passed **5/5**:
+1. Guest checkout remains supported; account creation is still optional.
+2. New orders store a normalized lowercase email snapshot (`customer_email`).
+3. Existing historical orders do **not** receive fabricated email values; `customer_email` stays `NULL` for old orders unless future truth is established explicitly.
+4. Authenticated checkout links the order to the trusted Supabase Auth UUID (`customer_id`) resolved server-side. Browser JSON never supplies a trusted customer UUID.
+5. For authenticated checkout, the persisted email is the canonical authenticated account email; a mismatching form email is rejected.
+6. Supabase Auth email is the unique account identity; permanent `customer_profiles` stores only minimal profile data such as name/WhatsApp, not payment data.
+7. Customer authorization is separate from admin authorization; a normal customer session never grants admin access.
+8. Customer order reads use narrow safe RPCs deriving ownership from `auth.uid()`; there is no broad browser SELECT on `orders`.
+9. Guest-order claiming requires **verified account email + possession of the existing 64-character public order token**. Email-only, name-only, WhatsApp-only, order-number-only and bulk automatic claiming are forbidden.
+10. Historical orders with `customer_email IS NULL` remain public-token-trackable but are not claimable in Phase 3.
+11. Existing `/pedido/[token]` tracking remains valid even after an order is linked to an account.
+12. Customer DTOs exclude public token, checkout attempt/fingerprint/URL, raw shipping snapshot, admin audit, provider credentials and other internals.
+13. Mercado Pago remains payment authority; account code does not mutate financial state.
+14. Phase 3 uses Supabase Auth verification/recovery emails only. Transactional order-status emails remain Phase 6.
 
-1. `/admin` protected shell loaded;
-2. `/admin/pedidos` loaded real order list;
-3. one existing `/admin/pedidos/[id]` detail loaded read-only, showing operational sections/timeline/audit without visible error;
-4. `/admin/producao` loaded the three operational queues;
-5. `/admin/integrations/melhor-envio` loaded.
+## Phase 3 plan
 
-After owner smoke, deployment-scoped runtime logs showed requests for all five protected surfaces, including the real order-detail route, and **no `error` or `fatal` entries** in the checked window.
+Plan created:
 
-## Task 14 — Phase 2 completion gate PASS
+`docs/superpowers/plans/2026-09-02-customer-account-orders.md`
 
-All Phase 2 completion criteria are satisfied:
+Initial planning commit:
 
-- RED -> GREEN evidence exists for new migration/server/UI units;
-- focused suites passed during implementation;
-- exact runtime candidate CI passes test/typecheck/build;
-- exact diff/security/concurrency review passed;
-- Phase 2 migration was separately owner-approved, applied and transaction-tested on current Supabase;
-- zero synthetic fixture rows remain;
-- protected Preview environment works under real AAL2 admin authentication;
-- list/detail/production smoke matrix passed;
-- storefront/public tracking regressions were not observed in smoke;
-- Mercado Pago remains provider-authoritative;
-- final evidence is recorded here and in the Master Plan.
+`f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`
 
-**Phase 2 is COMPLETE.** This does **not** authorize merge or a new Production application deployment.
+The plan was self-reviewed for spec coverage, placeholder patterns and type/interface consistency. No `TODO`, `TBD`, `implement later`, or `Similar to` placeholders remain.
 
-## Fulfillment truth
+Planned Phase 3 sequence:
 
-```text
-awaiting_payment -> canceled
-awaiting_production -> in_production | canceled
-in_production -> ready_to_ship | canceled
-ready_to_ship -> shipped | canceled
-shipped -> completed
-completed -> none
-canceled -> none
-```
+1. migration contract RED;
+2. additive customer/account migration GREEN in Git only;
+3. required checkout email RED/GREEN;
+4. trusted customer auth boundary;
+5. authenticated checkout ownership persistence;
+6. RLS-backed minimal customer profile repository;
+7. signup/login/logout/verification/password recovery/profile actions + rate limits;
+8. customer-owned order list/detail RPC wrappers;
+9. verified-email + public-token guest claiming;
+10. storefront-styled `/minha-conta` UI;
+11. customer A/B isolation and takeover security matrix;
+12. full candidate test/typecheck/build + exact diff/security review;
+13. explicit owner gate before applying Phase 3 DDL to current Supabase;
+14. Preview acceptance;
+15. Phase 3 completion gate.
 
-Starting production requires `payment_status='approved'`. Mercado Pago remains authoritative for financial state.
+## Phase 3 database intent — NOT APPLIED
 
-## Safety gates
+Planned repository migration filename:
+
+`supabase/migrations/202609020003_customer_accounts_orders.sql`
+
+It does **not exist yet** and no Phase 3 DDL has been applied to Supabase.
+
+Planned schema includes nullable `orders.customer_email`, nullable `orders.customer_id -> auth.users(id)`, minimal `customer_profiles`, authenticated safe list/detail RPCs using `auth.uid()`, and a service-role-only atomic guest-claim RPC. Historical rows are not backfilled with fabricated ownership/email.
+
+## Current safety gates
 
 - Do not merge `feat/admin-dashboard-expansion` without explicit owner approval.
 - Do not promote/create a new Production application deployment without explicit owner approval.
 - Do not delete the feature branch unless owner explicitly requests it.
-- Phase 2 database migration is already applied; do not rediscover or reapply it.
+- Phase 2 migration is already applied; do not rediscover or reapply it.
+- Phase 3 DDL is **not approved/applied yet**. Build/test the full candidate first, then stop for explicit owner approval before current-project migration application.
+- Do not start Phase 4 catalog runtime work before Phase 3 completion.
 
-## Next phase / blocker
+## Resume point
 
-Next planned phase: **Phase 3 — Customer Account + Owned Orders**.
+**Phase 2:** COMPLETE/VERIFIED/PREVIEW ACCEPTED.
 
-Before customer-account/notification runtime implementation, one architecture decision must be explicit: whether **email becomes required at checkout for new guest orders**. Email is needed for verified identity/account linking, secure guest-order claiming and transactional order notifications; do not silently infer this decision.
+**Phase 3:** implementation plan WRITTEN/SELF-REVIEWED; runtime implementation NOT STARTED.
 
-**NEXT EXACT ACTION:** ask the owner to decide the checkout-email requirement, then review/update `docs/superpowers/plans/2026-09-02-customer-account-orders.md` before any Phase 3 runtime code. No merge or Production promotion is implied by starting Phase 3 planning.
+**Approved checkout-email rule:** required for all new guest/authenticated checkouts.
+
+**NEXT EXACT ACTION:** execute Phase 3 Task 1 only: create `tests/customer-account-migration.test.ts`, run `node --experimental-strip-types --test tests/customer-account-migration.test.ts`, capture the expected RED because `supabase/migrations/202609020003_customer_accounts_orders.sql` does not exist, record RED evidence, and only then write the migration. No Supabase application, merge, or Production promotion at this step.
