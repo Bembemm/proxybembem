@@ -112,9 +112,13 @@ Starting production requires `payment_status='approved'`.
 
 **Plan:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
 
-**State:** TASK 1 MIGRATION CONTRACT RED VALID; TASK 2 GREEN MIGRATION NEXT. PHASE 3 DDL NOT APPLIED.
+**State:** TASKS 1-12 COMPLETE/REVIEWED. EXACT PHASE 3 DDL EXISTS IN GIT BUT IS NOT APPLIED. TASK 13 OWNER APPROVAL GATE NEXT.
 
 Initial Phase 3 plan commit: `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
+
+Reviewed runtime candidate: `1f2432bd000e7e01201d0f2d632cac51399f86d0`.
+
+Reviewed candidate CI: `33684404621`, job `100428283809`: **359/359 tests PASS, typecheck PASS, build PASS, 28/28 static pages generated**.
 
 ## Owner-approved Phase 3 decisions
 
@@ -124,7 +128,7 @@ Initial Phase 3 plan commit: `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
 - [x] New orders persist normalized lowercase `customer_email` snapshot.
 - [x] Existing historical orders receive no fabricated email/customer ownership; new columns remain `NULL` for old orders unless future truth is established explicitly.
 - [x] Authenticated checkout links to trusted server-resolved Supabase Auth UUID `customer_id`; browser never supplies trusted customer UUID.
-- [x] Authenticated checkout uses canonical account email; mismatching form email is rejected.
+- [x] Authenticated checkout uses canonical account email; mismatching form email is rejected before reservation.
 - [x] Permanent `customer_profiles` stays minimal: Auth UUID, name, WhatsApp, timestamps. Email remains authoritative in Supabase Auth.
 - [x] Customer authorization is separate from admin authorization.
 - [x] Customer order reads use narrow safe RPCs based on `auth.uid()`; no broad browser SELECT on `orders`.
@@ -135,23 +139,26 @@ Initial Phase 3 plan commit: `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
 - [x] Customer DTOs exclude public token, checkout attempt/fingerprint/URL, raw shipping snapshot, admin audit, payment/provider secrets/internal data.
 - [x] Phase 3 uses Supabase Auth verification/recovery emails only; transactional order-status email remains Phase 6.
 
-## Planned Phase 3 database contract
+## Phase 3 database contract
 
 Migration filename: `supabase/migrations/202609020003_customer_accounts_orders.sql`.
 
-**Current state:** file does not exist yet and no Phase 3 DDL has been applied.
+**Current state:** migration exists in Git, has passed contract tests and Task 12 review, and is **NOT APPLIED** to Supabase. Application is Task 13 and requires explicit owner approval.
 
-Planned additive objects:
+Reviewed additive objects:
 
-- nullable `orders.customer_email` with normalized/validated storage rules;
+- nullable normalized `orders.customer_email`;
 - nullable `orders.customer_id uuid -> auth.users(id)`;
 - indexed customer ownership;
-- RLS-backed `customer_profiles`;
-- authenticated `customer_list_orders(...) -> jsonb` using `auth.uid()`;
-- authenticated `customer_get_order(...) -> jsonb` using `auth.uid()` and curated customer-safe timeline;
-- service-role-only `claim_guest_order_for_customer(...) -> jsonb` with row lock, verified-email + token checks, and idempotent `customer_order_claimed` event.
+- RLS-backed `customer_profiles`, authenticated own-row SELECT/INSERT/UPDATE only, no DELETE;
+- authenticated `customer_list_orders(...) -> jsonb` using `auth.uid()` and curated summary only;
+- authenticated `customer_get_order(...) -> jsonb` using `auth.uid()`, null for missing/not-owned, curated customer-safe timeline;
+- service-role-only `claim_guest_order_for_customer(...) -> jsonb` with verified Auth email + public token, `FOR UPDATE`, generic non-claimable behavior and idempotent `customer_order_claimed` event;
+- no historical email/customer ownership backfill.
 
-## Planned customer routes
+`order_events.source='customer'` is compatible with the already-applied Phase 1 source constraint.
+
+## Customer routes implemented in reviewed candidate
 
 - `/entrar`
 - `/criar-conta`
@@ -168,55 +175,106 @@ Customer UI uses storefront visual identity, not admin styling.
 ## Phase 3 execution tasks
 
 - [x] Task 1 — migration contract RED only.
-- [ ] Task 2 — additive customer/account migration GREEN in Git; do not apply DB yet.
-- [ ] Task 3 — mandatory checkout email RED/GREEN.
-- [ ] Task 4 — trusted customer auth boundary.
-- [ ] Task 5 — authenticated checkout ownership persistence + safe admin email display.
-- [ ] Task 6 — RLS-backed minimal customer profile repository.
-- [ ] Task 7 — signup/login/logout/email verification/password recovery/profile actions + bounded rate limits + SSR cookie matcher.
-- [ ] Task 8 — customer-owned order list/detail repository.
-- [ ] Task 9 — secure verified-email + token guest claim.
-- [ ] Task 10 — storefront-styled customer account UI.
-- [ ] Task 11 — customer A/B isolation/account-takeover negative matrix.
-- [ ] Task 12 — exact full candidate test/typecheck/build + diff/security review.
+- [x] Task 2 — additive customer/account migration GREEN in Git; DB kept unapplied.
+- [x] Task 3 — mandatory checkout email RED/GREEN.
+- [x] Task 4 — trusted customer auth boundary.
+- [x] Task 5 — authenticated checkout ownership persistence + safe admin email display.
+- [x] Task 6 — RLS-backed minimal customer profile repository.
+- [x] Task 7 — signup/login/logout/email verification/password recovery/profile actions + bounded rate limits + SSR cookie matcher.
+- [x] Task 8 — customer-owned order list/detail repository.
+- [x] Task 9 — secure verified-email + token guest claim.
+- [x] Task 10 — storefront-styled customer account UI.
+- [x] Task 11 — customer A/B isolation/account-takeover negative matrix.
+- [x] Task 12 — exact full candidate test/typecheck/build + diff/security review.
 - [ ] Task 13 — explicit owner gate before applying exact Phase 3 migration to current Supabase; rollback-only DB validation and zero fixtures.
 - [ ] Task 14 — Preview acceptance with real verification/login and cross-account isolation checks.
 - [ ] Task 15 — Phase 3 completion gate.
 
-## Task 1 — canonical RED evidence
+## Phase 3 TDD/review evidence
 
-Test file: `tests/customer-account-migration.test.ts`.
+### Task 1 migration RED
 
-Initial RED at `631565b4...` proved the migration absent. Before SQL, review found an over-broad guard that would also have forbidden the legitimate claim RPC from setting `customer_id`. The test was narrowed to forbid historical backfill while explicitly requiring the allowed claim update.
+Canonical RED `619db2cb966b188cf759ed51ccd374dc60a53d0b`, CI `33666738154`, job `100370241591`: 295 total / 291 PASS / exactly 4 expected migration-file-absent FAIL. No unrelated failure.
 
-Canonical RED:
+### Tasks 2-8 final candidates
 
-- commit `619db2cb966b188cf759ed51ccd374dc60a53d0b`;
-- CI run `33666738154`;
-- job `100370241591`;
-- [x] `pnpm test` failed as expected;
-- [x] 295 total tests; 291 PASS; exactly 4 FAIL;
-- [x] all four failures are the Phase 3 migration-contract tests;
-- [x] every failure is `ENOENT` for `supabase/migrations/202609020003_customer_accounts_orders.sql`;
-- [x] no unrelated test failed;
-- [x] `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the job;
-- [x] no Phase 3 SQL existed when canonical RED was captured.
+- Task 2 `032c65102c9204688fb51937a250bf98a0dd1795`, CI `33667338142`: migration contract GREEN; SQL Git-only.
+- Task 3 `70319add3f2a8c139b25fdb4ca5a3fefd80b14d9`, CI `33668791985`: 299/299 + typecheck/build PASS.
+- Task 4 `e88ddbe84f89c48024856d7d53bad27ff45240cb`, CI `33669788637`: 305/305 + typecheck/build PASS.
+- Task 5 `fc3007ae3ad5f20c8a9397de3131cb1c5f39eea6`, CI `33672384721`: 313/313 + typecheck/build PASS.
+- Task 6 `bc66eaf932b5dc3c710813cce8c3abd503cc6b1d`, CI `33673027354`: 318/318 + typecheck/build PASS.
+- Task 7 `85bb1d880684e14ffbdb18fd66b875d6e8c5a2`, CI `33676377828`: 327/327 + typecheck/build PASS.
+- Task 8 `126158df19cc51f97154006f830ad31222ce8e89`, CI `33677214460`: 334/334 + typecheck/build PASS.
 
-The RED contract requires additive nullable ownership/email fields, no historical identity backfill, own-row RLS profile data, customer list/detail ownership via `auth.uid()`, no broad authenticated order access, and a service-role-only row-locked verified-email + token claim that may update only the matched order's `customer_id`. Existing `order_events.source` already accepts `customer`.
+### Task 9 secure claim
 
-## Phase 3 TDD/rollout gates
+Canonical RED `f9c95f73801155da583365d553431b68df6595c7`: 343 total / 334 PASS / exactly 9 expected Task 9 failures before runtime.
 
-- [x] Task 1 has valid RED before SQL.
-- [ ] Every later runtime unit RED before GREEN.
-- [ ] Full `pnpm test`, `pnpm typecheck`, `pnpm build` on exact candidate.
-- [ ] No broad order/customer ownership mutation API.
-- [ ] Customer A cannot access B by copied/guessed order UUID.
-- [ ] Public token never appears in customer account DTOs.
-- [ ] Guest claim does not exist without both verified identity and token possession.
-- [ ] Admin UUID/AAL2/session boundary unchanged.
-- [ ] Mercado Pago financial state untouched.
-- [ ] Phase 3 DDL is not applied until full candidate review + explicit owner approval.
-- [ ] No merge/new Production application deployment without separate explicit owner approval.
+Final candidate `c8e836cf69de086d2000d0fc9904af9b24d2307b`, CI `33682338553`, job `100421604971`: **343/343 PASS**, typecheck PASS, build PASS, 24/24 pages.
+
+### Task 10 customer UI
+
+Canonical RED `c1d201fdaf59db94629b6b5189ef13c291fb3950`, CI `33682792731`, job `100423066698`: 351 total / 344 PASS / exactly 7 Task 10 failures before UI runtime.
+
+Final UI runtime candidate `a8cda3d929e0af86810137f423c0ce625f448391`, CI `33683574794`, job `100425591216`: **351/351 PASS**, typecheck PASS, build PASS, 28/28 pages.
+
+### Task 11 security/isolation
+
+Initial test commit `575be0ecd07353c2dc94ce3e45dcdfb8710e213e`, CI `33683938053`, job `100426772012`: 359 total / 358 PASS / one brittle test assertion FAIL. The test incorrectly demanded literal `customer_id = auth.uid()` while SQL intentionally stores `auth.uid()` in `v_customer_id` and compares `o.customer_id = v_customer_id`. Runtime was not changed for this failure.
+
+After fixing only the security test assertion/typing fixture, exact candidate `1f2432bd000e7e01201d0f2d632cac51399f86d0`, CI `33684404621`, job `100428283809`:
+
+- [x] 359/359 tests PASS;
+- [x] customer A repository session cannot retrieve B order;
+- [x] missing and other-owned detail both return null behavior;
+- [x] own-order SQL authorization derives from `auth.uid()` and accepts no customer UUID parameter;
+- [x] public token tracking remains independent;
+- [x] wrong verified email + valid token stays generic `not_claimable`;
+- [x] email-only/token-only claim impossible;
+- [x] customer session cannot satisfy admin boundary;
+- [x] customer DTO forbidden-field matrix PASS;
+- [x] typecheck PASS;
+- [x] build PASS, 28/28 pages.
+
+### Task 12 full candidate review
+
+Exact reviewed runtime candidate: `1f2432bd000e7e01201d0f2d632cac51399f86d0`.
+
+- [x] The nine focused Phase 3 test files required by the plan all ran and passed inside CI `33684404621`.
+- [x] Full `pnpm test`: 359/359 PASS.
+- [x] Full `pnpm typecheck`: PASS.
+- [x] Full `pnpm build`: PASS, 28/28 pages.
+- [x] Diff from accepted Phase 2 checkpoint `68e50102cfcaa5c9720432db1d1e504d5e7e1267` reviewed.
+- [x] No static-catalog authority switch.
+- [x] No label purchase/spending capability.
+- [x] No Phase 6 transactional notification implementation.
+- [x] No hosting redesign.
+- [x] Admin UUID/AAL2/session requirements unchanged.
+- [x] Mercado Pago remains provider-authoritative; no local customer payment mutation.
+- [x] Browser never chooses customer UUID.
+- [x] Customer list/detail ownership derives from `auth.uid()`.
+- [x] Claim is service-role-only, verifies current Auth email, locks order row and requires public token.
+- [x] Email-only claim does not exist.
+- [x] Account DTOs exclude public token and all reviewed internals.
+- [x] No passwords/tokens were added to account audit/events/docs/logging contract.
+- [x] Review found no runtime defect requiring application-code changes.
+
+## Phase 3 rollout gates
+
+- [x] Every implemented runtime unit has valid RED-before-GREEN evidence.
+- [x] Full candidate test/typecheck/build PASS.
+- [x] No broad order/customer ownership mutation API.
+- [x] Customer A cannot access B by copied/guessed order UUID through the reviewed boundary.
+- [x] Public token never appears in customer account DTOs.
+- [x] Guest claim requires both verified identity and token possession.
+- [x] Admin UUID/AAL2/session boundary unchanged.
+- [x] Mercado Pago financial state untouched.
+- [x] Phase 3 DDL was intentionally kept unapplied through Task 12.
+- [x] No merge/new Production application deployment occurred.
+- [ ] Owner explicitly approves Task 13 exact DDL application.
+- [ ] Migration is applied/rollback-validated with zero fixtures.
+- [ ] Task 14 Preview acceptance passes.
+- [ ] Task 15 records Phase 3 complete.
 
 ---
 
@@ -314,23 +372,25 @@ The RED contract requires additive nullable ownership/email fields, no historica
 20. Phase 2 migration `20260902160658_admin_order_fulfillment_operations` is already applied/validated; do not reapply it.
 21. Phase 2 rollback matrix passed 16/16 and left zero fixtures.
 22. Phase 2 Preview authenticated owner smoke passed 5/5 with zero checked error/fatal logs.
-23. Phase 3 Task 1 canonical RED is `619db2cb...`, CI `33666738154`, job `100370241591`: 295 total, 291 PASS, 4 expected ENOENT failures; typecheck/build skipped.
-24. Phase 3 migration has not been created/applied yet; Task 2 GREEN is next.
+23. Phase 3 exact reviewed runtime candidate is `1f2432bd000e7e01201d0f2d632cac51399f86d0`, CI `33684404621`, job `100428283809`: 359/359 tests, typecheck, build all PASS.
+24. Phase 3 migration `202609020003_customer_accounts_orders.sql` exists in Git, is reviewed, and is **not applied** until explicit Task 13 owner approval.
+25. Phase 3 Task 13 DB validation must use rollback-only synthetic fixtures and prove zero persistent test rows.
+26. Merge and new Production application deployment remain separate owner decisions even after Phase 3 Preview acceptance.
 
 ## Current Session Checkpoint
 
-**Status:** PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASK 1 RED VALID; TASK 2 NEXT.
+**Status:** PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-12 COMPLETE/REVIEWED; TASK 13 OWNER DDL APPROVAL GATE.
 
 **Current branch:** `feat/admin-dashboard-expansion`.
 
 **Phase 2 final runtime candidate:** `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746` PASS.
 
+**Phase 3 reviewed runtime candidate:** `1f2432bd000e7e01201d0f2d632cac51399f86d0`, CI `33684404621`, job `100428283809`, 359/359 tests + typecheck + build PASS.
+
 **Phase 3 plan:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`.
 
-**Task 1 canonical RED:** `619db2cb966b188cf759ed51ccd374dc60a53d0b`, CI `33666738154`, job `100370241591`.
-
-**Phase 3 DB:** NOT CREATED / NOT APPLIED.
+**Phase 3 DB:** exact migration `supabase/migrations/202609020003_customer_accounts_orders.sql` EXISTS IN GIT / REVIEWED / **NOT APPLIED**.
 
 **Merge/new Production application deployment:** NOT APPROVED.
 
-**NEXT EXACT ACTION:** implement only Task 2 by creating `supabase/migrations/202609020003_customer_accounts_orders.sql`, then run the focused migration test and Phase 1/2 migration/payment regressions. Keep SQL Git-only; do not apply to Supabase. If GREEN does not close, debug before Task 3.
+**NEXT EXACT ACTION:** obtain explicit owner approval for Task 13. Only after approval, apply exactly `202609020003_customer_accounts_orders.sql` once to the current ProxyBembem Supabase project; verify migration history/schema/grants/RLS; execute the plan's rollback-only ten-scenario ownership/claim matrix; prove zero synthetic orders/profiles/events remain; run Supabase advisors; record exact evidence. Then proceed to Task 14 Preview acceptance. Do not merge or promote Production.
