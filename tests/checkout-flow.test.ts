@@ -224,7 +224,7 @@ test("reserves trusted subtotal plus freight and creates one payment preference"
 })
 
 test("guest checkout reserves normalized email with null customer ownership", async () => {
-  let reservedInput: Record<string, unknown> | null = null
+  const reservedInputs: Array<Parameters<CheckoutFlowDependencies["reserveOrder"]>[0]> = []
 
   const result = await executeCheckoutFlow(
     {
@@ -233,7 +233,7 @@ test("guest checkout reserves normalized email with null customer ownership", as
     },
     makeDependencies({
       reserveOrder: async (input) => {
-        reservedInput = input as unknown as Record<string, unknown>
+        reservedInputs.push(input)
         return {
           orderNumber: input.orderNumber,
           publicToken: input.publicToken,
@@ -244,6 +244,7 @@ test("guest checkout reserves normalized email with null customer ownership", as
     }),
   )
 
+  const reservedInput = reservedInputs[0]
   assert.equal(result.kind, "created")
   assert.ok(reservedInput)
   assert.equal(reservedInput.customerEmail, "breno@example.com")
@@ -251,7 +252,7 @@ test("guest checkout reserves normalized email with null customer ownership", as
 })
 
 test("authenticated checkout reserves only trusted account id and canonical account email", async () => {
-  let reservedInput: Record<string, unknown> | null = null
+  const reservedInputs: Array<Parameters<CheckoutFlowDependencies["reserveOrder"]>[0]> = []
   const customerIdentity = {
     userId: "550e8400-e29b-41d4-a716-446655440123",
     email: "breno@example.com",
@@ -263,10 +264,10 @@ test("authenticated checkout reserves only trusted account id and canonical acco
       ...checkoutInput("550e8400-e29b-41d4-a716-446655440011"),
       customer: { ...CUSTOMER, email: " BRENO@EXAMPLE.COM " },
       customerIdentity,
-    } as Parameters<typeof executeCheckoutFlow>[0] & { customerIdentity: typeof customerIdentity },
+    },
     makeDependencies({
       reserveOrder: async (input) => {
-        reservedInput = input as unknown as Record<string, unknown>
+        reservedInputs.push(input)
         return {
           orderNumber: input.orderNumber,
           publicToken: input.publicToken,
@@ -277,6 +278,7 @@ test("authenticated checkout reserves only trusted account id and canonical acco
     }),
   )
 
+  const reservedInput = reservedInputs[0]
   assert.equal(result.kind, "created")
   assert.ok(reservedInput)
   assert.equal(reservedInput.customerEmail, "breno@example.com")
@@ -298,7 +300,7 @@ test("authenticated email mismatch fails before order reservation", async () => 
           ...checkoutInput("550e8400-e29b-41d4-a716-446655440012"),
           customer: { ...CUSTOMER, email: "outra@example.com" },
           customerIdentity,
-        } as Parameters<typeof executeCheckoutFlow>[0] & { customerIdentity: typeof customerIdentity },
+        },
         makeDependencies({
           reserveOrder: async (input) => {
             reserveCalls += 1
