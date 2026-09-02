@@ -154,3 +154,89 @@ test("orders list paginates on the server while preserving active filters", asyn
   assert.doesNotMatch(page, /createBrowserClient|createClientComponentClient/)
   assert.doesNotMatch(page, /\.sort\s*\(\s*\(/)
 })
+
+test("order detail authorizes, loads the order before history and scopes audit to that order", async () => {
+  const page = await source("../app/admin/pedidos/[id]/page.tsx")
+
+  assert.ok(page.length > 0, "missing /admin/pedidos/[id] page")
+  assert.doesNotMatch(page, /^["']use client["']/m)
+  assert.match(page, /dynamic\s*=\s*["']force-dynamic["']/)
+  assert.match(page, /requireAdminPageAccess\s*\(\s*\{\s*touch:\s*true\s*\}\s*\)/)
+  assert.match(page, /await\s+params/)
+  assert.match(page, /getAdminOrderById\s*\(\s*id\s*\)/)
+  assert.match(page, /notFound\s*\(\s*\)/)
+  assert.match(page, /Promise\.all\s*\(/)
+  assert.match(page, /listOrderEvents\s*\(\s*id\s*\)/)
+  assert.match(page, /listOpenOrderAttention\s*\(\s*id\s*\)/)
+  assert.match(page, /listAdminAuditForEntity\s*\(\s*\{[\s\S]*entityType:\s*["']order["'][\s\S]*entityId:\s*id/)
+  assert.ok(
+    page.indexOf("getAdminOrderById") < page.indexOf("Promise.all"),
+    "order must load before related history",
+  )
+})
+
+test("order detail renders the approved operational sections without checkout internals", async () => {
+  const page = await source("../app/admin/pedidos/[id]/page.tsx")
+
+  assert.ok(page.length > 0, "missing /admin/pedidos/[id] page")
+  for (const label of [
+    "Resumo do pedido",
+    "Produção",
+    "Alertas",
+    "Itens",
+    "Cliente",
+    "Entrega",
+    "Frete",
+    "Mercado Pago",
+    "Linha do tempo",
+    "Auditoria",
+  ]) {
+    assert.match(page, new RegExp(label))
+  }
+
+  assert.match(page, /order\.items\.map/)
+  assert.match(page, /order\.address_street/)
+  assert.match(page, /order\.shipping_service_name/)
+  assert.match(page, /order\.payment_id/)
+  assert.match(page, /order\.payment_status_detail/)
+  assert.match(page, /PaymentStatusBadge/)
+  assert.match(page, /FulfillmentStatusBadge/)
+  assert.match(page, /America\/Sao_Paulo/)
+
+  assert.doesNotMatch(
+    page,
+    /public_token|checkout_fingerprint|checkout_url|shipping_snapshot|checkout_attempt_id/,
+  )
+  assert.doesNotMatch(page, /createBrowserClient|createClientComponentClient/)
+})
+
+test("order detail derives only approved fulfillment actions and uses hardcoded redirect feedback", async () => {
+  const page = await source("../app/admin/pedidos/[id]/page.tsx")
+
+  assert.ok(page.length > 0, "missing /admin/pedidos/[id] page")
+  assert.match(page, /allowedAdminFulfillmentTransitions/)
+  assert.match(page, /payment_status\s*===\s*["']approved["']/)
+
+  for (const [label, action] of [
+    ["Iniciar produção", "start-production"],
+    ["Marcar pronto para envio", "mark-ready-to-ship"],
+    ["Marcar enviado", "mark-shipped"],
+    ["Marcar concluído", "mark-completed"],
+    ["Cancelar pedido", "cancel"],
+  ] as const) {
+    assert.match(page, new RegExp(label))
+    assert.match(page, new RegExp(`/api/internal/admin/orders/\\$\\{order\\.id\\}/${action}`))
+  }
+
+  assert.match(page, /method=["']post["']/i)
+  assert.match(page, /pagamento[^\n]*aprovado|pagamento aprovado/i)
+  assert.match(page, /não[^\n]*reembolsa[^\n]*automaticamente|não[^\n]*reembolso automático/i)
+  assert.match(page, /reversão[^\n]*provedor|provedor[^\n]*reversão/i)
+
+  for (const status of ["updated", "unchanged", "invalid-transition", "payment-required"]) {
+    assert.match(page, new RegExp(`["']${status}["']`))
+  }
+
+  assert.doesNotMatch(page, /name=["'](?:targetStatus|payment_status|payment_id)["']/)
+  assert.doesNotMatch(page, /Marcar como pago|Aprovar pagamento|Forçar status|Forcar status|Refundar/i)
+})
