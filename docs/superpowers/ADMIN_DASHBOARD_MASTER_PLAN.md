@@ -74,35 +74,23 @@ Primary Phase 1 runtime candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, C
 
 **State:** COMPLETE — CODE/TDD/SECURITY/SCOPE/DB/PREVIEW VERIFIED. FEATURE BRANCH NOT MERGED. NEW PRODUCTION APP DEPLOYMENT NOT APPROVED.
 
-## Final evidence
+Final reviewed runtime candidate: `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`.
 
-Final reviewed runtime candidate:
+CI `33650730746`, job `100316764581`: `pnpm test`, `pnpm typecheck`, `pnpm build` PASS; workflow SUCCESS.
 
-`abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`
-
-CI `33650730746`, job `100316764581`:
-
-- [x] `pnpm test` PASS.
-- [x] `pnpm typecheck` PASS.
-- [x] `pnpm build` PASS.
-- [x] workflow conclusion SUCCESS.
-
-Applied migration after explicit owner approval:
-
-`20260902160658_admin_order_fulfillment_operations`
+Applied migration: `20260902160658_admin_order_fulfillment_operations`.
 
 - [x] Structural DB validation PASS.
 - [x] Controlled rollback matrix 16/16 PASS.
 - [x] Zero orders/events/attention/audit fixtures remained.
 - [x] `/admin/pedidos`, `/admin/pedidos/[id]`, `/admin/producao` implemented.
 - [x] Five narrow same-origin/AAL2 fulfillment POST actions implemented.
-- [x] Cancellation requires explicit destructive confirmation and never changes Mercado Pago state.
-- [x] Paid-cancel attention is precise/idempotent and resolved only after actual provider reversal.
+- [x] Cancellation requires explicit confirmation and never changes Mercado Pago state.
 - [x] Shared protected admin shell/navigation implemented.
 - [x] Exact diff/security/concurrency review PASS.
-- [x] Preview automated public/protection smoke PASS.
-- [x] Owner authenticated with password + TOTP and protected Preview smoke passed 5/5.
-- [x] Preview logs after smoke contained no `error`/`fatal` entries in checked window.
+- [x] Automated Preview smoke PASS.
+- [x] Owner authenticated with password + TOTP; protected Preview smoke passed 5/5.
+- [x] Checked Preview logs contained no `error`/`fatal` entries.
 
 ### Phase 2 transition truth
 
@@ -124,11 +112,9 @@ Starting production requires `payment_status='approved'`.
 
 **Plan:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
 
-**State:** PLAN WRITTEN + SELF-REVIEWED; RUNTIME IMPLEMENTATION NOT STARTED.
+**State:** TASK 1 MIGRATION CONTRACT RED VALID; TASK 2 GREEN MIGRATION NEXT. PHASE 3 DDL NOT APPLIED.
 
-Initial Phase 3 plan commit:
-
-`f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`
+Initial Phase 3 plan commit: `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
 
 ## Owner-approved Phase 3 decisions
 
@@ -151,11 +137,11 @@ Initial Phase 3 plan commit:
 
 ## Planned Phase 3 database contract
 
-Planned migration filename:
+Migration filename:
 
 `supabase/migrations/202609020003_customer_accounts_orders.sql`
 
-**Current state:** file does not exist and no Phase 3 DDL has been applied.
+**Current state:** file does not exist yet and no Phase 3 DDL has been applied.
 
 Planned additive objects:
 
@@ -183,7 +169,7 @@ Customer UI uses storefront visual identity, not admin styling.
 
 ## Phase 3 execution tasks
 
-- [ ] Task 1 — migration contract RED only.
+- [x] Task 1 — migration contract RED only.
 - [ ] Task 2 — additive customer/account migration GREEN in Git; do not apply DB yet.
 - [ ] Task 3 — mandatory checkout email RED/GREEN.
 - [ ] Task 4 — trusted customer auth boundary.
@@ -199,9 +185,28 @@ Customer UI uses storefront visual identity, not admin styling.
 - [ ] Task 14 — Preview acceptance with real verification/login and cross-account isolation checks.
 - [ ] Task 15 — Phase 3 completion gate.
 
+## Task 1 — RED evidence
+
+Test-only file: `tests/customer-account-migration.test.ts`.
+
+RED commit: `631565b4e2319b697db2ce42487a462ef4d333f2`.
+
+CI run `33666326422`, job `100368874030`:
+
+- [x] `pnpm test` failed as expected.
+- [x] 295 total tests; 291 PASS; exactly 4 FAIL.
+- [x] All four failures are new Phase 3 migration-contract tests.
+- [x] Every failure is `ENOENT` for `supabase/migrations/202609020003_customer_accounts_orders.sql`.
+- [x] No unrelated test failed.
+- [x] `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the job; do not treat this commit as a full verification candidate.
+- [x] No Phase 3 SQL existed when RED was captured.
+
+The RED contract requires additive nullable ownership/email fields, no historical identity backfill, own-row RLS profile data, customer list/detail RPC ownership via `auth.uid()`, no broad authenticated order access, and service-role-only locked verified-email + token claim. Existing `order_events.source` already accepts `customer`.
+
 ## Phase 3 TDD/rollout gates
 
-- [ ] Every runtime unit RED before GREEN.
+- [x] Task 1 has valid RED before SQL.
+- [ ] Every later runtime unit RED before GREEN.
 - [ ] Full `pnpm test`, `pnpm typecheck`, `pnpm build` on exact candidate.
 - [ ] No broad order/customer ownership mutation API.
 - [ ] Customer A cannot access B by copied/guessed order UUID.
@@ -308,24 +313,23 @@ Customer UI uses storefront visual identity, not admin styling.
 20. Phase 2 migration `20260902160658_admin_order_fulfillment_operations` is already applied/validated; do not reapply it.
 21. Phase 2 rollback matrix passed 16/16 and left zero fixtures.
 22. Phase 2 Preview authenticated owner smoke passed 5/5 with zero checked error/fatal logs.
-23. Phase 3 migration is not created/applied yet; Task 1 RED is the next runtime step.
+23. Phase 3 Task 1 RED is valid at `631565b4...`, CI `33666326422`: 295 total, 291 pass, 4 expected ENOENT failures; typecheck/build skipped.
+24. Phase 3 migration has not been created/applied yet; Task 2 GREEN is next.
 
 ## Current Session Checkpoint
 
-**Status:** PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 PLAN WRITTEN/SELF-REVIEWED; RUNTIME NOT STARTED.
+**Status:** PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASK 1 RED VALID; TASK 2 NEXT.
 
-**Current branch:** `feat/admin-dashboard-expansion`
+**Current branch:** `feat/admin-dashboard-expansion`.
 
 **Phase 2 final runtime candidate:** `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746` PASS.
 
-**Phase 2 DB:** migration `20260902160658_admin_order_fulfillment_operations` APPLIED + 16/16 rollback validation + zero fixtures.
+**Phase 3 plan:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`.
 
-**Phase 3 plan:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`, initial plan commit `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
-
-**Approved Phase 3 clarification:** email mandatory for all new guest/authenticated checkouts.
+**Task 1 RED:** `631565b4e2319b697db2ce42487a462ef4d333f2`, CI `33666326422`, job `100368874030`, valid expected failure.
 
 **Phase 3 DB:** NOT CREATED / NOT APPLIED.
 
 **Merge/new Production application deployment:** NOT APPROVED.
 
-**NEXT EXACT ACTION:** execute only Phase 3 Task 1. Create `tests/customer-account-migration.test.ts`, run `node --experimental-strip-types --test tests/customer-account-migration.test.ts`, capture expected RED because `supabase/migrations/202609020003_customer_accounts_orders.sql` does not exist, record RED evidence, then stop before SQL until the RED is valid. No Supabase application, merge, or Production promotion.
+**NEXT EXACT ACTION:** implement only Task 2 by creating `supabase/migrations/202609020003_customer_accounts_orders.sql`, then run the focused migration test and Phase 1/2 migration/payment regressions. Keep SQL Git-only; do not apply to Supabase. If GREEN does not close, debug before Task 3.
