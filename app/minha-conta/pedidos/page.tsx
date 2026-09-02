@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import { listOwnOrders } from "@/lib/server/customer-orders"
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default async function OrdersPage({
 }: {
   searchParams: Promise<{ page?: string | string[] }>
 }) {
+  await requireCustomerPageAccess()
   const params = await searchParams
   const page = parsePage(params.page)
   const result = await listOwnOrders({ page, pageSize: PAGE_SIZE })
