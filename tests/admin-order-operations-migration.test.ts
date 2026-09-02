@@ -83,6 +83,10 @@ test("defines one locked atomic fulfillment transition with event audit and paid
   assert.match(block, /order_canceled/)
   assert.match(block, /canceled_paid_order/)
   assert.match(block, /'critical'/)
+  assert.match(
+    block,
+    /insert\s+into\s+public\.order_attention_flags[\s\S]*?on\s+conflict\s*\(\s*order_id\s*,\s*code\s*\)\s*where\s+resolved_at\s+is\s+null\s+do\s+nothing/,
+  )
   assert.match(block, /invalid_transition/)
   assert.match(block, /payment_precondition_failed/)
   assert.match(block, /unchanged/)
