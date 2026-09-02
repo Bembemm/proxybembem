@@ -344,6 +344,7 @@ export default async function AdminOrderDetailPage({
           <Section title="Cliente">
             <dl className="grid gap-4 sm:grid-cols-2">
               <DetailField label="Nome" value={order.customer_name} />
+              <DetailField label="E-mail" value={displayValue(order.customer_email)} />
               <DetailField
                 label="WhatsApp"
                 value={
