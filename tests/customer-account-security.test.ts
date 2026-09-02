@@ -197,11 +197,15 @@ test("claim cannot run with only email or only token", async () => {
   )
 
   let calls = 0
+  const malformedIdentity = {
+    ...CUSTOMER_A,
+    emailVerified: false,
+  } as unknown as CustomerIdentity
   await assert.rejects(() =>
     claimGuestOrderWithDependencies(
       {
         publicToken: TOKEN,
-        customer: { ...CUSTOMER_A, emailVerified: false },
+        customer: malformedIdentity,
       },
       {
         async claimOrder() {
