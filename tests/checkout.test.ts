@@ -9,6 +9,7 @@ import {
 
 const valid: CheckoutData = {
   nome: "Breno Bembem",
+  email: "breno@example.com",
   whatsapp: "(44) 99125-0332",
   cep: "86730-000",
   rua: "Rua das Cartas",
@@ -33,6 +34,7 @@ test("normalizes checkout data before server use", () => {
     normalizeCheckoutData({
       ...valid,
       nome: "  Breno\u00a0  Bembem  ",
+      email: "  BRENO@EXAMPLE.COM  ",
       whatsapp: "(44) 99125-0332",
       cep: "86730-000",
       rua: "  Rua   das Cartas ",
@@ -42,6 +44,7 @@ test("normalizes checkout data before server use", () => {
     {
       ...valid,
       nome: "Breno Bembem",
+      email: "breno@example.com",
       whatsapp: "44991250332",
       cep: "86730000",
       rua: "Rua das Cartas",
@@ -54,6 +57,7 @@ test("normalizes checkout data before server use", () => {
 test("rejects malformed contact, CEP and required address fields", () => {
   const errors = validateCheckout({
     ...valid,
+    email: "email-invalido",
     whatsapp: "123",
     cep: "11111-111",
     rua: " ",
@@ -63,6 +67,7 @@ test("rejects malformed contact, CEP and required address fields", () => {
     uf: "parana",
   })
 
+  assert.ok(errors.email)
   assert.ok(errors.whatsapp)
   assert.ok(errors.cep)
   assert.ok(errors.rua)
