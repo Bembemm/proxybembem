@@ -1,12 +1,10 @@
 # ProxyBembem Admin Dashboard Expansion — Master Plan
 
-> **For agentic workers:** This document is the operational source of truth for the admin-dashboard/customer-account expansion. Read the approved design, then this file, then the active phase plan. Each implementation phase requires its own detailed plan under `docs/superpowers/plans/` before production code changes. Use TDD and explicit owner approval before merge or Production rollout.
+> **For agentic workers:** This is the operational source of truth for the admin-dashboard/customer-account expansion. Read the approved design, then this file, then the active phase plan. Never infer that code, Preview, or Production are approved merely because an earlier checkbox is complete.
 
-**Goal:** Expand the existing secure `/admin` into a complete operational store dashboard and add an optional customer account area without weakening the Production-accepted checkout, payment, freight, or admin-auth flows.
+**Goal:** Expand the secure `/admin` into a complete operational store dashboard and add an optional customer account area without weakening the Production-accepted checkout, Mercado Pago, Melhor Envio, Supabase, or admin-auth flows.
 
-**Architecture:** Modular monolith in the existing Next.js + Supabase application. Orders/fulfillment, payments, customers, catalog, shipments, notifications, settings, audit, and dashboard metrics stay in one deployable application but use separate data models, server modules, authorization boundaries, tests, and rollout gates.
-
-**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase Auth/Postgres/REST/RPC, Mercado Pago Checkout Pro, Melhor Envio OAuth/API, Tailwind CSS 4, Node built-in test runner.
+**Architecture:** Modular monolith in the existing Next.js + Supabase application. Payments, fulfillment, customers, catalog, shipments, notifications, settings, audit, and metrics have explicit data/service/authorization boundaries.
 
 **Approved design:** `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 
@@ -14,93 +12,45 @@
 
 **Branch base:** `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 
----
+## Status semantics
 
-## 0. Operating Rules
+- `[ ]` not started
+- `[~]` in progress / evidence incomplete
+- `[x]` complete with required evidence
 
-### Status semantics
+Keep these states distinct: `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED`.
 
-- `[ ]` not started.
-- `[~]` in progress; evidence incomplete.
-- `[x]` completed and required evidence recorded.
+No merge, Production migration, real shipping-label spending, catalog authority switch, or other high-risk Production action occurs without explicit owner approval.
 
-Never collapse these states: `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED`.
-
-A passing test suite does not authorize Production. A Ready Preview does not authorize merge. Merge/Production changes require explicit owner approval.
-
-### Phase-plan rule
-
-This file controls sequence, dependencies, evidence, and continuity. Each large subsystem has a separate code-level plan:
-
-1. `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`
-2. `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
-3. `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-4. `docs/superpowers/plans/2026-09-02-database-catalog-admin-products.md`
-5. `docs/superpowers/plans/2026-09-02-melhor-envio-shipments-labels.md`
-6. `docs/superpowers/plans/2026-09-02-transactional-notifications.md`
-7. `docs/superpowers/plans/2026-09-02-store-settings.md`
-8. `docs/superpowers/plans/2026-09-02-admin-dashboard-metrics.md`
-9. `docs/superpowers/plans/2026-09-02-admin-expansion-hardening-rollout.md`
-
-If a phase must be split, record the reason and new plan path here before implementation.
-
-### End-of-session rule
-
-Every meaningful session updates this file's **Current Session Checkpoint** and `docs/superpowers/CURRENT_STATUS.md` with exact phase/task, last verified commit, RED/GREEN evidence, full verification state, Preview/Production state, blockers, next exact action, and decisions future sessions must not rediscover.
-
----
-
-## 1. Non-Negotiable Constraints
+## Global constraints
 
 - [x] Keep `/admin`; URL secrecy is not a security boundary.
-- [x] Existing admin UUID + Supabase session + mandatory TOTP/AAL2 + server-side admin session remain required.
+- [x] Preserve admin UUID + Supabase session + mandatory TOTP/AAL2 + active server-side admin session + 30-minute inactivity + fail-closed behavior.
 - [x] Customer auth and admin authorization remain separate.
 - [x] Mercado Pago/provider remains authoritative for payment status; admin cannot force financial state locally.
-- [x] Guest checkout remains supported.
-- [x] Browser prices/shipping dimensions are never trusted.
-- [x] Historical `orders.items` snapshots remain immutable purchase truth.
-- [x] Label purchase never happens automatically after payment.
-- [x] Provider/auth/database secrets never enter client responses, logs, docs, events, audit, or commits.
-- [x] New migrations are compatibility-first/additive before constraint hardening.
+- [x] Fulfillment is independent from financial state.
+- [x] Guest checkout and public-token tracking remain supported.
+- [x] Browser-supplied price/shipping metadata is never trusted.
+- [x] Historical `orders.items` remains immutable purchase truth.
+- [x] Melhor Envio label purchase never happens automatically after payment.
+- [x] Secrets/tokens/password/TOTP/internal credentials never enter client responses, audit/events, docs, or commits.
+- [x] Migrations are compatibility-first/additive before hardening.
 - [x] Existing orders receive no fabricated production/shipping history.
-- [x] Secondary provider failures cannot corrupt critical order/payment state.
-- [x] High-risk actions require confirmation + server preconditions + audit where applicable.
-- [x] Admin UI keeps the current light/card/violet responsive model; customer account follows storefront identity.
+- [x] Secondary-provider failures cannot corrupt critical order/payment state.
+- [x] High-risk actions require confirmation + server-side preconditions + audit where applicable.
 - [x] Hosting migration remains a separate project.
 
 ---
 
-## 2. Existing Code Boundaries
+# PHASE 0 — Design + Planning
 
-Preserve and inspect before changing behavior:
+- [x] Branch created from current `main`.
+- [x] Architectural design written and owner-approved.
+- [x] Master Plan created.
+- [x] Phase 1 detailed plan written/reviewed: `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`.
+- [x] Phase 1 plan review fixed PostgREST dedupe targeting, partial-index attention handling, and recursive metadata-secret validation before runtime implementation.
 
-- `lib/server/admin-auth-core.ts`, `admin-auth.ts`, `admin-session-repository.ts` — admin security.
-- `lib/server/orders.ts` — order persistence/payment RPC interface.
-- `lib/server/checkout-order.ts`, `checkout-flow.ts`, `checkout-idempotency.ts`, `checkout-preference-lease.ts` — trusted checkout/idempotency.
-- `lib/server/melhor-envio-oauth-*` — existing Melhor Envio OAuth/token lifecycle.
-- `lib/server/env.ts` — runtime configuration boundary.
-- `app/admin/page.tsx` — current admin visual model.
-- `app/admin/integrations/melhor-envio/...` — current admin integration UI.
-- public `/pedido/...` + `components/order-status.tsx` — guest order tracking.
-- `data/products.ts` — current static catalog authority until Phase 4 switch.
-- Tests remain `tests/*.test.ts`; full gates are `pnpm test`, `pnpm typecheck`, `pnpm build`.
-
----
-
-# PHASE 0 — Design + Master Planning
-
-**Objective:** Lock architecture, branch, dependency order, and continuation format before implementation.
-
-- [x] Create `feat/admin-dashboard-expansion` from current `main`.
-- [x] Write approved design at `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`.
-- [x] Owner approved written design by instructing work to continue.
-- [x] Create this Master Plan.
-- [x] Create/review Phase 1 implementation plan at `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`.
-- [x] Phase 1 plan self-review fixed PostgREST dedupe handling, partial-index attention conflict handling, and recursive secret-metadata validation before runtime implementation.
-
-**Production impact:** None. Documentation only.
-
-**Exit:** COMPLETE. Runtime implementation has not started.
+**State:** COMPLETE.
 
 ---
 
@@ -108,325 +58,202 @@ Preserve and inspect before changing behavior:
 
 **Detailed plan:** `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`
 
-**Objective:** Add durable fulfillment, attention, order-event, and admin-audit primitives without changing customer-visible checkout behavior.
+**State:** IMPLEMENTED + TESTED on feature branch. NON-PRODUCTION DATABASE VALIDATION BLOCKED pending safe test environment. NOT PRODUCTION APPROVED.
 
-### Schema/RPC
+## Schema/RPC
 
-- [ ] Add compatibility-safe `orders.fulfillment_status`.
-- [ ] Backfill approved -> `awaiting_production`; other existing orders -> `awaiting_payment`; fabricate no past events.
-- [ ] Add `order_events` append-oriented history.
-- [ ] Add `order_attention_flags` for multiple independent active problems.
-- [ ] Add append-only `admin_audit_log`.
-- [ ] Keep browser roles blocked by RLS/grants.
-- [ ] Extend existing atomic Mercado Pago RPC without changing its input signature.
-- [ ] Approved payment atomically advances only `awaiting_payment -> awaiting_production`.
-- [ ] Duplicate/replayed payment events do not duplicate operational events.
-- [ ] Refund/chargeback keeps physical fulfillment unchanged and opens critical attention.
-- [ ] Manual-review mismatch opens critical attention.
+- [x] Add compatibility-safe nullable `orders.fulfillment_status` with default `awaiting_payment`.
+- [x] Conservative migration backfill: approved -> `awaiting_production`; all other known rows -> `awaiting_payment`; no historical event fabrication.
+- [x] Add `order_events` append-oriented lifecycle history.
+- [x] Add `order_attention_flags` supporting independent active attention conditions.
+- [x] Add append-only `admin_audit_log`.
+- [x] Enable RLS/revoke browser roles and grant only required service-role privileges.
+- [x] Preserve the existing `apply_mercadopago_payment_event` input signature.
+- [x] Approved payment atomically performs only `awaiting_payment -> awaiting_production`.
+- [x] Duplicate provider events use event dedupe keys.
+- [x] Refund/chargeback does not rewind physical fulfillment and opens critical attention.
+- [x] Amount/currency mismatch opens `payment_manual_review` attention.
 
-### Server foundations
+## Server foundations
 
-- [ ] Add pure `fulfillment.ts` transition rules.
-- [ ] Add recursive bounded `safe-metadata.ts` validation against secret-like/internal keys.
-- [ ] Add `order-events.ts` with explicit `on_conflict=dedupe_key` behavior for PostgREST dedupe.
-- [ ] Add `order-attention.ts` that handles the named partial-index duplicate conflict safely instead of pretending the partial unique index is a normal upsert target.
-- [ ] Add append/list-only `admin-audit.ts`.
-- [ ] Extend `orders.ts` typed payment result with fulfillment fields.
+- [x] `lib/server/fulfillment.ts` defines stable fulfillment vocabulary and admin transition rules.
+- [x] `lib/server/safe-metadata.ts` recursively rejects secret-like/internal metadata, cycles, non-JSON values, excessive depth, and oversized payloads.
+- [x] `lib/server/order-events.ts` uses explicit `on_conflict=dedupe_key` only when dedupe is requested.
+- [x] `lib/server/order-attention.ts` does not fake a partial-index upsert; only named `23505` conflict `order_attention_active_code_uidx` is treated as idempotent.
+- [x] `lib/server/admin-audit.ts` exposes append/list only; no update/delete API.
+- [x] `lib/server/orders.ts` strictly parses `fulfillment_status` and `fulfillment_transitioned` while keeping the RPC input body unchanged.
 
-### Evidence gate
+## TDD evidence
 
-- [~] RED tests captured for each new unit. Task 1 migration RED captured; later units still pending.
-- [ ] Focused migration/state/repository tests PASS.
-- [ ] `pnpm test` PASS.
-- [ ] `pnpm typecheck` PASS.
-- [ ] `pnpm build` PASS.
-- [ ] Non-Production migration/RPC validation succeeds.
-- [ ] Preview smoke check confirms existing checkout/public order/admin-auth behavior.
-- [ ] Owner approval obtained before any Production migration/deploy.
+- [x] Migration RED: commit `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`; 3/3 failed for expected missing migration.
+- [x] Migration GREEN: commit `bdf02ffd76a3c63efd0fe617bada587965af7171`; CI run `33589364422` passed test/typecheck/build.
+- [x] Fulfillment state machine completed RED -> GREEN; commit `f880fa4a420932f6112cb3800ad86afdbb31f2ff`.
+- [x] Payment result contract RED: commit `dbd2496fc4416fba374da9addc058d370f0a6b5e`; expected rejection test initially failed.
+- [x] Contract implementation plus fixture-debugging converged on commit `1f1ba69dd61ed9c41d4abb4489f30d325a669be9`; CI `33590010500` passed test/typecheck/build.
+- [x] Recursive safe metadata completed RED -> GREEN.
+- [x] Order events completed RED -> GREEN; commit `186d34d109c4bc6a41a02c7b8b172ae8838303e4`; CI `33590203413` passed test/typecheck/build.
+- [x] Order attention RED: commit `cadb3d30a46a1eea2d11ed9b43779a1fd9175abf`; 242 pass / 1 expected missing-module fail.
+- [x] Order attention GREEN: commit `7ae5338b640f15f78554cb5c71ae5351643a5e3c`; CI `33590348271` passed test/typecheck/build.
+- [x] Admin audit RED: commit `2b6af16a5362d8d7e8e75d3a5850ee9708ae1da6`; 248 pass / 1 expected missing-module fail.
+- [x] Admin audit GREEN/current code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`; CI `33590493640`, job `100123329614`, passed `pnpm test`, `pnpm typecheck`, and `pnpm build`.
 
-**Task 1 RED evidence (2026-09-02):**
+## Systematic-debugging record
 
-- test-only commit: `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`;
-- command: `node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`;
-- result: expected RED, 3 tests failed, 0 passed;
-- failure reason for all three tests: `ENOENT` because `supabase/migrations/202609020001_admin_order_operations_foundation.sql` does not exist;
-- no migration/runtime production code existed when RED was captured.
+Two failures after extending `OrderRecord`/payment RPC were traced to stale test fixtures, not runtime webhook behavior:
 
-**Rollback:** Additive schema can remain while Phase 1 code rolls back; do not drop existing checkout/payment data.
+- `tests/webhook-route.test.ts` mocked the old RPC response; fixture updated only.
+- `tests/order-display.test.ts` built a full `OrderRecord` without `fulfillment_status`; fixture updated only.
+
+No production webhook logic changed to hide those failures.
+
+## Scope review
+
+Comparison `b7172e86... -> 0ce3b371...` is 22 commits ahead and changes only the approved planning docs, one additive Phase 1 migration, fulfillment/metadata/event/attention/audit server modules, the narrow `orders.ts` contract update, and relevant tests/fixtures. No storefront, catalog authority, hosting, shipping-label flow, customer-account UI, or admin UI changes are part of this candidate.
+
+## Database/Preview validation gate
+
+- [ ] Apply migration to a clearly non-Production Supabase environment.
+- [ ] Validate conservative backfill and default behavior without exposing PII.
+- [ ] Validate upgraded payment RPC cases in non-Production.
+- [ ] Validate no retroactive `order_events` were created.
+- [ ] Validate RLS/grants on new internal tables.
+- [ ] Deploy the matching code candidate to Preview after DB migration succeeds.
+- [ ] Smoke existing checkout/public-order/admin-auth behavior.
+- [ ] Review Preview runtime errors.
+- [ ] Obtain explicit owner approval before Production migration/deploy.
+
+**Environment discovery on 2026-09-02:** connected Supabase exposes one project named `ProxyBembem` (`sa-east-1`) and `list_branches` returned no development branches. Therefore no SQL was applied. Creating a Supabase development branch may incur a cost and requires an explicit organization/cost confirmation workflow.
+
+**Rollback:** Additive Phase 1 schema may remain while code rolls back; never delete current checkout/payment data as rollback.
+
+**NEXT EXACT ACTION:** owner decides whether to create a Supabase development branch for safe Phase 1 DB validation. If yes, confirm which Supabase organization to use, query the branch cost, show that cost to the owner, obtain cost confirmation, then create the branch. Do not use the sole existing `ProxyBembem` project for Phase 1 validation without explicit Production authorization.
 
 ---
 
 # PHASE 2 — Admin Orders + Fulfillment
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
+**Plan:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md` (create only after Phase 1 acceptance).
 
-- [ ] Write/review the Phase 2 detailed plan after Phase 1 acceptance.
-- [ ] Add responsive admin navigation preserving current visual model.
-- [ ] `/admin/pedidos`: server-side pagination/search/filter by order, payment, fulfillment, attention, date.
-- [ ] `/admin/pedidos/[id]`: order snapshot, totals/freight, customer/address, safe payment details, fulfillment actions, attention, timeline, audit.
-- [ ] `/admin/producao`: queues for awaiting production, in production, ready to ship.
-- [ ] Explicit start-production/ready-to-ship/shipped/completed/cancel operations.
+- [ ] `/admin/pedidos` server-side list/search/filter.
+- [ ] `/admin/pedidos/[id]` complete operational detail.
+- [ ] `/admin/producao` production queues.
+- [ ] Explicit start/ready/shipped/completed/cancel operations with authorization, transition validation, event + audit.
 - [ ] No arbitrary payment mutation.
-- [ ] All writes re-check admin authorization and write required event/audit evidence.
-- [ ] Focused auth/transition/UI tests + full gates PASS.
-- [ ] Owner manually approves Preview before Production.
-
-**Rollback:** Disable new admin order routes/actions; Phase 1 schema remains additive.
+- [ ] Mobile-safe current admin visual model.
+- [ ] Focused auth/transition/UI tests + full CI + owner Preview approval.
 
 ---
 
 # PHASE 3 — Customer Account + Owned Orders
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-
-- [ ] Write/review Phase 3 plan.
-- [ ] Add `customer_profiles` + nullable `orders.customer_id`.
-- [ ] Email + permanent password + email verification + reset by email.
-- [ ] Email unique/case-insensitive; names not identities; immutable Auth UUID owns relationships.
-- [ ] Keep profile minimal: name, verified email representation, WhatsApp/contact, timestamps.
-- [ ] Guest checkout remains functional.
-- [ ] Logged-in checkout links order from trusted server session, never browser-supplied customer UUID.
-- [ ] Preserve public-token guest tracking.
-- [ ] Secure claim flow for old/guest orders; never name match alone.
-- [ ] `/minha-conta`, `/minha-conta/pedidos`, order detail, profile, security.
-- [ ] “Falar sobre este pedido” opens WhatsApp with order number.
-- [ ] Customer DTOs intentionally exclude internal fields/audit/provider data.
-- [ ] Account isolation/takeover/guest regression tests + full gates PASS.
-
-**Rollback:** Disable account UI while guest checkout/public-token tracking continue.
+- [ ] `customer_profiles` + nullable `orders.customer_id`.
+- [ ] Email + permanent password + verification + password reset.
+- [ ] Email unique/case-insensitive; names may repeat; Auth UUID owns relationships.
+- [ ] Guest checkout/public-token tracking remain.
+- [ ] Secure old/guest order claim; never name-only.
+- [ ] `/minha-conta`, owned orders, profile/security and WhatsApp order-contact action.
+- [ ] Cross-customer isolation/takeover regression tests.
 
 ---
 
 # PHASE 4 — Database Catalog + Admin Products
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-database-catalog-admin-products.md`
-
-- [ ] Write/review Phase 4 plan.
-- [ ] Add validated `products` table with stable ID, integer-cent prices, content, active/featured state, shipping metadata.
-- [ ] Seed exact current products/values.
-- [ ] Build trusted DB reader and parity tests against `data/products.ts`.
-- [ ] `/admin/produtos` and `/admin/produtos/[id]` with explicit save/confirmation/audit.
-- [ ] Do not trust browser price/dimensions.
-- [ ] Keep static authority during rollout; switch only after Preview parity acceptance.
-- [ ] After DB authority switch, DB failure fails checkout closed rather than silently using browser/stale data.
-- [ ] Historical order snapshots remain unchanged after product edits.
-- [ ] Full gates + Preview checkout acceptance PASS.
-
-**Rollback:** Re-select/redeploy known static authority while preserving orders already created under DB authority.
+- [ ] Validated `products` table with integer-cent prices and shipping metadata.
+- [ ] Seed exact current products.
+- [ ] DB/static parity tests before authority switch.
+- [ ] `/admin/produtos` + safe product editor with explicit save/confirmation/audit.
+- [ ] Checkout always reads trusted server authority; historical order snapshots immutable.
+- [ ] Static authority removed only after staged Preview/rollback validation.
 
 ---
 
-# PHASE 5 — Melhor Envio Shipments, Labels + Tracking
+# PHASE 5 — Melhor Envio Shipments + Labels + Tracking
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-melhor-envio-shipments-labels.md`
-
-- [ ] Write/review Phase 5 plan.
-- [ ] Re-check current official Melhor Envio endpoints/scopes immediately before implementation.
-- [ ] Least-privilege OAuth expansion only for required calculate/cart/purchase/generate/print/tracking/read/cancel capabilities.
-- [ ] Add dedicated `shipments` model; no provider token in shipment rows.
-- [ ] Address can be corrected before label purchase; after purchase no silent divergence.
-- [ ] `ready_to_ship` -> prepare -> show final cost -> explicit purchase confirmation -> generate -> print -> track.
-- [ ] Payment approval never spends Melhor Envio balance.
-- [ ] Tracking may sync automatically/read-only; failure does not change finances.
-- [ ] Idempotency prevents accidental double purchase as provider contract permits.
-- [ ] Sandbox OAuth/cart/purchase/generation/print/tracking/cancel acceptance.
-- [ ] Production label capability requires separate explicit owner approval.
-
-**Rollback:** Disable label management while existing freight calculation continues.
+- [ ] Verify current official API/scopes immediately before implementation.
+- [ ] Least-privilege OAuth expansion only.
+- [ ] Dedicated `shipments` model.
+- [ ] Prepare -> review final cost -> explicit label purchase -> generate/print -> tracking.
+- [ ] Address cannot silently diverge after label purchase.
+- [ ] Read-only tracking may sync automatically.
+- [ ] Sandbox acceptance before any real-balance capability.
 
 ---
 
-# PHASE 6 — Transactional Notification Outbox
+# PHASE 6 — Transactional Notifications
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-transactional-notifications.md`
-
-- [ ] Write/review Phase 6 plan.
-- [ ] Select Production-capable email/SMTP mechanism and keep credentials runtime-only.
-- [ ] Add idempotent `notification_jobs`/outbox with retries and safe error summary.
-- [ ] Email provider downtime never fails payment/order state.
-- [ ] Transactional templates: verification/reset, order created, payment approved, production, ready-to-ship where useful, shipped/tracking, cancellation/refund.
-- [ ] No marketing newsletter or automated WhatsApp provider scope.
-- [ ] Admin order detail shows safe notification status/history.
-- [ ] Duplicate event/retry/failure-redaction tests + full gates PASS.
-
-**Rollback:** Stop processor; queued records remain; checkout/payment/fulfillment continue.
+- [ ] Production-capable email mechanism chosen with runtime-only credentials.
+- [ ] Idempotent outbox/jobs and bounded retries.
+- [ ] Email failure never rolls back payment/order state.
+- [ ] Transactional account/order/payment/production/shipping/refund notices.
+- [ ] No newsletter or automated WhatsApp provider scope initially.
 
 ---
 
 # PHASE 7 — Store Settings
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-store-settings.md`
-
-- [ ] Write/review Phase 7 plan.
-- [ ] Narrow typed allowlist: production lead time, public contact data, selected operational copy/approved options.
-- [ ] Never expose/edit provider/auth/database secrets or immutable admin identity.
-- [ ] `/admin/configuracoes`: explicit save, validation, confirmation for high-impact values, audit.
-- [ ] Move approved code-owned settings one by one; avoid turning every string into a DB setting.
-- [ ] Settings/security/regression tests + full gates PASS.
-
-**Rollback:** Restore safe code/default typed value without touching orders/provider secrets.
+- [ ] Typed allowlist of safe commercial/operational settings.
+- [ ] No provider/auth/database secrets in panel.
+- [ ] `/admin/configuracoes` explicit save/validation/confirmation/audit.
 
 ---
 
-# PHASE 8 — Admin Dashboard Metrics + Attention Center
+# PHASE 8 — Dashboard Metrics + Attention Center
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-admin-dashboard-metrics.md`
-
-- [ ] Write/review Phase 8 plan.
-- [ ] Stable definitions for orders and approved value today/week/month.
-- [ ] Counts: awaiting production, in production, ready to ship, shipped, attention, refund/chargeback/manual review.
+- [ ] Stable timezone-aware metrics for orders/approved value.
+- [ ] Production/shipping/attention/refund/manual-review counts.
 - [ ] Product quantities sold from immutable snapshots.
-- [ ] Explicit timezone/date boundaries.
-- [ ] `/admin` prioritizes actionable cards/queues; preserve integration links.
-- [ ] Bounded aggregate queries/indexes; never load all orders in browser to calculate metrics.
-- [ ] Background refresh does not keep admin inactivity alive.
-- [ ] Aggregate/UI tests + full gates + manual Preview review PASS.
-
-**Rollback:** Restore simpler admin landing; direct operational pages remain usable.
+- [ ] Bounded server aggregate queries; actionable cards before vanity graphs.
 
 ---
 
-# PHASE 9 — Hardening, Preview Acceptance + Production Rollout
+# PHASE 9 — Hardening + Preview + Production Rollout
 
-**Plan path:** `docs/superpowers/plans/2026-09-02-admin-expansion-hardening-rollout.md`
+- [ ] Full anonymous/AAL1/wrong-admin/customer/cross-customer authorization matrix.
+- [ ] CSRF/origin/rate-limit/sensitive-log checks.
+- [ ] Concurrency/idempotency matrix across payment, fulfillment, claim, labels and notifications.
+- [ ] Full guest/authenticated checkout, payment, freight, admin, customer, shipment, notifications, settings and metrics regression.
+- [ ] Exact candidate `pnpm test`, `pnpm typecheck`, `pnpm build`, GitHub CI PASS.
+- [ ] Owner manually approves Preview.
+- [ ] Compatibility-safe Production rollout in explicit stages.
+- [ ] No merge without explicit owner permission.
+- [ ] After merge verify exact `main` CI/deployment SHA and canonical aliases.
+- [ ] Do not delete feature branch unless owner asks.
 
-### Security/idempotency
+## Decisions future chats must not rediscover
 
-- [ ] Anonymous/AAL1/wrong UUID/customer cannot access admin operations.
-- [ ] Customer A cannot access Customer B resources.
-- [ ] Guest token exposes only customer-safe order data.
-- [ ] Sensitive write routes keep CSRF/origin/rate-limit protections where applicable.
-- [ ] Logs/audit/events contain no secrets.
-- [ ] Admin inactivity/single-session remains correct across polling/new routes.
-- [ ] Duplicate payment, fulfillment, claim, label, notification operations remain safe/idempotent.
+1. Modular monolith, no generic giant dashboard and no microservices.
+2. `/admin` remains; real protection is server authorization + MFA.
+3. Payment provider-authoritative; fulfillment independent.
+4. Automatic fulfillment only on trusted approved payment from `awaiting_payment`.
+5. Refund/chargeback creates attention without falsifying physical state.
+6. No generic admin PATCH for arbitrary order/payment fields.
+7. Events and admin audit are separate append-oriented concepts.
+8. Customer account optional; email/password/verification/reset; Auth UUID is ownership identity.
+9. Guest checkout/public tracking remain.
+10. Catalog migrates to Supabase in stages; browser prices are never trusted.
+11. Label purchase is always explicit and never automatic after payment.
+12. Notifications use outbox isolation.
+13. Settings contain no infrastructure secrets.
+14. Migrations compatibility-first; no invented historical events.
+15. `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED` remain separate.
+16. Sole connected Supabase project currently has no development branch; do not treat it as a test DB.
 
-### Full regression
+## Current Session Checkpoint
 
-- [ ] Guest checkout.
-- [ ] Authenticated checkout.
-- [ ] Trusted catalog pricing.
-- [ ] Freight quote.
-- [ ] Mercado Pago Sandbox/test transition.
-- [ ] Customer ownership isolation.
-- [ ] Admin production/audit.
-- [ ] Melhor Envio Sandbox labels/tracking.
-- [ ] Notification success/failure/retry.
-- [ ] Settings.
-- [ ] Dashboard metrics.
-- [ ] Existing public order page.
-- [ ] Existing admin MFA/logout/timeout/single-session.
-- [ ] `pnpm test`, `pnpm typecheck`, `pnpm build`, exact-candidate GitHub CI PASS.
+**Status:** PHASE 1 CODE VERIFIED; NON-PRODUCTION DATABASE VALIDATION BLOCKED BY ENVIRONMENT
 
-### Manual Preview + Production
+**Current branch:** `feat/admin-dashboard-expansion`
 
-- [ ] Candidate Preview READY.
-- [ ] Owner reviews admin, orders/production, customer account, products, shipment flow, mobile/responsive behavior.
-- [ ] Preview runtime error/fatal logs reviewed.
-- [ ] Owner explicitly approves Production candidate.
-- [ ] Apply Production migrations in compatibility-safe order only after approval.
-- [ ] Reauthorize real Melhor Envio scopes only at approved rollout step.
-- [ ] Enable real label spending, live customer email, and DB catalog authority only at their explicit approved gates.
-- [ ] Monitor high-risk enablements immediately.
-- [ ] Do not merge branch without explicit owner permission.
-- [ ] After merge verify exact `main` CI/deployment source SHA/canonical aliases.
-- [ ] Do not delete feature branch unless owner requests cleanup.
+**Verified code candidate:** `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`
 
----
+**Exact CI:** run `33590493640`, job `100123329614` — test/typecheck/build PASS.
 
-## 10. Data Ownership Map
+**Expansion migration applied:** NO.
 
-| Domain | Authority | Mutation rule |
-| --- | --- | --- |
-| Payment | Mercado Pago + trusted RPC | Admin cannot force provider state |
-| Fulfillment | `orders.fulfillment_status` | Explicit admin operations + one approved-payment auto transition |
-| Purchase snapshot | `orders.items` | Trusted checkout creates; historical value immutable |
-| Customer identity | Supabase Auth UUID | Name/email text is not relational ownership |
-| Customer profile | `customer_profiles` | Minimal profile; separate from order delivery data |
-| Catalog | `products` after staged switch | Admin operations; checkout server reader only |
-| Shipment | `shipments` + provider | Spending/cancel requires confirmation |
-| Order timeline | `order_events` | Append-oriented domain events |
-| Admin audit | `admin_audit_log` | Append-only normal interface |
-| Notification | `notification_jobs` | Failure never rolls back payment/order |
-| Settings | typed `store_settings` | Commercial/operational only; no secrets |
+**Preview:** not validated yet because the matching database migration has not been applied to a safe non-Production environment.
 
----
+**Production:** unchanged / NOT APPROVED for this expansion.
 
-## 11. Decisions Future Chats Must Not Rediscover
+**Blocker:** only one connected Supabase project exists and it has zero development branches.
 
-1. Modular monolith; no giant generic dashboard and no microservices.
-2. Keep `/admin`; security is server authorization, not URL secrecy.
-3. Preserve admin MFA/AAL2/single-session/30-minute inactivity/fail-closed rules.
-4. Payment provider-authoritative; admin cannot manually mark paid/refunded.
-5. Fulfillment: `awaiting_payment -> awaiting_production -> in_production -> ready_to_ship -> shipped -> completed`; `canceled` exceptional/terminal.
-6. Only trusted approved payment automatically enters `awaiting_production`.
-7. Refund/chargeback adds attention without rewinding physical state.
-8. No generic admin order/payment PATCH.
-9. Order events and admin audit are separate append-oriented concepts.
-10. Address may change before label purchase; afterward use cancellation/recreation or provider-safe equivalent.
-11. Customer account optional: email + permanent password + verification + reset.
-12. Email is login identity; names can duplicate; immutable Auth UUID owns orders.
-13. Guest checkout/public-token tracking remain.
-14. Old/guest order claiming needs secure proof, never name alone.
-15. Customer permanent profile is minimal; cards never stored.
-16. Catalog moves to Supabase in stages; checkout remains server-authoritative.
-17. Historical order snapshots never follow catalog edits.
-18. Label purchase is always explicit; payment never auto-spends shipping balance.
-19. Melhor Envio scopes verified against current official docs at implementation time and least-privilege.
-20. Tracking can sync automatically/read-only; failure does not change finances.
-21. Transactional email uses outbox/job isolation.
-22. Automated WhatsApp/marketing are out of this initial scope; WhatsApp is direct contact.
-23. Store settings are safe operational/commercial values only.
-24. Dashboard prioritizes actionable persisted metrics.
-25. Migrations compatibility-first; no invented historical events.
-26. `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED` remain distinct.
-27. No high-risk Production/merge action without explicit owner approval.
-28. No feature-branch deletion without owner request.
-
----
-
-# 12. Current Session Checkpoint
-
-**Status:** PHASE 1 TASK 1 RED CAPTURED; PRODUCTION CODE NOT STARTED
-
-**Current phase:** Phase 1 — Data + Audit Foundation
-
-**Current task:** Task 1 complete at RED. Preparing Task 2 migration implementation.
-
-**Branch:** `feat/admin-dashboard-expansion`
-
-**Branch base:** `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
-
-**Approved spec:** `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
-
-**Master Plan:** `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`
-
-**Active phase plan:** `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`
-
-**Last test-only implementation commit:** `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`
-
-**Expansion migrations created/applied:** NONE
-
-**Fresh RED verification:**
-
-- command: `node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`;
-- tests: 3;
-- pass: 0;
-- fail: 3;
-- expected failure: `ENOENT` for missing `supabase/migrations/202609020001_admin_order_operations_foundation.sql`;
-- RED is valid because the feature/migration is absent.
-
-**Full repository verification:**
-
-- `pnpm test`: not run at RED-only checkpoint;
-- `pnpm typecheck`: not run at RED-only checkpoint;
-- `pnpm build`: not run at RED-only checkpoint.
-
-**Preview:** Not applicable yet.
-
-**Production:** NOT APPROVED / NOT CHANGED.
-
-**Blockers:** None.
-
-**NEXT EXACT ACTION:** Task 2 — create `supabase/migrations/202609020001_admin_order_operations_foundation.sql` with the compatibility-safe fulfillment column, backfill, event/attention/audit tables, and upgraded atomic Mercado Pago RPC, then rerun the focused migration test for GREEN.
-
-**DO NOT REDISCOVER:** Do not touch `/admin` UI, customer accounts, catalog authority, label purchase, or Production in Phase 1. Payment-side event/attention/automatic fulfillment changes remain atomic inside the existing Mercado Pago RPC.
+**NEXT EXACT ACTION:** ask owner whether to create a paid/free-as-reported-by-Supabase development branch; before creation, confirm organization and show the current Supabase branch cost using the required cost-confirmation flow.
