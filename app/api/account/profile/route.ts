@@ -4,7 +4,11 @@ import {
   parseAccountProfileInput,
 } from "../../../../lib/server/customer-account-actions.ts"
 import { requireCustomerPageAccess } from "../../../../lib/server/customer-auth.ts"
-import { updateOwnCustomerProfile } from "../../../../lib/server/customer-profiles.ts"
+import {
+  ensureOwnCustomerProfile,
+  getOwnCustomerProfile,
+  updateOwnCustomerProfile,
+} from "../../../../lib/server/customer-profiles.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
 
@@ -38,7 +42,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const profile = await updateOwnCustomerProfile(input)
+    const current = await getOwnCustomerProfile()
+    const profile = current
+      ? await updateOwnCustomerProfile(input)
+      : await ensureOwnCustomerProfile(input)
     return json(200, {
       ok: true,
       profile: { name: profile.name, whatsapp: profile.whatsapp },
