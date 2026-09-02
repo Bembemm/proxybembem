@@ -11,7 +11,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-3 TDD COMPLETE; TASK 4 RED NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-4 TDD COMPLETE; TASK 5 RED NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Verified baseline
@@ -132,7 +132,45 @@ Final Task 3 candidate:
 - `pnpm build`: PASS on Next.js 16.3.3; compiled successfully and generated 17/17 static pages;
 - workflow conclusion: SUCCESS.
 
-Task 3 is therefore the current verified runtime checkpoint. Phase 3 DDL is still unapplied.
+## Phase 3 Task 4 — customer auth boundary: RED/GREEN COMPLETE
+
+The customer auth boundary is intentionally independent from admin authorization. It trusts only a network-validated Supabase Auth user from `auth.getUser()`, requires a canonical non-nil UUID plus confirmed normalized email, and redirects protected customer pages to `/entrar` when no trusted customer identity exists. It does **not** use `ADMIN_USER_ID`, AAL2, `admin_sessions`, admin activation/session RPCs, `auth.getSession()`, or `/admin/login`.
+
+First RED attempt:
+
+- test commit `2ed4e21093a7cdd9439379a672bcb02e806a24ea`;
+- CI run `33669446978`;
+- job `100379130201`;
+- this RED is **not canonical** because Node's `--experimental-strip-types` rejected a TypeScript parameter property in the test harness before module resolution;
+- no production `lib/server/customer-auth.ts` existed at this point.
+
+The harness alone was corrected in commit `27eef709a53f91b76a79457f85473bb41d54aced`, still with no production customer-auth module.
+
+Canonical RED:
+
+- commit `27eef709a53f91b76a79457f85473bb41d54aced`;
+- CI run `33669616396`;
+- job `100379689434`;
+- total tests: 300;
+- PASS: 299;
+- FAIL: exactly 1, `tests/customer-auth.test.ts`;
+- failure is exactly `ERR_MODULE_NOT_FOUND` for missing `lib/server/customer-auth.ts`;
+- `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the CI job.
+
+GREEN implementation:
+
+- production module: `lib/server/customer-auth.ts`;
+- final Task 4 candidate commit `e88ddbe84f89c48024856d7d53bad27ff45240cb`;
+- CI run `33669788637`;
+- job `100380261347`;
+- `pnpm test`: 305 total, 305 PASS, 0 FAIL;
+- all six `tests/customer-auth.test.ts` cases PASS;
+- existing `tests/admin-auth.test.ts` regression suite PASS in the same run;
+- `pnpm typecheck`: PASS (`tsc --noEmit`);
+- `pnpm build`: PASS on Next.js 16.3.3; compiled successfully, TypeScript finished, and generated 17/17 static pages;
+- workflow conclusion: SUCCESS.
+
+Task 4 is the current verified runtime checkpoint. Phase 3 DDL remains unapplied.
 
 ## Current safety gates
 
@@ -142,10 +180,10 @@ Task 3 is therefore the current verified runtime checkpoint. Phase 3 DDL is stil
 - Do not create/promote a new Production app deployment without explicit owner approval.
 - Do not delete the feature branch unless owner asks.
 - Do not start Phase 4 runtime work before Phase 3 completion.
-- Customer auth Task 4 must remain separate from `ADMIN_USER_ID`, AAL2 and `admin_sessions`.
+- Customer authorization must remain separate from `ADMIN_USER_ID`, AAL2 and `admin_sessions`.
 
 ## Resume point
 
-**Current Phase 3 status:** Tasks 1-3 complete with TDD evidence. Final verified Task 3 candidate is `70319add3f2a8c139b25fdb4ca5a3fefd80b14d9`, CI `33668791985`, job `100376977017`.
+**Current Phase 3 status:** Tasks 1-4 complete with TDD evidence. Final verified Task 4 candidate is `e88ddbe84f89c48024856d7d53bad27ff45240cb`, CI `33669788637`, job `100380261347`.
 
-**NEXT EXACT ACTION:** Phase 3 Task 4 RED. Create only `tests/customer-auth.test.ts`, covering optional no-user identity, verified canonical customer identity, malformed/unverified rejection, strict separation from admin authorization/session state, and `/entrar` redirect for protected customer pages. Run `node --experimental-strip-types --test tests/customer-auth.test.ts` and capture expected module-missing RED **before** creating `lib/server/customer-auth.ts`. Then implement the minimum GREEN using `createSupabaseServerClient().auth.getUser()` and verify alongside `tests/admin-auth.test.ts`.
+**NEXT EXACT ACTION:** Read Phase 3 Task 5 in `docs/superpowers/plans/2026-09-02-customer-account-orders.md`, confirm the branch HEAD, then create only the Task 5 failing tests specified by that plan. Capture a valid RED before modifying checkout/order runtime for customer ownership persistence.
