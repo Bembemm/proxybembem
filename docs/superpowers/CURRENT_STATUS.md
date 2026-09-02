@@ -10,121 +10,97 @@ This is the canonical repository-wide continuation checkpoint. For the active ad
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
 - Approved design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`.
 - Master Plan: `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`.
-- Phase 1 plan: `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`.
-- State: **PHASE 1 TASK 1 RED CAPTURED — PRODUCTION CODE NOT STARTED**.
-- Test-only commit: `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`.
-- Master Plan RED checkpoint commit: `313aa115e135d58c2b9971121808af9788568f7c`.
-- No expansion migration has been created/applied yet.
-- Production is unchanged and no expansion Production rollout is approved.
+- Active phase plan: `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`.
+- State: **PHASE 1 CODE IMPLEMENTED + TESTED; NON-PRODUCTION DATABASE VALIDATION BLOCKED BY ENVIRONMENT**.
+- Production remains unchanged and no expansion rollout is approved.
 
-### Fresh RED evidence
+## Phase 1 verified candidate
 
-Command:
+Code candidate before documentation checkpoint:
 
-`node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`
+`0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`
 
-Result:
+Exact CI:
 
-- 3 tests;
-- 0 passed;
-- 3 failed;
-- all failures were the expected `ENOENT` for missing `supabase/migrations/202609020001_admin_order_operations_foundation.sql`.
+- run `33590493640`;
+- job `100123329614`;
+- `pnpm test`: PASS;
+- `pnpm typecheck`: PASS;
+- `pnpm build`: PASS.
 
-This is the intended TDD RED state: the migration behavior is specified before the migration exists.
+Full branch diff review from `main` base `b7172e86...` to candidate `0ce3b371...` found only the approved planning docs, one additive Phase 1 migration, fulfillment/metadata/event/attention/audit server modules, narrow `orders.ts` contract changes, and relevant tests/fixtures. No storefront, catalog authority, customer-account UI, label flow, hosting, or admin UI changes entered Phase 1.
 
-### Phase 1 exact next action
+### Implemented Phase 1 foundation
 
-Create `supabase/migrations/202609020001_admin_order_operations_foundation.sql` according to Task 2 of the Phase 1 plan, then rerun the focused migration test for GREEN.
+- `supabase/migrations/202609020001_admin_order_operations_foundation.sql` exists in Git only; it has **not** been applied to Supabase.
+- Adds compatibility-safe `orders.fulfillment_status` and conservative backfill.
+- Adds `order_events`, `order_attention_flags`, and append-only `admin_audit_log` with RLS/browser-role restrictions.
+- Existing Mercado Pago payment RPC keeps the same input signature and now atomically handles the one allowed automatic fulfillment transition plus payment-related events/attention.
+- `lib/server/fulfillment.ts` provides stable fulfillment vocabulary/transition rules.
+- `lib/server/safe-metadata.ts` recursively blocks secret/internal metadata and unsafe JSON shapes.
+- `lib/server/order-events.ts` uses explicit `on_conflict=dedupe_key` only for real dedupe requests.
+- `lib/server/order-attention.ts` treats only the named partial-index `23505` duplicate as idempotent; unrelated conflicts fail.
+- `lib/server/admin-audit.ts` exposes append/list only, with no update/delete API.
+- `lib/server/orders.ts` strictly validates the new RPC result while keeping the payment RPC request body unchanged.
 
-The migration must remain compatibility-safe and additive. It will introduce:
+### TDD/debugging evidence
 
-- `orders.fulfillment_status` with conservative backfill;
-- `order_events`;
-- `order_attention_flags`;
-- `admin_audit_log`;
-- the upgraded existing Mercado Pago payment RPC that atomically performs the one allowed automatic fulfillment transition.
+- Migration RED: `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`, expected missing-file failures.
+- Migration GREEN: `bdf02ffd76a3c63efd0fe617bada587965af7171`, CI full PASS.
+- Fulfillment state machine completed RED -> GREEN.
+- Payment RPC contract RED: `dbd2496fc4416fba374da9addc058d370f0a6b5e`, expected unknown-status acceptance failure.
+- Systematic debugging found two stale test fixtures after the `OrderRecord` contract expansion; only fixture data changed, not webhook production logic.
+- Stabilized contract candidate `1f1ba69dd61ed9c41d4abb4489f30d325a669be9` passed full CI.
+- Order events GREEN `186d34d109c4bc6a41a02c7b8b172ae8838303e4`, full CI PASS.
+- Order attention RED `cadb3d30a46a1eea2d11ed9b43779a1fd9175abf`; GREEN `7ae5338b640f15f78554cb5c71ae5351643a5e3c`, full CI PASS.
+- Admin audit RED `2b6af16a5362d8d7e8e75d3a5850ee9708ae1da6`; GREEN `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, full CI PASS.
 
-Do not implement `/admin` order pages, customer accounts, catalog migration, labels, notifications, settings, or dashboard metrics during Phase 1.
+## Supabase environment discovery
 
-### Phase 1 decisions future chats must preserve
+Connected Supabase state checked on 2026-09-02:
 
-- `order_events` dedupe through PostgREST must explicitly target `on_conflict=dedupe_key` with `resolution=ignore-duplicates` when a dedupe key exists.
-- Active attention uniqueness uses a partial unique index; do not pretend `(order_id, code)` is a normal PostgREST upsert target. Treat only the named `23505` partial-index duplicate as idempotent.
-- Event/attention/audit caller-provided metadata receives bounded recursive secret/internal-key validation.
-- Payment-side event/attention writes remain inside the trusted Mercado Pago database RPC so payment + automatic fulfillment side effects are one transaction.
+- one project exists: `ProxyBembem`;
+- region: `sa-east-1`;
+- status: healthy;
+- development branches: **none**.
 
-## Architectural decisions future sessions must not rediscover
+Because no clearly non-Production database exists, **no migration was applied**. Do not use the sole connected `ProxyBembem` project as a test database without explicit Production authorization.
 
-- Modular monolith inside existing Next.js + Supabase application.
-- Keep `/admin`; security never depends on hiding/randomizing its URL.
-- Preserve admin password + mandatory Authenticator TOTP/AAL2, single active session, 30-minute inactivity, server-side fail-closed authorization.
-- Payment status is Mercado Pago/provider-authoritative; admin cannot force paid/refunded locally.
-- Fulfillment is independent: `awaiting_payment -> awaiting_production -> in_production -> ready_to_ship -> shipped -> completed`; `canceled` is exceptional/terminal where valid.
-- Only trusted approved payment automatically advances `awaiting_payment -> awaiting_production`.
-- Refund/chargeback creates attention without falsifying the physical state.
+Supabase supports creating a development branch, but branch creation has a cost-confirmation workflow. Before creating one, the owner must confirm which Supabase organization to use; then query current cost, show it to the owner, obtain confirmation, and only then create the branch.
+
+## Architectural decisions future chats must not rediscover
+
+- Modular monolith in existing Next.js + Supabase app.
+- Keep `/admin`; security relies on server authorization, mandatory TOTP/AAL2, one active session, 30-minute inactivity, fail-closed behavior.
+- Payment is provider-authoritative; admin cannot force paid/refunded locally.
+- Fulfillment: `awaiting_payment -> awaiting_production -> in_production -> ready_to_ship -> shipped -> completed`; `canceled` exceptional/terminal where valid.
+- Only trusted approved payment automatically performs `awaiting_payment -> awaiting_production`.
+- Refund/chargeback creates attention without rewinding physical fulfillment.
 - No generic arbitrary admin order/payment PATCH.
-- Order lifecycle events and admin audit are append-oriented and separate.
-- Address may be corrected before label purchase; after purchase it cannot silently diverge from the active label.
-- Customer account is optional and uses email + permanent password + email verification + password reset.
-- Email is the login identity; names may duplicate; immutable Auth UUID owns customer/order relationships.
-- Guest checkout and existing public-token order tracking remain.
-- Guest/old order claiming requires trusted proof and never a name match alone.
-- Customer permanent profile stays minimal; payment cards are never stored.
-- Catalog moves to Supabase in stages; checkout remains server-authoritative and historical order snapshots remain immutable.
+- Order events and admin audit are append-oriented and separate.
+- Customer account optional: email + permanent password + email verification + reset; Auth UUID owns relationships.
+- Guest checkout/public-token tracking remain.
+- Catalog moves to Supabase in stages; checkout remains server-authoritative and historical snapshots immutable.
 - Label purchase never happens automatically after payment and always requires explicit admin confirmation.
-- Melhor Envio scope expansion follows least privilege and current official docs at implementation time.
-- Read-only tracking may synchronize automatically without altering financial state.
-- Transactional email uses an outbox/job model; email-provider failure cannot break payment/order persistence.
-- Store settings expose only safe commercial/operational values; secrets remain runtime configuration.
-- Admin UI follows current admin visual model; customer account follows storefront identity.
-- Database migrations are compatibility-first/additive before hardening.
-- Existing historical orders receive no fabricated production/shipping events.
-- `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, and `PRODUCTION APPROVED` are distinct.
+- Tracking may synchronize read-only when safe.
+- Transactional email uses outbox/job isolation.
+- Store settings expose no infrastructure secrets.
+- Migrations compatibility-first and no historical facts are fabricated.
+- `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED` are distinct.
 - No merge/high-risk Production action without explicit owner approval.
 - Do not delete feature branches unless owner explicitly requests cleanup.
 
 ## Production baseline — unchanged
 
-Repository: `Bembemm/proxybembem`.
-
-- PR #2 (`feat: adicionar checkout seguro com Mercado Pago`) was explicitly approved and merged into `main`.
-- Merge commit: `1f0bff2c88901a5e0bd0c910e3f650264bceb79b`.
-- Current canonical `main`: `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
-- Final main CI #744 passed on that SHA.
-- Canonical Production deployment: `dpl_DFZhbQpkxZ8CRqJsLKx2jU8v9MAX`, READY, sourced from `main` SHA `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Repo: `Bembemm/proxybembem`.
+- Canonical `main`: `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Existing Production deployment: `dpl_DFZhbQpkxZ8CRqJsLKx2jU8v9MAX`, READY.
 - Canonical domains: `https://www.proxybembem.com.br` and `https://proxybembem.com.br`.
-
-### Production-accepted behavior
-
-- Dedicated `/produtos` catalog page; Home keeps featured-only section.
-- PB branding served directly from `/brand/pb.png`.
-- Product production/posting copy: up to 5 business days.
-- Product 1: Commander 100 — R$150.00 original / R$119.90 sale.
-- Product 2: Proxy 60 — R$99.99 original / R$69.99 sale.
-- Mercado Pago Checkout Pro + signed webhook + server-side payment fetch + atomic Supabase payment transition accepted in Production.
-- Public order status flow accepted.
-- Melhor Envio Production OAuth active for current freight calculation; freight restricted to PAC/SEDEX IDs 1/2.
-- Admin login password + mandatory TOTP/AAL2 accepted; one active app session; 30-minute inactivity timeout; auth failures fail closed.
-
-### Applied Production Supabase migrations before this expansion
-
-1. `202608280001_create_orders.sql`
-2. `202608280002_shipping_checkout_hardening.sql`
-3. `202608280003_atomic_payment_events.sql`
-4. `202608290001_restrict_rls_auto_enable.sql`
-5. `202608290002_melhor_envio_oauth.sql`
-6. `202608300001_checkout_preference_lease.sql`
-7. `202608310001_admin_sessions.sql`
-
-## Historical debugging decisions
-
-- Vercel Hobby previously hit `build-rate-limit`; do not create repeated dummy commits while rate-limited.
-- Android/Termux native Next/SWC is the local build limitation for Next 16.3.3; GitHub CI/Linux remains authoritative full-build evidence.
-- Termux Webpack/WASM testing exposed a latent strict route-export issue in `app/api/internal/melhor-envio/refresh/route.ts`; do not confuse it with a known Production failure.
-- Keep the accepted PB image path `/brand/pb.png`.
+- Production-accepted checkout, payment, public order tracking, freight, `/produtos`, PB PNG branding, and admin MFA/session behavior remain untouched by this expansion.
+- Pre-expansion Production migrations remain the seven existing migrations through `202608310001_admin_sessions.sql`.
 
 ## End-of-session rule
 
-Every meaningful session must update this file with current phase/task, fresh passed/failed evidence, blockers, exact next action, relevant branch/commit/Preview/Production evidence, and decisions future sessions must not rediscover.
+Every meaningful session must update this file with exact phase/task, fresh evidence, blockers, next action, branch/commit/Preview/Production state, and decisions future sessions must not rediscover.
 
-**Resume point:** Phase 1 Task 1 RED is captured on `feat/admin-dashboard-expansion`. The migration does not yet exist. Next action is Task 2: implement the additive migration and rerun the migration test for GREEN. Existing `main`/Production baseline remains unchanged.
+**Resume point:** Phase 1 code is implemented and verified on `feat/admin-dashboard-expansion`, but its migration has not been applied anywhere. The only connected Supabase project has no development branch. Next step is an owner decision about creating a Supabase development branch; do not apply SQL to the sole existing project without explicit Production authorization.
