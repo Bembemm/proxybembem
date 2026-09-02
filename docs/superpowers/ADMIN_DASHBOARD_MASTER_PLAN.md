@@ -1,8 +1,8 @@
 # ProxyBembem Admin Dashboard Expansion — Master Plan
 
-> **Operational source of truth.** Read the approved design, this file, `docs/superpowers/CURRENT_STATUS.md`, then the active phase plan. Never equate IMPLEMENTED, TESTED, PREVIEW APPROVED, and PRODUCTION APPROVED.
+> **Operational source of truth.** Read the approved design, this file, `docs/superpowers/CURRENT_STATUS.md`, then the active phase plan. Never equate IMPLEMENTED, TESTED, PREVIEW APPROVED, DB APPLIED, and PRODUCTION APPROVED.
 
-**Goal:** expand the secure `/admin` into the operational store dashboard and add a customer account area without weakening the accepted checkout/payment/freight/admin-auth flows.
+**Goal:** expand the secure `/admin` into the operational store dashboard and add a customer account area without weakening checkout/payment/freight/admin-auth.
 
 **Architecture:** modular monolith in the existing Next.js + Supabase app.
 
@@ -18,12 +18,12 @@
 - `[~]` in progress / evidence incomplete
 - `[x]` complete with required evidence
 
-No merge, new Production application deployment, catalog authority switch, real shipping-label spend, or other high-risk rollout occurs without explicit owner approval. Meaningful DDL on the existing Supabase project is applied only when needed and after explicit owner authorization.
+No merge, new Production application deployment, catalog authority switch, real label spend, or other high-risk rollout occurs without explicit owner approval. Meaningful DDL on the existing Supabase project is applied only when needed and after explicit owner authorization.
 
 ## Global invariants
 
 - [x] Keep `/admin`; URL secrecy is not a security boundary.
-- [x] Admin security remains UUID allowlist + Supabase Auth + mandatory TOTP/AAL2 + one active server-side session + 30-minute inactivity + fail closed.
+- [x] Admin security remains UUID allowlist + Supabase Auth + mandatory TOTP/AAL2 + one active server-side session + inactivity expiry + fail closed.
 - [x] Customer authentication stays separate from admin authorization.
 - [x] Mercado Pago remains payment authority; no local admin “mark paid/refunded”.
 - [x] Fulfillment is separate from payment state.
@@ -35,8 +35,8 @@ No merge, new Production application deployment, catalog authority switch, real 
 - [x] Migrations are compatibility-first and do not fabricate historical facts.
 - [x] Secondary-provider failures cannot corrupt critical payment/order state.
 - [x] High-risk admin actions require explicit confirmation + server preconditions + audit.
-- [x] Hosting migration is a separate project.
-- [x] Do not introduce a paid Supabase development branch as a mandatory workflow; owner explicitly chose the existing in-place Supabase workflow used by this project.
+- [x] Hosting migration/config redesign is outside this project phase.
+- [x] Paid Supabase development branch is not a mandatory workflow; owner chose the existing project workflow.
 
 ---
 
@@ -44,11 +44,11 @@ No merge, new Production application deployment, catalog authority switch, real 
 
 **State:** COMPLETE.
 
-- [x] Create `feat/admin-dashboard-expansion` from current main.
+- [x] Create `feat/admin-dashboard-expansion` from accepted main.
 - [x] Write/approve architectural design.
 - [x] Create Master Plan/checkpoint system.
-- [x] Write/review Phase 1 detailed plan.
-- [x] Phase 1 plan review fixed PostgREST dedupe, partial-index attention conflict handling, and recursive metadata-secret validation before runtime work.
+- [x] Write/review Phase 1 plan.
+- [x] Phase 1 planning caught PostgREST dedupe, partial-index handling and recursive secret-validation concerns before runtime implementation.
 
 ---
 
@@ -56,30 +56,22 @@ No merge, new Production application deployment, catalog authority switch, real 
 
 **Plan:** `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`
 
-**State:** CODE TESTED + CURRENT SUPABASE MIGRATION APPLIED/VALIDATED. FEATURE BRANCH NOT MERGED. PREVIEW ADMIN ACCEPTANCE BLOCKED BY PREVIEW ENV CONFIG.
-
-## Completed foundation
+**State:** CODE VERIFIED + MIGRATION APPLIED/VALIDATED ON CURRENT SUPABASE. FEATURE BRANCH NOT MERGED.
 
 - [x] Add compatibility-safe `orders.fulfillment_status`.
-- [x] Backfill approved -> `awaiting_production`; all other existing rows -> `awaiting_payment`; no fabricated events.
-- [x] Add `order_events`, `order_attention_flags`, and append-only `admin_audit_log`.
-- [x] Browser roles blocked; required service-role privileges only.
+- [x] Backfill approved -> `awaiting_production`; others -> `awaiting_payment`; no fabricated events.
+- [x] Add `order_events`, `order_attention_flags`, append-only `admin_audit_log`.
+- [x] Browser roles blocked; service-role privileges narrowed.
 - [x] Preserve Mercado Pago RPC input signature.
-- [x] Trusted approval atomically performs only `awaiting_payment -> awaiting_production`.
-- [x] Refund/chargeback preserves physical fulfillment and opens attention.
-- [x] Amount/currency mismatch -> `manual_review` attention.
-- [x] Add fulfillment, safe-metadata, event, attention, and audit server foundations.
-- [x] Verify service_role cannot UPDATE/DELETE audit or order-event history.
+- [x] Trusted approval owns only automatic `awaiting_payment -> awaiting_production`.
+- [x] Refund/chargeback preserves physical fulfillment.
+- [x] Amount/currency mismatch -> manual review.
+- [x] Verify audit/event history cannot be UPDATE/DELETE by service role.
+- [x] Apply migration after owner approval and validate current data/transaction paths.
+- [x] Production `/admin` remained healthy after additive DB change.
+- [x] Preview env issue was diagnosed and owner aligned Preview configuration; fresh protected Preview returned 200.
 
-## Evidence
-
-- [x] Phase 1 verified code candidate `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`; CI `33590493640` test/typecheck/build PASS.
-- [x] Documentation checkpoint `11eb39252cb8c00cdc64336582b53e69b5fb10a6`; CI `33590734705` PASS.
-- [x] Supabase migration applied as `20260902091641_admin_order_operations_foundation` after owner authorization.
-- [x] 25 existing orders validated; no NULL/wrong fulfillment backfill.
-- [x] Transaction+rollback validated approval/replay/refund/chargeback/manual-review; 0 persistent fixtures.
-- [x] Production `/admin` remains 200 login surface after DB migration; no error/fatal logs in validation window.
-- [~] Preview `/admin` blocked by missing `NEXT_PUBLIC_SUPABASE_URL`; Preview not approved.
+Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `33590493640` PASS.
 
 ---
 
@@ -87,53 +79,45 @@ No merge, new Production application deployment, catalog authority switch, real 
 
 **Plan:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
 
-**State:** PLAN REVIEWED; TASK 1 RED COMPLETE; MIGRATION GREEN IMPLEMENTATION NEXT.
+**State:** TASKS 1–11 CODE/TDD/SECURITY/SCOPE VERIFIED. TASK 12 WAITING OWNER APPROVAL TO APPLY EXACT DDL.
 
-## Planning gate
+## Planning/contract decisions
 
-- [x] Inspect current admin shell/auth/integration route and Phase 1 repositories.
-- [x] Write detailed Phase 2 implementation plan.
-- [x] Self-review for TODO/TBD/placeholders: none.
 - [x] List RPC returns `{orders,total}` so empty/out-of-range pages retain total.
-- [x] Date filtering uses `America/Sao_Paulo` calendar boundaries.
-- [x] Search `%`, `_`, `\` treated literally; attention severity deterministic.
-- [x] Paid cancellation opens `canceled_paid_order` without refund; actual provider reversal resolves only that cancellation-specific alert.
-- [x] One fixed handler result/redirect mapping.
-- [x] Next.js 16 async params/searchParams explicitly handled.
+- [x] Date filtering uses `America/Sao_Paulo` boundaries.
+- [x] Search wildcard characters are treated literally.
+- [x] Paid cancellation opens `canceled_paid_order`; it never refunds locally.
+- [x] Actual Mercado Pago reversal resolves only cancellation-specific attention.
+- [x] Next.js 16 async params/searchParams handled explicitly.
 - [x] Append-only audit/event privileges preserved.
 
-## Task 1 — migration contract RED
+## Implementation tasks
 
-- [x] Create only `tests/admin-order-operations-migration.test.ts`.
-- [x] Test-only commit: `75f3a0752ee6fa6e80a821c4be23fb3a7f17e1e4`.
-- [x] CI run `33615089014`, job `100198954546`.
-- [x] Result: expected RED — 256 tests total, 252 pass, 4 fail.
-- [x] All 4 failures are the new Phase 2 migration tests.
-- [x] All 4 fail for the same expected reason: `ENOENT` for `supabase/migrations/202609020002_admin_order_fulfillment_operations.sql`.
-- [x] No unrelated test regression in the RED run.
-- [x] No Phase 2 migration/runtime implementation existed when RED was captured.
+- [x] Task 1 — migration contract RED captured before SQL (`75f3a075...`, CI `33615089014`).
+- [x] Task 2 — additive Phase 2 migration implemented in Git only.
+- [x] Task 3 — backend-only admin read repository (`f8ded33f...`, CI `33634645304` PASS).
+- [x] Task 4 — strict atomic fulfillment operation repository (`f2714347...`, CI `33634997803` PASS).
+- [x] Task 5 — five narrow same-origin/AAL2 POST routes with fixed server targets (`15fa3e17...`, CI `33635899966` PASS).
+- [x] Task 6 — protected shared admin shell/nav/status badges (`58b2fd70...`, CI `33636760106` PASS).
+- [x] Task 7 — `/admin/pedidos` server list/search/filter/pagination (`f1aa1fc4...`, CI `33645894040` PASS).
+- [x] Task 8 — `/admin/pedidos/[id]` operational detail/timeline/audit/actions (`1dd2446b...`, CI `33646901907` PASS).
+- [x] Task 9 — destructive cancellation confirmation (`d9c1a49b...`, CI `33647900422` PASS).
+- [x] Task 10 — `/admin/producao` three oldest-first active queues (`40019e59...`, CI `33650042499` PASS).
+- [x] Task 11 — full suite/typecheck/build + exact scope/security/concurrency review.
+- [~] Task 12 — STOP gate: owner approval required before applying exact Phase 2 migration to current Supabase.
 
-## Planned runtime work
+## Task 11 findings and evidence
 
-- [~] Task 2: GREEN Phase 2 migration in Git only; **do not apply to Supabase yet**.
-- [ ] Add static bounded `admin_list_orders` service-role-only RPC.
-- [ ] Add atomic `admin_transition_order_fulfillment` RPC with row lock + event + audit + attention.
-- [ ] Add reversal observer for cancellation-specific attention.
-- [ ] Add backend-only admin read repository.
-- [ ] Add strict fulfillment operation repository.
-- [ ] Add five narrow same-origin POST routes with server-wired targets.
-- [ ] Add shared current-style admin shell.
-- [ ] Add `/admin/pedidos` server list/search/filter/pagination.
-- [ ] Add `/admin/pedidos/[id]` operational detail/timeline/audit/actions.
-- [ ] Add destructive cancellation confirmation.
-- [ ] Add `/admin/producao` oldest-first active queues.
-- [ ] Full focused tests + `pnpm test` + `pnpm typecheck` + `pnpm build` + exact diff/security review.
-- [ ] STOP for owner approval before applying exact Phase 2 migration to current Supabase.
-- [ ] Transaction/rollback validate transitions and leave 0 fixtures.
-- [ ] Fix Preview env and complete Preview smoke matrix.
-- [ ] Separate owner approval before merge/new Production application deployment.
+- [x] Phase 2 scope baseline fixed at `5662704188d7d8555dba148fbb6d8593a74e2c84`.
+- [x] Found temporary branch-specific Vercel `ignoreCommand` outside allowed Phase 2 scope; restored original cron-only `vercel.json` in `4b1d0e9627f1f67897a96290cac0c576682d5064`.
+- [x] Re-compare shows no hosting configuration in the final Phase 2 diff.
+- [x] Security review: no browser payment mutation/admin UUID/arbitrary target; routes same-origin + active AAL2; params awaited/UUID-validated; DTOs exclude checkout/public internals.
+- [x] Concurrency review: fulfillment mutation uses row lock and one transaction for status + event + audit + paid-cancel attention; provider financial state is untouched.
+- [x] Found generic paid-cancel `ON CONFLICT DO NOTHING`; added RED requiring precise partial-index inference (`a040701a...`, CI `33650490056`: exactly one expected failure).
+- [x] Hardened SQL to `ON CONFLICT (order_id, code) WHERE resolved_at IS NULL DO NOTHING`.
+- [x] Final runtime candidate `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746`: `pnpm test`, `pnpm typecheck`, `pnpm build` PASS.
 
-### Phase 2 transition truth
+## Phase 2 transition truth
 
 ```text
 awaiting_payment -> canceled
@@ -147,10 +131,22 @@ canceled -> none
 
 Starting production requires `payment_status='approved'`.
 
+## Phase 2 Task 12 acceptance sequence
+
+- [ ] Owner explicitly approves applying `202609020002_admin_order_fulfillment_operations.sql` to existing project `ProxyBembem`.
+- [ ] Apply only the exact reviewed migration.
+- [ ] Verify functions, grants, trigger and no unintended schema changes.
+- [ ] Transaction+rollback test valid transitions, invalid jumps, payment precondition, replay/concurrency behavior, paid cancellation and real reversal semantics.
+- [ ] Prove zero validation fixtures persist.
+- [ ] Smoke protected `/admin/pedidos`, detail and `/admin/producao` against the now-compatible DB.
+- [ ] Update checkpoint with exact applied migration/evidence.
+- [ ] Separate owner approval remains required before merge/new Production application deployment.
+
 ---
 
 # PHASE 3 — Customer Account + Owned Orders
 
+- [ ] Resolve checkout-email requirement explicitly before customer/notification implementation.
 - [ ] Write/review detailed plan after Phase 2 acceptance.
 - [ ] `customer_profiles` + nullable `orders.customer_id`.
 - [ ] Email + permanent password + verification + reset.
@@ -175,10 +171,10 @@ Starting production requires `payment_status='approved'`.
 # PHASE 5 — Melhor Envio Shipments + Labels + Tracking
 
 - [ ] Re-check current official API/scopes before implementation.
-- [ ] Least-privilege OAuth expansion.
+- [ ] Least-privilege OAuth expansion + explicit reauthorization.
 - [ ] Dedicated shipments model.
 - [ ] Prepare -> review cost -> explicit purchase -> generate/print -> track.
-- [ ] Sandbox acceptance before real balance capability.
+- [ ] Sandbox acceptance before real balance spending capability.
 
 ---
 
@@ -237,27 +233,22 @@ Starting production requires `payment_status='approved'`.
 10. Notifications use outbox isolation.
 11. No fabricated historical facts.
 12. Existing Supabase project is intentionally evolved in place; paid dev branch is not a prerequisite.
-13. Meaningful current-project DDL still stops for owner approval.
-14. Preview admin env blocker remains open.
+13. Meaningful current-project DDL stops for explicit owner approval.
+14. Preview environment for the current branch was fixed; temporary Vercel ignoreCommand was removed from the candidate.
 15. Phase 2 list RPC returns `{orders,total}` and dates use `America/Sao_Paulo`.
 16. Paid cancellation does not refund; actual reversal resolves only `canceled_paid_order`.
+17. Paid-cancel duplicate suppression targets only the active partial index; generic conflict swallowing is forbidden.
 
 ## Current Session Checkpoint
 
-**Status:** PHASE 1 VERIFIED; PHASE 2 TASK 1 RED VERIFIED; TASK 2 GREEN SQL NEXT; PREVIEW ENV BLOCKER OPEN
+**Status:** PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–11 VERIFIED; TASK 12 OWNER DDL APPROVAL GATE
 
 **Current branch:** `feat/admin-dashboard-expansion`
 
-**Phase 1 Supabase migration:** applied/validated `20260902091641_admin_order_operations_foundation`.
+**Final verified Phase 2 runtime candidate:** `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746` — test/typecheck/build PASS.
 
-**Phase 2 plan review:** `963c2d316451b62d43422d8685631a4cde33f177`.
+**Phase 2 Supabase migration:** exists in Git; **NOT APPLIED**.
 
-**Phase 2 RED:** `75f3a0752ee6fa6e80a821c4be23fb3a7f17e1e4`, CI `33615089014`: 252 PASS / 4 expected ENOENT failures.
+**Merge/new Production application deployment:** NOT APPROVED.
 
-**Phase 2 Supabase migration:** does not exist / not applied.
-
-**Preview:** not approved; protected route blocked by missing Preview `NEXT_PUBLIC_SUPABASE_URL`.
-
-**Merge/new Production app deployment:** NOT APPROVED.
-
-**NEXT EXACT ACTION:** create `supabase/migrations/202609020002_admin_order_fulfillment_operations.sql` to satisfy only the reviewed RED contract, run focused migration/payment/fulfillment tests, then full CI. Do not apply Phase 2 SQL to Supabase yet.
+**NEXT EXACT ACTION:** obtain explicit owner approval, then apply exactly `supabase/migrations/202609020002_admin_order_fulfillment_operations.sql` from the reviewed candidate to the existing Supabase project. Validate it transactionally and prove zero fixtures persist before any merge/deployment discussion.
