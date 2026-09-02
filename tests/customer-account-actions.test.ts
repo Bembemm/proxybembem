@@ -10,15 +10,13 @@ async function accountActions() {
   return import("../lib/server/customer-account-actions.ts")
 }
 
-test("account action validation normalizes safe signup input and ignores caller-owned identity fields", async () => {
+test("signup input is exact bounded normalized customer data", async () => {
   const actions = await accountActions()
   const input = actions.parseAccountSignupInput({
     name: "  Cliente   Teste  ",
     email: " Cliente+Deck@Example.COM ",
     whatsapp: "(44) 99999-9999",
     password: "senha-segura-123",
-    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    role: "admin",
   })
 
   assert.deepEqual(input, {
@@ -34,19 +32,25 @@ test("account action validation normalizes safe signup input and ignores caller-
     { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "123", password: "12345678" },
     { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "1234567" },
     { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "x".repeat(129) },
+    {
+      name: "Cliente Teste",
+      email: "cliente@example.com",
+      whatsapp: "44999999999",
+      password: "senha-segura-123",
+      id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    },
   ]) {
     assert.throws(() => actions.parseAccountSignupInput(invalid))
   }
 })
 
-test("login reset and password-update inputs are strict bounded credentials", async () => {
+test("login reset and password-update inputs accept only exact bounded credentials", async () => {
   const actions = await accountActions()
 
   assert.deepEqual(
     actions.parseAccountLoginInput({
       email: " CLIENTE@EXAMPLE.COM ",
       password: "senha-segura-123",
-      customerId: "browser-must-not-control-this",
     }),
     { email: "cliente@example.com", password: "senha-segura-123" },
   )
@@ -55,16 +59,32 @@ test("login reset and password-update inputs are strict bounded credentials", as
     "cliente@example.com",
   )
   assert.deepEqual(
-    actions.parseAccountPasswordUpdateInput({
-      password: "nova-senha-123",
-      userId: "browser-must-not-control-this",
-    }),
+    actions.parseAccountPasswordUpdateInput({ password: "nova-senha-123" }),
     { password: "nova-senha-123" },
   )
 
   assert.throws(() => actions.parseAccountLoginInput({ email: "x", password: "12345678" }))
   assert.throws(() => actions.parseAccountResetInput({ email: "x" }))
   assert.throws(() => actions.parseAccountPasswordUpdateInput({ password: "curta" }))
+  assert.throws(() =>
+    actions.parseAccountLoginInput({
+      email: "cliente@example.com",
+      password: "senha-segura-123",
+      customerId: "browser-must-not-control-this",
+    }),
+  )
+  assert.throws(() =>
+    actions.parseAccountResetInput({
+      email: "cliente@example.com",
+      customerId: "browser-must-not-control-this",
+    }),
+  )
+  assert.throws(() =>
+    actions.parseAccountPasswordUpdateInput({
+      password: "nova-senha-123",
+      userId: "browser-must-not-control-this",
+    }),
+  )
 })
 
 test("mutating account requests require an exact same-origin Origin header", async () => {
@@ -99,6 +119,10 @@ test("auth callback next destination is restricted to local customer-account rou
   assert.equal(
     actions.sanitizeAccountNext("/minha-conta/pedidos?pagina=2"),
     "/minha-conta/pedidos?pagina=2",
+  )
+  assert.equal(
+    actions.sanitizeAccountNext("/minha-conta/seguranca?recovery=1"),
+    "/minha-conta/seguranca?recovery=1",
   )
   for (const unsafe of [
     "https://evil.example/minha-conta",
@@ -148,25 +172,32 @@ test("proxy keeps every existing admin matcher while adding account auth surface
   }
 })
 
-test("planned account routes are POST same-origin bounded-body surfaces and callback is GET-only", async () => {
-  const mutatingRoutes = [
+test("planned account routes are bounded POST surfaces and callback is GET-only", async () => {
+  const jsonRoutes = [
     "../app/api/account/signup/route.ts",
     "../app/api/account/login/route.ts",
-    "../app/api/account/logout/route.ts",
-    "../app/api/account/password/reset/route.ts",
-    "../app/api/account/password/update/route.ts",
+    "../app/api/account/password-reset/route.ts",
+    "../app/api/account/password/route.ts",
   ]
 
-  for (const path of mutatingRoutes) {
+  for (const path of jsonRoutes) {
     const route = await source(path)
     assert.ok(route.length > 0, `missing ${path}`)
     assert.match(route, /export\s+async\s+function\s+POST|export\s+const\s+POST/)
     assert.doesNotMatch(route, /export\s+(?:async\s+function|const)\s+GET/)
     assert.match(route, /isSameOriginAccountRequest/)
-    assert.match(route, /readJsonBody/)
+    assert.match(route, /readJsonBody\s*\(\s*request\s*,\s*4_096\s*\)/)
     assert.match(route, /consumeRateLimit/)
     assert.doesNotMatch(route, /console\.(?:log|error)\([^\n]*(?:password|senha)/i)
   }
+
+  const logout = await source("../app/api/account/logout/route.ts")
+  assert.ok(logout.length > 0, "missing logout route")
+  assert.match(logout, /export\s+async\s+function\s+POST|export\s+const\s+POST/)
+  assert.doesNotMatch(logout, /export\s+(?:async\s+function|const)\s+GET/)
+  assert.match(logout, /isSameOriginAccountRequest/)
+  assert.match(logout, /signOut\s*\(/)
+  assert.doesNotMatch(logout, /readJsonBody\s*\(/)
 
   const callback = await source("../app/auth/callback/route.ts")
   assert.ok(callback.length > 0, "missing auth callback")
@@ -174,10 +205,36 @@ test("planned account routes are POST same-origin bounded-body surfaces and call
   assert.doesNotMatch(callback, /export\s+(?:async\s+function|const)\s+POST/)
   assert.match(callback, /exchangeCodeForSession/)
   assert.match(callback, /sanitizeAccountNext/)
+  assert.match(callback, /ensureOwnCustomerProfile/)
+})
+
+test("auth routes use the intended Supabase operations without admin authorization", async () => {
+  const signup = await source("../app/api/account/signup/route.ts")
+  const login = await source("../app/api/account/login/route.ts")
+  const reset = await source("../app/api/account/password-reset/route.ts")
+  const update = await source("../app/api/account/password/route.ts")
+  const callback = await source("../app/auth/callback/route.ts")
+  const combined = [signup, login, reset, update, callback].join("\n")
+
+  assert.match(signup, /signUp\s*\(/)
+  assert.match(signup, /emailRedirectTo/)
+  assert.match(signup, /name/)
+  assert.match(signup, /whatsapp/)
+  assert.match(login, /signInWithPassword\s*\(/)
+  assert.match(login, /getUser\s*\(/)
+  assert.match(reset, /resetPasswordForEmail\s*\(/)
+  assert.match(update, /getUser\s*\(/)
+  assert.match(update, /updateUser\s*\(/)
+  assert.match(callback, /getUser\s*\(/)
+
+  assert.doesNotMatch(
+    combined,
+    /ADMIN_USER_ID|authorizeAdminAccess|activateCurrentAdminSession|admin_sessions|\/admin\/login/,
+  )
 })
 
 test("password-reset route keeps account existence private", async () => {
-  const route = await source("../app/api/account/password/reset/route.ts")
+  const route = await source("../app/api/account/password-reset/route.ts")
   assert.match(route, /Se o e-mail estiver cadastrado/i)
   assert.doesNotMatch(route, /usu[aá]rio n[aã]o encontrado|user not found|email.*(?:existe|não existe)/i)
 })
