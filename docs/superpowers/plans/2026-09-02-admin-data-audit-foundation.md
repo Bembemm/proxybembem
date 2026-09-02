@@ -16,14 +16,14 @@
 
 - Payment status remains Mercado Pago/provider-authoritative.
 - The only normal automatic payment-to-fulfillment transition is trusted `approved` payment while fulfillment is `awaiting_payment`, producing `awaiting_production`.
-- Refund/chargeback must not rewind physical fulfillment.
-- Production start without trusted approved payment is rejected by later admin operations; this phase provides the shared state-machine rule.
+- Refund/chargeback never rewinds physical fulfillment.
 - No generic arbitrary admin PATCH is introduced.
-- `order_events` and `admin_audit_log` are append-oriented; normal service-role access cannot update/delete their rows.
-- New schema must be compatible with currently deployed code before application code is deployed.
+- `order_events` and `admin_audit_log` are append-oriented; normal `service_role` access cannot update/delete their rows.
+- New schema must be safe to apply before new application code is deployed.
 - Existing orders are backfilled conservatively and receive no fabricated historical events.
-- Existing checkout/public order/admin-auth behavior must remain unchanged.
-- Secrets/provider tokens must never enter event, attention, or audit metadata.
+- Existing checkout/public-order/admin-auth behavior remains unchanged.
+- Secrets/provider tokens never enter event, attention, or audit metadata.
+- Production remains unchanged until explicit owner approval at the later rollout gate.
 
 ---
 
@@ -32,36 +32,38 @@
 ### Create
 
 - `supabase/migrations/202609020001_admin_order_operations_foundation.sql` — additive fulfillment column, `order_events`, `order_attention_flags`, `admin_audit_log`, grants/RLS, and upgraded Mercado Pago RPC.
-- `lib/server/fulfillment.ts` — stable fulfillment type, type guard, and explicit admin transition validation.
-- `lib/server/order-events.ts` — service-role read/append interface for non-payment domain events; payment events remain written atomically inside the payment RPC.
-- `lib/server/order-attention.ts` — service-role read/open/resolve interface for non-payment attention conditions; payment attention remains handled atomically inside the payment RPC.
-- `lib/server/admin-audit.ts` — service-role append/list interface; no update/delete API.
-- `tests/admin-order-foundation-migration.test.ts` — static migration/security/backfill/RPC guarantees.
-- `tests/fulfillment.test.ts` — pure state-machine rules.
-- `tests/order-events.test.ts` — REST contract and validation for order events.
-- `tests/order-attention.test.ts` — REST contract and validation for attention operations.
-- `tests/admin-audit.test.ts` — REST contract and validation for audit writes/reads.
+- `lib/server/fulfillment.ts` — stable fulfillment vocabulary and admin transition rules.
+- `lib/server/safe-metadata.ts` — bounded recursive metadata validator that rejects secret-like/internal keys.
+- `lib/server/order-events.ts` — read/append interface for non-payment domain events.
+- `lib/server/order-attention.ts` — read/open/resolve interface for non-payment attention conditions.
+- `lib/server/admin-audit.ts` — append/list interface; intentionally no update/delete API.
+- `tests/admin-order-foundation-migration.test.ts`
+- `tests/fulfillment.test.ts`
+- `tests/safe-metadata.test.ts`
+- `tests/order-events.test.ts`
+- `tests/order-attention.test.ts`
+- `tests/admin-audit.test.ts`
 
 ### Modify
 
-- `lib/server/orders.ts` — expose `fulfillment_status` on order records and parse the extended payment RPC result.
-- `tests/orders-payment-rpc.test.ts` — require fulfillment result fields and preserve exact RPC input contract.
-- `tests/orders.test.ts` — update fixtures/assertions that model the selected order columns after `fulfillment_status` is added.
-- `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` — mark Phase 1 checkpoints only after evidence exists.
-- `docs/superpowers/CURRENT_STATUS.md` — concise continuation checkpoint at the end of the implementation session.
+- `lib/server/orders.ts` — expose `fulfillment_status` and parse the extended payment RPC result.
+- `tests/orders-payment-rpc.test.ts` — require extended RPC response fields.
+- `tests/orders.test.ts` — update order fixtures/select expectations.
+- `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` — record RED/GREEN/verification evidence.
+- `docs/superpowers/CURRENT_STATUS.md` — concise continuation checkpoint.
 
-### Do not modify in this phase unless a failing regression proves it necessary
+### Do not modify in Phase 1 unless a failing regression proves it necessary
 
-- `app/api/mercadopago/webhook/route.ts` — it already delegates to `applyMercadoPagoPaymentEvent`; the database RPC remains the atomic domain boundary.
-- `lib/server/checkout-flow.ts` / `checkout-order.ts` — new orders receive the database default `awaiting_payment`; checkout authority does not change.
-- `app/admin/...` — Phase 1 has no new operational UI.
-- `data/products.ts` — catalog migration belongs to Phase 4.
+- `app/api/mercadopago/webhook/route.ts` — it already delegates to `applyMercadoPagoPaymentEvent`; the RPC remains the atomic domain boundary.
+- `lib/server/checkout-flow.ts` and `lib/server/checkout-order.ts` — new orders receive the database default `awaiting_payment`; checkout authority does not change.
+- `app/admin/...` — operational UI starts in Phase 2.
+- `data/products.ts` — catalog migration starts in Phase 4.
 
 ---
 
-## Interfaces locked by this plan
+## Interfaces Locked by This Plan
 
-### `lib/server/fulfillment.ts`
+### Fulfillment
 
 ```ts
 export const FULFILLMENT_STATUSES = [
@@ -89,7 +91,7 @@ export function assertAdminFulfillmentTransition(input: {
 }): void
 ```
 
-Admin transition matrix for this foundation:
+Admin matrix:
 
 - `awaiting_payment -> canceled`
 - `awaiting_production -> in_production | canceled`
@@ -99,11 +101,11 @@ Admin transition matrix for this foundation:
 - `completed ->` none
 - `canceled ->` none
 
-Additional rule: `awaiting_production -> in_production` requires `paymentStatus === "approved"`.
+`awaiting_production -> in_production` additionally requires `paymentStatus === "approved"`.
 
-The automatic `awaiting_payment -> awaiting_production` transition is **not** an admin transition and therefore does not appear in the admin transition matrix.
+The automatic `awaiting_payment -> awaiting_production` transition is provider-driven and is not an admin transition.
 
-### Extended `PaymentEventResult`
+### Payment RPC result
 
 ```ts
 export interface PaymentEventResult {
@@ -118,9 +120,24 @@ export interface PaymentEventResult {
 }
 ```
 
-### Event source/type validation
+### Shared metadata safety
 
-`order_events` application helpers accept:
+```ts
+export function assertSafeMetadata(
+  value: Record<string, unknown> | null | undefined,
+  fieldName: string,
+): void
+```
+
+Rules:
+
+- object/arrays are traversed recursively to depth 8;
+- serialized payload must be <= 16 KiB;
+- reject any key, case-insensitively, containing `password`, `secret`, `token`, `authorization`, `cookie`, `fingerprint`, or `checkout_url`;
+- reject non-JSON values such as functions, symbols, bigint, `undefined` nested inside arrays/objects, and non-finite numbers;
+- fixed payment-RPC metadata is not caller-controlled and remains defined directly in SQL.
+
+### Order events
 
 ```ts
 export type OrderEventSource =
@@ -140,23 +157,20 @@ export interface AppendOrderEventInput {
 }
 ```
 
-`eventType` and attention/audit action codes use lowercase snake-case identifiers matching `/^[a-z][a-z0-9_]{2,63}$/`.
+Codes use `/^[a-z][a-z0-9_]{2,63}$/`.
 
 ---
 
-### Task 1: Add failing migration tests for the operational schema
+### Task 1: Write RED migration tests
 
 **Files:**
 - Create: `tests/admin-order-foundation-migration.test.ts`
-- Test target: `supabase/migrations/202609020001_admin_order_operations_foundation.sql`
 
-**Interfaces:**
-- Consumes: existing `public.orders`, `public.apply_mercadopago_payment_event(...)` from earlier migrations.
-- Produces: executable expectations for the Phase 1 migration.
+**Produces:** executable requirements for the additive schema and upgraded RPC.
 
-- [ ] **Step 1: Write the failing migration test file**
+- [ ] **Step 1: Create the failing migration test**
 
-Use the existing migration-test style (`readFile`, lowercase SQL, regex assertions). The test must assert all of the following exact guarantees:
+Use the repository's existing migration-test style. Include these assertions:
 
 ```ts
 import assert from "node:assert/strict"
@@ -172,17 +186,17 @@ async function sql() {
   return (await readFile(MIGRATION, "utf8")).toLowerCase()
 }
 
-test("adds compatibility-safe fulfillment and backfills without fabricated history", async () => {
+test("adds compatibility-safe fulfillment and conservative backfill", async () => {
   const text = await sql()
   assert.match(text, /add\s+column\s+if\s+not\s+exists\s+fulfillment_status\s+text/)
   assert.match(text, /payment_status\s*=\s*'approved'[\s\S]*?'awaiting_production'/)
   assert.match(text, /else\s+'awaiting_payment'/)
   assert.match(text, /alter\s+column\s+fulfillment_status\s+set\s+default\s+'awaiting_payment'/)
   assert.match(text, /orders_fulfillment_status_allowed/)
-  assert.doesNotMatch(text, /insert\s+into\s+public\.order_events[\s\S]*?created_at[\s\S]*?select[\s\S]*?orders/)
+  assert.doesNotMatch(text, /alter\s+column\s+fulfillment_status\s+set\s+not\s+null/)
 })
 
-test("creates backend-only event attention and audit tables", async () => {
+test("creates backend-only operational history tables", async () => {
   const text = await sql()
   for (const table of ["order_events", "order_attention_flags", "admin_audit_log"]) {
     assert.match(text, new RegExp(`create\\s+table\\s+if\\s+not\\s+exists\\s+public\\.${table}`))
@@ -192,20 +206,18 @@ test("creates backend-only event attention and audit tables", async () => {
       new RegExp(`revoke\\s+all\\s+on\\s+table\\s+public\\.${table}\\s+from\\s+public\\s*,\\s*anon\\s*,\\s*authenticated`),
     )
   }
-
   assert.match(text, /grant\s+select\s*,\s*insert\s+on\s+table\s+public\.order_events\s+to\s+service_role/)
   assert.match(text, /grant\s+select\s*,\s*insert\s+on\s+table\s+public\.admin_audit_log\s+to\s+service_role/)
   assert.match(text, /grant\s+select\s*,\s*insert\s*,\s*update\s+on\s+table\s+public\.order_attention_flags\s+to\s+service_role/)
 })
 
-test("upgraded payment RPC owns approved fulfillment transition and idempotent event side effects", async () => {
+test("upgraded payment RPC owns automatic fulfillment and payment attention", async () => {
   const text = await sql()
   const start = text.indexOf("function public.apply_mercadopago_payment_event")
   assert.ok(start >= 0)
   const block = text.slice(start)
   assert.match(block, /for\s+update/)
   assert.match(block, /fulfillment_status\s*=\s*'awaiting_production'/)
-  assert.match(block, /fulfillment_status\s*=\s*'awaiting_payment'/)
   assert.match(block, /insert\s+into\s+public\.order_events/)
   assert.match(block, /on\s+conflict\s*\(\s*dedupe_key\s*\)\s+do\s+nothing/)
   assert.match(block, /payment_manual_review/)
@@ -215,41 +227,27 @@ test("upgraded payment RPC owns approved fulfillment transition and idempotent e
 })
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
-
-Run:
-
-```bash
-pnpm test -- tests/admin-order-foundation-migration.test.ts
-```
-
-Because the repository script expands `tests/*.test.ts`, if the script ignores the extra argument, use:
+- [ ] **Step 2: Run only this test and capture RED**
 
 ```bash
 node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts
 ```
 
-Expected: FAIL because `202609020001_admin_order_operations_foundation.sql` does not exist.
+Expected: FAIL because the migration file does not exist.
 
-- [ ] **Step 3: Commit only if the RED test is captured in the working branch workflow**
+- [ ] **Step 3: Record RED evidence in the Master Plan checkpoint before implementation**
 
-Do not mark the task complete yet. The RED evidence must be recorded in the Master Plan checkpoint before implementation begins.
+Do not mark Task 1 complete until the exact failing command/output is recorded.
 
 ---
 
-### Task 2: Implement additive schema, append-only tables, and the upgraded atomic payment RPC
+### Task 2: Implement additive tables/constraints/grants
 
 **Files:**
 - Create: `supabase/migrations/202609020001_admin_order_operations_foundation.sql`
 - Test: `tests/admin-order-foundation-migration.test.ts`
 
-**Interfaces:**
-- Consumes: current `public.orders` schema and current payment RPC inputs.
-- Produces: `orders.fulfillment_status`, `order_events`, `order_attention_flags`, `admin_audit_log`, and an extended JSON response from the existing payment RPC.
-
-- [ ] **Step 1: Add the fulfillment column and conservative backfill**
-
-Write the migration with this ordering so it is safe before new application code exists:
+- [ ] **Step 1: Add fulfillment column/backfill/default/check without `NOT NULL`**
 
 ```sql
 alter table public.orders
@@ -268,8 +266,7 @@ alter table public.orders
 do $$
 begin
   if not exists (
-    select 1 from pg_constraint
-    where conname = 'orders_fulfillment_status_allowed'
+    select 1 from pg_constraint where conname = 'orders_fulfillment_status_allowed'
   ) then
     alter table public.orders
       add constraint orders_fulfillment_status_allowed
@@ -290,8 +287,6 @@ create index if not exists orders_fulfillment_status_idx
   on public.orders (fulfillment_status, created_at desc);
 ```
 
-Do **not** set `NOT NULL` in this first compatibility migration. Existing rows are backfilled and new rows get the default; hardening can occur after rollout evidence.
-
 - [ ] **Step 2: Create `order_events`**
 
 ```sql
@@ -302,7 +297,9 @@ create table if not exists public.order_events (
   source text not null check (source in (
     'system', 'mercadopago', 'admin', 'shipment', 'notification', 'customer'
   )),
-  dedupe_key text unique,
+  dedupe_key text unique check (
+    dedupe_key is null or length(dedupe_key) between 1 and 200
+  ),
   metadata jsonb not null default '{}'::jsonb
     check (jsonb_typeof(metadata) = 'object'),
   created_at timestamptz not null default now()
@@ -315,8 +312,6 @@ alter table public.order_events enable row level security;
 revoke all on table public.order_events from public, anon, authenticated;
 grant select, insert on table public.order_events to service_role;
 ```
-
-Do not grant update/delete to `service_role`.
 
 - [ ] **Step 3: Create `order_attention_flags`**
 
@@ -349,9 +344,7 @@ revoke all on table public.order_attention_flags from public, anon, authenticate
 grant select, insert, update on table public.order_attention_flags to service_role;
 ```
 
-No delete grant is added.
-
-- [ ] **Step 4: Create `admin_audit_log`**
+- [ ] **Step 4: Create append-only `admin_audit_log`**
 
 ```sql
 create table if not exists public.admin_audit_log (
@@ -382,26 +375,54 @@ revoke all on table public.admin_audit_log from public, anon, authenticated;
 grant select, insert on table public.admin_audit_log to service_role;
 ```
 
-- [ ] **Step 5: Replace the payment RPC while preserving all existing financial guards**
+- [ ] **Step 5: Run migration test**
 
-Keep the function name and input signature exactly unchanged so deployed code can call the upgraded database before the TypeScript deployment changes.
+```bash
+node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts
+```
 
-The implementation must retain the existing rules:
+Expected: still FAIL because the payment RPC assertions are not implemented yet; table/backfill assertions should now pass.
+
+- [ ] **Step 6: Commit the additive table portion only after confirming the expected partial RED**
+
+```bash
+git add supabase/migrations/202609020001_admin_order_operations_foundation.sql tests/admin-order-foundation-migration.test.ts
+git commit -m "feat: add admin order operation tables"
+```
+
+---
+
+### Task 3: Upgrade the payment RPC atomically
+
+**Files:**
+- Modify: `supabase/migrations/202609020001_admin_order_operations_foundation.sql`
+- Test: `tests/admin-order-foundation-migration.test.ts`
+
+**Consumes:** existing `apply_mercadopago_payment_event` input signature and financial guards.
+
+**Produces:** same function inputs plus extended result fields and atomic event/attention/fulfillment side effects.
+
+- [ ] **Step 1: Preserve the current financial decision rules exactly**
+
+The replacement function must keep these outcomes:
 
 ```text
 unknown order -> not_found
-approved + different payment id -> ignored
-approved + repeated approved same id -> ignored
-approved + same payment id + refunded/charged_back -> update reversal
-refunded/charged_back + different payment or non-reversal -> ignored
-approved incoming amount/currency mismatch -> manual_review
-all other allowed incoming states -> update
+already approved + different payment id -> ignored
+already approved + repeated approved same id -> ignored
+already approved + same payment id + refunded/charged_back -> update reversal
+current refunded/charged_back + different payment or non-reversal -> ignored
+incoming approved with amount/currency mismatch -> manual_review
+all other accepted incoming states -> update
 ```
 
-After the financial decision, apply these side effects in the **same RPC transaction**:
+Keep `FOR UPDATE`, `SECURITY DEFINER`, `SET search_path = ''`, browser-role revocation, and `service_role` execute grant.
+
+- [ ] **Step 2: Add idempotent payment event only after a real update/manual-review outcome**
+
+Do not add an event for `ignored` or `not_found`.
 
 ```sql
--- payment event; unique dedupe_key makes repeated provider events idempotent
 insert into public.order_events (
   order_id, event_type, source, dedupe_key, metadata
 )
@@ -422,11 +443,11 @@ values (
 on conflict (dedupe_key) do nothing;
 ```
 
-When the resulting payment is `approved`, resolve a previous manual-review flag and perform the one automatic fulfillment transition only if still awaiting payment:
+- [ ] **Step 3: Add approved-payment side effects**
 
 ```sql
 update public.order_attention_flags
-set resolved_at = coalesce(resolved_at, now())
+set resolved_at = now()
 where order_id = v_order.id
   and code = 'payment_manual_review'
   and resolved_at is null;
@@ -457,7 +478,9 @@ if v_order.fulfillment_status = 'awaiting_payment' then
 end if;
 ```
 
-For `manual_review`, open one active critical flag:
+- [ ] **Step 4: Add payment attention side effects**
+
+For manual review:
 
 ```sql
 insert into public.order_attention_flags (
@@ -478,22 +501,25 @@ values (
 on conflict do nothing;
 ```
 
-For `refunded` and `charged_back`, resolve the other active reversal flag and open the matching critical flag. Use codes exactly `payment_refunded` and `payment_charged_back`. Do not alter `fulfillment_status`.
+For `refunded`, resolve active `payment_charged_back` then open `payment_refunded`; for `charged_back`, resolve active `payment_refunded` then open `payment_charged_back`. Both are `critical`, `source='mercadopago'`, and neither changes `fulfillment_status`.
 
-Every RPC return path must include:
+- [ ] **Step 5: Extend every RPC response**
+
+Use:
 
 ```sql
 'fulfillment_status', v_order.fulfillment_status,
 'fulfillment_transitioned', v_fulfillment_transitioned
 ```
 
-For `not_found`, return `fulfillment_status = null` and `fulfillment_transitioned = false`.
+For `not_found` return:
 
-The function remains `security definer`, `set search_path = ''`, revoked from `public, anon, authenticated`, and executable only by `service_role` exactly as the current payment RPC is protected.
+```sql
+'fulfillment_status', null,
+'fulfillment_transitioned', false
+```
 
-- [ ] **Step 6: Run the migration test and verify GREEN**
-
-Run:
+- [ ] **Step 6: Run migration test and verify GREEN**
 
 ```bash
 node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts
@@ -501,28 +527,22 @@ node --experimental-strip-types --test tests/admin-order-foundation-migration.te
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit the schema/RPC change**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add supabase/migrations/202609020001_admin_order_operations_foundation.sql tests/admin-order-foundation-migration.test.ts
-git commit -m "feat: add admin order data foundation"
+git commit -m "feat: advance paid orders atomically"
 ```
-
-Record RED and GREEN evidence plus commit SHA in the Master Plan.
 
 ---
 
-### Task 3: Add the fulfillment state-machine module
+### Task 4: Add the fulfillment state machine
 
 **Files:**
 - Create: `lib/server/fulfillment.ts`
 - Create: `tests/fulfillment.test.ts`
 
-**Interfaces:**
-- Produces the exact `FulfillmentStatus`, `isFulfillmentStatus`, `allowedAdminFulfillmentTransitions`, and `assertAdminFulfillmentTransition` interfaces declared above.
-- Later Phase 2 admin operations must consume this module rather than duplicating transition rules in route components.
-
-- [ ] **Step 1: Write failing state-machine tests**
+- [ ] **Step 1: Write RED tests**
 
 ```ts
 import assert from "node:assert/strict"
@@ -533,23 +553,26 @@ import {
   isFulfillmentStatus,
 } from "../lib/server/fulfillment.ts"
 
-test("recognizes only the approved fulfillment vocabulary", () => {
-  assert.equal(isFulfillmentStatus("awaiting_payment"), true)
-  assert.equal(isFulfillmentStatus("awaiting_production"), true)
-  assert.equal(isFulfillmentStatus("in_production"), true)
-  assert.equal(isFulfillmentStatus("ready_to_ship"), true)
-  assert.equal(isFulfillmentStatus("shipped"), true)
-  assert.equal(isFulfillmentStatus("completed"), true)
-  assert.equal(isFulfillmentStatus("canceled"), true)
+test("recognizes only approved fulfillment statuses", () => {
+  for (const status of [
+    "awaiting_payment",
+    "awaiting_production",
+    "in_production",
+    "ready_to_ship",
+    "shipped",
+    "completed",
+    "canceled",
+  ]) assert.equal(isFulfillmentStatus(status), true)
+
   assert.equal(isFulfillmentStatus("problem"), false)
   assert.equal(isFulfillmentStatus(null), false)
 })
 
-test("keeps the payment-approved automatic transition out of admin controls", () => {
+test("payment-approved transition is not exposed as an admin transition", () => {
   assert.deepEqual(allowedAdminFulfillmentTransitions("awaiting_payment"), ["canceled"])
 })
 
-test("allows only the approved admin transition matrix", () => {
+test("allows only the approved admin matrix", () => {
   assert.deepEqual(allowedAdminFulfillmentTransitions("awaiting_production"), ["in_production", "canceled"])
   assert.deepEqual(allowedAdminFulfillmentTransitions("in_production"), ["ready_to_ship", "canceled"])
   assert.deepEqual(allowedAdminFulfillmentTransitions("ready_to_ship"), ["shipped", "canceled"])
@@ -558,7 +581,7 @@ test("allows only the approved admin transition matrix", () => {
   assert.deepEqual(allowedAdminFulfillmentTransitions("canceled"), [])
 })
 
-test("rejects production start without approved payment", () => {
+test("production start requires approved payment", () => {
   assert.throws(
     () => assertAdminFulfillmentTransition({
       paymentStatus: "pending",
@@ -568,28 +591,17 @@ test("rejects production start without approved payment", () => {
     /approved payment required/,
   )
 })
-
-test("rejects impossible jumps even when payment is approved", () => {
-  assert.throws(
-    () => assertAdminFulfillmentTransition({
-      paymentStatus: "approved",
-      from: "awaiting_production",
-      to: "shipped",
-    }),
-    /invalid fulfillment transition/,
-  )
-})
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 node --experimental-strip-types --test tests/fulfillment.test.ts
 ```
 
-Expected: FAIL because `lib/server/fulfillment.ts` does not exist.
+Expected: FAIL because the module does not exist.
 
-- [ ] **Step 3: Implement the minimal pure state machine**
+- [ ] **Step 3: Implement**
 
 ```ts
 export const FULFILLMENT_STATUSES = [
@@ -605,7 +617,6 @@ export const FULFILLMENT_STATUSES = [
 export type FulfillmentStatus = (typeof FULFILLMENT_STATUSES)[number]
 
 const STATUS_SET = new Set<string>(FULFILLMENT_STATUSES)
-
 const ADMIN_TRANSITIONS: Readonly<Record<FulfillmentStatus, readonly FulfillmentStatus[]>> = {
   awaiting_payment: ["canceled"],
   awaiting_production: ["in_production", "canceled"],
@@ -634,7 +645,6 @@ export function assertAdminFulfillmentTransition(input: {
   if (!ADMIN_TRANSITIONS[input.from].includes(input.to)) {
     throw new Error("invalid fulfillment transition")
   }
-
   if (
     input.from === "awaiting_production" &&
     input.to === "in_production" &&
@@ -645,7 +655,7 @@ export function assertAdminFulfillmentTransition(input: {
 }
 ```
 
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [ ] **Step 4: Verify GREEN**
 
 ```bash
 node --experimental-strip-types --test tests/fulfillment.test.ts
@@ -662,55 +672,33 @@ git commit -m "feat: define fulfillment transition rules"
 
 ---
 
-### Task 4: Extend the order repository/payment RPC TypeScript contract
+### Task 5: Extend `orders.ts` payment/order contracts
 
 **Files:**
 - Modify: `lib/server/orders.ts`
 - Modify: `tests/orders-payment-rpc.test.ts`
 - Modify: `tests/orders.test.ts`
-- Consume: `lib/server/fulfillment.ts`
 
-**Interfaces:**
-- `OrderRecord.fulfillment_status: FulfillmentStatus`
-- Extended `PaymentEventResult` declared above.
+- [ ] **Step 1: Update `orders-payment-rpc` test first**
 
-- [ ] **Step 1: Update the payment RPC test first**
-
-Change the mocked successful RPC response and expected result in `tests/orders-payment-rpc.test.ts` to include:
+Successful mock/expected result must add:
 
 ```ts
 fulfillment_status: "awaiting_production",
 fulfillment_transitioned: true,
 ```
 
-Add a malformed-response case that returns:
+Add a malformed-response test where `fulfillment_status` is `"made_up_status"` and assert rejection.
 
-```ts
-{
-  outcome: "updated",
-  order_number: "PB-A1B2C3D4E5F6",
-  payment_status: "approved",
-  payment_id: "175133542535",
-  expected_cents: 13832,
-  received_cents: 13832,
-  fulfillment_status: "made_up_status",
-  fulfillment_transitioned: true,
-}
-```
-
-and assert `applyMercadoPagoPaymentEvent` rejects it.
-
-- [ ] **Step 2: Run focused tests and verify RED**
+- [ ] **Step 2: Verify RED**
 
 ```bash
 node --experimental-strip-types --test tests/orders-payment-rpc.test.ts
 ```
 
-Expected: FAIL because current parser/result does not return the new fulfillment fields.
+Expected: FAIL because current parser does not include the new fields.
 
 - [ ] **Step 3: Update `orders.ts`**
-
-Import:
 
 ```ts
 import {
@@ -719,23 +707,20 @@ import {
 } from "./fulfillment.ts"
 ```
 
-Add to `OrderRecord`:
+Add:
 
 ```ts
 fulfillment_status: FulfillmentStatus
 ```
 
-Add `"fulfillment_status"` to `ORDER_SELECT` immediately before timestamps or another stable documented position.
+to `OrderRecord`, add `"fulfillment_status"` to `ORDER_SELECT`, and replace `PaymentEventResult` with the locked interface above.
 
-Replace `PaymentEventResult` with the extended interface from this plan.
-
-Extend RPC response validation:
+Validate:
 
 ```ts
-const fulfillmentStatus = result.fulfillment_status
 if (
-  fulfillmentStatus !== null &&
-  !isFulfillmentStatus(fulfillmentStatus)
+  result.fulfillment_status !== null &&
+  !isFulfillmentStatus(result.fulfillment_status)
 ) {
   throw new Error("Payment event RPC returned an invalid response")
 }
@@ -745,15 +730,13 @@ if (typeof result.fulfillment_transitioned !== "boolean") {
 }
 ```
 
-Keep the exact existing RPC input body unchanged.
+Do not change the RPC request body or accept fulfillment input from checkout/browser.
 
-- [ ] **Step 4: Update order repository fixtures**
+- [ ] **Step 4: Update `tests/orders.test.ts` fixtures**
 
-Where `tests/orders.test.ts` asserts selected/returned order records, add a valid `fulfillment_status`, normally `"awaiting_payment"` for newly created pending orders.
+Use `fulfillment_status: "awaiting_payment"` for new pending-order fixtures/returned rows.
 
-Do not change checkout input to accept a fulfillment status from the browser.
-
-- [ ] **Step 5: Run focused tests**
+- [ ] **Step 5: Verify GREEN**
 
 ```bash
 node --experimental-strip-types --test tests/orders-payment-rpc.test.ts tests/orders.test.ts
@@ -770,13 +753,92 @@ git commit -m "feat: expose fulfillment on order payments"
 
 ---
 
-### Task 5: Add focused order event and attention repositories
+### Task 6: Add recursive safe-metadata validation
+
+**Files:**
+- Create: `lib/server/safe-metadata.ts`
+- Create: `tests/safe-metadata.test.ts`
+
+- [ ] **Step 1: Write RED tests**
+
+```ts
+import assert from "node:assert/strict"
+import test from "node:test"
+import { assertSafeMetadata } from "../lib/server/safe-metadata.ts"
+
+test("accepts bounded non-secret JSON metadata", () => {
+  assert.doesNotThrow(() => assertSafeMetadata({ reason: "payment_approved", amount_cents: 11990 }, "metadata"))
+})
+
+test("rejects nested secret-like keys", () => {
+  for (const value of [
+    { access_token: "x" },
+    { nested: { refreshToken: "x" } },
+    { nested: [{ client_secret: "x" }] },
+    { checkout_url: "https://example.invalid" },
+    { checkoutFingerprint: "abc" },
+  ]) {
+    assert.throws(() => assertSafeMetadata(value, "metadata"), /unsafe metadata key/)
+  }
+})
+
+test("rejects oversized or non-json metadata", () => {
+  assert.throws(() => assertSafeMetadata({ body: "x".repeat(17_000) }, "metadata"), /metadata too large/)
+  assert.throws(() => assertSafeMetadata({ n: Number.NaN }, "metadata"), /non-json metadata value/)
+})
+```
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+node --experimental-strip-types --test tests/safe-metadata.test.ts
+```
+
+Expected: FAIL because module does not exist.
+
+- [ ] **Step 3: Implement bounded recursive validation**
+
+Normalize keys by removing `_`/`-` and lowercasing before checking forbidden fragments so `refreshToken`, `refresh_token`, and `refresh-token` are all rejected.
+
+Use forbidden fragments:
+
+```ts
+const FORBIDDEN_KEY_FRAGMENTS = [
+  "password",
+  "secret",
+  "token",
+  "authorization",
+  "cookie",
+  "fingerprint",
+  "checkouturl",
+] as const
+```
+
+Traverse plain objects/arrays recursively, maximum depth 8, reject cycles, reject non-finite numbers and non-JSON values, then verify `Buffer.byteLength(JSON.stringify(value), "utf8") <= 16 * 1024`.
+
+- [ ] **Step 4: Verify GREEN**
+
+```bash
+node --experimental-strip-types --test tests/safe-metadata.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add lib/server/safe-metadata.ts tests/safe-metadata.test.ts
+git commit -m "feat: validate operational metadata"
+```
+
+---
+
+### Task 7: Add order event repository with correct PostgREST dedupe behavior
 
 **Files:**
 - Create: `lib/server/order-events.ts`
-- Create: `lib/server/order-attention.ts`
 - Create: `tests/order-events.test.ts`
-- Create: `tests/order-attention.test.ts`
+- Consume: `lib/server/safe-metadata.ts`
 
 **Interfaces:**
 
@@ -801,9 +863,68 @@ export async function listOrderEvents(
 ): Promise<OrderEventRecord[]>
 ```
 
-`appendOrderEvent` returns `null` when a supplied `dedupeKey` already exists (PostgREST representation is empty after conflict-ignore behavior). It is for later non-payment domain events; it must not replace the atomic payment RPC.
+- [ ] **Step 1: Write RED REST-contract tests**
 
-Attention interface:
+For a deduped append, assert the URL includes both:
+
+```text
+on_conflict=dedupe_key
+select=id,order_id,event_type,source,dedupe_key,metadata,created_at
+```
+
+and the `Prefer` header includes:
+
+```text
+resolution=ignore-duplicates,return=representation
+```
+
+For append without a dedupe key, do **not** add `on_conflict`/upsert preference; perform an ordinary POST with `return=representation`.
+
+List query must use `order_id=eq.<uuid>`, `order=created_at.desc`, and bounded `limit` (`1..200`, default `100`).
+
+Tests also reject invalid UUID, code/source, unsafe metadata, and dedupe key longer than 200 characters before fetch.
+
+- [ ] **Step 2: Verify RED**
+
+```bash
+node --experimental-strip-types --test tests/order-events.test.ts
+```
+
+Expected: FAIL because module does not exist.
+
+- [ ] **Step 3: Implement**
+
+Use `getSupabaseEnv()`, `cache: "no-store"`, `AbortSignal.timeout(10_000)`, UUID regex:
+
+```ts
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const CODE_RE = /^[a-z][a-z0-9_]{2,63}$/
+```
+
+Call `assertSafeMetadata(input.metadata, "metadata")` before POST.
+
+On a deduped POST, an empty representation is returned as `null`; do not treat it as an error.
+
+Failure logs include only operation/table/status, never metadata/response bodies.
+
+- [ ] **Step 4: Verify GREEN and commit**
+
+```bash
+node --experimental-strip-types --test tests/order-events.test.ts
+git add lib/server/order-events.ts tests/order-events.test.ts
+git commit -m "feat: add order event repository"
+```
+
+---
+
+### Task 8: Add attention repository without relying on unsupported partial-index upsert targeting
+
+**Files:**
+- Create: `lib/server/order-attention.ts`
+- Create: `tests/order-attention.test.ts`
+- Consume: `lib/server/safe-metadata.ts`
+
+**Interfaces:**
 
 ```ts
 export type AttentionSeverity = "info" | "warning" | "critical"
@@ -832,80 +953,55 @@ export async function resolveOrderAttention(input: {
   code: string
 }): Promise<OrderAttentionRecord | null>
 
-export async function listOpenOrderAttention(
-  orderId: string,
-): Promise<OrderAttentionRecord[]>
+export async function listOpenOrderAttention(orderId: string): Promise<OrderAttentionRecord[]>
 ```
 
-- [ ] **Step 1: Write REST-contract tests before implementation**
+- [ ] **Step 1: Write RED tests**
 
-Mock `globalThis.fetch` using the same Supabase environment pattern as `tests/orders-payment-rpc.test.ts`.
+Open uses ordinary POST with `Prefer: return=representation`. Because uniqueness is enforced by a **partial unique index** on active `(order_id, code)`, do not use `on_conflict=order_id,code`.
 
-For `appendOrderEvent`, assert:
+Mock a `409` payload with PostgreSQL code `23505` and message containing `order_attention_active_code_uidx`; `openOrderAttention` must return `null` for that exact duplicate-active case and throw for other 409 errors.
 
-```text
-POST /rest/v1/order_events?select=...
-Prefer includes return=representation and resolution=ignore-duplicates when dedupeKey exists
-body maps camelCase -> order_id/event_type/source/dedupe_key/metadata
-```
-
-For `listOrderEvents`, assert query contains:
+Resolve PATCH filters:
 
 ```text
 order_id=eq.<uuid>
-order=created_at.desc
-limit=<bounded limit>
+code=eq.<code>
+resolved_at=is.null
 ```
 
-For attention open/resolve/list, assert only `order_attention_flags` is used and resolve PATCH contains only `resolved_at` plus filters for `order_id`, `code`, and `resolved_at=is.null`.
+and sends only `{ resolved_at: <ISO timestamp> }` with `return=representation`.
 
-Also test validation rejects malformed UUIDs, invalid snake-case codes, unsupported source/severity, non-object metadata, and unreasonable list limits.
+List filters `resolved_at=is.null` and sorts `opened_at.desc`.
 
 - [ ] **Step 2: Verify RED**
 
 ```bash
-node --experimental-strip-types --test tests/order-events.test.ts tests/order-attention.test.ts
+node --experimental-strip-types --test tests/order-attention.test.ts
 ```
 
-Expected: FAIL because repository modules do not exist.
+Expected: FAIL because module does not exist.
 
-- [ ] **Step 3: Implement strict input validation and server-only REST calls**
+- [ ] **Step 3: Implement strict validation and exact duplicate handling**
 
-Use `getSupabaseEnv()` and the existing server request style. Validate UUID with:
+Use the same UUID/code/source rules and `assertSafeMetadata`. Only treat the named `23505` active-index conflict as an idempotent duplicate; other storage failures throw generic server errors after safe logging.
 
-```ts
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const CODE_RE = /^[a-z][a-z0-9_]{2,63}$/
-```
-
-Bound event list limit to `1..200`, default `100`.
-
-Use `cache: "no-store"` and a 10-second timeout like current server repositories.
-
-Do not log event metadata or response bodies on failures. Log only table/operation/status.
-
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
-node --experimental-strip-types --test tests/order-events.test.ts tests/order-attention.test.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add lib/server/order-events.ts lib/server/order-attention.ts tests/order-events.test.ts tests/order-attention.test.ts
-git commit -m "feat: add order event attention repositories"
+node --experimental-strip-types --test tests/order-attention.test.ts
+git add lib/server/order-attention.ts tests/order-attention.test.ts
+git commit -m "feat: add order attention repository"
 ```
 
 ---
 
-### Task 6: Add append-only admin audit repository
+### Task 9: Add append-only admin audit repository
 
 **Files:**
 - Create: `lib/server/admin-audit.ts`
 - Create: `tests/admin-audit.test.ts`
+- Consume: `lib/server/safe-metadata.ts`
 
 **Interfaces:**
 
@@ -939,24 +1035,17 @@ export async function listAdminAuditForEntity(input: {
 }): Promise<AdminAuditRecord[]>
 ```
 
-This module intentionally has **no update/delete function**.
+No update/delete exports exist.
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **Step 1: Write RED tests**
 
-Tests must prove:
+Prove:
 
-- append POSTs to `admin_audit_log` with `Prefer: return=representation`;
-- list filters by exact entity type/id and sorts newest-first;
-- invalid admin UUID/code/entity ID/metadata fails before fetch;
-- no exported function name contains `updateAdminAudit` or `deleteAdminAudit`.
-
-Example export-surface assertion:
-
-```ts
-const audit = await import("../lib/server/admin-audit.ts")
-assert.equal("updateAdminAudit" in audit, false)
-assert.equal("deleteAdminAudit" in audit, false)
-```
+- append uses POST + `return=representation`;
+- list filters entity type/id and sorts newest-first;
+- invalid admin UUID/code/entity ID/limit fails before fetch;
+- `assertSafeMetadata` is applied recursively to `previousValues`, `newValues`, and `metadata`;
+- module exports no `updateAdminAudit`/`deleteAdminAudit`.
 
 - [ ] **Step 2: Verify RED**
 
@@ -968,56 +1057,30 @@ Expected: FAIL because module does not exist.
 
 - [ ] **Step 3: Implement append/list only**
 
-Use the same UUID/code/object validation from the new event modules. Bound list limit to `1..200`, default `100`. Never accept/record password, TOTP, provider-token, auth-cookie, or raw credential fields; callers must provide already-sanitized metadata and the function should reject top-level keys matching this denylist:
+Bound entity ID length to 1..128 and list limit to 1..200/default 100. Safe failure logging must omit payload values.
 
-```ts
-const FORBIDDEN_KEYS = new Set([
-  "password",
-  "password_hash",
-  "totp_secret",
-  "access_token",
-  "refresh_token",
-  "authorization",
-  "cookie",
-  "secret",
-])
-```
-
-Check `previousValues`, `newValues`, and `metadata` top-level keys before POST.
-
-- [ ] **Step 4: Run focused tests and verify GREEN**
+- [ ] **Step 4: Verify GREEN and commit**
 
 ```bash
 node --experimental-strip-types --test tests/admin-audit.test.ts
-```
-
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
 git add lib/server/admin-audit.ts tests/admin-audit.test.ts
 git commit -m "feat: add append-only admin audit repository"
 ```
 
 ---
 
-### Task 7: Run Phase 1 regression verification
+### Task 10: Full Phase 1 repository verification
 
 **Files:**
-- Potentially modify only tests/implementation files already in this plan if regression failures reveal a Phase 1 defect.
-- Modify: `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`
-- Modify: `docs/superpowers/CURRENT_STATUS.md`
+- Modify checkpoint docs only after fresh evidence exists.
 
-**Interfaces:**
-- Verifies Phase 1 as a coherent candidate before Preview/Supabase application.
-
-- [ ] **Step 1: Run all Phase 1 focused tests together**
+- [ ] **Step 1: Run all Phase 1 focused tests**
 
 ```bash
 node --experimental-strip-types --test \
   tests/admin-order-foundation-migration.test.ts \
   tests/fulfillment.test.ts \
+  tests/safe-metadata.test.ts \
   tests/orders-payment-rpc.test.ts \
   tests/orders.test.ts \
   tests/order-events.test.ts \
@@ -1025,15 +1088,15 @@ node --experimental-strip-types --test \
   tests/admin-audit.test.ts
 ```
 
-Expected: all PASS, zero failures.
+Expected: zero failures.
 
-- [ ] **Step 2: Run the complete repository test suite**
+- [ ] **Step 2: Run complete repository suite**
 
 ```bash
 pnpm test
 ```
 
-Expected: PASS with zero failing tests.
+Expected: zero failures.
 
 - [ ] **Step 3: Run typecheck**
 
@@ -1043,32 +1106,33 @@ pnpm typecheck
 
 Expected: exit 0.
 
-- [ ] **Step 4: Run production build**
+- [ ] **Step 4: Run build**
 
 ```bash
 pnpm build
 ```
 
-Expected: exit 0 in GitHub CI/Linux. Do not substitute a known Android/Termux native-SWC limitation for CI evidence.
+Expected: exit 0 in GitHub CI/Linux. Do not substitute the known Android/Termux native-SWC limitation for CI evidence.
 
-- [ ] **Step 5: Review exact diff against Phase 1 scope**
+- [ ] **Step 5: Review exact diff**
 
-Confirm the candidate contains only:
+Allowed Phase 1 scope:
 
 ```text
 one additive Phase 1 migration
-fulfillment pure module
-orders payment-result contract update
+fulfillment module
+safe metadata module
+order payment-result contract update
 event/attention/audit repositories
 Phase 1 tests
-documentation checkpoints
+checkpoint documentation
 ```
 
 Reject unrelated storefront/catalog/hosting/refactor changes.
 
-- [ ] **Step 6: Commit checkpoint documentation**
+- [ ] **Step 6: Update checkpoint docs and commit**
 
-Update Master Plan Phase 1 with exact RED/GREEN evidence and last verified commit. Update `CURRENT_STATUS.md` with Phase 1 state and exact next action.
+Record exact RED/GREEN evidence, full verification, and last verified SHA in Master Plan and `CURRENT_STATUS.md`.
 
 ```bash
 git add docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md docs/superpowers/CURRENT_STATUS.md
@@ -1077,76 +1141,71 @@ git commit -m "docs: checkpoint admin data foundation"
 
 ---
 
-### Task 8: Apply and validate the additive migration in a non-Production environment
+### Task 11: Apply/validate the additive migration outside Production
 
 **Files:**
-- No new application files unless validation exposes a defect.
-- Update checkpoint docs with environment evidence.
+- No new runtime files unless validation exposes a Phase 1 defect.
 
-**Interfaces:**
-- Database migration must be safe before application code deployment.
+- [ ] **Step 1: Re-read the exact migration candidate**
 
-- [ ] **Step 1: Re-read the exact migration commit before applying**
+Confirm no `fulfillment_status NOT NULL`, destructive drop/delete, checkout authority change, or fabricated retroactive events.
 
-Confirm it does not set `fulfillment_status NOT NULL`, delete existing data, drop checkout/payment columns, or fabricate historical events.
+- [ ] **Step 2: Apply the migration to the intended Preview/Sandbox Supabase environment**
 
-- [ ] **Step 2: Apply `202609020001_admin_order_operations_foundation.sql` to the intended Preview/Sandbox Supabase environment**
+Record only migration name, environment label, and success/failure. Never record credentials or customer PII.
 
-Record only migration name, success/failure, and environment label. Never record credentials.
-
-- [ ] **Step 3: Validate backfill with aggregate/safe queries**
-
-Verify:
-
-```text
-existing approved orders -> awaiting_production
-existing non-approved orders -> awaiting_payment
-new order insert that omits fulfillment_status -> awaiting_payment
-no retroactive order_events were created by backfill
-browser roles cannot read/write event/audit/attention tables
-service-role privileges match the migration grants
-```
-
-Do not paste customer PII into chat/docs while verifying.
-
-- [ ] **Step 4: Validate the upgraded payment RPC with controlled Sandbox fixtures**
+- [ ] **Step 3: Validate backfill/security with safe aggregate queries**
 
 Prove:
 
 ```text
-pending + trusted approved exact amount -> approved + awaiting_production + fulfillment_transitioned=true
-repeated approved same payment -> ignored + no duplicate order event
+existing approved -> awaiting_production
+existing non-approved -> awaiting_payment
+new insert omitting fulfillment_status -> awaiting_payment
+no retroactive order_events from the backfill
+anon/authenticated cannot read/write operational history tables
+service_role grants match the migration
+```
+
+- [ ] **Step 4: Validate payment RPC with controlled Sandbox fixtures**
+
+Prove:
+
+```text
+pending + trusted approved exact amount -> approved + awaiting_production + transitioned=true
+repeat same approved -> ignored + no duplicate payment/fulfillment event
 approved -> refunded -> fulfillment unchanged + payment_refunded attention
 approved -> charged_back -> fulfillment unchanged + payment_charged_back attention
 amount/currency mismatch -> manual_review + payment_manual_review attention
 ```
 
-- [ ] **Step 5: Deploy the Phase 1 code candidate to Preview only after migration success**
+- [ ] **Step 5: Deploy Phase 1 code candidate to Preview only after migration success**
 
-Verify existing checkout/public order/admin auth smoke paths. No new admin UI is expected in Phase 1.
+Smoke-check existing checkout creation, public order page, admin login/MFA, and Mercado Pago webhook test path. Phase 1 adds no new admin UI.
 
-- [ ] **Step 6: Review Preview runtime logs for new database/RPC errors**
+- [ ] **Step 6: Review Preview runtime error/fatal logs**
 
-Record whether error/fatal logs contain Phase 1 failures. Never log/request tokens or PII.
+Record presence/absence of Phase 1 database/RPC errors without logging sensitive payloads.
 
-- [ ] **Step 7: Obtain explicit owner approval before any Production migration/deploy**
+- [ ] **Step 7: Stop at the Production approval gate**
 
-Do not apply this migration to Production or merge the branch merely because Sandbox/Preview passed.
+Do not apply the migration to Production, merge, or enable any Production behavior without explicit owner approval.
 
 ---
 
 ## Phase 1 Completion Gate
 
-Phase 1 may be marked `[x]` in the Master Plan only when all of these are true:
+Phase 1 can be marked complete only when:
 
-- migration tests show the additive/backfill/security/RPC contract;
-- state-machine tests pass;
-- order repository/payment parser tests pass;
+- RED evidence exists for each implemented unit;
+- migration/schema/RPC tests pass;
+- fulfillment and recursive metadata tests pass;
+- order payment parser/repository tests pass;
 - event/attention/audit repository tests pass;
 - full `pnpm test`, `pnpm typecheck`, and `pnpm build` pass on the exact candidate;
 - non-Production migration/RPC validation succeeds;
 - Preview smoke checks show no checkout/public-order/admin-auth regression;
 - checkpoint docs record exact evidence;
-- Production remains unmodified unless the owner separately authorizes it.
+- Production remains unchanged unless separately authorized.
 
-**Next phase after acceptance:** write/review `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md` before building `/admin/pedidos`, `/admin/pedidos/[id]`, or `/admin/producao`.
+**Next phase after acceptance:** write/review `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md` before creating `/admin/pedidos`, `/admin/pedidos/[id]`, or `/admin/producao`.
