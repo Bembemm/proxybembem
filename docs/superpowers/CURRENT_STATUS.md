@@ -10,7 +10,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Branch: `feat/admin-dashboard-expansion`
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-8 TDD COMPLETE; TASK 9 RED NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-9 TDD COMPLETE; TASK 10 RED NEXT**
 - Phase 3 migration application: **NOT APPROVED / NOT APPLIED**
 - Merge/new Production application deployment: **NOT APPROVED**
 
@@ -73,67 +73,51 @@ Final candidate `bc66eaf932b5dc3c710813cce8c3abd503cc6b1d`, CI `33673027354`, jo
 
 ### Task 7 — account auth actions + Supabase callback
 
-The first RED commit `5a1bca7891b47dc75a636718529c26a6737eb8c6` is **non-canonical** because review found the test itself diverged from the approved plan: it named password routes incorrectly and expected permissive extra fields/logout JSON behavior. No Task 7 runtime code existed yet. The test was corrected before GREEN.
+The first RED commit `5a1bca7891b47dc75a636718529c26a6737eb8c6` is **non-canonical** because review found the test itself diverged from the approved plan. No Task 7 runtime code existed yet. The test was corrected before GREEN.
 
-Canonical RED:
+Canonical RED `58befa3c0805662bee833cd3f79b4d14693f50f8`, CI `33675807205`, job `100400061244`: 327 total / 318 PASS / exactly 9 expected FAIL, all Task 7 contracts.
 
-- commit `58befa3c0805662bee833cd3f79b4d14693f50f8`;
-- CI run `33675807205`;
-- job `100400061244`;
-- 327 total / 318 PASS / exactly 9 FAIL;
-- all nine failures are Task 7 contracts: missing action module, rate-limit scopes, proxy matchers, auth routes/callback, intended Supabase operations, and generic reset copy;
-- no unrelated existing test failed;
-- typecheck/build skipped because expected RED stopped CI.
-
-GREEN implementation includes strict account payload parsing, same-origin checks, bounded account rate-limit scopes, retained admin proxy matchers plus customer auth/account matchers, signup/login/logout/password reset/password update routes, and a PKCE callback that validates verified user metadata before ensuring the own RLS profile.
-
-Final Task 7 candidate:
-
-- commit `85bb1d880684e14ffbdbdb18fd66b875d6e8c5a2`;
-- CI run `33676377828`;
-- job `100401981356`;
-- `pnpm test`: 327 total / 327 PASS / 0 FAIL;
-- `pnpm typecheck`: PASS;
-- `pnpm build`: PASS on Next.js 16.3.3, generated 23/23 static pages;
-- workflow conclusion: SUCCESS.
+Final candidate `85bb1d880684e14ffbdb18fd66b875d6e8c5a2`, CI `33676377828`, job `100401981356`: 327/327 tests PASS, typecheck PASS, build PASS on Next.js 16.3.3 with 23/23 static pages.
 
 ### Task 8 — customer-owned order repository
 
+Canonical RED `aeb33ad60b489f5db615726d4f2d0e48ba79619b`, CI `33676897007`, job `100403780051`: 328 total / 327 PASS / exactly 1 expected module-missing FAIL.
+
+Final candidate `126158df19cc51f97154006f830ad31222ce8e89`, CI `33677214460`, job `100404817672`: 334/334 tests PASS, typecheck PASS, build PASS with 23/23 static pages. Read RPCs remain `auth.uid()`-derived and TypeScript never accepts/sends a customer UUID.
+
+### Task 9 — secure guest-order claim
+
 Canonical RED:
 
-- test `tests/customer-orders.test.ts`;
-- commit `aeb33ad60b489f5db615726d4f2d0e48ba79619b`;
-- CI run `33676897007`;
-- job `100403780051`;
-- 328 total / 327 PASS / exactly 1 FAIL;
-- the only failure is `ERR_MODULE_NOT_FOUND` for missing `lib/server/customer-orders.ts`;
-- all pre-existing tests including Task 7 pass;
-- typecheck/build skipped because expected RED stopped CI.
+- test `tests/customer-order-claim.test.ts`;
+- commit `f9c95f73801155da583365d553431b68df6595c7`;
+- CI run `33677670040`;
+- job `100406317560`;
+- 343 total / 334 PASS / exactly 9 FAIL;
+- all nine failures were only Task 9 contracts: missing claim module/route/form and absent public tracking CTA behavior;
+- all pre-existing tests passed;
+- typecheck/build skipped because the expected RED stopped CI.
 
-GREEN implementation `lib/server/customer-orders.ts`:
+GREEN implementation includes:
 
-- authenticated request-scoped `createSupabaseServerClient()` only;
-- `customer_list_orders` receives only bounded `p_limit`/`p_offset`;
-- `customer_get_order` receives only canonical `p_order_id`;
-- no customer UUID is accepted or sent by TypeScript; database ownership remains `auth.uid()`-derived;
-- exact-key parsing rejects overbroad RPC responses and internal fields;
-- pagination is bounded to RPC limits;
-- fulfillment vocabulary is allowlisted and future payment-status strings are accepted only through a bounded safe display pattern;
-- detail DTO strips item shipping internals and exposes only immutable item display data, safe order totals/status, address snapshot, shipping summary, contact snapshot, and curated timeline kinds;
-- missing/not-owned detail maps to `null`.
+- `lib/server/customer-order-claim.ts`: exact `{publicToken}` parser, canonical 64-character token normalization, verified trusted `CustomerIdentity` validation, strict response parser, service-role-only `claim_guest_order_for_customer` wrapper, exact trusted UUID/email RPC payload, 10-second timeout, no email-only claim API and no secret logging;
+- `POST /api/account/orders/claim`: exact same-origin check, `account-claim` rate limit, verified customer access, 4 KiB bounded JSON body, browser supplies only `publicToken`, generic `not_claimable` response and sanitized unavailable failures;
+- `components/account/order-claim-form.tsx`: submits only the public token and refreshes the server page after success;
+- `/pedido/[token]`: preserves existing public token tracking, shows claim only for guest-owned orders with an email snapshot, never pre-compares snapshot email with current identity, shows a local login CTA when appropriate, and leaves historical null-email orders token-only.
 
-Final Task 8 candidate:
+Final Task 9 candidate:
 
-- commit `126158df19cc51f97154006f830ad31222ce8e89`;
-- CI run `33677214460`;
-- job `100404817672`;
-- `pnpm test`: **334 total / 334 PASS / 0 FAIL**;
-- all seven `tests/customer-orders.test.ts` cases PASS;
+- commit `c8e836cf69de086d2000d0fc9904af9b24d2307b`;
+- CI run `33682338553`;
+- job `100421604971`;
+- `pnpm test`: **343 total / 343 PASS / 0 FAIL**;
+- all nine Task 9 tests PASS and existing regressions PASS;
 - `pnpm typecheck`: PASS (`tsc --noEmit`);
-- `pnpm build`: PASS on Next.js 16.3.3, compiled successfully and generated **23/23** static pages;
+- `pnpm build`: PASS on Next.js 16.3.3, compiled successfully and generated **24/24** static pages;
+- `/api/account/orders/claim` is present in the successful build route manifest;
 - workflow conclusion: SUCCESS.
 
-Task 8 is the current verified runtime checkpoint. No Phase 3 DDL was applied and no Preview/Production deployment was promoted.
+Task 9 is the current verified runtime checkpoint. No Phase 3 DDL was applied and no Preview/Production deployment was promoted.
 
 ## Current safety gates
 
@@ -149,6 +133,6 @@ Task 8 is the current verified runtime checkpoint. No Phase 3 DDL was applied an
 
 ## Resume point
 
-**Current Phase 3 status:** Tasks 1-8 complete with TDD evidence. Final verified Task 8 runtime candidate is `126158df19cc51f97154006f830ad31222ce8e89`, CI `33677214460`, job `100404817672`.
+**Current Phase 3 status:** Tasks 1-9 complete with TDD evidence. Final verified Task 9 runtime candidate is `c8e836cf69de086d2000d0fc9904af9b24d2307b`, CI `33682338553`, job `100421604971`.
 
-**NEXT EXACT ACTION:** Phase 3 Task 9 RED. Create only `tests/customer-order-claim.test.ts` first. Prove 64-character token validation, verified-customer requirement, service-role claim payload sourced only from trusted `CustomerIdentity.userId/email`, strict claim RPC response parsing, generic `not_claimable` mismatch behavior, idempotent `already_claimed`, no email-only claim API, no token/email leakage into logs/events, POST same-origin route with `account-claim` rate limit and body exactly `{publicToken}`, and safe public tracking CTA conditions. Capture RED before creating `lib/server/customer-order-claim.ts`, `app/api/account/orders/claim/route.ts`, or `components/account/order-claim-form.tsx`.
+**NEXT EXACT ACTION:** Phase 3 Task 10 RED. Create only `tests/customer-account-ui.test.ts` first. Require the public `/entrar`, `/criar-conta`, `/esqueci-a-senha` surfaces; protected storefront-styled `/minha-conta`, `/minha-conta/pedidos`, `/minha-conta/pedidos/[id]`, `/minha-conta/perfil`, `/minha-conta/seguranca`; server-side customer protection; no admin shell/components/imports in customer account UI; logout by POST; accessible labels; account order pages using only curated customer DTO fields; safe WhatsApp support link containing only order number; profile explicit-save POST behavior; security password update/recovery behavior; and no public token, raw payment/preference IDs, checkout internals, shipping snapshot, admin audit, or secret fields in rendered customer account code. Capture the expected RED before creating the Task 10 pages/components.
