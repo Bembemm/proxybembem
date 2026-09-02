@@ -5,11 +5,21 @@ export type RateLimitScope =
   | "shipping-quote"
   | "checkout"
   | "melhor-envio-oauth-start"
+  | "account-signup"
+  | "account-login"
+  | "account-password-reset"
+  | "account-profile"
+  | "account-claim"
 
 const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   "shipping-quote": { limit: 60, windowSeconds: 600 },
   checkout: { limit: 10, windowSeconds: 600 },
   "melhor-envio-oauth-start": { limit: 5, windowSeconds: 900 },
+  "account-signup": { limit: 5, windowSeconds: 900 },
+  "account-login": { limit: 10, windowSeconds: 600 },
+  "account-password-reset": { limit: 5, windowSeconds: 900 },
+  "account-profile": { limit: 20, windowSeconds: 600 },
+  "account-claim": { limit: 10, windowSeconds: 600 },
 }
 
 function firstUsableForwardedValue(value: string | null): string | null {
