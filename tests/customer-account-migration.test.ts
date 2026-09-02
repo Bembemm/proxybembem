@@ -99,7 +99,16 @@ test("defines one service-role-only atomic verified-email plus token guest claim
   assert.match(claim, /update\s+public\.orders[\s\S]*set\s+customer_id\s*=/)
   assert.doesNotMatch(claim, /set\s+payment_status\s*=/)
   assert.doesNotMatch(claim, /admin_audit_log/)
-  assert.doesNotMatch(claim, /jsonb_build_object\s*\([^)]*(?:public_token|customer_email|p_verified_email)/)
+  assert.match(
+    claim,
+    /jsonb_build_object\s*\(\s*'claim_method'\s*,\s*'verified_email_and_public_token'\s*\)/,
+  )
+  assert.doesNotMatch(claim, /jsonb_build_object\s*\([^)]*'public_token'\s*,/)
+  assert.doesNotMatch(claim, /jsonb_build_object\s*\([^)]*'customer_email'\s*,/)
+  assert.doesNotMatch(claim, /jsonb_build_object\s*\([^)]*'verified_email'\s*,/)
+  assert.doesNotMatch(claim, /jsonb_build_object\s*\([^)]*,\s*p_public_token\b/)
+  assert.doesNotMatch(claim, /jsonb_build_object\s*\([^)]*,\s*p_verified_email\b/)
+  assert.doesNotMatch(claim, /jsonb_build_object\s*\([^)]*,\s*v_order_email\b/)
 
   assert.match(
     text,
