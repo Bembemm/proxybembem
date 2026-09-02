@@ -27,6 +27,7 @@ import type { PublicShippingOption } from "@/lib/server/shipping-quote"
 
 const EMPTY_CHECKOUT: CheckoutData = {
   nome: "",
+  email: "",
   whatsapp: "",
   cep: "",
   rua: "",
