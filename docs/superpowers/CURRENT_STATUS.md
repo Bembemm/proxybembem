@@ -2,7 +2,7 @@
 
 **Updated:** 2026-09-02
 
-Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`, then the active phase plan.
+Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`, then `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`.
 
 ## Active project
 
@@ -11,122 +11,113 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active plan: `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
-- State: **PHASE 1 VERIFIED; PHASE 2 TASK 1 RED VERIFIED; TASK 2 GREEN MIGRATION NEXT**
+- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–4 TDD COMPLETE THROUGH STRICT REPOSITORIES; TASK 5 NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Phase 1 verified baseline
 
-Verified code candidate:
+Phase 1 database foundation is applied to the existing Supabase project `ProxyBembem` (`kicgoocozxzkuoqajqif`) after explicit owner authorization.
 
-`0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`
+Validation evidence included:
 
-CI `33590493640`, job `100123329614`:
+- 25 existing orders checked with correct fulfillment backfill;
+- no fabricated historical events;
+- event, attention and audit tables with RLS/browser-role isolation;
+- append-only service-role privileges for audit/events;
+- payment approval/replay/refund/chargeback/manual-review transaction tests;
+- zero persistent validation fixtures;
+- Production `/admin` remained healthy after the additive migration.
+
+Owner workflow decision remains: evolve the current Supabase project as schema is needed. Do not require a paid Supabase development branch. Meaningful DDL still requires explicit owner approval before application.
+
+## Vercel Preview — restored
+
+The earlier `/admin` Preview 500 was investigated and is resolved.
+
+Evidence:
+
+- old `feat/checkout-mercadopago` Preview proved `/admin` had worked with Supabase env;
+- env configuration was aligned for the current Preview branch;
+- `vercel.json` currently has an `ignoreCommand` that intentionally cancels `feat/admin-dashboard-expansion` deployments unless the commit message contains `[preview]`;
+- commit `2bbd3d3b79ed1afdb8a786d0668bfc7db383be66` (`[preview] chore: retest preview environment`) forced the validation deployment;
+- deployment `dpl_6C87JJ66mKGqkt93yTLToDWzEAfa` reached READY;
+- direct Preview `/admin`: 200 and protected login page rendered;
+- fixed branch alias `/admin`: 200;
+- CSP includes the configured Supabase origin.
+
+Do not misdiagnose future canceled deployments as build/env failures before checking the intentional `[preview]` ignore rule.
+
+## Phase 2 migration — code only, not applied
+
+Migration file:
+
+`supabase/migrations/202609020002_admin_order_fulfillment_operations.sql`
+
+Implementation commit:
+
+`334d7d1b0bf9fb06e33da08dca16f03ca82384b5`
+
+Fresh CI for that commit passed:
 
 - `pnpm test`: PASS
 - `pnpm typecheck`: PASS
 - `pnpm build`: PASS
 
-Phase 1 current-Supabase migration:
+Migration defines:
 
-`20260902091641_admin_order_operations_foundation`
+- backend-only `admin_list_orders(...) -> jsonb` with bounded static filtering/pagination and São Paulo date boundaries;
+- backend-only locked `admin_transition_order_fulfillment(...) -> jsonb`;
+- atomic fulfillment event + append-only admin audit + paid-cancellation attention;
+- narrow reversal observer resolving only `canceled_paid_order` after actual `refunded`/`charged_back` payment state.
 
-Applied after explicit owner authorization. Validation proved:
+**The Phase 2 migration has NOT been applied to Supabase.** Keep it unapplied until the full Phase 2 code candidate is reviewed/verified and the owner approves the exact DDL application.
 
-- 25 existing orders checked;
-- fulfillment NULLs 0;
-- approved wrong backfill 0;
-- non-approved wrong backfill 0;
-- operational history/attention/audit tables present with RLS;
-- browser roles blocked from backend-only history;
-- payment RPC grants/security intact;
-- approval/replay/refund/chargeback/manual-review transaction tests passed;
-- 0 persistent validation fixtures.
+## Phase 2 Task 3 — admin read repository
 
-Append-only privilege check:
+RED commit:
 
-- service_role can SELECT/INSERT admin audit;
-- service_role cannot UPDATE/DELETE admin audit;
-- service_role cannot UPDATE/DELETE order events.
+`d619ead792b56376327bdbed6f2aaf1933457878`
 
-Production after Phase 1 DB migration:
+RED evidence: 256 passing tests and one expected `ERR_MODULE_NOT_FOUND` for `lib/server/admin-orders.ts`.
 
-- `/admin`: 200 protected login surface;
-- validation-window error/fatal logs: none;
-- Production app code/deployment remains pre-expansion main.
+GREEN commit:
 
-## Supabase workflow decision
+`f8ded33f97fb89ef4343caa77ee3457efbf3b79a`
 
-Connected project: `ProxyBembem`, ref `kicgoocozxzkuoqajqif`, `sa-east-1`, healthy.
+CI run `33634645304`, job `100262324239`:
 
-Owner explicitly confirmed the established workflow: evolve this current Supabase project as schema is needed. Do not reintroduce a paid Supabase development branch as a prerequisite. Meaningful current-project DDL still requires explicit owner approval before application.
+- `pnpm test`: PASS
+- `pnpm typecheck`: PASS
+- `pnpm build`: PASS
 
-## Preview blocker
+Implemented `lib/server/admin-orders.ts` with server-only service-role reads, strict filters/response parsing, approved list/detail DTOs, bounded pagination/timeouts, sanitized errors and explicit exclusion of public token, checkout fingerprint/URL/attempt and raw shipping snapshot.
 
-Known Preview deployment from Phase 1 is READY and `/` is 200, but `/admin` returns 500 because Preview lacks:
+## Phase 2 Task 4 — strict fulfillment repository
 
-`NEXT_PUBLIC_SUPABASE_URL`
+RED commit:
 
-At minimum protected Preview admin needs these env names configured without committing values:
+`8caf02f9c83611b31c5fe18a03a9764fb8754df6`
 
-```text
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-ADMIN_USER_ID
-SUPABASE_URL
-SUPABASE_SECRET_KEY
-```
+RED evidence: 263 passing tests and one expected `ERR_MODULE_NOT_FOUND` for `lib/server/admin-order-operations.ts`.
 
-The connected Vercel tooling cannot mutate env vars. Preview remains **NOT APPROVED**.
+GREEN commit:
 
-## Phase 2 plan
+`f27143474c531cf8da49f49c28be42e73a7d8921`
 
-Plan:
+CI run `33634997803`, job `100263535734`:
 
-`docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
+- `pnpm test`: PASS
+- `pnpm typecheck`: PASS
+- `pnpm build`: PASS
 
-Reviewed plan commit:
+Implemented `lib/server/admin-order-operations.ts`:
 
-`963c2d316451b62d43422d8685631a4cde33f177`
-
-Review locked these details:
-
-- admin list RPC returns `{orders,total}` even on empty/out-of-range pages;
-- search `%`, `_`, `\` is literal, not wildcard control;
-- date filters use `America/Sao_Paulo` calendar boundaries;
-- attention severity deterministic `critical > warning > info`;
-- unknown future provider payment statuses render neutrally;
-- browser never chooses arbitrary fulfillment target;
-- DB row lock is final transition authority;
-- transition + event + audit + required attention are atomic;
-- paid cancellation does not refund and opens `canceled_paid_order`;
-- actual `refunded`/`charged_back` later resolves only the cancellation-specific alert;
-- one fixed action-handler redirect/error mapping;
-- Next.js 16 async params/searchParams explicitly handled;
-- append-only history privileges stay unchanged;
-- Phase 2 DDL application has a separate owner gate after code/CI review.
-
-## Phase 2 Task 1 — RED evidence
-
-Test-only commit:
-
-`75f3a0752ee6fa6e80a821c4be23fb3a7f17e1e4`
-
-GitHub CI:
-
-- run `33615089014`
-- job `100198954546`
-- total tests: 256
-- pass: 252
-- fail: 4
-
-All four failures are **only** `tests/admin-order-operations-migration.test.ts`, and every failure is the expected:
-
-```text
-ENOENT: no such file or directory
-supabase/migrations/202609020002_admin_order_fulfillment_operations.sql
-```
-
-No unrelated test failed. This is valid TDD RED evidence. No Phase 2 SQL/runtime implementation existed when the RED was captured.
+- exact service-role RPC call only;
+- canonical order/admin UUID validation before fetch;
+- only admin targets `in_production`, `ready_to_ship`, `shipped`, `completed`, `canceled`;
+- strict documented outcome parser;
+- no payment mutation fields or provider calls;
+- sanitized network/storage failures.
 
 ## Phase 2 target flow
 
@@ -140,18 +131,17 @@ completed -> none
 canceled -> none
 ```
 
-Starting production requires approved payment. Payment remains provider-authoritative.
+Starting production requires approved payment. Mercado Pago remains authoritative for financial state.
 
 ## Safety gates
 
-- Phase 2 migration is **not** applied to Supabase yet.
-- Do not apply it merely because the SQL test turns green.
-- First complete/review the Phase 2 code candidate and full CI.
-- Then stop for explicit owner approval of the exact Phase 2 DDL.
-- Do not merge the feature branch or create a new Production application deployment without explicit owner approval.
+- Phase 2 DDL is not applied to Supabase yet.
+- Do not merge the feature branch without explicit owner approval.
+- Do not create/promote a new Production application deployment without explicit owner approval.
+- Intentional Preview validation commits need `[preview]` while the current Vercel ignore rule remains.
 
 ## Resume point
 
-**Current branch HEAD before next implementation commit:** documentation checkpoint after RED.
+**Last verified runtime commit:** `f27143474c531cf8da49f49c28be42e73a7d8921` with full CI green.
 
-**NEXT EXACT ACTION:** create `supabase/migrations/202609020002_admin_order_fulfillment_operations.sql` with the reviewed static list RPC, locked atomic transition RPC, paid-cancellation attention lifecycle, service-role-only grants, and no payment writer. Run the focused Phase 2 migration test plus Phase 1 payment/fulfillment regression tests. Do **not** apply this Phase 2 migration to Supabase yet.
+**NEXT EXACT ACTION:** execute Phase 2 Task 5 from the active plan. Start by creating only `tests/admin-order-actions.test.ts` and capture RED for the missing protected action-handler module. Then implement `lib/server/admin-order-actions.ts` and the narrow POST route modules. Keep browser target status fixed by route/server code, re-authorize AAL2 + active admin session on every write, enforce same-origin, and keep Phase 2 DDL unapplied.
