@@ -1,117 +1,97 @@
 # ProxyBembem — Current Status
 
-**Updated:** 2026-09-01
+**Updated:** 2026-09-02
 
-This is the canonical continuation checkpoint. Read this file before older plan checkboxes.
+This is the canonical repository-wide continuation checkpoint. For the active admin expansion, read this file, then `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`, then the active phase plan.
 
-## Active next project — Admin dashboard + customer account expansion
+## Active project — Admin Dashboard + Customer Account Expansion
 
-- Active planning branch: `feat/admin-dashboard-expansion`.
-- Branch base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
-- Architectural design committed at `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`.
+- Branch: `feat/admin-dashboard-expansion`.
+- Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Approved design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`.
 - Design commit: `325922ffe3eec7440d86cbf86d062aaef8a6ab03`.
-- State: **DESIGN WRITTEN — AWAITING OWNER WRITTEN-SPEC REVIEW**.
-- No implementation code for this expansion has started.
-- No new database migration for this expansion has been applied.
-- No Preview or Production deployment for this expansion has been approved.
-- After the owner approves the written spec, the next required workflow step is to create the detailed executable implementation/master plan at `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` before implementation begins.
+- Master Plan: `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`.
+- Phase 1 plan: `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`.
+- Latest planning checkpoint before this status update: `d0e2772466ae3c677cbd36c20e6003f1ebeffa64`.
+- State: **PLANNING COMPLETE THROUGH PHASE 1 — RUNTIME IMPLEMENTATION NOT STARTED**.
+- No expansion migration has been created/applied.
+- No expansion runtime code has been changed.
+- No Preview is required for the planning-only commits.
+- Production is unchanged and no expansion Production rollout is approved.
 
-### Approved architectural decisions future sessions must not rediscover
+### Phase 1 exact next action
 
-- Use a modular monolith inside the existing Next.js + Supabase application.
-- Keep `/admin`; security must not depend on hiding/randomizing the URL.
-- Preserve existing admin password + mandatory TOTP/AAL2, single-session, inactivity, and fail-closed authorization.
-- Payment status remains Mercado Pago/provider-authoritative and cannot be manually forced by an admin database edit.
-- Fulfillment is independent from financial status: `awaiting_payment -> awaiting_production -> in_production -> ready_to_ship -> shipped -> completed`; `canceled` is exceptional/terminal where valid.
-- Refund/chargeback creates attention without falsifying the physical fulfillment stage.
-- Orders keep immutable purchase snapshots; catalog changes never rewrite historical orders.
-- Add order event history and append-only administrative audit.
-- Customer address may be corrected before label purchase; after label purchase it cannot silently diverge from the purchased label.
-- Customer account uses email + permanent password + email verification + password recovery; email is unique, names are not identifiers, and the internal customer UUID is authoritative.
-- Guest checkout remains supported and the existing public-token order tracking remains available.
-- Guest/old order claiming requires trusted proof and never relies on matching name alone.
-- Customer and admin authorization remain separate security boundaries.
-- Move catalog authority to Supabase in stages; checkout remains server-authoritative and static catalog is removed only after equivalence/rollback validation.
-- Melhor Envio label permissions are expanded with least privilege only when implementing labels; label purchase never happens automatically after payment and always requires explicit admin confirmation.
-- Read-only tracking synchronization may be automatic when safe.
-- Transactional email uses an outbox/job model so email-provider failure cannot break payment/order state.
-- Store settings expose only safe commercial/operational values; secrets remain runtime/environment configuration.
-- Admin UI follows the current admin visual model; customer account follows the storefront visual identity.
-- Migrations are compatibility-first/additive before tightening constraints.
-- Existing historical orders must not receive fabricated production/shipping history.
-- `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, and `PRODUCTION APPROVED` are distinct states.
+Begin Task 1 from `2026-09-02-admin-data-audit-foundation.md`:
 
-## Repository / integration state
+1. write `tests/admin-order-foundation-migration.test.ts`;
+2. run it alone with `node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`;
+3. capture the expected RED failure because `supabase/migrations/202609020001_admin_order_operations_foundation.sql` does not exist;
+4. record RED evidence before writing the migration.
 
-- Repo: `Bembemm/proxybembem`.
-- Default/integration branch: `main`.
-- PR `#2` (`feat: adicionar checkout seguro com Mercado Pago`) was explicitly approved by the owner and merged into `main` on 2026-09-01.
-- PR merge commit: `1f0bff2c88901a5e0bd0c910e3f650264bceb79b`.
-- Source branch was `feat/checkout-mercadopago`; do not assume it has been deleted.
-- CI `#743` on the merge commit completed successfully with `pnpm test`, `pnpm typecheck`, and `pnpm build` all passing.
-- Never expose provider, Supabase, password, TOTP, payment, or other secret values in chat, screenshots, logs, docs, or commits.
+Do not implement `/admin` order pages, customer accounts, catalog migration, labels, notifications, settings, or dashboard metrics during Phase 1.
 
-## Production — COMPLETE
+### Phase 1 planning self-review decisions future chats must preserve
 
-Canonical site:
+- `order_events` dedupe through PostgREST must explicitly target `on_conflict=dedupe_key` with `resolution=ignore-duplicates` when a dedupe key exists.
+- Active attention uniqueness uses a partial unique index; do not pretend `(order_id, code)` is a normal PostgREST upsert target. Treat only the named `23505` partial-index duplicate as idempotent.
+- Event/attention/audit caller-provided metadata receives bounded **recursive** secret/internal-key validation, not just top-level checks.
+- Payment-side event/attention writes remain inside the trusted Mercado Pago database RPC so payment + automatic fulfillment side effects are one transaction.
 
-- `https://www.proxybembem.com.br`
-- `https://proxybembem.com.br`
+## Architectural decisions future sessions must not rediscover
 
-The approved presentation bundle was first promoted from Preview to Production, then the merged `main` commit triggered the normal Git-based Production deployment.
+- Modular monolith inside existing Next.js + Supabase application.
+- Keep `/admin`; security never depends on hiding/randomizing its URL.
+- Preserve admin password + mandatory Authenticator TOTP/AAL2, single active session, 30-minute inactivity, server-side fail-closed authorization.
+- Payment status is Mercado Pago/provider-authoritative; admin cannot force paid/refunded locally.
+- Fulfillment is independent: `awaiting_payment -> awaiting_production -> in_production -> ready_to_ship -> shipped -> completed`; `canceled` is exceptional/terminal where valid.
+- Only trusted approved payment automatically advances `awaiting_payment -> awaiting_production`.
+- Refund/chargeback creates attention without falsifying the physical state.
+- No generic arbitrary admin order/payment PATCH.
+- Order lifecycle events and admin audit are append-oriented and separate.
+- Address may be corrected before label purchase; after purchase it cannot silently diverge from the active label.
+- Customer account is optional and uses email + permanent password + email verification + password reset.
+- Email is the login identity; names may duplicate; immutable Auth UUID owns customer/order relationships.
+- Guest checkout and existing public-token order tracking remain.
+- Guest/old order claiming requires trusted proof and never a name match alone.
+- Customer permanent profile stays minimal; payment cards are never stored.
+- Catalog moves to Supabase in stages; checkout remains server-authoritative and historical order snapshots remain immutable.
+- Label purchase never happens automatically after payment and always requires explicit admin confirmation.
+- Melhor Envio scope expansion follows least privilege and current official docs at implementation time.
+- Read-only tracking may synchronize automatically without altering financial state.
+- Transactional email uses an outbox/job model; email-provider failure cannot break payment/order persistence.
+- Store settings expose only safe commercial/operational values; secrets remain runtime configuration.
+- Admin UI follows current admin visual model; customer account follows storefront identity.
+- Database migrations are compatibility-first/additive before hardening.
+- Existing historical orders receive no fabricated production/shipping events.
+- `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, and `PRODUCTION APPROVED` are distinct.
+- No merge/high-risk Production action without explicit owner approval.
+- Do not delete feature branches unless owner explicitly requests cleanup.
 
-Merge-triggered Production evidence:
+## Production baseline — unchanged
 
-- deployment `dpl_8AZsHDWCtGmSv1rvCDeVjwJfy7qt`;
-- Git commit `1f0bff2c88901a5e0bd0c910e3f650264bceb79b`;
-- branch `main`;
-- target `production`;
-- state `READY`;
-- aliases include `www.proxybembem.com.br`, `proxybembem.com.br`, and `proxybembem.vercel.app`.
+Repository: `Bembemm/proxybembem`.
 
-Previously owner-approved Preview/promotion evidence:
+- PR #2 (`feat: adicionar checkout seguro com Mercado Pago`) was explicitly approved and merged into `main`.
+- Merge commit: `1f0bff2c88901a5e0bd0c910e3f650264bceb79b`.
+- Current canonical `main` after final documentation checkpoint: `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Final main CI #744 passed on `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Final canonical Production deployment: `dpl_DFZhbQpkxZ8CRqJsLKx2jU8v9MAX`, READY, sourced from `main` SHA `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Canonical domains: `https://www.proxybembem.com.br` and `https://proxybembem.com.br`.
+- Final production error/fatal log check for that deployment found no matching logs in the checked window.
 
-- approved Preview `dpl_Fi7y1xejJKZqjEMx4cVZhgRXuEma`;
-- promotion deployment `dpl_71TXqkwdGrR5ZkuLhaJETr14grho`;
-- production promotion metadata recorded `action=promote` and `originalDeploymentId=dpl_Fi7y1xejJKZqjEMx4cVZhgRXuEma`.
+### Production-accepted behavior
 
-## Live storefront behavior
+- Dedicated `/produtos` catalog page; Home keeps featured-only section.
+- PB branding served directly from `/brand/pb.png`.
+- Product production/posting copy: up to 5 business days.
+- Product 1: Commander 100 — R$150.00 original / R$119.90 sale.
+- Product 2: Proxy 60 — R$99.99 original / R$69.99 sale.
+- Mercado Pago Checkout Pro + signed webhook + server-side payment fetch + atomic Supabase payment transition accepted in Production.
+- Public order status flow accepted.
+- Melhor Envio Production OAuth active for current freight calculation; freight restricted to PAC/SEDEX IDs 1/2.
+- Admin login password + mandatory TOTP/AAL2 accepted; one active app session; 30-minute inactivity timeout; auth failures fail closed.
 
-- Home uses the newer hero and shows only featured products.
-- Hero `Ver produtos` points to `/produtos`.
-- Home `Ver Todos os Produtos` points to `/produtos`.
-- Navbar `Produtos` points to `/produtos`.
-- `/produtos` is a dedicated full catalog page with filters, cart actions, and product-detail modal.
-- PB branding is served directly from `/brand/pb.png` and was manually accepted on the affected Android phone.
-- Product production/posting copy is up to 5 business days.
-
-Current product prices:
-
-- Deck Commander Proxy 100 Cartas: R$ 150,00 original / R$ 119,90 sale.
-- Deck Proxy 60 Cartas: R$ 99,99 original / R$ 69,99 sale.
-- Trusted checkout price for product ID `2` remains R$ 69,99.
-
-## Checkout / payment / freight / admin — PRODUCTION ACCEPTED
-
-Validated end to end in Production before merge:
-
-- Mercado Pago Checkout Pro preference creation;
-- one legitimate controlled low-value real payment;
-- signed Mercado Pago webhook accepted with HTTP `200`;
-- payment fetched from Mercado Pago before the atomic Supabase state transition;
-- accepted order moved `pending` -> `approved`, detail `accredited`;
-- public order page returned HTTP `200`;
-- webhook selector uses `source_news=webhooks`;
-- temporary validation product/route was removed afterward;
-- Melhor Envio Production OAuth active;
-- Production freight restricted to Correios PAC/SEDEX service IDs `1/2`;
-- Admin login uses password + mandatory Authenticator TOTP/AAL2;
-- one active app session with strict 30-minute inactivity timeout;
-- auth/session/storage failures fail closed.
-
-No additional real Mercado Pago payment is required solely because of the storefront/presentation merge; checkout/payment/freight logic and trusted prices were already Production-accepted.
-
-## Applied Supabase migrations
+### Applied Production Supabase migrations before this expansion
 
 1. `202608280001_create_orders.sql`
 2. `202608280002_shipping_checkout_hardening.sql`
@@ -121,24 +101,15 @@ No additional real Mercado Pago payment is required solely because of the storef
 6. `202608300001_checkout_preference_lease.sql`
 7. `202608310001_admin_sessions.sql`
 
-## Historical debugging decisions future sessions must not rediscover
+## Historical debugging decisions
 
-- Vercel Hobby temporarily blocked Preview builds with `build-rate-limit`; an empty commit successfully retriggered Preview after the limit reset.
-- Android Termux itself was not the core Next.js build issue: Android ARM64 lacks the matching native Next/SWC binary for Next 16.3.3.
-- Termux production compilation was proven possible using `@next/swc-wasm-nodejs@16.3.3`, `NEXT_TEST_WASM_DIR`, and `next build --webpack`; ordinary `pnpm test` and `pnpm typecheck` also passed there.
-- The first PB implementation embedded a raster inside SVG and rendered broken on the affected Android browser; the accepted fix is the direct PNG route `/brand/pb.png`.
-
-## Next safe actions
-
-1. Owner reviews `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md` on `feat/admin-dashboard-expansion`.
-2. If the owner approves the written spec, invoke the planning workflow and create `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` with detailed dependency-aware phases, checkboxes, TDD evidence fields, Preview gates, rollback steps, and exact continuation checkpoints.
-3. Do not implement the expansion before that planning gate.
-4. Do not merge the new branch or deploy this expansion to Production without explicit owner approval at the appropriate later gate.
-5. Treat any hosting migration as a separate risk-isolated project.
-6. Do not delete the historical `feat/checkout-mercadopago` branch unless the owner explicitly requests repository cleanup.
+- Vercel Hobby previously hit `build-rate-limit`; do not create repeated dummy commits while rate-limited.
+- Android/Termux native Next/SWC is the local build limitation for Next 16.3.3; GitHub CI/Linux remains the authoritative full build evidence.
+- Termux Webpack/WASM testing exposed a latent strict route-export issue in `app/api/internal/melhor-envio/refresh/route.ts`; do not confuse that local Webpack finding with a known Production failure.
+- The broken nested-raster SVG PB implementation was replaced by direct `/brand/pb.png`; keep the accepted PNG path.
 
 ## End-of-session rule
 
-Every meaningful session must update this file with passed/failed evidence, blockers, exact next action, relevant deployment/merge evidence, and decisions future sessions must not rediscover.
+Every meaningful session must update this file with current phase/task, fresh passed/failed evidence, blockers, exact next action, relevant branch/commit/Preview/Production evidence, and decisions future sessions must not rediscover.
 
-**Resume point:** The existing checkout/storefront/admin-auth baseline remains Production-accepted on `main`. New work is isolated on `feat/admin-dashboard-expansion`. The complete architectural design for Admin Dashboard + Customer Account expansion is committed at `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md` in commit `325922ffe3eec7440d86cbf86d062aaef8a6ab03`. No implementation has started. The owner must review/approve the written spec next; only after that approval should `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` be created and implementation planning proceed.
+**Resume point:** Admin expansion design, Master Plan, and Phase 1 implementation plan are written on `feat/admin-dashboard-expansion`. Runtime implementation has not started. Next action is the Phase 1 Task 1 RED migration test. Existing `main`/Production baseline remains unchanged.
