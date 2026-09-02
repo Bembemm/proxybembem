@@ -79,7 +79,7 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 
 **Plan:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
 
-**State:** TASKS 1–11 CODE/TDD/SECURITY/SCOPE VERIFIED. TASK 12 WAITING OWNER APPROVAL TO APPLY EXACT DDL.
+**State:** TASKS 1–12 CODE/TDD/SECURITY/SCOPE/DB VERIFIED. TASK 13 PREVIEW ACCEPTANCE NEXT.
 
 ## Planning/contract decisions
 
@@ -94,7 +94,7 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 ## Implementation tasks
 
 - [x] Task 1 — migration contract RED captured before SQL (`75f3a075...`, CI `33615089014`).
-- [x] Task 2 — additive Phase 2 migration implemented in Git only.
+- [x] Task 2 — additive Phase 2 migration implemented and reviewed.
 - [x] Task 3 — backend-only admin read repository (`f8ded33f...`, CI `33634645304` PASS).
 - [x] Task 4 — strict atomic fulfillment operation repository (`f2714347...`, CI `33634997803` PASS).
 - [x] Task 5 — five narrow same-origin/AAL2 POST routes with fixed server targets (`15fa3e17...`, CI `33635899966` PASS).
@@ -104,7 +104,9 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 - [x] Task 9 — destructive cancellation confirmation (`d9c1a49b...`, CI `33647900422` PASS).
 - [x] Task 10 — `/admin/producao` three oldest-first active queues (`40019e59...`, CI `33650042499` PASS).
 - [x] Task 11 — full suite/typecheck/build + exact scope/security/concurrency review.
-- [~] Task 12 — STOP gate: owner approval required before applying exact Phase 2 migration to current Supabase.
+- [x] Task 12 — exact reviewed migration applied to current Supabase after owner approval; structure + rollback matrix + advisors validated.
+- [~] Task 13 — Preview acceptance.
+- [ ] Task 14 — Phase 2 completion gate and separate merge/Production decision.
 
 ## Task 11 findings and evidence
 
@@ -116,6 +118,34 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 - [x] Found generic paid-cancel `ON CONFLICT DO NOTHING`; added RED requiring precise partial-index inference (`a040701a...`, CI `33650490056`: exactly one expected failure).
 - [x] Hardened SQL to `ON CONFLICT (order_id, code) WHERE resolved_at IS NULL DO NOTHING`.
 - [x] Final runtime candidate `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746`: `pnpm test`, `pnpm typecheck`, `pnpm build` PASS.
+
+## Task 12 — current Supabase application/validation
+
+Owner explicitly approved the exact Phase 2 DDL application.
+
+Applied migration:
+
+`20260902160658_admin_order_fulfillment_operations`
+
+Current project:
+
+`ProxyBembem` (`kicgoocozxzkuoqajqif`)
+
+- [x] Migration application succeeded.
+- [x] `admin_list_orders`, `admin_transition_order_fulfillment`, `resolve_canceled_paid_order_attention` verified as `SECURITY DEFINER` with empty/fixed `search_path`.
+- [x] Admin list/transition RPC execute remains `service_role` only; `anon`/`authenticated` denied.
+- [x] Reversal trigger exists/enabled.
+- [x] `order_events` and `admin_audit_log` remain append-only for service role (SELECT/INSERT yes; UPDATE/DELETE no).
+- [x] Controlled validation matrix passed 16/16 inside rollback-only synthetic fixtures.
+- [x] Valid/invalid transition matrix and approved-payment precondition verified.
+- [x] Retry returned `unchanged` with no duplicate event/audit.
+- [x] Paid cancellation kept payment approved and opened `canceled_paid_order`.
+- [x] Real refund/chargeback via Mercado Pago RPC resolved only cancellation-specific attention and retained provider-specific reversal attention.
+- [x] `pending` / `checkout_error` validation changes did not resolve paid-cancel attention.
+- [x] Nonexistent order returned `not_found`.
+- [x] Post-validation fixtures: 0 orders, 0 events, 0 attention, 0 audit.
+- [x] Security advisor reviewed: `rls_enabled_no_policy` INFO is intentional for current backend-only/service-role tables; leaked-password-protection WARN is separate Auth hardening, not caused by Phase 2 DDL.
+- [x] Performance advisor reviewed: fresh/unused `admin_audit_admin_created_idx` INFO retained; no premature index deletion.
 
 ## Phase 2 transition truth
 
@@ -131,16 +161,16 @@ canceled -> none
 
 Starting production requires `payment_status='approved'`.
 
-## Phase 2 Task 12 acceptance sequence
+## Phase 2 remaining acceptance sequence
 
-- [ ] Owner explicitly approves applying `202609020002_admin_order_fulfillment_operations.sql` to existing project `ProxyBembem`.
-- [ ] Apply only the exact reviewed migration.
-- [ ] Verify functions, grants, trigger and no unintended schema changes.
-- [ ] Transaction+rollback test valid transitions, invalid jumps, payment precondition, replay/concurrency behavior, paid cancellation and real reversal semantics.
-- [ ] Prove zero validation fixtures persist.
-- [ ] Smoke protected `/admin/pedidos`, detail and `/admin/producao` against the now-compatible DB.
-- [ ] Update checkpoint with exact applied migration/evidence.
-- [ ] Separate owner approval remains required before merge/new Production application deployment.
+- [~] Task 13: inspect a READY Preview deployment containing the Phase 2 runtime candidate/descendant.
+- [ ] Verify Preview environment contract presence without printing secrets.
+- [ ] Smoke `/`, unauthenticated/protected admin surfaces, `/admin/pedidos`, safe detail, `/admin/producao`, existing Melhor Envio integration, storefront/tracking.
+- [ ] Do not perform real Mercado Pago payment, destructive production transitions, refund, or real label purchase during smoke.
+- [ ] Review Preview error/fatal logs.
+- [ ] Record Preview evidence.
+- [ ] Task 14 final Phase 2 gate.
+- [ ] Separate explicit owner approval before merge/new Production application deployment.
 
 ---
 
@@ -234,21 +264,23 @@ Starting production requires `payment_status='approved'`.
 11. No fabricated historical facts.
 12. Existing Supabase project is intentionally evolved in place; paid dev branch is not a prerequisite.
 13. Meaningful current-project DDL stops for explicit owner approval.
-14. Preview environment for the current branch was fixed; temporary Vercel ignoreCommand was removed from the candidate.
+14. Preview environment for the current branch was previously fixed; temporary Vercel ignoreCommand was removed from the candidate.
 15. Phase 2 list RPC returns `{orders,total}` and dates use `America/Sao_Paulo`.
 16. Paid cancellation does not refund; actual reversal resolves only `canceled_paid_order`.
 17. Paid-cancel duplicate suppression targets only the active partial index; generic conflict swallowing is forbidden.
+18. Phase 2 migration is applied as `20260902160658_admin_order_fulfillment_operations`; do not rediscover or reapply it.
+19. Task 12 rollback validation passed 16/16 and left zero fixtures.
 
 ## Current Session Checkpoint
 
-**Status:** PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–11 VERIFIED; TASK 12 OWNER DDL APPROVAL GATE
+**Status:** PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–12 VERIFIED; TASK 13 PREVIEW ACCEPTANCE NEXT
 
 **Current branch:** `feat/admin-dashboard-expansion`
 
 **Final verified Phase 2 runtime candidate:** `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746` — test/typecheck/build PASS.
 
-**Phase 2 Supabase migration:** exists in Git; **NOT APPLIED**.
+**Phase 2 Supabase migration:** `20260902160658_admin_order_fulfillment_operations` — APPLIED + STRUCTURAL VALIDATION PASS + 16/16 ROLLBACK MATRIX PASS + ZERO FIXTURES.
 
 **Merge/new Production application deployment:** NOT APPROVED.
 
-**NEXT EXACT ACTION:** obtain explicit owner approval, then apply exactly `supabase/migrations/202609020002_admin_order_fulfillment_operations.sql` from the reviewed candidate to the existing Supabase project. Validate it transactionally and prove zero fixtures persist before any merge/deployment discussion.
+**NEXT EXACT ACTION:** execute Task 13 Preview acceptance only. Inspect a current READY Preview deployment, confirm required env contract without exposing values, smoke the read-only/protected admin surfaces and existing integrations without destructive business actions, inspect Preview error/fatal logs, then update checkpoints. Do not merge or promote Production.
