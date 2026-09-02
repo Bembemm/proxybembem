@@ -11,7 +11,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active plan: `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
-- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–4 TDD COMPLETE THROUGH STRICT REPOSITORIES; TASK 5 NEXT**
+- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–7 TDD COMPLETE THROUGH ADMIN ORDERS LIST; TASK 8 NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Phase 1 verified baseline
@@ -32,13 +32,12 @@ Owner workflow decision remains: evolve the current Supabase project as schema i
 
 ## Vercel Preview — restored
 
-The earlier `/admin` Preview 500 was investigated and is resolved.
+The earlier `/admin` Preview 500 was investigated and resolved.
 
 Evidence:
 
-- old `feat/checkout-mercadopago` Preview proved `/admin` had worked with Supabase env;
 - env configuration was aligned for the current Preview branch;
-- `vercel.json` currently has an `ignoreCommand` that intentionally cancels `feat/admin-dashboard-expansion` deployments unless the commit message contains `[preview]`;
+- `vercel.json` has an `ignoreCommand` that intentionally cancels `feat/admin-dashboard-expansion` deployments unless the commit message contains `[preview]`;
 - commit `2bbd3d3b79ed1afdb8a786d0668bfc7db383be66` (`[preview] chore: retest preview environment`) forced the validation deployment;
 - deployment `dpl_6C87JJ66mKGqkt93yTLToDWzEAfa` reached READY;
 - direct Preview `/admin`: 200 and protected login page rendered;
@@ -57,12 +56,6 @@ Implementation commit:
 
 `334d7d1b0bf9fb06e33da08dca16f03ca82384b5`
 
-Fresh CI for that commit passed:
-
-- `pnpm test`: PASS
-- `pnpm typecheck`: PASS
-- `pnpm build`: PASS
-
 Migration defines:
 
 - backend-only `admin_list_orders(...) -> jsonb` with bounded static filtering/pagination and São Paulo date boundaries;
@@ -74,50 +67,67 @@ Migration defines:
 
 ## Phase 2 Task 3 — admin read repository
 
-RED commit:
-
-`d619ead792b56376327bdbed6f2aaf1933457878`
-
-RED evidence: 256 passing tests and one expected `ERR_MODULE_NOT_FOUND` for `lib/server/admin-orders.ts`.
-
-GREEN commit:
-
-`f8ded33f97fb89ef4343caa77ee3457efbf3b79a`
-
-CI run `33634645304`, job `100262324239`:
-
-- `pnpm test`: PASS
-- `pnpm typecheck`: PASS
-- `pnpm build`: PASS
-
-Implemented `lib/server/admin-orders.ts` with server-only service-role reads, strict filters/response parsing, approved list/detail DTOs, bounded pagination/timeouts, sanitized errors and explicit exclusion of public token, checkout fingerprint/URL/attempt and raw shipping snapshot.
+- RED `d619ead792b56376327bdbed6f2aaf1933457878`: 256 pass + one expected missing-module failure.
+- GREEN `f8ded33f97fb89ef4343caa77ee3457efbf3b79a`, CI `33634645304`: test/typecheck/build PASS.
+- Server-only service-role list/detail reads, strict filters/DTOs, bounded pagination/timeouts, sanitized errors, internal checkout/public fields excluded.
 
 ## Phase 2 Task 4 — strict fulfillment repository
 
+- RED `8caf02f9c83611b31c5fe18a03a9764fb8754df6`: 263 pass + one expected missing-module failure.
+- GREEN `f27143474c531cf8da49f49c28be42e73a7d8921`, CI `33634997803`: test/typecheck/build PASS.
+- Exact atomic RPC only; canonical UUIDs; five admin targets only; strict outcomes; no payment mutation/provider call.
+
+## Phase 2 Task 5 — protected narrow order actions
+
+- RED `46d9760e...`: expected missing `lib/server/admin-order-actions.ts` only.
+- GREEN candidate `15fa3e176cc358e797e85b7bff7abdd73e66e580`, CI `33635899966`: test/typecheck/build PASS.
+- Five same-origin POST routes wire fixed targets server-side.
+- Every write re-authorizes active AAL2 admin access and uses the authenticated principal UUID.
+- Browser body cannot choose target status, admin UUID, payment state or audit action.
+
+## Phase 2 Task 6 — shared protected admin shell
+
+- RED `3e3a33cb17f12fae1959d6d3e7be92e1c681ce45`: 276 pass / 4 expected shell/status/page failures.
+- GREEN final `58b2fd70a719527a29752e61e2615cf129d77cb9`, CI `33636760106`: test/typecheck/build PASS.
+- Shared server shell/navigation/status badges now cover protected operational pages.
+- Live nav: Visão geral, Pedidos, Produção, Integrações.
+- Login/MFA/setup-MFA remain outside the operational shell.
+- Melhor Envio action and page-level auth remain unchanged.
+
+## Phase 2 Task 7 — `/admin/pedidos`
+
 RED commit:
 
-`8caf02f9c83611b31c5fe18a03a9764fb8754df6`
+`4af6432b30a83391f762275f75ab660160c1c132`
 
-RED evidence: 263 passing tests and one expected `ERR_MODULE_NOT_FOUND` for `lib/server/admin-order-operations.ts`.
+CI `33645664806`, job `100299636614`:
+
+- 283 tests total;
+- 280 PASS;
+- 3 expected FAIL;
+- all 3 new Task 7 tests failed only because `app/admin/pedidos/page.tsx` did not exist;
+- no unrelated regression.
 
 GREEN commit:
 
-`f27143474c531cf8da49f49c28be42e73a7d8921`
+`f1aa1fc4e0d11d5e9b058b0544fc5656f15fa4e6`
 
-CI run `33634997803`, job `100263535734`:
+CI `33645894040`, job `100300413354`:
 
-- `pnpm test`: PASS
-- `pnpm typecheck`: PASS
-- `pnpm build`: PASS
+- `pnpm test`: PASS;
+- `pnpm typecheck`: PASS;
+- `pnpm build`: PASS.
 
-Implemented `lib/server/admin-order-operations.ts`:
+Implemented protected server-side `/admin/pedidos` with:
 
-- exact service-role RPC call only;
-- canonical order/admin UUID validation before fetch;
-- only admin targets `in_production`, `ready_to_ship`, `shipped`, `completed`, `canceled`;
-- strict documented outcome parser;
-- no payment mutation fields or provider calls;
-- sanitized network/storage failures.
+- awaited Next.js 16 `searchParams`;
+- normalized `q`, payment, fulfillment, attention, date and page filters;
+- fixed `sort: 'newest'`, page size 25;
+- backend-only `listAdminOrders` use;
+- responsive operational cards with local São Paulo timestamp, trusted total fallback, payment/fulfillment badges and attention severity/count;
+- detail links only, no financial mutation controls;
+- previous/next server pagination preserving active normalized filters;
+- no browser Supabase client or forbidden checkout/public internals.
 
 ## Phase 2 target flow
 
@@ -142,6 +152,8 @@ Starting production requires approved payment. Mercado Pago remains authoritativ
 
 ## Resume point
 
-**Last verified runtime commit:** `f27143474c531cf8da49f49c28be42e73a7d8921` with full CI green.
+**Last verified runtime commit:** `f1aa1fc4e0d11d5e9b058b0544fc5656f15fa4e6` with full CI green.
 
-**NEXT EXACT ACTION:** execute Phase 2 Task 5 from the active plan. Start by creating only `tests/admin-order-actions.test.ts` and capture RED for the missing protected action-handler module. Then implement `lib/server/admin-order-actions.ts` and the narrow POST route modules. Keep browser target status fixed by route/server code, re-authorize AAL2 + active admin session on every write, enforce same-origin, and keep Phase 2 DDL unapplied.
+**Checkpoint documentation commit:** created immediately after Task 7 GREEN; verify branch HEAD before next runtime write.
+
+**NEXT EXACT ACTION:** execute Phase 2 Task 8 with TDD. Extend only `tests/admin-orders-ui.test.ts` first and capture RED for the missing `app/admin/pedidos/[id]/page.tsx` detail page. Then implement the protected detail page using `getAdminOrderById(id)`, `notFound()` for missing orders, parallel order events/open attention/admin audit reads, safe immutable item/address/shipping/payment display, allowed fulfillment controls only, and no raw public token/checkout fingerprint/checkout URL/shipping snapshot. Keep Phase 2 DDL unapplied.
