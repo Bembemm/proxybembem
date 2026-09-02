@@ -11,7 +11,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active plan: `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
-- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–8 TDD COMPLETE THROUGH ADMIN ORDER DETAIL; TASK 9 NEXT**
+- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–9 TDD COMPLETE THROUGH DESTRUCTIVE CANCELLATION CONFIRMATION; TASK 10 NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Phase 1 verified baseline
@@ -119,7 +119,24 @@ Implemented protected server-side detail with:
 - explicit cancellation copy stating operational cancellation does not automatically refund Mercado Pago and financial follow-up remains until provider reversal;
 - no raw public/checkout internals or browser Supabase client.
 
-Task 9 will replace only the destructive cancellation control with an accessible client-side confirmation primitive. Ordinary production transitions remain direct POST forms.
+## Phase 2 Task 9 — destructive cancellation confirmation
+
+Initial RED commit `0adba5463bec020cf1cb3a4e664acbe48361b795` had a test syntax defect; no runtime implementation was written from that invalid RED. Test syntax was corrected in `75cb09222bed107b264c7a4b5fcd5604d5f0e404`.
+
+Valid RED `75cb09222bed107b264c7a4b5fcd5604d5f0e404`, CI `33647606715`:
+
+- 288 tests total;
+- 286 PASS;
+- exactly 2 expected FAIL;
+- failures were only the missing `components/admin/danger-confirm-form.tsx` and cancellation still using the ordinary direct POST form.
+
+GREEN implementation HEAD `d9c1a49be7418ce0bcdb99d4a77ca09502ee0f99`, CI `33647900422`, job `100307205227`:
+
+- `pnpm test`: PASS;
+- `pnpm typecheck`: PASS;
+- `pnpm build`: PASS.
+
+Implemented `DangerConfirmForm` using the existing Radix dialog primitive. Safe props are only action URL, button label, title, description and confirm label. Opening the dialog is `type="button"`; only the explicit confirmation form submits POST. No admin UUID, payment fields, provider credentials, hidden inputs or client persistence are present. Only cancellation uses destructive confirmation; ordinary production transitions remain direct POST forms.
 
 ## Phase 2 target flow
 
@@ -144,6 +161,6 @@ Starting production requires approved payment. Mercado Pago remains authoritativ
 
 ## Resume point
 
-**Last verified runtime/test commit:** `1dd2446bdd891ddb3de278d753ff5b947c1a227a` with full CI green.
+**Last verified runtime/test commit:** `d9c1a49be7418ce0bcdb99d4a77ca09502ee0f99`, CI `33647900422`, full test/typecheck/build green.
 
-**NEXT EXACT ACTION:** execute Phase 2 Task 9 with TDD. Extend UI tests first to require an accessible destructive confirmation around cancellation only. Then create `components/admin/danger-confirm-form.tsx` using the already installed Radix dialog primitive and replace only the cancellation `ActionForm` in `app/admin/pedidos/[id]/page.tsx`. Safe props only: action URL, button label, title, description, confirm label. Opening must not submit; final form remains POST; no server/admin/payment secrets in the client component. Keep ordinary production transitions direct POST and keep Phase 2 DDL unapplied.
+**NEXT EXACT ACTION:** execute Phase 2 Task 10 with TDD. Create only `tests/admin-production-ui.test.ts` first and capture a valid RED while `app/admin/producao/page.tsx` is absent. The page must be protected/server-side and show exactly three operational queues: `Aguardando produção`, `Em produção`, `Pronto para envio`. Call `listAdminOrders` exactly three times with fixed fulfillment filters (`awaiting_production`, `in_production`, `ready_to_ship`), `sort: "oldest"`, page size at most 50. Each card shows only order number, customer, creation date, total, payment badge, attention indicator and detail link. Do not duplicate address/payment IDs or load completed/canceled history. Keep Phase 2 DDL unapplied.
