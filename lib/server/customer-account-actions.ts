@@ -1,6 +1,7 @@
 import { normalizeCheckoutEmail } from "../checkout.ts"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PUBLIC_ORDER_PATH_RE = /^\/pedido\/[A-Fa-f0-9]{64}$/
 
 interface AccountSignupInput {
   name: string
@@ -20,6 +21,11 @@ interface AccountResetInput {
 
 interface AccountPasswordUpdateInput {
   password: string
+}
+
+interface AccountProfileInput {
+  name: string
+  whatsapp: string
 }
 
 export interface AccountProfileMetadata {
@@ -113,6 +119,14 @@ export function parseAccountPasswordUpdateInput(
   return { password: validatePassword(input.password) }
 }
 
+export function parseAccountProfileInput(value: unknown): AccountProfileInput {
+  const input = requireExactKeys(value, ["name", "whatsapp"])
+  return {
+    name: normalizeName(input.name),
+    whatsapp: normalizeWhatsapp(input.whatsapp),
+  }
+}
+
 export function parseAccountProfileMetadata(value: unknown): AccountProfileMetadata {
   if (!isRecord(value)) throw new Error("Invalid account profile metadata")
   return {
@@ -151,4 +165,35 @@ export function sanitizeAccountNext(value: string | null | undefined) {
   } catch {
     return "/minha-conta"
   }
+}
+
+export function sanitizeCustomerLoginNext(value: string | null | undefined) {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
+    return "/minha-conta"
+  }
+  if (value.includes("\\")) return "/minha-conta"
+
+  try {
+    const parsed = new URL(value, "https://account.local")
+    if (parsed.origin !== "https://account.local") return "/minha-conta"
+
+    if (
+      parsed.pathname === "/minha-conta" ||
+      parsed.pathname.startsWith("/minha-conta/")
+    ) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`
+    }
+
+    if (
+      PUBLIC_ORDER_PATH_RE.test(parsed.pathname) &&
+      parsed.search === "" &&
+      parsed.hash === ""
+    ) {
+      return parsed.pathname
+    }
+  } catch {
+    return "/minha-conta"
+  }
+
+  return "/minha-conta"
 }
