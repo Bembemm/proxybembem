@@ -10,7 +10,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Branch: `feat/admin-dashboard-expansion`
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-7 TDD COMPLETE; TASK 8 RED NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-8 TDD COMPLETE; TASK 9 RED NEXT**
 - Phase 3 migration application: **NOT APPROVED / NOT APPLIED**
 - Merge/new Production application deployment: **NOT APPROVED**
 
@@ -29,7 +29,7 @@ Do not reapply Phase 1/2 migrations. Do not merge, promote, or delete the featur
 5. Authenticated checkout uses canonical account email; a mismatching form email is rejected before reservation.
 6. Supabase Auth email is the unique account identity. `customer_profiles` stores only minimal name/WhatsApp/timestamps, never card data or passwords.
 7. Customer authorization is independent from `ADMIN_USER_ID`, AAL2, and `admin_sessions`.
-8. Customer order reads must use narrow RPCs deriving ownership from `auth.uid()`; TypeScript never sends a customer UUID to read RPCs.
+8. Customer order reads use narrow RPCs deriving ownership from `auth.uid()`; TypeScript never sends a customer UUID to read RPCs.
 9. Guest-order claim requires verified account email plus possession of the existing 64-character public token. No email-only/name-only/WhatsApp-only/order-number-only/bulk claim.
 10. Historical orders with `customer_email IS NULL` remain public-token-only and are not claimable in Phase 3.
 11. `/pedido/[token]` remains valid after account linking.
@@ -85,30 +85,55 @@ Canonical RED:
 - no unrelated existing test failed;
 - typecheck/build skipped because expected RED stopped CI.
 
-GREEN implementation includes:
-
-- `lib/server/customer-account-actions.ts`: exact payload-key validation, bounded normalized signup/login/reset/password inputs, exact same-origin Origin check, safe `/minha-conta` `next` allowlist, validated profile metadata;
-- `lib/server/rate-limit.ts`: `account-signup` 5/900, `account-login` 10/600, `account-password-reset` 5/900, `account-profile` 20/600, `account-claim` 10/600;
-- `proxy.ts`: retains all admin matchers and adds `/entrar`, `/criar-conta`, `/esqueci-a-senha`, `/auth/callback`, `/minha-conta/:path*`, `/api/account/:path*`;
-- `POST /api/account/signup`: strict body, same-origin, rate limit, Supabase `signUp`, verified-email redirect, only name/WhatsApp metadata, generic verification response;
-- `POST /api/account/login`: `signInWithPassword`, `getUser`, verified email required, generic credential failures;
-- `POST /api/account/logout`: same-origin local sign-out;
-- `POST /api/account/password-reset`: strict body/rate limit, `resetPasswordForEmail`, recovery callback, anti-enumeration success text;
-- `POST /api/account/password`: authenticated verified session + bounded new password + `updateUser`;
-- `GET /auth/callback`: PKCE `exchangeCodeForSession`, verified user, safe local next, validated metadata, `ensureOwnCustomerProfile`, setup redirect when profile metadata is absent/invalid.
+GREEN implementation includes strict account payload parsing, same-origin checks, bounded account rate-limit scopes, retained admin proxy matchers plus customer auth/account matchers, signup/login/logout/password reset/password update routes, and a PKCE callback that validates verified user metadata before ensuring the own RLS profile.
 
 Final Task 7 candidate:
 
 - commit `85bb1d880684e14ffbdbdb18fd66b875d6e8c5a2`;
 - CI run `33676377828`;
 - job `100401981356`;
-- `pnpm test`: **327 total / 327 PASS / 0 FAIL**;
-- all 9 Task 7 tests PASS and existing admin/customer regressions PASS;
+- `pnpm test`: 327 total / 327 PASS / 0 FAIL;
+- `pnpm typecheck`: PASS;
+- `pnpm build`: PASS on Next.js 16.3.3, generated 23/23 static pages;
+- workflow conclusion: SUCCESS.
+
+### Task 8 — customer-owned order repository
+
+Canonical RED:
+
+- test `tests/customer-orders.test.ts`;
+- commit `aeb33ad60b489f5db615726d4f2d0e48ba79619b`;
+- CI run `33676897007`;
+- job `100403780051`;
+- 328 total / 327 PASS / exactly 1 FAIL;
+- the only failure is `ERR_MODULE_NOT_FOUND` for missing `lib/server/customer-orders.ts`;
+- all pre-existing tests including Task 7 pass;
+- typecheck/build skipped because expected RED stopped CI.
+
+GREEN implementation `lib/server/customer-orders.ts`:
+
+- authenticated request-scoped `createSupabaseServerClient()` only;
+- `customer_list_orders` receives only bounded `p_limit`/`p_offset`;
+- `customer_get_order` receives only canonical `p_order_id`;
+- no customer UUID is accepted or sent by TypeScript; database ownership remains `auth.uid()`-derived;
+- exact-key parsing rejects overbroad RPC responses and internal fields;
+- pagination is bounded to RPC limits;
+- fulfillment vocabulary is allowlisted and future payment-status strings are accepted only through a bounded safe display pattern;
+- detail DTO strips item shipping internals and exposes only immutable item display data, safe order totals/status, address snapshot, shipping summary, contact snapshot, and curated timeline kinds;
+- missing/not-owned detail maps to `null`.
+
+Final Task 8 candidate:
+
+- commit `126158df19cc51f97154006f830ad31222ce8e89`;
+- CI run `33677214460`;
+- job `100404817672`;
+- `pnpm test`: **334 total / 334 PASS / 0 FAIL**;
+- all seven `tests/customer-orders.test.ts` cases PASS;
 - `pnpm typecheck`: PASS (`tsc --noEmit`);
 - `pnpm build`: PASS on Next.js 16.3.3, compiled successfully and generated **23/23** static pages;
 - workflow conclusion: SUCCESS.
 
-Task 7 is the current verified runtime checkpoint. No Phase 3 DDL was applied and no Preview/Production deployment was promoted.
+Task 8 is the current verified runtime checkpoint. No Phase 3 DDL was applied and no Preview/Production deployment was promoted.
 
 ## Current safety gates
 
@@ -119,10 +144,11 @@ Task 7 is the current verified runtime checkpoint. No Phase 3 DDL was applied an
 - Do not delete the feature branch unless owner asks.
 - Do not start Phase 4 runtime work before Phase 3 completion.
 - Customer read authorization must stay `auth.uid()`-derived; never accept/pass a customer UUID for own-order list/detail reads.
+- Guest-order claim must require both the verified current customer identity and the existing 64-character public token; route JSON may accept only `{publicToken}`.
 - Customer DTOs must remain curated and exclude all forbidden internal fields listed above.
 
 ## Resume point
 
-**Current Phase 3 status:** Tasks 1-7 complete with TDD evidence. Final verified Task 7 runtime candidate is `85bb1d880684e14ffbdbdb18fd66b875d6e8c5a2`, CI `33676377828`, job `100401981356`.
+**Current Phase 3 status:** Tasks 1-8 complete with TDD evidence. Final verified Task 8 runtime candidate is `126158df19cc51f97154006f830ad31222ce8e89`, CI `33677214460`, job `100404817672`.
 
-**NEXT EXACT ACTION:** Phase 3 Task 8 RED. Create only `tests/customer-orders.test.ts` first. Cover page/pageSize bounds, canonical order UUID validation, strict parsing of the curated `customer_list_orders` / `customer_get_order` RPC shapes, safe handling of unknown payment-status display values, exclusion of forbidden internal keys, `null` for missing/not-owned detail, authenticated SSR client usage, and proof that no customer UUID is accepted or sent to either read RPC. Run the RED and capture the expected missing `lib/server/customer-orders.ts` failure before implementing that module. Then implement only the strict authenticated RPC wrappers and run GREEN.
+**NEXT EXACT ACTION:** Phase 3 Task 9 RED. Create only `tests/customer-order-claim.test.ts` first. Prove 64-character token validation, verified-customer requirement, service-role claim payload sourced only from trusted `CustomerIdentity.userId/email`, strict claim RPC response parsing, generic `not_claimable` mismatch behavior, idempotent `already_claimed`, no email-only claim API, no token/email leakage into logs/events, POST same-origin route with `account-claim` rate limit and body exactly `{publicToken}`, and safe public tracking CTA conditions. Capture RED before creating `lib/server/customer-order-claim.ts`, `app/api/account/orders/claim/route.ts`, or `components/account/order-claim-form.tsx`.
