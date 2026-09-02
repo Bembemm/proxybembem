@@ -1,6 +1,6 @@
 # ProxyBembem Admin Dashboard Expansion — Master Plan
 
-> **Operational source of truth.** Read the approved design, this file, `docs/superpowers/CURRENT_STATUS.md`, then the active phase plan. Never equate IMPLEMENTED, TESTED, PREVIEW APPROVED, DB APPLIED, and PRODUCTION APPROVED.
+> **Operational source of truth.** Read the approved design, this file, `docs/superpowers/CURRENT_STATUS.md`, then the active phase plan. Never equate IMPLEMENTED, TESTED, PREVIEW APPROVED, DB APPLIED, MERGED, and PRODUCTION APPROVED.
 
 **Goal:** expand the secure `/admin` into the operational store dashboard and add a customer account area without weakening checkout/payment/freight/admin-auth.
 
@@ -36,7 +36,7 @@ No merge, new Production application deployment, catalog authority switch, real 
 - [x] Secondary-provider failures cannot corrupt critical payment/order state.
 - [x] High-risk admin actions require explicit confirmation + server preconditions + audit.
 - [x] Hosting migration/config redesign is outside this project phase.
-- [x] Paid Supabase development branch is not a mandatory workflow; owner chose the existing project workflow.
+- [x] Paid Supabase development branch is not a mandatory workflow; owner chose the existing-project workflow.
 
 ---
 
@@ -48,7 +48,7 @@ No merge, new Production application deployment, catalog authority switch, real 
 - [x] Write/approve architectural design.
 - [x] Create Master Plan/checkpoint system.
 - [x] Write/review Phase 1 plan.
-- [x] Phase 1 planning caught PostgREST dedupe, partial-index handling and recursive secret-validation concerns before runtime implementation.
+- [x] Catch PostgREST dedupe, partial-index handling and recursive secret-validation concerns before runtime implementation.
 
 ---
 
@@ -56,22 +56,23 @@ No merge, new Production application deployment, catalog authority switch, real 
 
 **Plan:** `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`
 
-**State:** CODE VERIFIED + MIGRATION APPLIED/VALIDATED ON CURRENT SUPABASE. FEATURE BRANCH NOT MERGED.
+**State:** COMPLETE — CODE VERIFIED + MIGRATION APPLIED/VALIDATED ON CURRENT SUPABASE. FEATURE BRANCH NOT MERGED.
 
 - [x] Add compatibility-safe `orders.fulfillment_status`.
 - [x] Backfill approved -> `awaiting_production`; others -> `awaiting_payment`; no fabricated events.
 - [x] Add `order_events`, `order_attention_flags`, append-only `admin_audit_log`.
 - [x] Browser roles blocked; service-role privileges narrowed.
-- [x] Preserve Mercado Pago RPC input signature.
+- [x] Preserve Mercado Pago RPC input signature and financial integrity boundary.
 - [x] Trusted approval owns only automatic `awaiting_payment -> awaiting_production`.
 - [x] Refund/chargeback preserves physical fulfillment.
 - [x] Amount/currency mismatch -> manual review.
-- [x] Verify audit/event history cannot be UPDATE/DELETE by service role.
-- [x] Apply migration after owner approval and validate current data/transaction paths.
+- [x] Audit/event history cannot be UPDATE/DELETE by service role.
+- [x] Apply migration after owner approval and validate real current data/transaction paths.
 - [x] Production `/admin` remained healthy after additive DB change.
-- [x] Preview env issue was diagnosed and owner aligned Preview configuration; fresh protected Preview returned 200.
 
-Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `33590493640` PASS.
+Primary Phase 1 runtime candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `33590493640` PASS.
+
+Owner workflow decision: evolve the existing Supabase project in place as schema is needed. No paid Supabase development branch is required. Meaningful DDL still stops for explicit owner approval.
 
 ---
 
@@ -79,7 +80,7 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 
 **Plan:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
 
-**State:** TASKS 1–12 VERIFIED; TASK 13 AUTOMATED PREVIEW SMOKE PASS, AUTHENTICATED OWNER SMOKE PENDING.
+**State:** COMPLETE — CODE/TDD/SECURITY/SCOPE/DB/PREVIEW VERIFIED. FEATURE BRANCH NOT MERGED. NEW PRODUCTION APP DEPLOYMENT NOT APPROVED.
 
 ## Planning/contract decisions
 
@@ -90,40 +91,56 @@ Primary Phase 1 code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`, CI `
 - [x] Actual Mercado Pago reversal resolves only cancellation-specific attention.
 - [x] Next.js 16 async params/searchParams handled explicitly.
 - [x] Append-only audit/event privileges preserved.
+- [x] Browser never supplies admin UUID, payment mutation or arbitrary fulfillment target.
 
 ## Implementation tasks
 
-- [x] Task 1 — migration contract RED captured before SQL (`75f3a075...`, CI `33615089014`).
-- [x] Task 2 — additive Phase 2 migration implemented and reviewed.
+- [x] Task 1 — migration contract RED (`75f3a075...`, CI `33615089014`).
+- [x] Task 2 — additive Phase 2 migration implemented/reviewed.
 - [x] Task 3 — backend-only admin read repository (`f8ded33f...`, CI `33634645304` PASS).
 - [x] Task 4 — strict atomic fulfillment operation repository (`f2714347...`, CI `33634997803` PASS).
-- [x] Task 5 — five narrow same-origin/AAL2 POST routes with fixed server targets (`15fa3e17...`, CI `33635899966` PASS).
+- [x] Task 5 — five narrow same-origin/AAL2 POST routes (`15fa3e17...`, CI `33635899966` PASS).
 - [x] Task 6 — protected shared admin shell/nav/status badges (`58b2fd70...`, CI `33636760106` PASS).
-- [x] Task 7 — `/admin/pedidos` server list/search/filter/pagination (`f1aa1fc4...`, CI `33645894040` PASS).
-- [x] Task 8 — `/admin/pedidos/[id]` operational detail/timeline/audit/actions (`1dd2446b...`, CI `33646901907` PASS).
+- [x] Task 7 — `/admin/pedidos` list/search/filter/pagination (`f1aa1fc4...`, CI `33645894040` PASS).
+- [x] Task 8 — `/admin/pedidos/[id]` detail/timeline/audit/actions (`1dd2446b...`, CI `33646901907` PASS).
 - [x] Task 9 — destructive cancellation confirmation (`d9c1a49b...`, CI `33647900422` PASS).
-- [x] Task 10 — `/admin/producao` three oldest-first active queues (`40019e59...`, CI `33650042499` PASS).
-- [x] Task 11 — full suite/typecheck/build + exact scope/security/concurrency review.
+- [x] Task 10 — `/admin/producao` three oldest-first queues (`40019e59...`, CI `33650042499` PASS).
+- [x] Task 11 — exact scope/security/concurrency review + full CI.
 - [x] Task 12 — exact reviewed migration applied to current Supabase after owner approval; structure + rollback matrix + advisors validated.
-- [~] Task 13 — automated Preview checks pass; authenticated owner smoke remains.
-- [ ] Task 14 — Phase 2 completion gate and separate merge/Production decision.
+- [x] Task 13 — automated + authenticated owner Preview acceptance.
+- [x] Task 14 — Phase 2 completion gate.
 
-## Task 11 findings and evidence
+## Final runtime/security evidence
 
-- [x] Phase 2 scope baseline fixed at `5662704188d7d8555dba148fbb6d8593a74e2c84`.
-- [x] Found temporary branch-specific Vercel `ignoreCommand` outside allowed Phase 2 scope; restored original cron-only `vercel.json` in `4b1d0e9627f1f67897a96290cac0c576682d5064`.
-- [x] Re-compare shows no hosting configuration in the final Phase 2 diff.
-- [x] Security review: no browser payment mutation/admin UUID/arbitrary target; routes same-origin + active AAL2; params awaited/UUID-validated; DTOs exclude checkout/public internals.
-- [x] Concurrency review: fulfillment mutation uses row lock and one transaction for status + event + audit + paid-cancel attention; provider financial state is untouched.
-- [x] Found generic paid-cancel `ON CONFLICT DO NOTHING`; added RED requiring precise partial-index inference (`a040701a...`, CI `33650490056`: exactly one expected failure).
-- [x] Hardened SQL to `ON CONFLICT (order_id, code) WHERE resolved_at IS NULL DO NOTHING`.
-- [x] Final runtime candidate `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746`: `pnpm test`, `pnpm typecheck`, `pnpm build` PASS.
+Final reviewed Phase 2 runtime candidate:
 
-## Task 12 — current Supabase application/validation
+`abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`
 
-Owner explicitly approved the exact Phase 2 DDL application.
+CI `33650730746`, job `100316764581`, freshly rechecked at completion gate:
 
-Applied migration:
+- [x] `pnpm test` PASS.
+- [x] `pnpm typecheck` PASS.
+- [x] `pnpm build` PASS.
+- [x] workflow conclusion SUCCESS.
+
+Task 11 review verified:
+
+- [x] no browser payment mutation;
+- [x] no browser-supplied admin UUID/arbitrary target;
+- [x] mutations enforce same-origin before sensitive work and active AAL2 admin authorization;
+- [x] dynamic route params are awaited/UUID-validated;
+- [x] list/detail DTOs exclude public token, checkout fingerprint/attempt/URL and shipping snapshot;
+- [x] fulfillment mutation uses `FOR UPDATE` row lock;
+- [x] status + event + audit + paid-cancel attention are one DB transaction;
+- [x] cancellation never alters Mercado Pago state;
+- [x] actual refund/chargeback resolves only `canceled_paid_order`;
+- [x] audit/event append-only privileges remain;
+- [x] temporary Vercel `ignoreCommand` was removed from Phase 2 scope;
+- [x] paid-cancel duplicate suppression targets `(order_id, code) WHERE resolved_at IS NULL`; generic conflict swallowing is forbidden.
+
+## Task 12 — Supabase application/validation
+
+Applied migration after explicit owner approval:
 
 `20260902160658_admin_order_fulfillment_operations`
 
@@ -132,54 +149,58 @@ Current project:
 `ProxyBembem` (`kicgoocozxzkuoqajqif`)
 
 - [x] Migration application succeeded.
-- [x] `admin_list_orders`, `admin_transition_order_fulfillment`, `resolve_canceled_paid_order_attention` verified as `SECURITY DEFINER` with empty/fixed `search_path`.
-- [x] Admin list/transition RPC execute remains `service_role` only; `anon`/`authenticated` denied.
+- [x] `admin_list_orders`, `admin_transition_order_fulfillment`, `resolve_canceled_paid_order_attention` are `SECURITY DEFINER` with fixed/empty search path.
+- [x] Admin list/transition RPCs remain service-role-only; `anon`/`authenticated` denied.
 - [x] Reversal trigger exists/enabled.
-- [x] `order_events` and `admin_audit_log` remain append-only for service role (SELECT/INSERT yes; UPDATE/DELETE no).
-- [x] Controlled validation matrix passed 16/16 inside rollback-only synthetic fixtures.
-- [x] Valid/invalid transition matrix and approved-payment precondition verified.
-- [x] Retry returned `unchanged` with no duplicate event/audit.
-- [x] Paid cancellation kept payment approved and opened `canceled_paid_order`.
-- [x] Real refund/chargeback via Mercado Pago RPC resolved only cancellation-specific attention and retained provider-specific reversal attention.
-- [x] `pending` / `checkout_error` validation changes did not resolve paid-cancel attention.
-- [x] Nonexistent order returned `not_found`.
+- [x] `order_events` and `admin_audit_log` remain append-only for service role.
+- [x] Controlled rollback matrix passed **16/16**.
+- [x] Valid/invalid transitions and approved-payment precondition verified.
+- [x] Same-target retry is idempotent with no duplicate event/audit.
+- [x] Paid cancellation keeps payment approved and opens `canceled_paid_order`.
+- [x] Real refund/chargeback resolves only cancellation-specific attention and retains provider reversal attention.
+- [x] Non-reversal statuses do not resolve paid-cancel attention.
+- [x] Nonexistent order returns `not_found`.
 - [x] Post-validation fixtures: 0 orders, 0 events, 0 attention, 0 audit.
-- [x] Security advisor reviewed: `rls_enabled_no_policy` INFO is intentional for current backend-only/service-role tables; leaked-password-protection WARN is separate Auth hardening, not caused by Phase 2 DDL.
-- [x] Performance advisor reviewed: fresh/unused `admin_audit_admin_created_idx` INFO retained; no premature index deletion.
+- [x] Advisor warnings reviewed; no Phase 2 blocker introduced.
 
-## Task 13 — Preview acceptance evidence
+## Task 13 — Preview acceptance PASS
 
-Automated candidate:
+Automated acceptance proved:
 
-- deployment `dpl_3nTsAkpepNtZBe8CuBGpjR8gcqY7`;
-- READY Preview from `feat/admin-dashboard-expansion`;
-- deployed SHA `241863428129b7c0b1922be918cb35c4de7939a6`, descendant of runtime candidate `abe96b66...` with docs-only checkpoint commits after runtime verification;
-- branch alias `proxybembem-git-feat-adm-f67043-brenobembemm1802-7300s-projects.vercel.app`.
+- [x] storefront `/` and `/produtos` render;
+- [x] protected admin surfaces do not expose data unauthenticated;
+- [x] invalid public order token returns safe 404;
+- [x] Preview CSP includes current Supabase origin and sandbox Melhor Envio form action;
+- [x] no payment/refund/fulfillment mutation/OAuth reauthorization/label purchase occurred during smoke.
 
-Automated acceptance:
+Owner then authenticated normally with existing password + TOTP and completed read-only smoke **5/5**:
 
-- [x] Build errors-only log contains no build errors.
-- [x] `/` returns 200 and storefront renders.
-- [x] `/produtos` returns 200 and both current products render.
-- [x] `/admin` returns the admin login surface with private/no-store and noindex/nofollow.
-- [x] `/admin/pedidos` without session is intercepted to login and exposes no order data.
-- [x] `/admin/producao` without session is intercepted to login.
-- [x] `/admin/integrations/melhor-envio` without session is intercepted to login.
-- [x] `/pedido/<synthetic invalid token>` returns safe 404 with no customer/order disclosure.
-- [x] CSP contains configured Supabase project origin and sandbox Melhor Envio form action.
-- [x] Deployment-scoped Preview runtime logs after smoke contain zero `error`/`fatal` entries in the checked window.
-- [x] No payment, refund, fulfillment mutation, OAuth reauthorization, or label purchase was performed.
+- [x] `/admin` shell loaded;
+- [x] `/admin/pedidos` loaded real orders;
+- [x] one existing `/admin/pedidos/[id]` detail loaded with operational sections, timeline and audit;
+- [x] `/admin/producao` loaded queues;
+- [x] `/admin/integrations/melhor-envio` loaded.
 
-Environment/owner boundary:
+Deployment-scoped logs after owner smoke showed all protected request paths, including the real order detail, and **zero `error`/`fatal` entries** in the checked window.
 
-- [x] Fresh login page + CSP prove browser-side Supabase Preview configuration is active.
-- [~] Server-only env names cannot be independently enumerated through the available Vercel connector because no env-list action is exposed; never expose secret values to compensate.
-- [ ] Owner must authenticate normally with existing password + TOTP and confirm protected server-side surfaces load. This is the remaining authoritative proof for server-only admin/storage env configuration.
-- [ ] After owner smoke, re-check Preview logs and close Task 13 only if clean.
+## Task 14 — completion gate PASS
 
-Owner smoke must remain read-only: `/admin`, `/admin/pedidos`, one existing order detail without submitting any action, `/admin/producao`, `/admin/integrations/melhor-envio`. Do not share password/TOTP in chat. Do not click cancellation/fulfillment mutation, reauthorize OAuth, purchase labels, or initiate real payment/refund for this check.
+Phase 2 completion criteria:
 
-## Phase 2 transition truth
+- [x] every new migration/server/UI unit has RED -> GREEN evidence;
+- [x] focused suites passed;
+- [x] exact candidate test/typecheck/build pass in CI;
+- [x] exact diff/security/concurrency review passes;
+- [x] migration separately owner-approved/applied/transaction-tested;
+- [x] no fixture rows remain;
+- [x] protected Preview environment works under actual AAL2 owner session;
+- [x] list/detail/production smoke matrix passes;
+- [x] Mercado Pago remains provider-authoritative;
+- [x] storefront/public tracking regression smoke passes;
+- [x] final evidence recorded in Master Plan + CURRENT_STATUS;
+- [x] merge/new Production application deployment remains a separate explicit owner decision.
+
+### Phase 2 transition truth
 
 ```text
 awaiting_payment -> canceled
@@ -193,31 +214,41 @@ canceled -> none
 
 Starting production requires `payment_status='approved'`.
 
-## Phase 2 remaining acceptance sequence
-
-- [x] Inspect READY Preview containing verified runtime candidate/descendant.
-- [x] Automated public/protection smoke.
-- [x] Automated Preview error/fatal log review.
-- [~] Preview environment contract: browser config proven; server-only proof pending authenticated AAL2 owner session.
-- [ ] Owner authenticates and checks protected shell, orders list, one safe detail, production queue and Melhor Envio integration read-only.
-- [ ] Re-check logs after owner smoke.
-- [ ] Mark Task 13 complete only after authenticated check.
-- [ ] Task 14 final Phase 2 gate.
-- [ ] Separate explicit owner approval before merge/new Production application deployment.
-
 ---
 
 # PHASE 3 — Customer Account + Owned Orders
 
-- [ ] Resolve checkout-email requirement explicitly before customer/notification implementation.
-- [ ] Write/review detailed plan after Phase 2 acceptance.
-- [ ] `customer_profiles` + nullable `orders.customer_id`.
-- [ ] Email + permanent password + verification + reset.
-- [ ] Unique normalized email; Auth UUID owns relationships.
-- [ ] Guest checkout/public-token tracking remain.
-- [ ] Secure guest/old-order claim; never name-only.
-- [ ] `/minha-conta`, owned orders, profile/security, tracking and WhatsApp order contact.
-- [ ] Cross-customer/takeover tests.
+**Plan:** `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
+
+**State:** PLANNING GATE — checkout email decision required before runtime implementation.
+
+Approved architecture already decided:
+
+- customer area is separate from `/admin`;
+- routes include `/minha-conta`, `/minha-conta/pedidos`, `/minha-conta/pedidos/[id]`, profile/security, `/entrar`, `/criar-conta`, `/esqueci-a-senha`;
+- permanent password + verified email + reset by email;
+- email unique case-insensitively; names may duplicate;
+- immutable `customer_id` / Supabase Auth UUID owns relationships;
+- `customer_profiles` stores minimal profile data (name/email/WhatsApp), not card data;
+- address/CPF remain per-order when needed, not permanent profile defaults unless separately designed later;
+- guest checkout remains supported;
+- logged-in checkout attaches `customer_id`;
+- public token guest tracking remains supported;
+- guest order claim requires reliable proof, never name-only;
+- customer can read only orders attached to their own customer UUID;
+- WhatsApp is direct contact only, no internal chat.
+
+**Unresolved decision:** whether email becomes required at checkout for new guest orders. This must be explicit before Phase 3/customer-notification runtime because verified email is needed for account identity, secure guest-order claiming and transactional order notices. Do not infer silently.
+
+Next Phase 3 steps after owner decision:
+
+- [ ] Review/update Phase 3 plan with checkout-email decision.
+- [ ] Add `customer_profiles` + nullable `orders.customer_id` additively.
+- [ ] Auth verification/reset and ownership isolation tests.
+- [ ] Customer order list/detail/status/tracking.
+- [ ] Secure old/guest order claim if supported by chosen proof model.
+- [ ] Cross-customer/takeover negative tests.
+- [ ] Preview acceptance before any merge/Production rollout.
 
 ---
 
@@ -226,44 +257,53 @@ Starting production requires `payment_status='approved'`.
 - [ ] Validated `products` table with integer-cent prices and shipping metadata.
 - [ ] Seed exact current products and prove static/DB parity.
 - [ ] `/admin/produtos` + explicit validated save + audit.
-- [ ] Checkout remains server-authoritative; historical snapshots remain unchanged.
+- [ ] Stable product ID is not editable.
+- [ ] Checkout remains server-authoritative; historical snapshots remain immutable.
+- [ ] Soft deactivate/archive; no hard delete.
 - [ ] Staged authority switch with rollback.
 
 ---
 
 # PHASE 5 — Melhor Envio Shipments + Labels + Tracking
 
-- [ ] Re-check current official API/scopes before implementation.
-- [ ] Least-privilege OAuth expansion + explicit reauthorization.
-- [ ] Dedicated shipments model.
-- [ ] Prepare -> review cost -> explicit purchase -> generate/print -> track.
+- [ ] Re-check current official API/scopes immediately before implementation.
+- [ ] Expand OAuth with least privilege and explicit reauthorization only when required.
+- [ ] Dedicated shipment model with idempotency/snapshots.
+- [ ] Flow: ready -> review -> prepare -> show final cost -> explicit buy -> generate/print/download -> tracking.
+- [ ] Never auto-buy label after payment.
+- [ ] Cancel/spend actions require explicit confirmation.
+- [ ] Address correction is audited; after label purchase require cancel/recreate rather than silent mutation.
 - [ ] Sandbox acceptance before real balance spending capability.
 
 ---
 
 # PHASE 6 — Transactional Notifications
 
-- [ ] Production-capable email mechanism with runtime-only credentials.
-- [ ] Idempotent outbox/retries.
+- [ ] Production-capable email provider/mechanism with runtime-only credentials.
+- [ ] Outbox/jobs with dedupe and retry.
 - [ ] Email failure never rolls back payment/order state.
-- [ ] Account/order/payment/production/shipping/refund notices.
+- [ ] Verification/reset + order created/payment approved/production/ready/shipped/cancel/refund notices.
+- [ ] No marketing and no automated WhatsApp in first phase.
+- [ ] Admin can see delivery status/failures.
 
 ---
 
 # PHASE 7 — Store Settings
 
-- [ ] Typed safe allowlist.
-- [ ] No infrastructure secrets.
+- [ ] Typed safe allowlist only.
+- [ ] Operational/commercial settings, never infrastructure secrets.
 - [ ] `/admin/configuracoes` explicit save/validation/confirmation/audit.
+- [ ] Secrets remain env-only.
 
 ---
 
 # PHASE 8 — Dashboard Metrics + Attention Center
 
-- [ ] Timezone-aware reliable metrics.
-- [ ] Fulfillment/shipping/attention/refund/manual-review counts.
-- [ ] Product quantities from immutable snapshots.
-- [ ] Bounded server aggregates.
+- [ ] Reliable DB-derived metrics with timezone-aware boundaries.
+- [ ] Orders today/week/month, approved value, production queues, shipped, attention, refunds/chargebacks and products sold.
+- [ ] Product quantities derive from immutable order snapshots.
+- [ ] Bounded server aggregates; no fake metrics.
+- [ ] Trend graphs only after trustworthy aggregates exist.
 
 ---
 
@@ -290,33 +330,38 @@ Starting production requires `payment_status='approved'`.
 4. Trusted payment approval is the only automatic `awaiting_payment -> awaiting_production` transition.
 5. Refund/chargeback never falsifies physical state.
 6. No generic arbitrary admin order/payment PATCH.
-7. Customer account later remains optional; guest checkout remains.
+7. Customer account remains separate from admin; guest checkout remains.
 8. Catalog moves to Supabase in stages; browser price never trusted.
-9. Label spending always explicit.
-10. Notifications use outbox isolation.
-11. No fabricated historical facts.
-12. Existing Supabase project is intentionally evolved in place; paid dev branch is not a prerequisite.
-13. Meaningful current-project DDL stops for explicit owner approval.
-14. Preview environment for the current branch was previously fixed; temporary Vercel ignoreCommand was removed from the candidate.
-15. Phase 2 list RPC returns `{orders,total}` and dates use `America/Sao_Paulo`.
-16. Paid cancellation does not refund; actual reversal resolves only `canceled_paid_order`.
-17. Paid-cancel duplicate suppression targets only the active partial index; generic conflict swallowing is forbidden.
-18. Phase 2 migration is applied as `20260902160658_admin_order_fulfillment_operations`; do not rediscover or reapply it.
-19. Task 12 rollback validation passed 16/16 and left zero fixtures.
-20. Task 13 automated Preview smoke is clean; only authenticated owner AAL2 smoke remains before Preview acceptance can be called complete.
+9. Historical `orders.items` snapshots remain immutable.
+10. Label spending always explicit; never auto-buy after payment.
+11. Notifications use outbox isolation; provider failure cannot corrupt order/payment truth.
+12. No fabricated historical facts.
+13. Existing Supabase project is intentionally evolved in place; paid dev branch is not a prerequisite.
+14. Meaningful current-project DDL stops for explicit owner approval.
+15. Preview environment for the current branch was fixed; temporary Vercel `ignoreCommand` was removed from candidate scope.
+16. Phase 2 list RPC returns `{orders,total}` and dates use `America/Sao_Paulo`.
+17. Paid cancellation does not refund; actual reversal resolves only `canceled_paid_order`.
+18. Paid-cancel duplicate suppression targets only the active partial index; generic conflict swallowing is forbidden.
+19. Phase 2 migration is applied as `20260902160658_admin_order_fulfillment_operations`; do not rediscover or reapply it.
+20. Task 12 rollback validation passed 16/16 and left zero fixtures.
+21. Task 13 authenticated AAL2 Preview smoke passed 5/5 and post-smoke logs had zero error/fatal entries.
+22. Phase 2 is COMPLETE but **not merged and not deployed as new Production application code**.
+23. Before Phase 3 runtime, owner must explicitly decide whether email is required at checkout for new guest orders.
 
 ## Current Session Checkpoint
 
-**Status:** PHASE 1 APPLIED/VERIFIED; PHASE 2 TASKS 1–12 VERIFIED; TASK 13 AUTOMATED PREVIEW PASS / AUTHENTICATED OWNER CHECK PENDING
+**Status:** PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 PLANNING GATE NEXT.
 
 **Current branch:** `feat/admin-dashboard-expansion`
 
 **Final verified Phase 2 runtime candidate:** `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746` — test/typecheck/build PASS.
 
-**Phase 2 Supabase migration:** `20260902160658_admin_order_fulfillment_operations` — APPLIED + STRUCTURAL VALIDATION PASS + 16/16 ROLLBACK MATRIX PASS + ZERO FIXTURES.
+**Phase 2 Supabase migration:** `20260902160658_admin_order_fulfillment_operations` — APPLIED + STRUCTURAL PASS + 16/16 ROLLBACK MATRIX PASS + ZERO FIXTURES.
 
-**Task 13 automated Preview:** `dpl_3nTsAkpepNtZBe8CuBGpjR8gcqY7` / SHA `241863428129b7c0b1922be918cb35c4de7939a6` — READY; storefront/protection/tracking smoke PASS; zero error/fatal logs in checked window.
+**Task 13:** authenticated owner Preview smoke 5/5 PASS; logs show all protected paths and zero error/fatal in checked window.
+
+**Task 14:** PASS. Phase 2 is complete.
 
 **Merge/new Production application deployment:** NOT APPROVED.
 
-**NEXT EXACT ACTION:** owner opens the feature-branch Preview alias, logs in normally with existing password + TOTP, and performs only read-only checks of `/admin`, `/admin/pedidos`, one existing order detail, `/admin/producao`, and `/admin/integrations/melhor-envio`. Owner reports whether all load and whether any visible error occurs. Then inspect Preview error/fatal logs again, record Task 13 result, and only then proceed to Task 14. Do not share credentials, merge, or promote Production.
+**NEXT EXACT ACTION:** ask the owner whether email should be required at checkout for new guest orders, record that Phase 3 architecture decision, then review/update `docs/superpowers/plans/2026-09-02-customer-account-orders.md` before any customer-account runtime implementation. Do not merge or promote Production implicitly.
