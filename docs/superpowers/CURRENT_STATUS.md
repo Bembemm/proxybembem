@@ -53,18 +53,15 @@ Plan self-review found no `TODO`, `TBD`, `implement later`, or `Similar to` plac
 
 ## Phase 3 Task 1 — migration contract RED: VALID
 
-Test-only file:
+Test file: `tests/customer-account-migration.test.ts`.
 
-`tests/customer-account-migration.test.ts`
+The first RED `631565b4...` correctly proved the migration absent, then review caught one over-broad test guard that would also have forbidden the legitimate claim RPC from setting `customer_id`. The test was narrowed **before any SQL existed** so it forbids historical backfill while explicitly requiring the safe claim update.
 
-RED commit:
+Canonical RED:
 
-`631565b4e2319b697db2ce42487a462ef4d333f2`
-
-GitHub Actions:
-
-- run `33666326422`;
-- job `100368874030`;
+- commit `619db2cb966b188cf759ed51ccd374dc60a53d0b`;
+- CI run `33666738154`;
+- job `100370241591`;
 - `pnpm test`: expected FAILURE;
 - total tests: 295;
 - PASS: 291;
@@ -72,22 +69,11 @@ GitHub Actions:
 - all four failures are the four new migration-contract tests;
 - every failure is exactly `ENOENT` for missing `supabase/migrations/202609020003_customer_accounts_orders.sql`;
 - no unrelated test failed;
-- `pnpm typecheck` and `pnpm build` were skipped because the expected RED stopped the CI job.
+- `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the CI job.
 
-This is valid TDD RED evidence. No Phase 3 SQL existed when the failure was captured.
+This is the final valid TDD RED. No Phase 3 SQL existed when it was captured.
 
-The RED contract requires:
-
-- additive nullable `orders.customer_email` and `orders.customer_id -> auth.users(id)`;
-- no historical identity backfill;
-- minimal RLS `customer_profiles`;
-- customer list/detail RPCs deriving ownership from `auth.uid()` and returning curated safe data;
-- no broad authenticated SELECT/write on `orders`;
-- service-role-only locked `claim_guest_order_for_customer` requiring token + verified email + trusted customer UUID;
-- idempotent `customer_order_claimed` event with `source='customer'` and no token/email metadata;
-- no customer claim/payment mutation.
-
-Existing Phase 1 `order_events.source` already allows `customer`; no source-constraint migration is required.
+The RED contract requires additive nullable ownership/email fields, no historical identity backfill, minimal RLS `customer_profiles`, customer list/detail RPCs deriving ownership from `auth.uid()`, no broad authenticated order access, and a service-role-only locked verified-email + token claim that may set only the correctly matched order's `customer_id`. Existing Phase 1 `order_events.source` already accepts `customer`.
 
 ## Current safety gates
 
@@ -100,6 +86,6 @@ Existing Phase 1 `order_events.source` already allows `customer`; no source-cons
 
 ## Resume point
 
-**Current Phase 3 status:** Task 1 RED VALID; Task 2 not yet implemented.
+**Current Phase 3 status:** Task 1 RED VALID at `619db2cb...`; Task 2 not yet implemented.
 
 **NEXT EXACT ACTION:** create only `supabase/migrations/202609020003_customer_accounts_orders.sql` according to the reviewed Phase 3 plan, run the focused migration contract to obtain GREEN, then run Phase 1/2 migration/payment regressions. Keep the migration in Git only; do not apply it to Supabase. If the focused test fails for a contract mismatch, debug the SQL/test before advancing to checkout-email Task 3.
