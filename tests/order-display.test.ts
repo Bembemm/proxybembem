@@ -48,6 +48,7 @@ function baseOrder(overrides: Partial<OrderRecord> = {}): OrderRecord {
     payment_id: "175133542535",
     payment_status: "approved",
     payment_status_detail: "accredited",
+    fulfillment_status: "awaiting_production",
     created_at: "2026-08-29T00:00:00Z",
     updated_at: "2026-08-29T00:00:00Z",
     ...overrides,
