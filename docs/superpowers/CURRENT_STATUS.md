@@ -1,8 +1,45 @@
-# ProxyBembem Checkout — Current Status
+# ProxyBembem — Current Status
 
 **Updated:** 2026-09-01
 
 This is the canonical continuation checkpoint. Read this file before older plan checkboxes.
+
+## Active next project — Admin dashboard + customer account expansion
+
+- Active planning branch: `feat/admin-dashboard-expansion`.
+- Branch base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Architectural design committed at `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`.
+- Design commit: `325922ffe3eec7440d86cbf86d062aaef8a6ab03`.
+- State: **DESIGN WRITTEN — AWAITING OWNER WRITTEN-SPEC REVIEW**.
+- No implementation code for this expansion has started.
+- No new database migration for this expansion has been applied.
+- No Preview or Production deployment for this expansion has been approved.
+- After the owner approves the written spec, the next required workflow step is to create the detailed executable implementation/master plan at `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` before implementation begins.
+
+### Approved architectural decisions future sessions must not rediscover
+
+- Use a modular monolith inside the existing Next.js + Supabase application.
+- Keep `/admin`; security must not depend on hiding/randomizing the URL.
+- Preserve existing admin password + mandatory TOTP/AAL2, single-session, inactivity, and fail-closed authorization.
+- Payment status remains Mercado Pago/provider-authoritative and cannot be manually forced by an admin database edit.
+- Fulfillment is independent from financial status: `awaiting_payment -> awaiting_production -> in_production -> ready_to_ship -> shipped -> completed`; `canceled` is exceptional/terminal where valid.
+- Refund/chargeback creates attention without falsifying the physical fulfillment stage.
+- Orders keep immutable purchase snapshots; catalog changes never rewrite historical orders.
+- Add order event history and append-only administrative audit.
+- Customer address may be corrected before label purchase; after label purchase it cannot silently diverge from the purchased label.
+- Customer account uses email + permanent password + email verification + password recovery; email is unique, names are not identifiers, and the internal customer UUID is authoritative.
+- Guest checkout remains supported and the existing public-token order tracking remains available.
+- Guest/old order claiming requires trusted proof and never relies on matching name alone.
+- Customer and admin authorization remain separate security boundaries.
+- Move catalog authority to Supabase in stages; checkout remains server-authoritative and static catalog is removed only after equivalence/rollback validation.
+- Melhor Envio label permissions are expanded with least privilege only when implementing labels; label purchase never happens automatically after payment and always requires explicit admin confirmation.
+- Read-only tracking synchronization may be automatic when safe.
+- Transactional email uses an outbox/job model so email-provider failure cannot break payment/order state.
+- Store settings expose only safe commercial/operational values; secrets remain runtime/environment configuration.
+- Admin UI follows the current admin visual model; customer account follows the storefront visual identity.
+- Migrations are compatibility-first/additive before tightening constraints.
+- Existing historical orders must not receive fabricated production/shipping history.
+- `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, and `PRODUCTION APPROVED` are distinct states.
 
 ## Repository / integration state
 
@@ -62,7 +99,7 @@ Validated end to end in Production before merge:
 - one legitimate controlled low-value real payment;
 - signed Mercado Pago webhook accepted with HTTP `200`;
 - payment fetched from Mercado Pago before the atomic Supabase state transition;
-- accepted order moved `pending` → `approved`, detail `accredited`;
+- accepted order moved `pending` -> `approved`, detail `accredited`;
 - public order page returned HTTP `200`;
 - webhook selector uses `source_news=webhooks`;
 - temporary validation product/route was removed afterward;
@@ -93,13 +130,15 @@ No additional real Mercado Pago payment is required solely because of the storef
 
 ## Next safe actions
 
-1. Monitor Production for ordinary runtime regressions/errors.
-2. Treat any hosting migration (KingHost/Render/Railway/self-hosting) as a separate risk-isolated project; no hosting migration is currently required for the merged checkout/storefront work.
-3. Do not delete the historical feature branch unless the owner explicitly wants repository cleanup.
-4. For future feature work, branch from current `main`, use TDD/CI, validate Preview when appropriate, and obtain explicit approval before risky Production changes.
+1. Owner reviews `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md` on `feat/admin-dashboard-expansion`.
+2. If the owner approves the written spec, invoke the planning workflow and create `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` with detailed dependency-aware phases, checkboxes, TDD evidence fields, Preview gates, rollback steps, and exact continuation checkpoints.
+3. Do not implement the expansion before that planning gate.
+4. Do not merge the new branch or deploy this expansion to Production without explicit owner approval at the appropriate later gate.
+5. Treat any hosting migration as a separate risk-isolated project.
+6. Do not delete the historical `feat/checkout-mercadopago` branch unless the owner explicitly requests repository cleanup.
 
 ## End-of-session rule
 
 Every meaningful session must update this file with passed/failed evidence, blockers, exact next action, relevant deployment/merge evidence, and decisions future sessions must not rediscover.
 
-**Resume point:** PR `#2` is merged into `main`; merge commit `1f0bff2c88901a5e0bd0c910e3f650264bceb79b` passed CI `#743`; the merge-triggered Vercel Production deployment `dpl_8AZsHDWCtGmSv1rvCDeVjwJfy7qt` is `READY`; the dedicated `/produtos` storefront, PB PNG branding, five-business-day copy, checkout/payment/freight stack, and Admin auth are Production-accepted. Future work should start from `main` and keep hosting migration separate.
+**Resume point:** The existing checkout/storefront/admin-auth baseline remains Production-accepted on `main`. New work is isolated on `feat/admin-dashboard-expansion`. The complete architectural design for Admin Dashboard + Customer Account expansion is committed at `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md` in commit `325922ffe3eec7440d86cbf86d062aaef8a6ab03`. No implementation has started. The owner must review/approve the written spec next; only after that approval should `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` be created and implementation planning proceed.
