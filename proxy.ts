@@ -10,5 +10,11 @@ export const config = {
     "/admin/:path*",
     "/api/admin/:path*",
     "/api/internal/melhor-envio/oauth/start",
+    "/entrar",
+    "/criar-conta",
+    "/esqueci-a-senha",
+    "/auth/callback",
+    "/minha-conta/:path*",
+    "/api/account/:path*",
   ],
 }
