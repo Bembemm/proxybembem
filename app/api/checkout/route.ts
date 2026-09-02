@@ -36,6 +36,7 @@ function parseCustomer(value: unknown): CheckoutData | null {
   const candidate = value as Partial<Record<keyof CheckoutData, unknown>>
   const fields: Array<keyof CheckoutData> = [
     "nome",
+    "email",
     "whatsapp",
     "cep",
     "rua",
