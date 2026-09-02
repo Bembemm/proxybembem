@@ -10,7 +10,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Branch: `feat/admin-dashboard-expansion`
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-9 TDD COMPLETE; TASK 10 RED NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-10 TDD COMPLETE; TASK 11 SECURITY MATRIX NEXT**
 - Phase 3 migration application: **NOT APPROVED / NOT APPLIED**
 - Merge/new Production application deployment: **NOT APPROVED**
 
@@ -87,37 +87,48 @@ Final candidate `126158df19cc51f97154006f830ad31222ce8e89`, CI `33677214460`, jo
 
 ### Task 9 — secure guest-order claim
 
+Canonical RED `f9c95f73801155da583365d553431b68df6595c7`, CI `33677670040`, job `100406317560`: 343 total / 334 PASS / exactly 9 expected FAIL, all Task 9 contracts only.
+
+Final candidate `c8e836cf69de086d2000d0fc9904af9b24d2307b`, CI `33682338553`, job `100421604971`: 343/343 tests PASS, typecheck PASS, build PASS with 24/24 static pages. Claim requires verified trusted identity plus the 64-character public token; route JSON accepts only `{publicToken}`; public token tracking remains valid and historical null-email orders remain unclaimable.
+
+### Task 10 — customer account UI
+
 Canonical RED:
 
-- test `tests/customer-order-claim.test.ts`;
-- commit `f9c95f73801155da583365d553431b68df6595c7`;
-- CI run `33677670040`;
-- job `100406317560`;
-- 343 total / 334 PASS / exactly 9 FAIL;
-- all nine failures were only Task 9 contracts: missing claim module/route/form and absent public tracking CTA behavior;
-- all pre-existing tests passed;
+- test `tests/customer-account-ui.test.ts`;
+- commit `c1d201fdaf59db94629b6b5189ef13c291fb3950`;
+- CI run `33682792731`;
+- job `100423066698`;
+- 351 total / 344 PASS / exactly 7 FAIL;
+- all seven failures were Task 10 only: missing separate login-next sanitizer, public account pages/forms, protected account shell, account order pages, profile save surface, and security/password surface;
+- every pre-existing test, including Task 9, passed;
 - typecheck/build skipped because the expected RED stopped CI.
 
 GREEN implementation includes:
 
-- `lib/server/customer-order-claim.ts`: exact `{publicToken}` parser, canonical 64-character token normalization, verified trusted `CustomerIdentity` validation, strict response parser, service-role-only `claim_guest_order_for_customer` wrapper, exact trusted UUID/email RPC payload, 10-second timeout, no email-only claim API and no secret logging;
-- `POST /api/account/orders/claim`: exact same-origin check, `account-claim` rate limit, verified customer access, 4 KiB bounded JSON body, browser supplies only `publicToken`, generic `not_claimable` response and sanitized unavailable failures;
-- `components/account/order-claim-form.tsx`: submits only the public token and refreshes the server page after success;
-- `/pedido/[token]`: preserves existing public token tracking, shows claim only for guest-owned orders with an email snapshot, never pre-compares snapshot email with current identity, shows a local login CTA when appropriate, and leaves historical null-email orders token-only.
+- separate `sanitizeCustomerLoginNext` that keeps the auth callback sanitizer unchanged while allowing only `/minha-conta...` or exact `/pedido/<64-hex>` return targets;
+- exact `{name,whatsapp}` profile input parser; browser cannot supply owner UUID;
+- storefront public `/entrar`, `/criar-conta`, `/esqueci-a-senha` pages and accessible account forms;
+- protected storefront `/minha-conta` shell with `Visão geral`, `Pedidos`, `Perfil`, `Segurança`, and POST-only local logout;
+- overview and paginated order list using only customer-owned repository DTOs;
+- customer order detail showing curated items/totals/status/address/shipping/timeline and WhatsApp support text containing only the order number;
+- profile route with same-origin, `account-profile` rate limit, verified customer access, bounded JSON, RLS own-profile create/update, and no arbitrary owner input;
+- security page with read-only account email, password update, and recovery entry point;
+- no admin shell/boundary imports and no forbidden order internals rendered in customer-account code.
 
-Final Task 9 candidate:
+Final Task 10 candidate:
 
-- commit `c8e836cf69de086d2000d0fc9904af9b24d2307b`;
-- CI run `33682338553`;
-- job `100421604971`;
-- `pnpm test`: **343 total / 343 PASS / 0 FAIL**;
-- all nine Task 9 tests PASS and existing regressions PASS;
+- commit `a8cda3d929e0af86810137f423c0ce625f448391`;
+- CI run `33683574794`;
+- job `100425591216`;
+- `pnpm test`: **351 total / 351 PASS / 0 FAIL**;
+- all eight Task 10 structural/security tests PASS and existing regressions PASS;
 - `pnpm typecheck`: PASS (`tsc --noEmit`);
-- `pnpm build`: PASS on Next.js 16.3.3, compiled successfully and generated **24/24** static pages;
-- `/api/account/orders/claim` is present in the successful build route manifest;
+- `pnpm build`: PASS on Next.js 16.3.3, compiled successfully and generated **28/28** static pages;
+- build manifest contains `/criar-conta`, `/entrar`, `/esqueci-a-senha`, all planned `/minha-conta` routes, and `/api/account/profile`;
 - workflow conclusion: SUCCESS.
 
-Task 9 is the current verified runtime checkpoint. No Phase 3 DDL was applied and no Preview/Production deployment was promoted.
+Task 10 is the current verified runtime checkpoint. No Phase 3 DDL was applied and no Preview/Production deployment was promoted.
 
 ## Current safety gates
 
@@ -130,9 +141,10 @@ Task 9 is the current verified runtime checkpoint. No Phase 3 DDL was applied an
 - Customer read authorization must stay `auth.uid()`-derived; never accept/pass a customer UUID for own-order list/detail reads.
 - Guest-order claim must require both the verified current customer identity and the existing 64-character public token; route JSON may accept only `{publicToken}`.
 - Customer DTOs must remain curated and exclude all forbidden internal fields listed above.
+- Customer account UI must remain separate from admin authorization and admin shell styling.
 
 ## Resume point
 
-**Current Phase 3 status:** Tasks 1-9 complete with TDD evidence. Final verified Task 9 runtime candidate is `c8e836cf69de086d2000d0fc9904af9b24d2307b`, CI `33682338553`, job `100421604971`.
+**Current Phase 3 status:** Tasks 1-10 complete with TDD evidence. Final verified Task 10 runtime candidate is `a8cda3d929e0af86810137f423c0ce625f448391`, CI `33683574794`, job `100425591216`.
 
-**NEXT EXACT ACTION:** Phase 3 Task 10 RED. Create only `tests/customer-account-ui.test.ts` first. Require the public `/entrar`, `/criar-conta`, `/esqueci-a-senha` surfaces; protected storefront-styled `/minha-conta`, `/minha-conta/pedidos`, `/minha-conta/pedidos/[id]`, `/minha-conta/perfil`, `/minha-conta/seguranca`; server-side customer protection; no admin shell/components/imports in customer account UI; logout by POST; accessible labels; account order pages using only curated customer DTO fields; safe WhatsApp support link containing only order number; profile explicit-save POST behavior; security password update/recovery behavior; and no public token, raw payment/preference IDs, checkout internals, shipping snapshot, admin audit, or secret fields in rendered customer account code. Capture the expected RED before creating the Task 10 pages/components.
+**NEXT EXACT ACTION:** Phase 3 Task 11 security/isolation matrix. Create only `tests/customer-account-security.test.ts`. Prove customer A cannot retrieve customer B order through repository dependency fixtures and database contract; missing vs other-owned detail has identical null behavior; public token tracking remains independent from account ownership; claim rejects wrong verified email even with a valid token; claim cannot occur with only email or only token; an ordinary customer session still fails admin authorization unless immutable owner UUID + AAL2 + active admin-session requirements are independently met; and all customer DTOs remain free of forbidden internal fields. Run this security suite before changing production code. If a test reveals a real defect, use systematic debugging and add only the minimal fix.
