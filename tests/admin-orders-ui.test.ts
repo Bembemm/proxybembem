@@ -234,7 +234,7 @@ test("order detail derives only approved fulfillment actions and uses hardcoded 
   assert.match(page, /reversão[^\n]*provedor|provedor[^\n]*reversão/i)
 
   for (const status of ["updated", "unchanged", "invalid-transition", "payment-required"]) {
-    assert.match(page, new RegExp(`["']${status}["']`))
+    assert.match(page, new RegExp(`(?:["']${status}["']|\\b${status}\\b)\\s*:`))
   }
 
   assert.doesNotMatch(page, /name=["'](?:targetStatus|payment_status|payment_id)["']/)
