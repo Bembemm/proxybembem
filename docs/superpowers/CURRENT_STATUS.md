@@ -11,7 +11,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-5 TDD COMPLETE; TASK 6 RED NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-6 TDD COMPLETE; TASK 7 RED NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Verified baseline
@@ -211,7 +211,44 @@ Final Task 5 candidate:
 - `pnpm build`: PASS on Next.js 16.3.3; compiled successfully, TypeScript finished, and generated 17/17 static pages;
 - workflow conclusion: SUCCESS.
 
-Task 5 is the current verified runtime checkpoint. Phase 3 DDL remains unapplied.
+## Phase 3 Task 6 — RLS customer profile repository: RED/GREEN COMPLETE
+
+The customer profile repository now uses the request-scoped authenticated Supabase SSR client and `customer_profiles` RLS boundary. Name is normalized to single internal whitespace and 3..100 characters; WhatsApp is digits-only with 10 or 11 digits. Writes derive profile ownership from the network-validated `auth.getUser()` UUID and accept only name/WhatsApp from caller input. Returned DTOs include exactly `id`, `name`, `whatsapp`, `createdAt`, and `updatedAt`; extra storage fields are discarded. No admin authorization, privileged Supabase secret, arbitrary caller profile ID, email write, or password write is part of this repository.
+
+Canonical RED:
+
+- test file: `tests/customer-profile.test.ts`;
+- commit `985cf31825a1342e422013525b2a222f07e15b3e`;
+- CI run `33672735811`;
+- job `100390032334`;
+- total tests: 314;
+- PASS: 313;
+- FAIL: exactly 1, the customer-profile module-load test;
+- failure is exactly `ERR_MODULE_NOT_FOUND` for missing `lib/server/customer-profiles.ts`;
+- all pre-existing tests, including Task 5 and customer-auth regressions, passed;
+- `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the CI job;
+- no production customer-profile module existed when this RED was captured.
+
+GREEN implementation:
+
+- module: `lib/server/customer-profiles.ts`;
+- commit `bc66eaf932b5dc3c710813cce8c3abd503cc6b1d`;
+- dependency-injected core covers strict safe parsing, normalization, trusted current-user ownership, read/ensure/update operations, and mismatch fail-closed behavior;
+- production adapter calls `createSupabaseServerClient()`, validates identity through `supabase.auth.getUser()`, and reads/writes only `.from("customer_profiles")` through the caller session so RLS remains the ownership boundary;
+- storage errors are mapped to generic repository failures without leaking provider details.
+
+Final Task 6 verification:
+
+- CI run `33673027354`;
+- job `100390979088`;
+- `pnpm test`: 318 total, 318 PASS, 0 FAIL;
+- all five `tests/customer-profile.test.ts` cases PASS;
+- customer-auth and existing admin/security regressions PASS in the same run;
+- `pnpm typecheck`: PASS (`tsc --noEmit`);
+- `pnpm build`: PASS on Next.js 16.3.3; compiled successfully, TypeScript finished, and generated 17/17 static pages;
+- workflow conclusion: SUCCESS.
+
+Task 6 is the current verified runtime checkpoint. Phase 3 DDL remains unapplied.
 
 ## Current safety gates
 
@@ -222,10 +259,10 @@ Task 5 is the current verified runtime checkpoint. Phase 3 DDL remains unapplied
 - Do not delete the feature branch unless owner asks.
 - Do not start Phase 4 runtime work before Phase 3 completion.
 - Customer authorization must remain separate from `ADMIN_USER_ID`, AAL2 and `admin_sessions`.
-- Customer profile Task 6 must use the authenticated SSR Supabase client and RLS; it must not use the service-role orders repository.
+- Task 7 account auth actions must use same-origin mutation protection, bounded JSON parsing, rate limiting, generic password-reset anti-enumeration responses, allowlisted local callback destinations, and no secret/password logging.
 
 ## Resume point
 
-**Current Phase 3 status:** Tasks 1-5 complete with TDD evidence. Final verified Task 5 candidate is `fc3007ae3ad5f20c8a9397de3131cb1c5f39eea6`, CI `33672384721`, job `100388871069`.
+**Current Phase 3 status:** Tasks 1-6 complete with TDD evidence. Final verified Task 6 candidate is `bc66eaf932b5dc3c710813cce8c3abd503cc6b1d`, CI `33673027354`, job `100390979088`.
 
-**NEXT EXACT ACTION:** Phase 3 Task 6 RED. Create only `tests/customer-profile.test.ts`, covering exact safe profile fields, name/WhatsApp normalization, no email/password writes, and no arbitrary profile ID accepted. Run the focused test and capture the expected module-missing RED **before** creating `lib/server/customer-profiles.ts`. Then implement the minimum GREEN using the authenticated `createSupabaseServerClient()` so RLS enforces ownership, and verify alongside `tests/customer-auth.test.ts`.
+**NEXT EXACT ACTION:** Phase 3 Task 7 RED. Create only `tests/customer-account-actions.test.ts` first, covering same-origin protection for mutating account routes, bounded strict JSON input, generic anti-enumeration password-reset behavior, safe local callback `next` allowlisting, required account rate-limit scopes, and preservation of existing admin proxy matchers while adding account/customer surfaces. Capture the expected RED before creating `lib/server/customer-account-actions.ts` or any new account/auth API route. Then implement signup/callback/login/logout/password-reset/password-update and proxy/rate-limit wiring in the planned GREEN steps.
