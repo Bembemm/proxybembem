@@ -20,7 +20,7 @@
 
 Keep these states distinct: `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED`.
 
-No merge, Production migration, real shipping-label spending, catalog authority switch, or other high-risk Production action occurs without explicit owner approval.
+No merge, new Production deployment, real shipping-label spending, catalog authority switch, or other high-risk Production action occurs without explicit owner approval. Database migrations on the existing Supabase project are applied only when needed and with explicit owner authorization for the meaningful Production database change.
 
 ## Global constraints
 
@@ -39,6 +39,7 @@ No merge, Production migration, real shipping-label spending, catalog authority 
 - [x] Secondary-provider failures cannot corrupt critical order/payment state.
 - [x] High-risk actions require confirmation + server-side preconditions + audit where applicable.
 - [x] Hosting migration remains a separate project.
+- [x] Do not introduce a paid Supabase development branch as a mandatory workflow; owner explicitly chose the existing in-place Supabase workflow used by the project to date.
 
 ---
 
@@ -58,7 +59,7 @@ No merge, Production migration, real shipping-label spending, catalog authority 
 
 **Detailed plan:** `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`
 
-**State:** IMPLEMENTED + TESTED on feature branch. NON-PRODUCTION DATABASE VALIDATION BLOCKED pending safe test environment. NOT PRODUCTION APPROVED.
+**State:** IMPLEMENTED + TESTED + CURRENT SUPABASE DATABASE APPLIED/VALIDATED. PREVIEW ADMIN ACCEPTANCE REMAINS BLOCKED BY PREVIEW ENV CONFIGURATION. FEATURE BRANCH NOT MERGED.
 
 ## Schema/RPC
 
@@ -96,6 +97,7 @@ No merge, Production migration, real shipping-label spending, catalog authority 
 - [x] Order attention GREEN: commit `7ae5338b640f15f78554cb5c71ae5351643a5e3c`; CI `33590348271` passed test/typecheck/build.
 - [x] Admin audit RED: commit `2b6af16a5362d8d7e8e75d3a5850ee9708ae1da6`; 248 pass / 1 expected missing-module fail.
 - [x] Admin audit GREEN/current code candidate: `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`; CI `33590493640`, job `100123329614`, passed `pnpm test`, `pnpm typecheck`, and `pnpm build`.
+- [x] Documentation HEAD `11eb39252cb8c00cdc64336582b53e69b5fb10a6` also passed `pnpm test`, `pnpm typecheck`, and `pnpm build` in CI `33590734705`.
 
 ## Systematic-debugging record
 
@@ -110,30 +112,61 @@ No production webhook logic changed to hide those failures.
 
 Comparison `b7172e86... -> 0ce3b371...` is 22 commits ahead and changes only the approved planning docs, one additive Phase 1 migration, fulfillment/metadata/event/attention/audit server modules, the narrow `orders.ts` contract update, and relevant tests/fixtures. No storefront, catalog authority, hosting, shipping-label flow, customer-account UI, or admin UI changes are part of this candidate.
 
-## Database/Preview validation gate
+## Database validation
 
-- [ ] Apply migration to a clearly non-Production Supabase environment.
-- [ ] Validate conservative backfill and default behavior without exposing PII.
-- [ ] Validate upgraded payment RPC cases in non-Production.
-- [ ] Validate no retroactive `order_events` were created.
-- [ ] Validate RLS/grants on new internal tables.
-- [ ] Deploy the matching code candidate to Preview after DB migration succeeds.
-- [ ] Smoke existing checkout/public-order/admin-auth behavior.
-- [ ] Review Preview runtime errors.
-- [ ] Obtain explicit owner approval before Production migration/deploy.
+Owner explicitly rejected introducing a paid Supabase development branch as a new requirement and confirmed the project's established workflow: evolve the existing `ProxyBembem` Supabase project in place as features need schema changes. Phase 1 therefore used the current project after explicit owner authorization.
 
-**Environment discovery on 2026-09-02:** connected Supabase exposes one project named `ProxyBembem` (`sa-east-1`) and `list_branches` returned no development branches. Therefore no SQL was applied. Creating a Supabase development branch may incur a cost and requires an explicit organization/cost confirmation workflow.
+- [x] Re-read exact migration candidate before applying.
+- [x] Apply `admin_order_operations_foundation` to current Supabase project after owner authorization.
+- [x] Supabase recorded migration `20260902091641_admin_order_operations_foundation`.
+- [x] Validate conservative backfill and default behavior without exposing PII.
+- [x] Validate no NULL fulfillment rows after backfill.
+- [x] Validate RLS/grants on new internal tables.
+- [x] Validate upgraded payment RPC authorization/security-definer/search-path properties.
+- [x] Validate upgraded payment RPC with controlled transaction + rollback fixtures.
+- [x] Approval, replay idempotency, refund, chargeback, and manual-review scenarios passed.
+- [x] Controlled RPC validation left 0 persistent test orders.
+- [x] Production `main` payment parser inspected and confirmed compatible with the RPC's additional result fields.
+
+Safe aggregate evidence immediately after migration:
+
+- existing orders: 25;
+- `fulfillment_status` NULL: 0;
+- approved orders with incorrect backfill: 0;
+- non-approved orders with incorrect backfill: 0;
+- all three new operational tables present with RLS;
+- `anon`/`authenticated` cannot read `order_events`;
+- `service_role` can insert events and execute the payment RPC;
+- `anon`/`authenticated` cannot execute the payment RPC.
+
+Supabase advisor review after DDL:
+
+- RLS-with-no-policy INFO notices are expected for deliberately backend-only tables with browser-role privileges revoked;
+- new-index-unused INFO notices are expected immediately after creation;
+- leaked-password-protection warning predates Phase 1 and is deferred to the customer-account/auth hardening work.
+
+## Preview / current Production smoke
+
+- [x] Latest branch Preview deployment is READY.
+- [x] Preview `/` returns HTTP 200.
+- [~] Preview `/admin` smoke is blocked: HTTP 500 because Preview Vercel environment lacks `NEXT_PUBLIC_SUPABASE_URL`.
+- [x] Root cause confirmed from Preview runtime logs; it is environment configuration, not a Phase 1 database/RPC regression.
+- [x] Current Production `/admin` returns HTTP 200 and renders the protected login surface after the database migration.
+- [x] Production error/fatal runtime log query over the validation window returned no matching errors.
+- [ ] Preview environment configuration must be fixed manually/outside the currently available Vercel connector before Preview admin can be marked approved.
+- [ ] Feature branch merge/new Production deployment remains unapproved.
 
 **Rollback:** Additive Phase 1 schema may remain while code rolls back; never delete current checkout/payment data as rollback.
 
-**NEXT EXACT ACTION:** owner decides whether to create a Supabase development branch for safe Phase 1 DB validation. If yes, confirm which Supabase organization to use, query the branch cost, show that cost to the owner, obtain cost confirmation, then create the branch. Do not use the sole existing `ProxyBembem` project for Phase 1 validation without explicit Production authorization.
+**NEXT EXACT ACTION:** Phase 2 technical planning may proceed while the clearly documented Preview-env blocker remains open. Do not mark Preview approved and do not merge. Write/review `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`; before Phase 2 Preview acceptance, configure the Vercel Preview Supabase variables so protected admin routes can be smoke-tested.
 
 ---
 
 # PHASE 2 — Admin Orders + Fulfillment
 
-**Plan:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md` (create only after Phase 1 acceptance).
+**Plan:** `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`.
 
+- [~] Write/review the detailed Phase 2 plan before runtime Phase 2 changes.
 - [ ] `/admin/pedidos` server-side list/search/filter.
 - [ ] `/admin/pedidos/[id]` complete operational detail.
 - [ ] `/admin/producao` production queues.
@@ -236,24 +269,28 @@ Comparison `b7172e86... -> 0ce3b371...` is 22 commits ahead and changes only the
 13. Settings contain no infrastructure secrets.
 14. Migrations compatibility-first; no invented historical events.
 15. `IMPLEMENTED`, `TESTED`, `PREVIEW APPROVED`, `PRODUCTION APPROVED` remain separate.
-16. Sole connected Supabase project currently has no development branch; do not treat it as a test DB.
+16. The project has historically used the single current Supabase project without development branches; do not introduce a paid branch as a mandatory prerequisite.
+17. Meaningful DDL on the current Supabase database still requires explicit owner approval before application.
+18. Vercel Preview currently lacks `NEXT_PUBLIC_SUPABASE_URL`; this is a known environment blocker and must not be mistaken for a Phase 1 runtime defect.
 
 ## Current Session Checkpoint
 
-**Status:** PHASE 1 CODE VERIFIED; NON-PRODUCTION DATABASE VALIDATION BLOCKED BY ENVIRONMENT
+**Status:** PHASE 1 CODE + DATABASE FOUNDATION VERIFIED; PHASE 2 PLANNING STARTING; PREVIEW ADMIN ENV BLOCKER OPEN
 
 **Current branch:** `feat/admin-dashboard-expansion`
 
-**Verified code candidate:** `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`
+**Verified Phase 1 code candidate:** `0ce3b371eda1cfccbd8ddde639b07e7b7ae57848`
 
-**Exact CI:** run `33590493640`, job `100123329614` — test/typecheck/build PASS.
+**Verified documentation HEAD before latest checkpoint:** `11eb39252cb8c00cdc64336582b53e69b5fb10a6`, CI `33590734705` test/typecheck/build PASS.
 
-**Expansion migration applied:** NO.
+**Expansion migration applied:** YES — current `ProxyBembem` Supabase, migration record `20260902091641_admin_order_operations_foundation`, explicitly owner-authorized.
 
-**Preview:** not validated yet because the matching database migration has not been applied to a safe non-Production environment.
+**Database validation:** PASS — conservative backfill, RLS/grants, RPC authorization, approval/replay/refund/chargeback/manual-review transaction tests; 0 persistent validation rows.
 
-**Production:** unchanged / NOT APPROVED for this expansion.
+**Preview:** deployment READY, home 200; `/admin` blocked by missing Preview `NEXT_PUBLIC_SUPABASE_URL`. NOT PREVIEW APPROVED.
 
-**Blocker:** only one connected Supabase project exists and it has zero development branches.
+**Current Production app after DB migration:** `/admin` 200 login surface; no error/fatal logs in validation window; application code/deployment unchanged.
 
-**NEXT EXACT ACTION:** ask owner whether to create a paid/free-as-reported-by-Supabase development branch; before creation, confirm organization and show the current Supabase branch cost using the required cost-confirmation flow.
+**Merge/new Production deployment:** NOT APPROVED.
+
+**NEXT EXACT ACTION:** write/review `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`. Do not start Phase 2 runtime code until that plan is reviewed. Keep the Preview environment blocker visible for later acceptance.
