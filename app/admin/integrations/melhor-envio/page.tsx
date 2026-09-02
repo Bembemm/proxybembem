@@ -1,3 +1,4 @@
+import { AdminShell } from "../../../../components/admin/admin-shell"
 import { requireAdminPageAccess } from "../../../../lib/server/admin-auth.ts"
 
 type PageSearchParams = Promise<{
@@ -23,25 +24,30 @@ export default async function MelhorEnvioIntegrationPage({
         : null
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col gap-6 px-6 py-12">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold">Integração Melhor Envio</h1>
-        <p className="text-sm text-muted-foreground">
-          Área administrativa para autorizar a conta do Melhor Envio usada no cálculo de frete.
-        </p>
+    <AdminShell
+      activeSection="integrations"
+      title="Integração Melhor Envio"
+      description="Autorize a conta do Melhor Envio usada no cálculo de frete da loja."
+    >
+      <div className="max-w-xl space-y-5">
+        {message ? (
+          <p
+            role="status"
+            className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+          >
+            {message}
+          </p>
+        ) : null}
+
+        <form method="post" action="/api/internal/melhor-envio/oauth/start">
+          <button
+            type="submit"
+            className="rounded-lg border border-violet-600 bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+          >
+            Conectar Melhor Envio
+          </button>
+        </form>
       </div>
-
-      {message ? (
-        <p role="status" className="text-sm">
-          {message}
-        </p>
-      ) : null}
-
-      <form method="post" action="/api/internal/melhor-envio/oauth/start">
-        <button type="submit" className="rounded-md border px-4 py-2 text-sm font-medium">
-          Conectar Melhor Envio
-        </button>
-      </form>
-    </main>
+    </AdminShell>
   )
 }
