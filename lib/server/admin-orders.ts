@@ -36,6 +36,7 @@ export interface AdminOrderDetail {
   id: string
   order_number: string
   customer_name: string
+  customer_email: string | null
   whatsapp: string
   cep: string
   address_street: string | null
@@ -86,6 +87,7 @@ const ADMIN_ORDER_DETAIL_SELECT = [
   "id",
   "order_number",
   "customer_name",
+  "customer_email",
   "whatsapp",
   "cep",
   "address_street",
@@ -229,6 +231,7 @@ function parseDetailRow(value: unknown): AdminOrderDetail {
     typeof value.order_number !== "string" ||
     !ORDER_NUMBER_RE.test(value.order_number) ||
     !isNonEmptyBoundedString(value.customer_name, 500) ||
+    !isNullableString(value.customer_email) ||
     !isNonEmptyBoundedString(value.whatsapp, 100) ||
     !isNonEmptyBoundedString(value.cep, 20) ||
     !isNullableString(value.address_street) ||
