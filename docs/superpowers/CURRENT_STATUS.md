@@ -11,7 +11,7 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 - Active Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-4 TDD COMPLETE; TASK 5 RED NEXT**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASKS 1-5 TDD COMPLETE; TASK 6 RED NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
 ## Verified baseline
@@ -170,7 +170,48 @@ GREEN implementation:
 - `pnpm build`: PASS on Next.js 16.3.3; compiled successfully, TypeScript finished, and generated 17/17 static pages;
 - workflow conclusion: SUCCESS.
 
-Task 4 is the current verified runtime checkpoint. Phase 3 DDL remains unapplied.
+## Phase 3 Task 5 — persist checkout email and trusted ownership: RED/GREEN COMPLETE
+
+The checkout/order boundary now persists normalized `customer_email` for every new order and persists `customer_id` only from the trusted server-resolved Supabase Auth identity. Guest orders explicitly persist `customer_id = null`. Browser JSON still has no trusted customer UUID input. An authenticated form email that differs from the canonical account email fails with `CheckoutFlowValidationError("Authenticated email mismatch")` before reservation. Admin order detail may display `customer_email` read-only, while `customer_id` remains outside the admin detail select and UI.
+
+Canonical RED:
+
+- checkout/order RED commit `b5d00ad4f4399789fb70a37a90d541ff33584671` initially produced 311 total / 305 PASS / 6 expected FAIL;
+- admin read-only email coverage was added before runtime in commit `5d5e56c163c4b1f63a2f98b2cf53a642c46775b5`;
+- canonical final RED CI run `33671059941`, job `100384508027`;
+- total tests: 313;
+- PASS: 305;
+- FAIL: exactly 8, all Task 5 contracts;
+- failures proved missing guest/authenticated persistence, missing mismatch rejection, missing server identity wiring, and missing safe admin email detail;
+- no unrelated existing test failed;
+- `pnpm typecheck` and `pnpm build` were skipped because expected RED stopped the CI job.
+
+GREEN implementation commits:
+
+- `595bfebbba456572f84d28fd13ddbdf17356dce7` — persist `customer_email/customer_id` in `OrderRecord`, `CreateOrderInput`, selects, and create payload;
+- `476d5f6a5e0f97aaab01fc7e67f80fd2bcf963fd` — propagate trusted `CustomerIdentity`, enforce canonical-email match, persist guest/auth ownership correctly;
+- `5a2fa4a16f0caa1c66059257c1982a2d64087381` — resolve `getOptionalCustomerIdentity()` in `/api/checkout` server-side;
+- `b4cc070e640d20cfd9cfbdffd8847901626227c9` — expose only `customer_email` in safe admin order detail repository;
+- `dce46c2489a247957a703fed962d50748228014e` — render read-only customer email in admin order detail.
+
+Intermediate verification and debugging:
+
+1. At `dce46c2489a247957a703fed962d50748228014e`, CI `33671839995`, job `100387081269`, 312/313 tests passed. All eight new Task 5 tests already passed. The only failure was a stale legacy `admin-orders-repository` fixture omitting the new nullable `customer_email`; runtime was not relaxed. Fixture corrected in `5d5d5ac9b4a5ea12f3127eea9347b2b5304b6e91`.
+2. At `5d5d5ac9b4a5ea12f3127eea9347b2b5304b6e91`, CI `33672013981`, job `100387652980`, all 313 tests passed, but typecheck found five test-fixture typing errors: two callback-captured `reservedInput` values narrowed to `never` in `checkout-flow.test.ts`, plus one `OrderRecord` fixture missing required `customer_email/customer_id`. Build was skipped. No runtime defect was indicated.
+3. The callback captures were changed to typed arrays in `18e767a56588dd70f8939199a3afe68a13de8e78`; the order-display fixture received explicit null ownership fields in `fc3007ae3ad5f20c8a9397de3131cb1c5f39eea6`. No runtime behavior was weakened.
+
+Final Task 5 candidate:
+
+- commit `fc3007ae3ad5f20c8a9397de3131cb1c5f39eea6`;
+- CI run `33672384721`;
+- job `100388871069`;
+- `pnpm test`: 313 total, 313 PASS, 0 FAIL;
+- Task 5 guest ownership, authenticated ownership, mismatch rejection, server-only route identity, order persistence, and read-only admin email tests all PASS;
+- `pnpm typecheck`: PASS (`tsc --noEmit`);
+- `pnpm build`: PASS on Next.js 16.3.3; compiled successfully, TypeScript finished, and generated 17/17 static pages;
+- workflow conclusion: SUCCESS.
+
+Task 5 is the current verified runtime checkpoint. Phase 3 DDL remains unapplied.
 
 ## Current safety gates
 
@@ -181,9 +222,10 @@ Task 4 is the current verified runtime checkpoint. Phase 3 DDL remains unapplied
 - Do not delete the feature branch unless owner asks.
 - Do not start Phase 4 runtime work before Phase 3 completion.
 - Customer authorization must remain separate from `ADMIN_USER_ID`, AAL2 and `admin_sessions`.
+- Customer profile Task 6 must use the authenticated SSR Supabase client and RLS; it must not use the service-role orders repository.
 
 ## Resume point
 
-**Current Phase 3 status:** Tasks 1-4 complete with TDD evidence. Final verified Task 4 candidate is `e88ddbe84f89c48024856d7d53bad27ff45240cb`, CI `33669788637`, job `100380261347`.
+**Current Phase 3 status:** Tasks 1-5 complete with TDD evidence. Final verified Task 5 candidate is `fc3007ae3ad5f20c8a9397de3131cb1c5f39eea6`, CI `33672384721`, job `100388871069`.
 
-**NEXT EXACT ACTION:** Read Phase 3 Task 5 in `docs/superpowers/plans/2026-09-02-customer-account-orders.md`, confirm the branch HEAD, then create only the Task 5 failing tests specified by that plan. Capture a valid RED before modifying checkout/order runtime for customer ownership persistence.
+**NEXT EXACT ACTION:** Phase 3 Task 6 RED. Create only `tests/customer-profile.test.ts`, covering exact safe profile fields, name/WhatsApp normalization, no email/password writes, and no arbitrary profile ID accepted. Run the focused test and capture the expected module-missing RED **before** creating `lib/server/customer-profiles.ts`. Then implement the minimum GREEN using the authenticated `createSupabaseServerClient()` so RLS enforces ownership, and verify alongside `tests/customer-auth.test.ts`.
