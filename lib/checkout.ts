@@ -2,6 +2,7 @@ import type { CartItem } from "@/contexts/cart-context"
 
 export interface CheckoutData {
   nome: string
+  email: string
   whatsapp: string
   cep: string
   rua: string
@@ -14,6 +15,7 @@ export interface CheckoutData {
 
 export interface CheckoutErrors {
   nome?: string
+  email?: string
   whatsapp?: string
   cep?: string
   rua?: string
@@ -36,6 +38,10 @@ export function digitsOnly(value: string) {
 
 function normalizeText(value: string) {
   return value.trim().replace(/\s+/g, " ")
+}
+
+export function normalizeCheckoutEmail(value: string) {
+  return value.trim().toLowerCase()
 }
 
 export function formatCep(value: string) {
@@ -74,6 +80,7 @@ export function formatPrice(value: number) {
 export function normalizeCheckoutData(data: CheckoutData): CheckoutData {
   return {
     nome: normalizeText(data.nome),
+    email: normalizeCheckoutEmail(data.email),
     whatsapp: digitsOnly(data.whatsapp),
     cep: digitsOnly(data.cep),
     rua: normalizeText(data.rua),
@@ -91,6 +98,13 @@ export function validateCheckout(data: CheckoutData): CheckoutErrors {
 
   if (normalized.nome.length < 3 || normalized.nome.length > 100) {
     errors.nome = "Informe seu nome."
+  }
+
+  if (
+    normalized.email.length > 254 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.email)
+  ) {
+    errors.email = "Informe um e-mail válido."
   }
 
   if (!/^\d{10,11}$/.test(normalized.whatsapp)) {
@@ -155,6 +169,7 @@ Frete: ${freight}${total}
 
 Cliente:
 Nome: ${normalized.nome}
+E-mail: ${normalized.email}
 WhatsApp: ${formatWhatsapp(normalized.whatsapp)}
 
 Endereço de entrega:
