@@ -49,6 +49,7 @@ function detailRow(overrides: Record<string, unknown> = {}) {
     id: ORDER_ID,
     order_number: "PB-A1B2C3D4E5F6",
     customer_name: "Cliente Teste",
+    customer_email: "cliente@example.com",
     whatsapp: "5511999999999",
     cep: "01310100",
     address_street: "Avenida Paulista",
@@ -254,6 +255,7 @@ test("loads one admin order by canonical UUID using only the approved detail sel
           "id",
           "order_number",
           "customer_name",
+          "customer_email",
           "whatsapp",
           "cep",
           "items",
@@ -268,6 +270,7 @@ test("loads one admin order by canonical UUID using only the approved detail sel
         }
         for (const forbidden of [
           "public_token",
+          "customer_id",
           "checkout_attempt_id",
           "checkout_fingerprint",
           "checkout_url",
