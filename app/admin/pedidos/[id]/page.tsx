@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowLeft, ExternalLink } from "lucide-react"
 import { notFound } from "next/navigation"
 import { AdminShell } from "../../../../components/admin/admin-shell.tsx"
+import { DangerConfirmForm } from "../../../../components/admin/danger-confirm-form.tsx"
 import {
   FulfillmentStatusBadge,
   PaymentStatusBadge,
@@ -274,10 +275,13 @@ export default async function AdminOrderDetailPage({
               }
               if (target === "canceled") {
                 return (
-                  <ActionForm
+                  <DangerConfirmForm
                     key={target}
                     action={`/api/internal/admin/orders/${order.id}/cancel`}
-                    label="Cancelar pedido"
+                    buttonLabel="Cancelar pedido"
+                    title="Confirmar cancelamento"
+                    description={CANCELLATION_COPY}
+                    confirmLabel="Sim, cancelar pedido"
                   />
                 )
               }
