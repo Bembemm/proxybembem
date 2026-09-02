@@ -128,7 +128,7 @@ Reviewed candidate CI: `33684404621`, job `100428283809`: **359/359 tests PASS, 
 - [x] New orders persist normalized lowercase `customer_email` snapshot.
 - [x] Existing historical orders receive no fabricated email/customer ownership; new columns remain `NULL` for old orders unless future truth is established explicitly.
 - [x] Authenticated checkout links to trusted server-resolved Supabase Auth UUID `customer_id`; browser never supplies trusted customer UUID.
-- [x] Authenticated checkout uses canonical account email; mismatching form email is rejected before reservation.
+- [x] Authenticated checkout uses canonical account email; mismatching form email is rejected.
 - [x] Permanent `customer_profiles` stays minimal: Auth UUID, name, WhatsApp, timestamps. Email remains authoritative in Supabase Auth.
 - [x] Customer authorization is separate from admin authorization.
 - [x] Customer order reads use narrow safe RPCs based on `auth.uid()`; no broad browser SELECT on `orders`.
@@ -198,7 +198,7 @@ Canonical RED `619db2cb966b188cf759ed51ccd374dc60a53d0b`, CI `33666738154`, job 
 
 ### Tasks 2-8 final candidates
 
-- Task 2 `032c65102c9204688fb51937a250bf98a0dd1795`, CI `33667338142`: migration contract GREEN; SQL Git-only.
+- Task 2 `032c65102c9204688fb51937a250bf98a0dd1795`, CI `33667341942`: migration contract GREEN; SQL Git-only.
 - Task 3 `70319add3f2a8c139b25fdb4ca5a3fefd80b14d9`, CI `33668791985`: 299/299 + typecheck/build PASS.
 - Task 4 `e88ddbe84f89c48024856d7d53bad27ff45240cb`, CI `33669788637`: 305/305 + typecheck/build PASS.
 - Task 5 `fc3007ae3ad5f20c8a9397de3131cb1c5f39eea6`, CI `33672384721`: 313/313 + typecheck/build PASS.
