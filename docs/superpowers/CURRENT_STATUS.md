@@ -9,32 +9,48 @@ This is the canonical repository-wide continuation checkpoint. For the active ad
 - Branch: `feat/admin-dashboard-expansion`.
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
 - Approved design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`.
-- Design commit: `325922ffe3eec7440d86cbf86d062aaef8a6ab03`.
 - Master Plan: `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`.
 - Phase 1 plan: `docs/superpowers/plans/2026-09-02-admin-data-audit-foundation.md`.
-- Latest planning checkpoint before this status update: `d0e2772466ae3c677cbd36c20e6003f1ebeffa64`.
-- State: **PLANNING COMPLETE THROUGH PHASE 1 — RUNTIME IMPLEMENTATION NOT STARTED**.
-- No expansion migration has been created/applied.
-- No expansion runtime code has been changed.
-- No Preview is required for the planning-only commits.
+- State: **PHASE 1 TASK 1 RED CAPTURED — PRODUCTION CODE NOT STARTED**.
+- Test-only commit: `bcebfdc71e28f7b54141e7f32a97f45c5782bb41`.
+- Master Plan RED checkpoint commit: `313aa115e135d58c2b9971121808af9788568f7c`.
+- No expansion migration has been created/applied yet.
 - Production is unchanged and no expansion Production rollout is approved.
+
+### Fresh RED evidence
+
+Command:
+
+`node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`
+
+Result:
+
+- 3 tests;
+- 0 passed;
+- 3 failed;
+- all failures were the expected `ENOENT` for missing `supabase/migrations/202609020001_admin_order_operations_foundation.sql`.
+
+This is the intended TDD RED state: the migration behavior is specified before the migration exists.
 
 ### Phase 1 exact next action
 
-Begin Task 1 from `2026-09-02-admin-data-audit-foundation.md`:
+Create `supabase/migrations/202609020001_admin_order_operations_foundation.sql` according to Task 2 of the Phase 1 plan, then rerun the focused migration test for GREEN.
 
-1. write `tests/admin-order-foundation-migration.test.ts`;
-2. run it alone with `node --experimental-strip-types --test tests/admin-order-foundation-migration.test.ts`;
-3. capture the expected RED failure because `supabase/migrations/202609020001_admin_order_operations_foundation.sql` does not exist;
-4. record RED evidence before writing the migration.
+The migration must remain compatibility-safe and additive. It will introduce:
+
+- `orders.fulfillment_status` with conservative backfill;
+- `order_events`;
+- `order_attention_flags`;
+- `admin_audit_log`;
+- the upgraded existing Mercado Pago payment RPC that atomically performs the one allowed automatic fulfillment transition.
 
 Do not implement `/admin` order pages, customer accounts, catalog migration, labels, notifications, settings, or dashboard metrics during Phase 1.
 
-### Phase 1 planning self-review decisions future chats must preserve
+### Phase 1 decisions future chats must preserve
 
 - `order_events` dedupe through PostgREST must explicitly target `on_conflict=dedupe_key` with `resolution=ignore-duplicates` when a dedupe key exists.
 - Active attention uniqueness uses a partial unique index; do not pretend `(order_id, code)` is a normal PostgREST upsert target. Treat only the named `23505` partial-index duplicate as idempotent.
-- Event/attention/audit caller-provided metadata receives bounded **recursive** secret/internal-key validation, not just top-level checks.
+- Event/attention/audit caller-provided metadata receives bounded recursive secret/internal-key validation.
 - Payment-side event/attention writes remain inside the trusted Mercado Pago database RPC so payment + automatic fulfillment side effects are one transaction.
 
 ## Architectural decisions future sessions must not rediscover
@@ -73,11 +89,10 @@ Repository: `Bembemm/proxybembem`.
 
 - PR #2 (`feat: adicionar checkout seguro com Mercado Pago`) was explicitly approved and merged into `main`.
 - Merge commit: `1f0bff2c88901a5e0bd0c910e3f650264bceb79b`.
-- Current canonical `main` after final documentation checkpoint: `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
-- Final main CI #744 passed on `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
-- Final canonical Production deployment: `dpl_DFZhbQpkxZ8CRqJsLKx2jU8v9MAX`, READY, sourced from `main` SHA `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Current canonical `main`: `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
+- Final main CI #744 passed on that SHA.
+- Canonical Production deployment: `dpl_DFZhbQpkxZ8CRqJsLKx2jU8v9MAX`, READY, sourced from `main` SHA `b7172e86ec5bc1c4a773e99ef0886ce512649110`.
 - Canonical domains: `https://www.proxybembem.com.br` and `https://proxybembem.com.br`.
-- Final production error/fatal log check for that deployment found no matching logs in the checked window.
 
 ### Production-accepted behavior
 
@@ -104,12 +119,12 @@ Repository: `Bembemm/proxybembem`.
 ## Historical debugging decisions
 
 - Vercel Hobby previously hit `build-rate-limit`; do not create repeated dummy commits while rate-limited.
-- Android/Termux native Next/SWC is the local build limitation for Next 16.3.3; GitHub CI/Linux remains the authoritative full build evidence.
-- Termux Webpack/WASM testing exposed a latent strict route-export issue in `app/api/internal/melhor-envio/refresh/route.ts`; do not confuse that local Webpack finding with a known Production failure.
-- The broken nested-raster SVG PB implementation was replaced by direct `/brand/pb.png`; keep the accepted PNG path.
+- Android/Termux native Next/SWC is the local build limitation for Next 16.3.3; GitHub CI/Linux remains authoritative full-build evidence.
+- Termux Webpack/WASM testing exposed a latent strict route-export issue in `app/api/internal/melhor-envio/refresh/route.ts`; do not confuse it with a known Production failure.
+- Keep the accepted PB image path `/brand/pb.png`.
 
 ## End-of-session rule
 
 Every meaningful session must update this file with current phase/task, fresh passed/failed evidence, blockers, exact next action, relevant branch/commit/Preview/Production evidence, and decisions future sessions must not rediscover.
 
-**Resume point:** Admin expansion design, Master Plan, and Phase 1 implementation plan are written on `feat/admin-dashboard-expansion`. Runtime implementation has not started. Next action is the Phase 1 Task 1 RED migration test. Existing `main`/Production baseline remains unchanged.
+**Resume point:** Phase 1 Task 1 RED is captured on `feat/admin-dashboard-expansion`. The migration does not yet exist. Next action is Task 2: implement the additive migration and rerun the migration test for GREEN. Existing `main`/Production baseline remains unchanged.
