@@ -134,6 +134,7 @@ test("admin routes use a dedicated protected shell instead of storefront chrome"
   const siteShell = await source("../components/site-shell.tsx")
   const adminPage = await source("../app/admin/page.tsx")
   const adminShell = await source("../components/admin/admin-shell.tsx")
+  const adminNav = await source("../components/admin/admin-nav.tsx")
 
   assert.match(rootLayout, /SiteShell/)
   assert.doesNotMatch(rootLayout, /FaqSection|CartFloatingButton|CartPanel|Navbar/)
@@ -149,6 +150,6 @@ test("admin routes use a dedicated protected shell instead of storefront chrome"
   assert.match(adminPage, /AdminShell/)
   assert.match(adminPage, /Painel administrativo/)
   assert.match(adminPage, /Melhor Envio/)
-  assert.match(adminShell, /Integrações/)
+  assert.match(adminNav, /Integrações/)
   assert.match(adminShell, />\s*Sair\s*</)
 })
