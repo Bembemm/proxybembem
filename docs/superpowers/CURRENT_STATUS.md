@@ -10,127 +10,96 @@ Canonical continuation checkpoint. Read this file, `docs/superpowers/ADMIN_DASHB
 - Branch: `feat/admin-dashboard-expansion`
 - Base: `main` at `b7172e86ec5bc1c4a773e99ef0886ce512649110`
 - Design: `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
-- Phase 2 plan: `docs/superpowers/plans/2026-09-02-admin-orders-fulfillment.md`
 - Active Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
-- State: **PHASE 1 APPLIED/VERIFIED; PHASE 2 COMPLETE/VERIFIED/PREVIEW ACCEPTED; PHASE 3 PLAN WRITTEN/REVIEWED; RUNTIME NOT STARTED**
+- State: **PHASE 1 COMPLETE/APPLIED; PHASE 2 COMPLETE/APPLIED/PREVIEW ACCEPTED; PHASE 3 TASK 1 RED VALID; TASK 2 GREEN MIGRATION NEXT**
 - Merge/new Production application deployment: **NOT APPROVED**
 
-## Phase 1 verified baseline
+## Verified baseline
 
-Phase 1 database foundation is applied to the existing Supabase project `ProxyBembem` (`kicgoocozxzkuoqajqif`) after explicit owner authorization.
+Phase 1 database foundation is applied/validated on the current `ProxyBembem` Supabase project (`kicgoocozxzkuoqajqif`). Phase 2 is also complete: final reviewed runtime candidate `abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`, CI `33650730746` / job `100316764581`, with `pnpm test`, `pnpm typecheck`, and `pnpm build` PASS.
 
-Verified: 25 existing orders were backfilled truthfully, no fabricated events were added, `order_events`/attention/audit are browser-isolated, payment approval/replay/refund/chargeback/manual-review were transaction-tested, zero validation fixtures remained, and Production `/admin` remained healthy after the additive migration.
+Phase 2 migration is already applied as `20260902160658_admin_order_fulfillment_operations`; rollback validation passed 16/16 and left zero synthetic order/event/attention/audit rows. Owner authenticated normally in Preview with password + TOTP and verified `/admin`, `/admin/pedidos`, one real order detail, `/admin/producao`, and `/admin/integrations/melhor-envio` read-only. Checked Preview logs contained no `error`/`fatal` entries.
 
-Owner workflow decision remains: evolve the existing Supabase project as schema is needed. No paid Supabase development branch is required. Meaningful DDL still requires explicit owner approval before application.
-
-## Phase 2 — COMPLETE
-
-Final reviewed runtime candidate:
-
-`abe96b66fbe3fa7ce260e1321e383e9f1b40f7d7`
-
-Freshly re-verified CI `33650730746`, job `100316764581`:
-
-- `pnpm test`: PASS;
-- `pnpm typecheck`: PASS;
-- `pnpm build`: PASS;
-- workflow conclusion: SUCCESS.
-
-Phase 2 provides the protected admin order list/detail/production queues, narrow same-origin/AAL2 fulfillment actions, atomic DB transitions/event/audit/attention behavior, destructive cancellation confirmation, and provider-authoritative payment separation.
-
-Applied migration after explicit owner approval:
-
-`20260902160658_admin_order_fulfillment_operations`
-
-Controlled rollback validation passed **16/16** and left:
-
-```text
-orders: 0
-events: 0
-attention: 0
-audit: 0
-```
-
-Preview acceptance passed. Owner authenticated normally with existing password + TOTP and verified **5/5** protected surfaces: `/admin`, `/admin/pedidos`, one real order detail read-only, `/admin/producao`, and `/admin/integrations/melhor-envio`. Deployment-scoped logs after the smoke had no `error`/`fatal` entries. Phase 2 is complete but **not merged and not promoted to a new Production application deployment**.
+Do not rediscover/reapply Phase 1 or Phase 2 migrations. Do not merge or promote Production without explicit owner approval.
 
 ## Phase 3 approved decisions
 
-Owner explicitly decided on 2026-09-02:
+Owner explicitly decided on 2026-09-02 that **email is mandatory for every new checkout, including guest checkout**.
 
-**Email is mandatory at checkout for every new order, including guest checkout.**
+Locked consequences:
 
-This resolves the previous architecture blocker. The implementation plan locks the following consequences:
-
-1. Guest checkout remains supported; account creation is still optional.
-2. New orders store a normalized lowercase email snapshot (`customer_email`).
-3. Existing historical orders do **not** receive fabricated email values; `customer_email` stays `NULL` for old orders unless future truth is established explicitly.
-4. Authenticated checkout links the order to the trusted Supabase Auth UUID (`customer_id`) resolved server-side. Browser JSON never supplies a trusted customer UUID.
-5. For authenticated checkout, the persisted email is the canonical authenticated account email; a mismatching form email is rejected.
-6. Supabase Auth email is the unique account identity; permanent `customer_profiles` stores only minimal profile data such as name/WhatsApp, not payment data.
-7. Customer authorization is separate from admin authorization; a normal customer session never grants admin access.
-8. Customer order reads use narrow safe RPCs deriving ownership from `auth.uid()`; there is no broad browser SELECT on `orders`.
-9. Guest-order claiming requires **verified account email + possession of the existing 64-character public order token**. Email-only, name-only, WhatsApp-only, order-number-only and bulk automatic claiming are forbidden.
+1. Guest checkout remains supported; account creation remains optional.
+2. New orders persist normalized lowercase `customer_email`.
+3. Historical orders are not backfilled with fabricated email/customer ownership; new ownership fields remain `NULL` for old orders unless future truth is established explicitly.
+4. Authenticated checkout links only to the trusted server-resolved Supabase Auth UUID `customer_id`; browser JSON never supplies a trusted customer UUID.
+5. Authenticated checkout uses canonical account email; a mismatching form email is rejected.
+6. Supabase Auth email is unique account identity. Minimal `customer_profiles` stores name/WhatsApp/timestamps, not card data.
+7. Customer authorization is independent from admin UUID/AAL2/`admin_sessions` authorization.
+8. Customer order reads use narrow RPCs deriving ownership from `auth.uid()`; no broad browser SELECT on `orders`.
+9. Guest-order claiming requires **verified account email + possession of the existing 64-character public order token**. Email-only/name-only/WhatsApp-only/order-number-only/bulk automatic claim is forbidden.
 10. Historical orders with `customer_email IS NULL` remain public-token-trackable but are not claimable in Phase 3.
-11. Existing `/pedido/[token]` tracking remains valid even after an order is linked to an account.
-12. Customer DTOs exclude public token, checkout attempt/fingerprint/URL, raw shipping snapshot, admin audit, provider credentials and other internals.
-13. Mercado Pago remains payment authority; account code does not mutate financial state.
-14. Phase 3 uses Supabase Auth verification/recovery emails only. Transactional order-status emails remain Phase 6.
+11. `/pedido/[token]` remains valid after account linking.
+12. Customer DTOs exclude public token, checkout attempt/fingerprint/URL, raw shipping snapshot, admin audit, provider credentials/internal secrets.
+13. Mercado Pago remains payment authority; customer account code does not mutate financial state.
+14. Phase 3 uses only Supabase Auth verification/recovery email. Transactional order-status email remains Phase 6.
 
 ## Phase 3 plan
 
-Plan created:
+Plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
 
-`docs/superpowers/plans/2026-09-02-customer-account-orders.md`
+Initial plan commit: `f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`.
 
-Initial planning commit:
+Plan self-review found no `TODO`, `TBD`, `implement later`, or `Similar to` placeholders. The planned migration is `supabase/migrations/202609020003_customer_accounts_orders.sql` and must remain Git-only until the full Phase 3 candidate is reviewed and owner explicitly approves DDL application.
 
-`f36350f861e4dc8c3b8206f38a75e5bc4350b8f8`
+## Phase 3 Task 1 — migration contract RED: VALID
 
-The plan was self-reviewed for spec coverage, placeholder patterns and type/interface consistency. No `TODO`, `TBD`, `implement later`, or `Similar to` placeholders remain.
+Test-only file:
 
-Planned Phase 3 sequence:
+`tests/customer-account-migration.test.ts`
 
-1. migration contract RED;
-2. additive customer/account migration GREEN in Git only;
-3. required checkout email RED/GREEN;
-4. trusted customer auth boundary;
-5. authenticated checkout ownership persistence;
-6. RLS-backed minimal customer profile repository;
-7. signup/login/logout/verification/password recovery/profile actions + rate limits;
-8. customer-owned order list/detail RPC wrappers;
-9. verified-email + public-token guest claiming;
-10. storefront-styled `/minha-conta` UI;
-11. customer A/B isolation and takeover security matrix;
-12. full candidate test/typecheck/build + exact diff/security review;
-13. explicit owner gate before applying Phase 3 DDL to current Supabase;
-14. Preview acceptance;
-15. Phase 3 completion gate.
+RED commit:
 
-## Phase 3 database intent — NOT APPLIED
+`631565b4e2319b697db2ce42487a462ef4d333f2`
 
-Planned repository migration filename:
+GitHub Actions:
 
-`supabase/migrations/202609020003_customer_accounts_orders.sql`
+- run `33666326422`;
+- job `100368874030`;
+- `pnpm test`: expected FAILURE;
+- total tests: 295;
+- PASS: 291;
+- FAIL: 4;
+- all four failures are the four new migration-contract tests;
+- every failure is exactly `ENOENT` for missing `supabase/migrations/202609020003_customer_accounts_orders.sql`;
+- no unrelated test failed;
+- `pnpm typecheck` and `pnpm build` were skipped because the expected RED stopped the CI job.
 
-It does **not exist yet** and no Phase 3 DDL has been applied to Supabase.
+This is valid TDD RED evidence. No Phase 3 SQL existed when the failure was captured.
 
-Planned schema includes nullable `orders.customer_email`, nullable `orders.customer_id -> auth.users(id)`, minimal `customer_profiles`, authenticated safe list/detail RPCs using `auth.uid()`, and a service-role-only atomic guest-claim RPC. Historical rows are not backfilled with fabricated ownership/email.
+The RED contract requires:
+
+- additive nullable `orders.customer_email` and `orders.customer_id -> auth.users(id)`;
+- no historical identity backfill;
+- minimal RLS `customer_profiles`;
+- customer list/detail RPCs deriving ownership from `auth.uid()` and returning curated safe data;
+- no broad authenticated SELECT/write on `orders`;
+- service-role-only locked `claim_guest_order_for_customer` requiring token + verified email + trusted customer UUID;
+- idempotent `customer_order_claimed` event with `source='customer'` and no token/email metadata;
+- no customer claim/payment mutation.
+
+Existing Phase 1 `order_events.source` already allows `customer`; no source-constraint migration is required.
 
 ## Current safety gates
 
+- Phase 3 DDL has **not** been applied to Supabase.
+- Do not apply Phase 3 DDL until Task 12 full candidate review and a separate explicit owner approval at Task 13.
 - Do not merge `feat/admin-dashboard-expansion` without explicit owner approval.
-- Do not promote/create a new Production application deployment without explicit owner approval.
-- Do not delete the feature branch unless owner explicitly requests it.
-- Phase 2 migration is already applied; do not rediscover or reapply it.
-- Phase 3 DDL is **not approved/applied yet**. Build/test the full candidate first, then stop for explicit owner approval before current-project migration application.
-- Do not start Phase 4 catalog runtime work before Phase 3 completion.
+- Do not create/promote a new Production app deployment without explicit owner approval.
+- Do not delete the feature branch unless owner asks.
+- Do not start Phase 4 runtime work before Phase 3 completion.
 
 ## Resume point
 
-**Phase 2:** COMPLETE/VERIFIED/PREVIEW ACCEPTED.
+**Current Phase 3 status:** Task 1 RED VALID; Task 2 not yet implemented.
 
-**Phase 3:** implementation plan WRITTEN/SELF-REVIEWED; runtime implementation NOT STARTED.
-
-**Approved checkout-email rule:** required for all new guest/authenticated checkouts.
-
-**NEXT EXACT ACTION:** execute Phase 3 Task 1 only: create `tests/customer-account-migration.test.ts`, run `node --experimental-strip-types --test tests/customer-account-migration.test.ts`, capture the expected RED because `supabase/migrations/202609020003_customer_accounts_orders.sql` does not exist, record RED evidence, and only then write the migration. No Supabase application, merge, or Production promotion at this step.
+**NEXT EXACT ACTION:** create only `supabase/migrations/202609020003_customer_accounts_orders.sql` according to the reviewed Phase 3 plan, run the focused migration contract to obtain GREEN, then run Phase 1/2 migration/payment regressions. Keep the migration in Git only; do not apply it to Supabase. If the focused test fails for a contract mismatch, debug the SQL/test before advancing to checkout-email Task 3.
