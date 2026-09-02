@@ -13,6 +13,7 @@ import {
   markCheckoutPreferenceError,
   type CheckoutPreferenceClaim,
 } from "./checkout-preference-lease.ts"
+import type { CustomerIdentity } from "./customer-auth.ts"
 import { getMelhorEnvioEnv } from "./env.ts"
 import {
   createMercadoPagoPreference,
@@ -117,6 +118,7 @@ export interface CheckoutFlowDependencies {
 export interface CheckoutFlowInput {
   items: unknown
   customer: CheckoutData
+  customerIdentity?: CustomerIdentity | null
   selectedQuoteToken: string
   checkoutAttemptId: string
   siteUrl: string
@@ -206,7 +208,12 @@ function validateInput(input: CheckoutFlowInput) {
     throw new CheckoutFlowValidationError("Invalid customer data")
   }
 
-  return { attemptId, customer }
+  const customerIdentity = input.customerIdentity ?? null
+  if (customerIdentity && customer.email !== customerIdentity.email) {
+    throw new CheckoutFlowValidationError("Authenticated email mismatch")
+  }
+
+  return { attemptId, customer, customerIdentity }
 }
 
 function existingAttemptResult(
@@ -250,7 +257,7 @@ export async function executeCheckoutFlow(
   dependencies?: CheckoutFlowDependencies,
 ): Promise<CheckoutFlowResult> {
   const deps = dependencies ?? createDefaultDependencies()
-  const { attemptId, customer } = validateInput(input)
+  const { attemptId, customer, customerIdentity } = validateInput(input)
   const checkoutOrder = buildCheckoutOrder(input.items)
   const cartFingerprint = createCartFingerprint(
     checkoutOrder.items.map((item) => ({
@@ -323,6 +330,8 @@ export async function executeCheckoutFlow(
       orderNumber: deps.generateOrderNumber(),
       publicToken: deps.generatePublicToken(),
       customerName: customer.nome,
+      customerEmail: customerIdentity?.email ?? customer.email,
+      customerId: customerIdentity?.userId ?? null,
       whatsapp: customer.whatsapp,
       cep: customer.cep,
       address: {
