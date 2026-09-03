@@ -23,7 +23,7 @@ The Vercel project must remain available until the KingHost runtime is deployed,
 ### KingHost
 
 - Product: Hospedagem Node.js III.
-- Runtime: Node.js 20.18.0.
+- Runtime: Node.js 22.1.0.
 - Application name: `proxybembem`.
 - Web path: `/`.
 - KingHost direct/internal application port is managed by KingHost; the application must bind to the environment-provided port rather than a hard-coded port.
