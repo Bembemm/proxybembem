@@ -36,8 +36,8 @@ const contentSecurityPolicy = [
   "img-src 'self' data: https:",
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
-  `connect-src 'self' https://vitals.vercel-insights.com${supabaseBrowserOrigin ? ` ${supabaseBrowserOrigin}` : ""}`,
+  "script-src 'self' 'unsafe-inline'",
+  `connect-src 'self'${supabaseBrowserOrigin ? ` ${supabaseBrowserOrigin}` : ""}`,
   "upgrade-insecure-requests",
 ].join("; ")
 
