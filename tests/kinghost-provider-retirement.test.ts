@@ -7,6 +7,7 @@ const ACTIVE_RUNTIME_FILES = [
   "lib/server/env.ts",
   "lib/server/rate-limit.ts",
   "lib/server/shipping-quote.ts",
+  "lib/server/admin-order-actions.ts",
   "app/api/shipping/quote/route.ts",
   "app/api/checkout/route.ts",
   "app/api/admin/logout/route.ts",

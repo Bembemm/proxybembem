@@ -78,7 +78,6 @@ export function createAdminOrderActionHandler(
         configuredSiteUrl: siteUrl,
         requestOrigin,
         nodeEnv: process.env.NODE_ENV,
-        vercelEnv: process.env.VERCEL_ENV,
       })
     ) {
       return response(403)
