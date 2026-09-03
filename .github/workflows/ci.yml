@@ -12,12 +12,13 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - name: Set up KingHost runtime
+
+      - name: Set up exact KingHost runtime
         uses: actions/setup-node@v4
         with:
           node-version: 22.1.0
           cache: pnpm
-      - name: Verify exact Node version
+      - name: Verify exact KingHost Node version
         run: |
           node - <<'NODE'
           if (process.version !== "v22.1.0") {
@@ -25,7 +26,6 @@ jobs:
           }
           NODE
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build:kinghost
       - name: Smoke KingHost startup adapter
@@ -36,3 +36,12 @@ jobs:
             process.exit(1)
           }
           NODE
+
+      # Node 22.1.0 predates Node's built-in TypeScript type stripping.
+      # Production code is typechecked/built/smoked above on the exact KingHost runtime;
+      # Node 24 is used only to execute the raw .ts test files without another test loader.
+      - name: Set up TypeScript test runner
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm test
