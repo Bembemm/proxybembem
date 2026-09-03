@@ -12,11 +12,20 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - name: Set up test runtime
+        uses: actions/setup-node@v4
         with:
-          node-version: 20.18.0
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
+      - name: Set up KingHost runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.0
+      - name: Verify exact KingHost Node version
+        run: node -e 'if (process.version !== "v20.18.0") { throw new Error(`Expected v20.18.0, got ${process.version}`) }'
       - run: pnpm build:kinghost
+      - name: Smoke KingHost startup adapter on Node 20.18.0
+        run: node -e 'const { resolveKingHostPort } = require("./app.js"); if (resolveKingHostPort({ PORT_APP: "21169", PORT: "3000" }) !== "21169") process.exit(1)'
