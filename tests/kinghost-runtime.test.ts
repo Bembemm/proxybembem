@@ -5,9 +5,12 @@ import test from "node:test"
 
 const require = createRequire(import.meta.url)
 
-const { resolveKingHostPort } = require("../app.js") as {
+const kingHostRuntime = require("../app.js") as {
   resolveKingHostPort(env: Record<string, string | undefined>): string
+  resolveKingHostHostname?: (env: Record<string, string | undefined>) => string
 }
+
+const { resolveKingHostPort } = kingHostRuntime
 
 test("KingHost runtime accepts the scoped port variable generated for proxybembem/app.js", () => {
   assert.equal(
@@ -25,6 +28,13 @@ test("KingHost runtime prefers PORT_APP without hard-coding the allocated port",
 test("KingHost runtime rejects invalid ports", () => {
   assert.throws(() => resolveKingHostPort({ PORT_APP: "abc" }), /valid port/i)
   assert.throws(() => resolveKingHostPort({ PORT_APP: "70000" }), /valid port/i)
+})
+
+test("KingHost runtime ignores the machine HOSTNAME and binds all interfaces", () => {
+  assert.equal(
+    kingHostRuntime.resolveKingHostHostname?.({ HOSTNAME: "10.19.0.157" }),
+    "0.0.0.0",
+  )
 })
 
 test("Next config emits standalone output", async () => {
