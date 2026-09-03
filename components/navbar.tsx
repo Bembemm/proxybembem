@@ -23,7 +23,7 @@ export function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
       <nav className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between" aria-label="Navegação principal">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          <img src="/brand/pb.png" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
+          <img src="/brand/pb" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
           <span className="text-xl sm:text-2xl font-[family-name:var(--font-display)] text-black tracking-wide">
             ProxyBembem
           </span>
