@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:kinghost": "next build && node scripts/prepare-kinghost.mjs",
+    "build:kinghost": "next build --webpack && node scripts/prepare-kinghost.mjs",
     "start": "next start",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
