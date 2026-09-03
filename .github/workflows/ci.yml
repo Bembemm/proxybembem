@@ -23,16 +23,16 @@ jobs:
       - name: Set up KingHost runtime
         uses: actions/setup-node@v4
         with:
-          node-version: 20.18.0
+          node-version: 22.1.0
       - name: Verify exact KingHost Node version
         run: |
           node - <<'NODE'
-          if (process.version !== "v20.18.0") {
-            throw new Error(`Expected v20.18.0, got ${process.version}`)
+          if (process.version !== "v22.1.0") {
+            throw new Error(`Expected v22.1.0, got ${process.version}`)
           }
           NODE
       - run: pnpm build:kinghost
-      - name: Smoke KingHost startup adapter on Node 20.18.0
+      - name: Smoke KingHost startup adapter on Node 22.1.0
         run: |
           node - <<'NODE'
           const { resolveKingHostPort } = require("./app.js")
