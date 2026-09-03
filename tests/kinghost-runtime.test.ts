@@ -9,6 +9,13 @@ const { resolveKingHostPort } = require("../app.js") as {
   resolveKingHostPort(env: Record<string, string | undefined>): string
 }
 
+test("KingHost runtime accepts the scoped port variable generated for proxybembem/app.js", () => {
+  assert.equal(
+    resolveKingHostPort({ PORT_PROXYBEMBEM_APP: "21169", PORT: "3000" }),
+    "21169",
+  )
+})
+
 test("KingHost runtime prefers PORT_APP without hard-coding the allocated port", () => {
   assert.equal(resolveKingHostPort({ PORT_APP: "21169", PORT: "3000" }), "21169")
   assert.equal(resolveKingHostPort({ PORT: "4321" }), "4321")
