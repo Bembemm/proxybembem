@@ -12,27 +12,23 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - name: Set up test runtime
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test
-      - run: pnpm typecheck
       - name: Set up KingHost runtime
         uses: actions/setup-node@v4
         with:
           node-version: 22.1.0
-      - name: Verify exact KingHost Node version
+          cache: pnpm
+      - name: Verify exact Node version
         run: |
           node - <<'NODE'
           if (process.version !== "v22.1.0") {
             throw new Error(`Expected v22.1.0, got ${process.version}`)
           }
           NODE
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
       - run: pnpm build:kinghost
-      - name: Smoke KingHost startup adapter on Node 22.1.0
+      - name: Smoke KingHost startup adapter
         run: |
           node - <<'NODE'
           const { resolveKingHostPort } = require("./app.js")

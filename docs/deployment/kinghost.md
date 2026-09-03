@@ -1,0 +1,141 @@
+# Deploy na KingHost
+
+Este é o procedimento canônico de deploy do ProxyBembem na KingHost.
+
+## Arquitetura
+
+A aplicação usa dois caminhos de publicação no mesmo domínio:
+
+- **Next.js/Node.js:** código, páginas SSR, APIs, autenticação e checkout rodam em `~/apps_nodejs/proxybembem` pelo `app.js` e pela porta alta fornecida pela KingHost.
+- **Nginx/webroot:** CSS, JavaScript gerado pelo Next e arquivos de `public/` precisam estar também em `~/www`, porque a camada pública da KingHost atende esses arquivos pelo webroot antes do processo Node.
+
+O comando `deploy:kinghost` mantém essas duas partes sincronizadas. Ele não apaga nem recria `~/www`; apenas copia os arquivos do projeto e preserva arquivos não relacionados e hashes antigos de `/_next/static`.
+
+## Runtime fixo
+
+- Node.js: `22.1.0`
+- pnpm: major `10`
+- aplicação KingHost: `proxybembem`
+- caminho web: `/`
+- entrypoint do painel: `proxybembem/app.js`
+- porta: sempre fornecida pela KingHost por variável de ambiente; nunca hard-code uma porta alocada.
+
+Confirme o runtime:
+
+```bash
+cd ~/apps_nodejs/proxybembem
+nvm use
+node -v
+```
+
+Esperado:
+
+```text
+v22.1.0
+```
+
+## Deploy normal
+
+No SSH:
+
+```bash
+cd ~/apps_nodejs/proxybembem
+git pull --ff-only
+nvm use
+npx pnpm@10 install --frozen-lockfile
+NODE_ENV=production npx pnpm@10 deploy:kinghost
+```
+
+`deploy:kinghost` executa:
+
+1. build Next.js com webpack;
+2. preparação do `.next/standalone`;
+3. cópia de `public/*` para `~/www/*`;
+4. cópia de `.next/static/*` para `~/www/_next/static/*`.
+
+Depois do comando terminar, reinicie a aplicação **pelo painel da KingHost**, para manter o PM2 gerenciado pelo painel como autoridade do processo.
+
+Não use `pm2 start`, Express, `next dev` ou uma porta hard-coded como procedimento de produção.
+
+## Smoke após deploy
+
+### Página principal
+
+```bash
+curl -sSI https://proxybembem.com.br/ | head -n 6
+```
+
+Esperado: `HTTP/2 200`.
+
+### Arquivo de `public/`
+
+```bash
+curl -sSI https://proxybembem.com.br/placeholder-logo.png | head -n 6
+```
+
+Esperado: `HTTP/2 200` e MIME de imagem.
+
+### CSS do build atual
+
+```bash
+CSS=$(curl -fsS https://proxybembem.com.br/ | grep -oE '/_next/static/css/[^" ]+\.css' | head -n 1)
+echo "$CSS"
+curl -sSI "https://proxybembem.com.br$CSS" | head -n 8
+```
+
+Esperado: `HTTP/2 200` e `content-type: text/css`.
+
+### JavaScript do build atual
+
+```bash
+JS=$(curl -fsS https://proxybembem.com.br/ | grep -oE '/_next/static/[^" ]+\.js' | head -n 1)
+echo "$JS"
+curl -sSI "https://proxybembem.com.br$JS" | head -n 8
+```
+
+Esperado: `HTTP/2 200` e MIME de JavaScript.
+
+## Cron do Melhor Envio
+
+A renovação preventiva do token continua usando:
+
+```text
+GET /api/internal/melhor-envio/refresh
+```
+
+O endpoint aceita duas formas do mesmo segredo de manutenção:
+
+- `Authorization: Bearer <CRON_SECRET>` para diagnóstico manual controlado;
+- `X-CRON-AUTH: <CRON_SECRET>` para o Cronjob da KingHost.
+
+No painel de Cronjob da KingHost, configure a URL HTTPS:
+
+```text
+https://proxybembem.com.br/api/internal/melhor-envio/refresh
+```
+
+Cadência mantida do deployment anterior: todos os dias às **03:17**.
+
+A KingHost fornece o valor de autenticação do header `X_CRON_AUTH`. Configure esse mesmo valor como `CRON_SECRET` no ambiente de produção da aplicação e reinicie a aplicação pelo painel. **Nunca cole esse valor em Git, logs públicos ou chat.**
+
+Uma chamada autorizada retorna somente:
+
+```json
+{"ok":true}
+```
+
+Falhas de autenticação retornam `401`; falhas de renovação retornam resposta sanitizada sem token ou detalhe do provedor.
+
+## Arquivos de ambiente
+
+Segredos ficam fora do Git. O `.env.production` no servidor continua privado e deve manter permissões restritas. Não faça `source .env.production` no shell; valores dotenv podem conter espaços e caracteres que não são sintaxe shell. O Next/runtime lê o arquivo pelo mecanismo de ambiente da aplicação.
+
+## Build de CI vs deploy de servidor
+
+`pnpm build:kinghost` é seguro para CI e só escreve dentro do checkout.
+
+`pnpm deploy:kinghost` é exclusivo do servidor KingHost porque publica em `$HOME/www`. O GitHub Actions nunca deve executar `deploy:kinghost`.
+
+## Rollback operacional
+
+Se um candidato novo falhar, não altere Supabase nem reaplique migrations. Volte o checkout da aplicação para um commit conhecido, execute novamente `deploy:kinghost`, reinicie pelo painel e repita o smoke. Assets antigos com hash são preservados no webroot justamente para evitar uma janela de incompatibilidade durante troca/restart de build.
