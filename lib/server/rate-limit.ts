@@ -30,11 +30,7 @@ function firstUsableForwardedValue(value: string | null): string | null {
 }
 
 function getClientIp(request: Request): string {
-  const headers = [
-    "x-vercel-forwarded-for",
-    "x-forwarded-for",
-    "x-real-ip",
-  ] as const
+  const headers = ["x-forwarded-for", "x-real-ip"] as const
 
   for (const name of headers) {
     const candidate = firstUsableForwardedValue(request.headers.get(name))

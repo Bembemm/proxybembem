@@ -25,9 +25,9 @@ async function withEnv(run: () => Promise<void>) {
   }
 }
 
-test("prefers Vercel forwarded IP and sends only its HMAC bucket to Supabase", async (t) => {
+test("prefers standard forwarded IP and sends only its HMAC bucket to Supabase", async (t) => {
   await withEnv(async () => {
-    const rawIp = "203.0.113.10"
+    const rawIp = "198.51.100.2"
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update(`checkout:${rawIp}`)
       .digest("hex")
@@ -44,7 +44,7 @@ test("prefers Vercel forwarded IP and sends only its HMAC bucket to Supabase", a
         assert.equal(headers.get("apikey"), "server-secret")
 
         const bodyText = String(init?.body)
-        assert.doesNotMatch(bodyText, /203\.0\.113\.10/)
+        assert.doesNotMatch(bodyText, /198\.51\.100\.2/)
         assert.deepEqual(JSON.parse(bodyText), {
           p_bucket_key: expectedBucket,
           p_limit: 10,
@@ -56,8 +56,7 @@ test("prefers Vercel forwarded IP and sends only its HMAC bucket to Supabase", a
 
     const request = new Request("https://store.test/api/checkout", {
       headers: {
-        "x-vercel-forwarded-for": "203.0.113.10, 10.0.0.1",
-        "x-forwarded-for": "198.51.100.2",
+        "x-forwarded-for": "198.51.100.2, 10.0.0.1",
         "x-real-ip": "192.0.2.3",
       },
     })
@@ -66,10 +65,10 @@ test("prefers Vercel forwarded IP and sends only its HMAC bucket to Supabase", a
   })
 })
 
-test("falls through unusable forwarding headers and isolates scopes", async (t) => {
+test("falls through unusable forwarded header to x-real-ip and isolates scopes", async (t) => {
   await withEnv(async () => {
     const expectedBucket = createHmac("sha256", RATE_SECRET)
-      .update("shipping-quote:198.51.100.2")
+      .update("shipping-quote:192.0.2.3")
       .digest("hex")
 
     t.mock.method(
@@ -87,8 +86,8 @@ test("falls through unusable forwarding headers and isolates scopes", async (t) 
 
     const request = new Request("https://store.test/api/shipping/quote", {
       headers: {
-        "x-vercel-forwarded-for": "x".repeat(65),
-        "x-forwarded-for": "198.51.100.2, 10.0.0.2",
+        "x-forwarded-for": "x".repeat(65),
+        "x-real-ip": "192.0.2.3",
       },
     })
 

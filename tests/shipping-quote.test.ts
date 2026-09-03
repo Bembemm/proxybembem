@@ -170,7 +170,7 @@ test("returns a controlled unavailable error when the provider has no valid serv
   )
 })
 
-test("keeps shipping provider failures generic in preview and production", async () => {
+test("keeps shipping provider failures generic", async () => {
   const buildShippingQuoteResult = createShippingQuoteBuilder({
     getQuoteSecret: () => QUOTE_SECRET,
     quoteProvider: async () => {
@@ -191,6 +191,5 @@ test("keeps shipping provider failures generic in preview and production", async
 
   assert.ok(providerError)
   const expected = "Não foi possível calcular o frete agora. Confira o CEP e tente novamente."
-  assert.equal(formatShippingUnavailableMessage(providerError, "preview"), expected)
-  assert.equal(formatShippingUnavailableMessage(providerError, "production"), expected)
+  assert.equal(formatShippingUnavailableMessage(providerError), expected)
 })

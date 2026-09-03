@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     if (error instanceof ShippingUnavailableError) {
-      return jsonError(formatShippingUnavailableMessage(error, process.env.VERCEL_ENV), 503)
+      return jsonError(formatShippingUnavailableMessage(error), 503)
     }
 
     return jsonError("Confira o CEP e os produtos do carrinho.", 400)

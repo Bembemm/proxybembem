@@ -26,6 +26,16 @@ function bearerSecret(request: Request): string | null {
   return candidate
 }
 
+function kingHostCronSecret(request: Request): string | null {
+  const candidate = request.headers.get("x-cron-auth")
+  if (!candidate || candidate.length > 1024 || /\s/.test(candidate)) return null
+  return candidate
+}
+
+function requestSecret(request: Request) {
+  return kingHostCronSecret(request) ?? bearerSecret(request)
+}
+
 export function createMelhorEnvioRefreshHandler(deps: RefreshHandlerDependencies) {
   return async function handle(request: Request): Promise<Response> {
     let expectedSecret: string
@@ -35,7 +45,7 @@ export function createMelhorEnvioRefreshHandler(deps: RefreshHandlerDependencies
       return jsonResponse({ ok: false }, 401)
     }
 
-    const candidateSecret = bearerSecret(request)
+    const candidateSecret = requestSecret(request)
     if (
       candidateSecret === null ||
       !timingSafeSecretEqual(candidateSecret, expectedSecret)

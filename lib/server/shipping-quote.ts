@@ -39,10 +39,7 @@ export class ShippingUnavailableError extends Error {
 const GENERIC_SHIPPING_MESSAGE =
   "Não foi possível calcular o frete agora. Confira o CEP e tente novamente."
 
-export function formatShippingUnavailableMessage(
-  _error: ShippingUnavailableError,
-  _vercelEnv: string | undefined,
-) {
+export function formatShippingUnavailableMessage(_error: ShippingUnavailableError) {
   return GENERIC_SHIPPING_MESSAGE
 }
 
