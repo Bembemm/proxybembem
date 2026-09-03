@@ -12,7 +12,7 @@ type CreateHandler = (deps: HandlerDependencies) => (request: Request) => Promis
 
 async function loadCreateHandler(): Promise<CreateHandler> {
   const module = (await import(
-    "../app/api/internal/melhor-envio/refresh/route.ts"
+    "../lib/server/melhor-envio-refresh-handler.ts"
   )) as Record<string, unknown>
   assert.equal(
     typeof module.createMelhorEnvioRefreshHandler,
