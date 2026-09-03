@@ -1,9 +1,9 @@
 import { cp, mkdir, rm } from "node:fs/promises"
 
-const root = new URL("../", import.meta.url)
-const standalone = new URL("../.next/standalone/", import.meta.url)
-const standalonePublic = new URL("../.next/standalone/public/", import.meta.url)
-const standaloneStatic = new URL("../.next/standalone/.next/static/", import.meta.url)
+const root = new URL("../../", import.meta.url)
+const standalone = new URL("../../.next/standalone/", import.meta.url)
+const standalonePublic = new URL("../../.next/standalone/public/", import.meta.url)
+const standaloneStatic = new URL("../../.next/standalone/.next/static/", import.meta.url)
 
 await rm(standalonePublic, { recursive: true, force: true })
 await rm(standaloneStatic, { recursive: true, force: true })

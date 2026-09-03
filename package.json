@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:kinghost": "next build --webpack && node scripts/prepare-kinghost.mjs",
+    "build:kinghost": "next build --webpack && node scripts/kinghost/prepare-standalone.mjs",
+    "deploy:kinghost": "pnpm build:kinghost && node scripts/kinghost/publish-assets.mjs",
     "start": "next start",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
