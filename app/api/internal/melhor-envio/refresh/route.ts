@@ -1,60 +1,8 @@
 import { getCronSecret } from "../../../../../lib/server/env.ts"
+import { createMelhorEnvioRefreshHandler } from "../../../../../lib/server/melhor-envio-refresh-handler.ts"
 import { getMelhorEnvioAccessToken } from "../../../../../lib/server/melhor-envio-token-manager.ts"
-import { timingSafeSecretEqual } from "../../../../../lib/server/secret-compare.ts"
 
 export const runtime = "nodejs"
-
-interface RefreshHandlerDependencies {
-  getCronSecret(): string
-  getAccessToken(): Promise<{ accessToken: string; tokenVersion: number }>
-}
-
-function jsonResponse(body: { ok: boolean }, status: number) {
-  return Response.json(body, {
-    status,
-    headers: {
-      "Cache-Control": "no-store",
-    },
-  })
-}
-
-function bearerSecret(request: Request): string | null {
-  const authorization = request.headers.get("authorization")
-  if (!authorization) return null
-
-  const match = /^Bearer ([^\s]+)$/.exec(authorization)
-  if (!match) return null
-
-  const candidate = match[1]
-  if (!candidate || candidate.length > 1024) return null
-  return candidate
-}
-
-export function createMelhorEnvioRefreshHandler(deps: RefreshHandlerDependencies) {
-  return async function handle(request: Request): Promise<Response> {
-    let expectedSecret: string
-    try {
-      expectedSecret = deps.getCronSecret()
-    } catch {
-      return jsonResponse({ ok: false }, 401)
-    }
-
-    const candidateSecret = bearerSecret(request)
-    if (
-      candidateSecret === null ||
-      !timingSafeSecretEqual(candidateSecret, expectedSecret)
-    ) {
-      return jsonResponse({ ok: false }, 401)
-    }
-
-    try {
-      await deps.getAccessToken()
-      return jsonResponse({ ok: true }, 200)
-    } catch {
-      return jsonResponse({ ok: false }, 503)
-    }
-  }
-}
 
 export const GET = createMelhorEnvioRefreshHandler({
   getCronSecret,
