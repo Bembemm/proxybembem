@@ -179,3 +179,17 @@ Owner/manual acceptance still required by the Phase 3 plan after the automated s
 **Phase 3 DB:** `20260902220354_customer_accounts_orders` is applied to the current ProxyBembem Supabase project and validated with 10/10 rollback-only matrix + zero fixture residue.
 
 **NEXT EXACT ACTION:** Wait only for Vercel's normal Git Preview pipeline to expose a READY deployment for `14a6f337...` or this docs-only descendant; then repeat `/`, `/produtos`, invalid-token and unauthenticated customer-route smoke and confirm the earlier customer profile/order errors are absent from that deployment's error/fatal logs. After that, stop at the explicit owner-auth acceptance step: owner must create/use the test customer through normal Supabase verification without sharing credentials, then perform the account/cross-account/guest-claim checks. No merge or Production promotion.
+
+## Infrastructure migration checkpoint — KingHost
+
+Infrastructure migration is in progress: **Vercel -> KingHost Node.js III**.
+
+- Supabase remains hosted and unchanged; do not migrate or reapply database migrations.
+- Phase 3 remains at **Task 14**; Tasks 1-13 are complete and must not be repeated.
+- KingHost application: `proxybembem`, Node.js `20.18.0`, web path `/`, publication directory `/apps_nodejs/proxybembem/`.
+- Migration design: `docs/superpowers/specs/2026-09-02-kinghost-migration-design.md`.
+- Migration implementation plan: `docs/superpowers/plans/2026-09-02-kinghost-migration.md`.
+- Runtime migration Tasks 1-2 are being validated on an isolated TDD branch before advancing `feat/admin-dashboard-expansion`.
+- Vercel remains rollback and **must not be deleted** until the KingHost deployment, HTTPS, checkout, auth/admin boundaries and pending Phase 3 Task 14 account/isolation/guest-claim acceptance all pass and the owner explicitly approves removal.
+
+**MIGRATION RESUME ACTION (supersedes the Vercel-only wait action above while this migration is active):** finish the exact KingHost Node 20.18.0 CI gate, advance only the verified candidate to `feat/admin-dashboard-expansion`, deploy it through the existing KingHost Git integration, configure production environment values outside Git, validate HTTPS/runtime smoke and complete the pending Phase 3 Task 14 owner-auth acceptance. Do not start Phase 4 and do not delete Vercel before final owner approval.
