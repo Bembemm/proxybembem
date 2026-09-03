@@ -1,4 +1,6 @@
-const isProductionDeployment = process.env.VERCEL_ENV === "production"
+const isProductionDeployment = process.env.VERCEL_ENV
+  ? process.env.VERCEL_ENV === "production"
+  : process.env.NODE_ENV === "production"
 
 function melhorEnvioFormActionOrigin() {
   if (process.env.MELHOR_ENVIO_ENVIRONMENT === "sandbox") {
@@ -72,6 +74,7 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   async headers() {
     return [
       {

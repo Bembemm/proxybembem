@@ -90,6 +90,7 @@ test("Melhor Envio OAuth form navigation is allowlisted only for the active envi
 test("HSTS is conditionally enabled only for the production deployment", async () => {
   const source = await readFile(CONFIG, "utf8")
   assert.match(source, /VERCEL_ENV/)
+  assert.match(source, /NODE_ENV/)
   assert.match(source, /production/)
   assert.match(source, /max-age=31536000; includeSubDomains/)
 })
