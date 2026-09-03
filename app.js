@@ -1,7 +1,7 @@
 const path = require("node:path")
 
 function resolveKingHostPort(env = process.env) {
-  const raw = env.PORT_APP || env.PORT || "3000"
+  const raw = env.PORT_PROXYBEMBEM_APP || env.PORT_APP || env.PORT || "3000"
   const port = Number.parseInt(raw, 10)
   if (
     !Number.isInteger(port) ||
