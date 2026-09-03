@@ -14,9 +14,13 @@ function resolveKingHostPort(env = process.env) {
   return String(port)
 }
 
+function resolveKingHostHostname() {
+  return "0.0.0.0"
+}
+
 function startKingHostRuntime() {
   process.env.PORT = resolveKingHostPort(process.env)
-  process.env.HOSTNAME = process.env.HOSTNAME || "0.0.0.0"
+  process.env.HOSTNAME = resolveKingHostHostname(process.env)
   require(path.join(__dirname, ".next", "standalone", "server.js"))
 }
 
@@ -24,4 +28,4 @@ if (require.main === module) {
   startKingHostRuntime()
 }
 
-module.exports = { resolveKingHostPort, startKingHostRuntime }
+module.exports = { resolveKingHostPort, resolveKingHostHostname, startKingHostRuntime }
