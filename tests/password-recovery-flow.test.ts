@@ -51,7 +51,7 @@ test("recovery callback emits only bounded non-secret PKCE diagnostics", async (
   const callback = await source("../app/auth/callback/route.ts")
 
   assert.match(callback, /function hasPkceCodeVerifierCookie/)
-  assert.match(callback, /request\.cookies\.getAll\(\)/)
+  assert.match(callback, /request\.cookies\s*\.getAll\(\)/)
   assert.match(callback, /-code-verifier/)
   assert.match(callback, /function sanitizeAuthErrorCode/)
   assert.match(callback, /Password recovery callback diagnostic/)
