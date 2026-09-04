@@ -86,7 +86,7 @@ test("password reset checks Supabase email errors instead of reporting a false s
 
   assert.match(
     route,
-    /const\s*\{\s*error\s*\}\s*=\s*await\s+supabase\.auth\.resetPasswordForEmail\s*\(/,
+    /const\s*\{\s*error\s*\}\s*=\s*await\s+(?:routeClient\.)?supabase\.auth\.resetPasswordForEmail\s*\(/,
   )
   assert.match(route, /if\s*\(\s*error\s*\)/)
   assert.match(route, /error\.status\s*===\s*429/)
