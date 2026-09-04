@@ -49,8 +49,13 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   })
 
-  const { data } = await supabase.auth.getClaims()
-  const claims = data?.claims
+  let claims: unknown
+  try {
+    const { data } = await supabase.auth.getClaims()
+    claims = data?.claims
+  } catch {
+    claims = undefined
+  }
   const pathname = request.nextUrl.pathname
 
   if (
