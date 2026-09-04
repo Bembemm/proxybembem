@@ -3,6 +3,7 @@ import { isAllowedCheckoutOrigin, resolvePublicSiteUrl } from "./env.ts"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PUBLIC_ORDER_PATH_RE = /^\/pedido\/[A-Fa-f0-9]{64}$/
+const PASSWORD_RECOVERY_PATH = "/redefinir-senha"
 
 interface AccountSignupInput {
   name: string
@@ -153,6 +154,7 @@ export function isSameOriginAccountRequest(request: Request) {
 }
 
 export function sanitizeAccountNext(value: string | null | undefined) {
+  if (value === PASSWORD_RECOVERY_PATH) return PASSWORD_RECOVERY_PATH
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
     return "/minha-conta"
   }

@@ -13,6 +13,7 @@ export const config = {
     "/entrar",
     "/criar-conta",
     "/esqueci-a-senha",
+    "/redefinir-senha",
     "/auth/callback",
     "/minha-conta/:path*",
     "/api/account/:path*",

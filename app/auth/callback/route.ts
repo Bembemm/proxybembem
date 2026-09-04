@@ -3,11 +3,13 @@ import {
   parseAccountProfileMetadata,
   sanitizeAccountNext,
 } from "../../../lib/server/customer-account-actions.ts"
+import { resolvePublicSiteUrl } from "../../../lib/server/env.ts"
 import { ensureOwnCustomerProfile } from "../../../lib/server/customer-profiles.ts"
 import { createSupabaseServerClient } from "../../../lib/supabase/server.ts"
 
 function redirect(request: NextRequest, path: string) {
-  const response = Response.redirect(new URL(path, request.nextUrl.origin), 303)
+  const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
+  const response = Response.redirect(new URL(path, siteUrl), 303)
   response.headers.set("Cache-Control", "private, no-store")
   return response
 }
@@ -28,6 +30,10 @@ export async function GET(request: NextRequest) {
     const user = data.user
     if (userError || !user?.email_confirmed_at) {
       return redirect(request, "/entrar?erro=callback")
+    }
+
+    if (next === "/redefinir-senha") {
+      return redirect(request, next)
     }
 
     let profile: ReturnType<typeof parseAccountProfileMetadata>

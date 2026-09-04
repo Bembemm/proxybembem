@@ -13,7 +13,7 @@ import {
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
 
-export function PasswordForm() {
+export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<AccountFieldErrors>({})
@@ -40,7 +40,10 @@ export function PasswordForm() {
 
     setPending(true)
     try {
-      const response = await fetch("/api/account/password", {
+      const endpoint = recovery
+        ? "/api/account/password-recovery"
+        : "/api/account/password"
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -53,16 +56,26 @@ export function PasswordForm() {
         setMessage(
           typeof payload?.message === "string"
             ? payload.message
-            : "Não foi possível alterar a senha agora.",
+            : recovery
+              ? "Não foi possível redefinir a senha agora."
+              : "Não foi possível alterar a senha agora.",
         )
         return
       }
 
       formElement.reset()
       setErrors({})
+      if (recovery) {
+        window.location.assign("/entrar?senha=alterada")
+        return
+      }
       setMessage("Senha alterada.")
     } catch {
-      setMessage("Não foi possível alterar a senha agora.")
+      setMessage(
+        recovery
+          ? "Não foi possível redefinir a senha agora."
+          : "Não foi possível alterar a senha agora.",
+      )
     } finally {
       setPending(false)
     }
@@ -104,7 +117,13 @@ export function PasswordForm() {
       </div>
       {message ? <p role="status" className="text-sm text-slate-600">{message}</p> : null}
       <button type="submit" disabled={pending} className="rounded-lg bg-violet-600 px-4 py-2.5 font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60">
-        {pending ? "Alterando..." : "Alterar senha"}
+        {pending
+          ? recovery
+            ? "Redefinindo..."
+            : "Alterando..."
+          : recovery
+            ? "Redefinir senha"
+            : "Alterar senha"}
       </button>
     </form>
   )

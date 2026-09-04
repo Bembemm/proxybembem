@@ -25,26 +25,35 @@ test("recovery callback bypasses profile setup and lands on a standalone authent
   const proxy = await source("../proxy.ts")
 
   const recoveryBranch = callback.indexOf('next === "/redefinir-senha"')
-  const profileParsing = callback.indexOf("parseAccountProfileMetadata")
+  const profileParsing = callback.indexOf("profile = parseAccountProfileMetadata")
   assert.ok(recoveryBranch >= 0, "callback must recognize the dedicated recovery destination")
   assert.ok(profileParsing > recoveryBranch, "recovery must not depend on customer profile metadata")
 
+  assert.match(callback, /resolvePublicSiteUrl/)
   assert.match(page, /requireCustomerPageAccess\s*\(/)
   assert.match(page, /PasswordForm[^>]*recovery/)
   assert.doesNotMatch(page, /ensureOwnCustomerProfile|customer-profiles/)
   assert.match(proxy, /["']\/redefinir-senha["']/)
 })
 
-test("recovery password update is same-origin, authenticated, no-store and revokes all refresh sessions", async () => {
+test("recovery password update is same-origin, authenticated, rate-limited, no-store and revokes all refresh sessions", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
   const form = await source("../components/account/password-form.tsx")
+  const rateLimit = await source("../lib/server/rate-limit.ts")
 
   assert.match(route, /isSameOriginAccountRequest/)
+  assert.match(route, /consumeRateLimit/)
+  assert.match(route, /account-password-recovery/)
   assert.match(route, /parseAccountPasswordUpdateInput/)
+  assert.match(route, /readJsonBody\s*\(\s*request\s*,\s*4_096\s*\)/)
   assert.match(route, /auth\.getUser\s*\(/)
   assert.match(route, /auth\.updateUser\s*\(\s*\{\s*password:/)
   assert.match(route, /auth\.signOut\s*\(\s*\{\s*scope:\s*["']global["']/)
   assert.match(route, /private,\s*no-store/i)
+  assert.match(
+    rateLimit,
+    /"account-password-recovery"\s*:\s*\{\s*limit:\s*5,\s*windowSeconds:\s*900\s*\}/,
+  )
 
   assert.match(form, /recovery\??:\s*boolean/)
   assert.match(form, /\/api\/account\/password-recovery/)

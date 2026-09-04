@@ -10,12 +10,16 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>
+  searchParams: Promise<{
+    next?: string | string[]
+    senha?: string | string[]
+  }>
 }) {
   const params = await searchParams
   const next = sanitizeCustomerLoginNext(
     typeof params.next === "string" ? params.next : undefined,
   )
+  const passwordChanged = params.senha === "alterada"
 
   return (
     <section className="min-h-[70vh] px-4 pb-16 pt-24 sm:pt-28">
@@ -24,6 +28,11 @@ export default async function LoginPage({
           <h1 className="text-3xl font-bold text-slate-900">Entrar</h1>
           <p className="text-sm text-slate-600">Acompanhe seus pedidos e dados da sua conta.</p>
         </div>
+        {passwordChanged ? (
+          <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+            Senha redefinida. Entre com sua nova senha.
+          </p>
+        ) : null}
         <AccountLoginForm next={next} />
       </div>
     </section>

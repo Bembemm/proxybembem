@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   try {
     const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
     redirectTo = new URL(
-      `/auth/callback?next=${encodeURIComponent("/minha-conta/seguranca?recovery=1")}`,
+      `/auth/callback?next=${encodeURIComponent("/redefinir-senha")}`,
       siteUrl,
     ).toString()
   } catch {
