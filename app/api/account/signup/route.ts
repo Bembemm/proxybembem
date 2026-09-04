@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = await createSupabaseServerClient()
-    await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
       options: {
@@ -59,6 +59,18 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+    if (error) {
+      if (error.status === 429) {
+        return json(429, { ok: false, message: "Tente novamente em alguns minutos." })
+      }
+      if (typeof error.status !== "number" || error.status >= 500) {
+        return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+      }
+      return json(400, {
+        ok: false,
+        message: "Não foi possível criar a conta com esses dados.",
+      })
+    }
   } catch {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
