@@ -1,0 +1,52 @@
+import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
+import test from "node:test"
+
+import { sanitizeAccountNext } from "../lib/server/customer-account-actions.ts"
+
+async function source(path: string) {
+  return readFile(new URL(path, import.meta.url), "utf8").catch(() => "")
+}
+
+test("password recovery uses one dedicated reset destination with no open redirect surface", async () => {
+  const resetRoute = await source("../app/api/account/password-reset/route.ts")
+
+  assert.match(resetRoute, /\/redefinir-senha/)
+  assert.doesNotMatch(resetRoute, /\/minha-conta\/seguranca\?recovery=1/)
+
+  assert.equal(sanitizeAccountNext("/redefinir-senha"), "/redefinir-senha")
+  assert.equal(sanitizeAccountNext("/redefinir-senha?next=https://evil.example"), "/minha-conta")
+  assert.equal(sanitizeAccountNext("//evil.example/redefinir-senha"), "/minha-conta")
+})
+
+test("recovery callback bypasses profile setup and lands on a standalone authenticated reset page", async () => {
+  const callback = await source("../app/auth/callback/route.ts")
+  const page = await source("../app/redefinir-senha/page.tsx")
+  const proxy = await source("../proxy.ts")
+
+  const recoveryBranch = callback.indexOf('next === "/redefinir-senha"')
+  const profileParsing = callback.indexOf("parseAccountProfileMetadata")
+  assert.ok(recoveryBranch >= 0, "callback must recognize the dedicated recovery destination")
+  assert.ok(profileParsing > recoveryBranch, "recovery must not depend on customer profile metadata")
+
+  assert.match(page, /requireCustomerPageAccess\s*\(/)
+  assert.match(page, /PasswordForm[^>]*recovery/)
+  assert.doesNotMatch(page, /ensureOwnCustomerProfile|customer-profiles/)
+  assert.match(proxy, /["']\/redefinir-senha["']/)
+})
+
+test("recovery password update is same-origin, authenticated, no-store and revokes all refresh sessions", async () => {
+  const route = await source("../app/api/account/password-recovery/route.ts")
+  const form = await source("../components/account/password-form.tsx")
+
+  assert.match(route, /isSameOriginAccountRequest/)
+  assert.match(route, /parseAccountPasswordUpdateInput/)
+  assert.match(route, /auth\.getUser\s*\(/)
+  assert.match(route, /auth\.updateUser\s*\(\s*\{\s*password:/)
+  assert.match(route, /auth\.signOut\s*\(\s*\{\s*scope:\s*["']global["']/)
+  assert.match(route, /private,\s*no-store/i)
+
+  assert.match(form, /recovery\??:\s*boolean/)
+  assert.match(form, /\/api\/account\/password-recovery/)
+  assert.match(form, /\/entrar\?senha=alterada/)
+})
