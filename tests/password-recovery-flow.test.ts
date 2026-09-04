@@ -47,6 +47,20 @@ test("callback redirect response remains mutable before adding cache headers", a
   )
 })
 
+test("recovery callback emits only bounded non-secret PKCE diagnostics", async () => {
+  const callback = await source("../app/auth/callback/route.ts")
+
+  assert.match(callback, /function hasPkceCodeVerifierCookie/)
+  assert.match(callback, /request\.cookies\.getAll\(\)/)
+  assert.match(callback, /-code-verifier/)
+  assert.match(callback, /function sanitizeAuthErrorCode/)
+  assert.match(callback, /Password recovery callback diagnostic/)
+  assert.match(callback, /hasCodeVerifierCookie/)
+  assert.match(callback, /exchangeSucceeded/)
+  assert.match(callback, /exchangeErrorCode/)
+  assert.doesNotMatch(callback, /console\.(?:info|warn|error)\([^\n]*(?:request\.nextUrl|request\.cookies|getAll\(\)|user\.email|access_token|refresh_token)/)
+})
+
 test("recovery password update is same-origin, authenticated, rate-limited, no-store and revokes all refresh sessions", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
   const form = await source("../components/account/password-form.tsx")
