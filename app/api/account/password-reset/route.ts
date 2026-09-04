@@ -10,6 +10,8 @@ import { createSupabaseServerClient } from "../../../../lib/supabase/server.ts"
 
 const RESET_MESSAGE =
   "Se o e-mail estiver cadastrado, enviaremos um link para redefinir sua senha."
+const RESET_RATE_LIMIT_MESSAGE =
+  "Muitas tentativas de envio. Aguarde alguns minutos e tente novamente."
 
 function json(status: number, body: Record<string, unknown>) {
   return Response.json(body, {
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   try {
     if (!(await consumeRateLimit({ request, scope: "account-password-reset" }))) {
-      return json(429, { ok: false, message: "Tente novamente em alguns minutos." })
+      return json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE })
     }
   } catch {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
@@ -51,7 +53,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = await createSupabaseServerClient()
-    await supabase.auth.resetPasswordForEmail(input.email, { redirectTo })
+    const { error } = await supabase.auth.resetPasswordForEmail(input.email, { redirectTo })
+    if (error) {
+      if (error.status === 429) {
+        return json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE })
+      }
+      if (typeof error.status !== "number" || error.status >= 500) {
+        return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+      }
+
+      return json(200, { ok: true, message: RESET_MESSAGE })
+    }
   } catch {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }

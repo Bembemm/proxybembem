@@ -124,6 +124,16 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  input[aria-invalid="true"],
+  textarea[aria-invalid="true"],
+  select[aria-invalid="true"],
+  input:user-invalid,
+  textarea:user-invalid,
+  select:user-invalid {
+    border-color: var(--destructive) !important;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 20%, transparent);
+  }
 }
 
 /* Fantasy border pattern for cards */

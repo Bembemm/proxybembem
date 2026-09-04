@@ -4,10 +4,24 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
+import { FieldError } from "@/components/ui/field-error"
+import { PasswordInput } from "@/components/ui/password-input"
+import {
+  hasAccountFieldErrors,
+  type AccountFieldErrors,
+  validateAccountEmail,
+  validateAccountPassword,
+} from "@/lib/account-form"
+
+const inputClass =
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+
 export function AccountLoginForm({ next }: { next: string }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [errors, setErrors] = useState<AccountFieldErrors>({})
+  const [authInvalid, setAuthInvalid] = useState(false)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -16,9 +30,17 @@ export function AccountLoginForm({ next }: { next: string }) {
     const form = new FormData(event.currentTarget)
     const email = String(form.get("email") ?? "")
     const password = String(form.get("password") ?? "")
+    const nextErrors: AccountFieldErrors = {
+      email: validateAccountEmail(email),
+      password: validateAccountPassword(password),
+    }
+
+    setErrors(nextErrors)
+    setAuthInvalid(false)
+    setMessage(null)
+    if (hasAccountFieldErrors(nextErrors)) return
 
     setPending(true)
-    setMessage(null)
     try {
       const response = await fetch("/api/account/login", {
         method: "POST",
@@ -30,6 +52,7 @@ export function AccountLoginForm({ next }: { next: string }) {
         | null
 
       if (!response.ok || payload?.ok !== true) {
+        setAuthInvalid(response.status === 400 || response.status === 401)
         setMessage(
           typeof payload?.message === "string"
             ? payload.message
@@ -48,7 +71,7 @@ export function AccountLoginForm({ next }: { next: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
       <div className="space-y-1.5">
         <label htmlFor="email" className="text-sm font-semibold text-slate-800">
           E-mail
@@ -59,14 +82,19 @@ export function AccountLoginForm({ next }: { next: string }) {
           type="email"
           autoComplete="email"
           required
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          maxLength={254}
+          onChange={() => setAuthInvalid(false)}
+          aria-invalid={Boolean(errors.email) || authInvalid}
+          aria-describedby={errors.email ? "login-email-error" : undefined}
+          className={inputClass}
         />
+        <FieldError id="login-email-error" message={errors.email} />
       </div>
       <div className="space-y-1.5">
         <label htmlFor="password" className="text-sm font-semibold text-slate-800">
           Senha
         </label>
-        <input
+        <PasswordInput
           id="password"
           name="password"
           type="password"
@@ -74,8 +102,12 @@ export function AccountLoginForm({ next }: { next: string }) {
           required
           minLength={8}
           maxLength={128}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+          onChange={() => setAuthInvalid(false)}
+          aria-invalid={Boolean(errors.password) || authInvalid}
+          aria-describedby={errors.password ? "login-password-error" : undefined}
+          className={inputClass}
         />
+        <FieldError id="login-password-error" message={errors.password} />
       </div>
       {message ? <p role="status" className="text-sm text-slate-600">{message}</p> : null}
       <button
