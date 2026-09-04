@@ -11,7 +11,8 @@ export function AccountSignupForm() {
     event.preventDefault()
     if (pending) return
 
-    const form = new FormData(event.currentTarget)
+    const formElement = event.currentTarget
+    const form = new FormData(formElement)
     const input = {
       name: String(form.get("name") ?? ""),
       email: String(form.get("email") ?? ""),
@@ -37,7 +38,7 @@ export function AccountSignupForm() {
             ? "Confira seu e-mail para verificar a conta."
             : "Não foi possível criar a conta agora.",
       )
-      if (response.ok && payload?.ok === true) event.currentTarget.reset()
+      if (response.ok && payload?.ok === true) formElement.reset()
     } catch {
       setMessage("Não foi possível criar a conta agora.")
     } finally {
