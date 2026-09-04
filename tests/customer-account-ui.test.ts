@@ -93,6 +93,22 @@ test("public auth forms are accessible and call only the intended account APIs",
   }
 })
 
+test("signup keeps a stable form reference across await and never reports provider errors as accepted", async () => {
+  const form = await source("../components/account/signup-form.tsx")
+  const route = await source("../app/api/account/signup/route.ts")
+
+  requireSource(form, "signup form")
+  requireSource(route, "signup route")
+
+  assert.match(form, /const\s+formElement\s*=\s*event\.currentTarget/)
+  assert.match(form, /new\s+FormData\s*\(\s*formElement\s*\)/)
+  assert.match(form, /formElement\.reset\s*\(\s*\)/)
+  assert.doesNotMatch(form, /event\.currentTarget\.reset\s*\(/)
+
+  assert.match(route, /const\s*\{\s*error\s*\}\s*=\s*await\s+supabase\.auth\.signUp\s*\(/)
+  assert.match(route, /if\s*\(\s*error\s*\)/)
+})
+
 test("protected customer account shell uses storefront identity and server-side customer protection", async () => {
   const layout = await source("../app/minha-conta/layout.tsx")
   const shell = await source("../components/account/account-shell.tsx")
