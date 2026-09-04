@@ -94,3 +94,32 @@ test("HSTS is conditionally enabled only for the production runtime", async () =
   assert.match(source, /production/)
   assert.match(source, /max-age=31536000; includeSubDomains/)
 })
+
+test("apex host redirects permanently to the canonical www host", async () => {
+  const configUrl = new URL(CONFIG)
+  configUrl.searchParams.set("test-case", "canonical-host")
+  const loaded = (await import(configUrl.href)) as {
+    default: {
+      redirects?: () => Promise<
+        Array<{
+          source: string
+          destination: string
+          permanent: boolean
+          has?: Array<{ type: string; value: string }>
+        }>
+      >
+    }
+  }
+
+  assert.equal(typeof loaded.default.redirects, "function")
+  const redirects = await loaded.default.redirects!()
+
+  assert.deepEqual(redirects, [
+    {
+      source: "/:path*",
+      has: [{ type: "host", value: "proxybembem.com.br" }],
+      destination: "https://www.proxybembem.com.br/:path*",
+      permanent: true,
+    },
+  ])
+})
