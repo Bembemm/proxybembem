@@ -73,6 +73,16 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "proxybembem.com.br" }],
+        destination: "https://www.proxybembem.com.br/:path*",
+        permanent: true,
+      },
+    ]
+  },
   async headers() {
     return [
       {
