@@ -55,7 +55,11 @@ function parseCustomerIdentity(value: unknown): CustomerIdentity | null {
 export async function getOptionalCustomerIdentityWithDependencies(
   deps: CustomerAuthDependencies,
 ): Promise<CustomerIdentity | null> {
-  return parseCustomerIdentity(await deps.getUser())
+  try {
+    return parseCustomerIdentity(await deps.getUser())
+  } catch {
+    return null
+  }
 }
 
 export async function requireCustomerPageAccessWithDependencies(
