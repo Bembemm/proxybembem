@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import {
   parseAccountProfileMetadata,
   sanitizeAccountNext,
@@ -9,7 +9,7 @@ import { createSupabaseServerClient } from "../../../lib/supabase/server.ts"
 
 function redirect(request: NextRequest, path: string) {
   const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
-  const response = Response.redirect(new URL(path, siteUrl), 303)
+  const response = NextResponse.redirect(new URL(path, siteUrl), 303)
   response.headers.set("Cache-Control", "private, no-store")
   return response
 }
