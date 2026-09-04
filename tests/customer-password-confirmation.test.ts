@@ -32,4 +32,9 @@ test("password update and recovery require matching confirmation before calling 
   const request = form.indexOf('fetch("/api/account/password"')
   assert.ok(mismatchGuard >= 0, "password update must compare password confirmation")
   assert.ok(request > mismatchGuard, "password update must reject a mismatch before fetch")
+
+  assert.match(form, /const\s+formElement\s*=\s*event\.currentTarget/)
+  assert.match(form, /new\s+FormData\s*\(\s*formElement\s*\)/)
+  assert.match(form, /formElement\.reset\s*\(\s*\)/)
+  assert.doesNotMatch(form, /event\.currentTarget\.reset\s*\(/)
 })
