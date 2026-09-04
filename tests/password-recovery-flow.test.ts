@@ -36,6 +36,17 @@ test("recovery callback bypasses profile setup and lands on a standalone authent
   assert.match(proxy, /["']\/redefinir-senha["']/)
 })
 
+test("callback redirect response remains mutable before adding cache headers", async () => {
+  const callback = await source("../app/auth/callback/route.ts")
+
+  assert.doesNotMatch(callback, /\bResponse\.redirect\s*\(/)
+  assert.match(callback, /\bNextResponse\.redirect\s*\(/)
+  assert.match(
+    callback,
+    /response\.headers\.set\(\s*["']Cache-Control["']\s*,\s*["']private, no-store["']\s*\)/,
+  )
+})
+
 test("recovery password update is same-origin, authenticated, rate-limited, no-store and revokes all refresh sessions", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
   const form = await source("../components/account/password-form.tsx")
