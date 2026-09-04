@@ -61,6 +61,24 @@ test("recovery callback emits only bounded non-secret PKCE diagnostics", async (
   assert.doesNotMatch(callback, /console\.(?:info|warn|error)\([^\n]*(?:request\.nextUrl|request\.cookies|getAll\(\)|user\.email|access_token|refresh_token)/)
 })
 
+test("password recovery carries PKCE and session cookies on the exact returned route responses", async () => {
+  const resetRoute = await source("../app/api/account/password-reset/route.ts")
+  const callback = await source("../app/auth/callback/route.ts")
+  const routeClient = await source("../lib/supabase/route.ts")
+
+  assert.match(routeClient, /createServerClient/)
+  assert.match(routeClient, /request\.cookies\.getAll\(\)/)
+  assert.match(routeClient, /pendingCookies/)
+  assert.match(routeClient, /response\.cookies\.set\s*\(/)
+  assert.match(routeClient, /response\.headers\.set\s*\(/)
+  assert.match(routeClient, /applyToResponse/)
+
+  assert.match(resetRoute, /createSupabaseRouteClient/)
+  assert.match(resetRoute, /applyToResponse\s*\(/)
+  assert.match(callback, /createSupabaseRouteClient/)
+  assert.match(callback, /applyToResponse\s*\(/)
+})
+
 test("recovery password update is same-origin, authenticated, rate-limited, no-store and revokes all refresh sessions", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
   const form = await source("../components/account/password-form.tsx")
