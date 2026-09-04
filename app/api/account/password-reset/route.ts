@@ -1,4 +1,4 @@
-import { type NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
   parseAccountResetInput,
@@ -6,7 +6,7 @@ import {
 import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
-import { createSupabaseServerClient } from "../../../../lib/supabase/server.ts"
+import { createSupabaseRouteClient } from "../../../../lib/supabase/route.ts"
 
 const RESET_MESSAGE =
   "Se o e-mail estiver cadastrado, enviaremos um link para redefinir sua senha."
@@ -14,7 +14,7 @@ const RESET_RATE_LIMIT_MESSAGE =
   "Muitas tentativas de envio. Aguarde alguns minutos e tente novamente."
 
 function json(status: number, body: Record<string, unknown>) {
-  return Response.json(body, {
+  return NextResponse.json(body, {
     status,
     headers: { "Cache-Control": "private, no-store" },
   })
@@ -51,22 +51,31 @@ export async function POST(request: NextRequest) {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
 
+  let applyToResponse = <T extends NextResponse>(response: T) => response
+
   try {
-    const supabase = await createSupabaseServerClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(input.email, { redirectTo })
+    const routeClient = createSupabaseRouteClient(request)
+    applyToResponse = routeClient.applyToResponse
+    const { error } = await routeClient.supabase.auth.resetPasswordForEmail(input.email, {
+      redirectTo,
+    })
     if (error) {
       if (error.status === 429) {
-        return json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE })
+        return applyToResponse(json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE }))
       }
       if (typeof error.status !== "number" || error.status >= 500) {
-        return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+        return applyToResponse(
+          json(503, { ok: false, message: "Serviço temporariamente indisponível." }),
+        )
       }
 
-      return json(200, { ok: true, message: RESET_MESSAGE })
+      return applyToResponse(json(200, { ok: true, message: RESET_MESSAGE }))
     }
   } catch {
-    return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+    return applyToResponse(
+      json(503, { ok: false, message: "Serviço temporariamente indisponível." }),
+    )
   }
 
-  return json(200, { ok: true, message: RESET_MESSAGE })
+  return applyToResponse(json(200, { ok: true, message: RESET_MESSAGE }))
 }
