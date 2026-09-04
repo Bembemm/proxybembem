@@ -1,4 +1,5 @@
 import { normalizeCheckoutEmail } from "../checkout.ts"
+import { isAllowedCheckoutOrigin, resolvePublicSiteUrl } from "./env.ts"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PUBLIC_ORDER_PATH_RE = /^\/pedido\/[A-Fa-f0-9]{64}$/
@@ -136,11 +137,16 @@ export function parseAccountProfileMetadata(value: unknown): AccountProfileMetad
 }
 
 export function isSameOriginAccountRequest(request: Request) {
-  const origin = request.headers.get("origin")
-  if (!origin) return false
-
   try {
-    return new URL(origin).origin === new URL(request.url).origin
+    const requestOrigin = new URL(request.url).origin
+    const configuredSiteUrl = resolvePublicSiteUrl(requestOrigin)
+
+    return isAllowedCheckoutOrigin({
+      originHeader: request.headers.get("origin"),
+      configuredSiteUrl,
+      requestOrigin,
+      nodeEnv: process.env.NODE_ENV,
+    })
   } catch {
     return false
   }
