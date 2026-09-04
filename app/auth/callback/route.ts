@@ -5,7 +5,7 @@ import {
 } from "../../../lib/server/customer-account-actions.ts"
 import { resolvePublicSiteUrl } from "../../../lib/server/env.ts"
 import { ensureOwnCustomerProfile } from "../../../lib/server/customer-profiles.ts"
-import { createSupabaseServerClient } from "../../../lib/supabase/server.ts"
+import { createSupabaseRouteClient } from "../../../lib/supabase/route.ts"
 
 const SAFE_AUTH_ERROR_CODE = /^[A-Za-z0-9_-]{1,64}$/
 
@@ -51,10 +51,12 @@ export async function GET(request: NextRequest) {
   const recovery = next === "/redefinir-senha"
   const hasCodeVerifierCookie = recovery ? hasPkceCodeVerifierCookie(request) : false
   let exchangeCompleted = false
+  let applyToResponse = <T extends NextResponse>(response: T) => response
 
   try {
-    const supabase = await createSupabaseServerClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const routeClient = createSupabaseRouteClient(request)
+    applyToResponse = routeClient.applyToResponse
+    const { error } = await routeClient.supabase.auth.exchangeCodeForSession(code)
     exchangeCompleted = true
     if (recovery) {
       logRecoveryCallbackDiagnostic({
@@ -63,32 +65,34 @@ export async function GET(request: NextRequest) {
         exchangeErrorCode: sanitizeAuthErrorCode(error),
       })
     }
-    if (error) return redirect(request, "/entrar?erro=callback")
+    if (error) {
+      return applyToResponse(redirect(request, "/entrar?erro=callback"))
+    }
 
-    const { data, error: userError } = await supabase.auth.getUser()
+    const { data, error: userError } = await routeClient.supabase.auth.getUser()
     const user = data.user
     if (userError || !user?.email_confirmed_at) {
-      return redirect(request, "/entrar?erro=callback")
+      return applyToResponse(redirect(request, "/entrar?erro=callback"))
     }
 
     if (next === "/redefinir-senha") {
-      return redirect(request, next)
+      return applyToResponse(redirect(request, next))
     }
 
     let profile: ReturnType<typeof parseAccountProfileMetadata>
     try {
       profile = parseAccountProfileMetadata(user.user_metadata)
     } catch {
-      return redirect(request, "/minha-conta/perfil?setup=1")
+      return applyToResponse(redirect(request, "/minha-conta/perfil?setup=1"))
     }
 
     try {
       await ensureOwnCustomerProfile(profile)
     } catch {
-      return redirect(request, "/minha-conta/perfil?setup=1")
+      return applyToResponse(redirect(request, "/minha-conta/perfil?setup=1"))
     }
 
-    return redirect(request, next)
+    return applyToResponse(redirect(request, next))
   } catch (error) {
     if (recovery && !exchangeCompleted) {
       logRecoveryCallbackDiagnostic({
@@ -97,6 +101,6 @@ export async function GET(request: NextRequest) {
         exchangeErrorCode: sanitizeAuthErrorCode(error),
       })
     }
-    return redirect(request, "/entrar?erro=callback")
+    return applyToResponse(redirect(request, "/entrar?erro=callback"))
   }
 }
