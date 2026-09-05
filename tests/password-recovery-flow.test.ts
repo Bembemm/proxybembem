@@ -79,6 +79,32 @@ test("password recovery carries PKCE and session cookies on the exact returned r
   assert.match(callback, /applyToResponse\s*\(/)
 })
 
+test("password recovery keeps overlapping PKCE flows isolated by flow id", async () => {
+  const callback = await source("../app/auth/callback/route.ts")
+  const routeClient = await source("../lib/supabase/route.ts")
+
+  assert.match(
+    routeClient,
+    /experimental\s*:\s*\{\s*appendPkceFlowIdToRedirects\s*:\s*true\s*\}/,
+  )
+  assert.match(callback, /searchParams\.get\(\s*["']sb_flow_id["']\s*\)/)
+  assert.match(callback, /exchangeCodeForSession\(\s*code\s*,\s*flowId\s*\?\s*\{\s*flowId\s*\}\s*:\s*undefined\s*\)/)
+})
+
+test("password recovery request logs only whether verifier cookies were queued", async () => {
+  const resetRoute = await source("../app/api/account/password-reset/route.ts")
+  const routeClient = await source("../lib/supabase/route.ts")
+
+  assert.match(routeClient, /getPendingCookieNames/)
+  assert.match(resetRoute, /Password recovery request diagnostic/)
+  assert.match(resetRoute, /verifierCookieSet/)
+  assert.match(resetRoute, /flowScopedVerifierCookieSet/)
+  assert.doesNotMatch(
+    resetRoute,
+    /console\.(?:info|warn|error)\([^\n]*(?:input\.email|request\.cookies|code_verifier|access_token|refresh_token)/,
+  )
+})
+
 test("recovery password update is same-origin, authenticated, rate-limited, no-store and revokes all refresh sessions", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
   const form = await source("../components/account/password-form.tsx")
