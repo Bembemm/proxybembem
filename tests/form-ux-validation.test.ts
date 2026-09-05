@@ -80,16 +80,21 @@ test("account forms validate fields explicitly and expose invalid state for red 
   assert.match(globals, /destructive/)
 })
 
-test("password reset checks Supabase email errors instead of reporting a false success", async () => {
+test("password reset checks generated-link and Resend delivery errors instead of reporting a false success", async () => {
   const route = await source("../app/api/account/password-reset/route.ts")
+  const emailSender = await source("../lib/server/recovery-email.ts")
   requireSource(route, "password reset route")
+  requireSource(emailSender, "recovery email sender")
 
   assert.match(
     route,
-    /const\s*\{\s*error\s*\}\s*=\s*await\s+(?:routeClient\.)?supabase\.auth\.resetPasswordForEmail\s*\(/,
+    /const\s*\{\s*data\s*,\s*error\s*\}\s*=\s*await\s+supabase\.auth\.admin\.generateLink\s*\(/,
   )
   assert.match(route, /if\s*\(\s*error\s*\)/)
-  assert.match(route, /error\.status\s*===\s*429/)
+  assert.match(route, /error\.status\s*>=\s*500/)
+  assert.match(route, /sendPasswordRecoveryEmail\s*\(/)
   assert.match(route, /Muitas tentativas de envio/)
   assert.match(route, /RESET_MESSAGE/)
+  assert.match(emailSender, /if\s*\(\s*!response\.ok\s*\)/)
+  assert.match(emailSender, /throw new Error\(["']Recovery email provider request failed["']\)/)
 })
