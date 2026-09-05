@@ -4,10 +4,14 @@ import {
   isSameOriginAccountRequest,
   parseAccountResetInput,
 } from "../../../../lib/server/customer-account-actions.ts"
-import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
+import {
+  getSupabaseEnv,
+  resolvePublicSiteUrl,
+} from "../../../../lib/server/env.ts"
+import { isValidRecoveryTokenHash } from "../../../../lib/server/password-recovery.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
+import { sendPasswordRecoveryEmail } from "../../../../lib/server/recovery-email.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
-import { getSupabaseBrowserConfig } from "../../../../lib/supabase/config.ts"
 
 const RESET_MESSAGE =
   "Se o e-mail estiver cadastrado, enviaremos um link para redefinir sua senha."
@@ -42,32 +46,43 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const env = getSupabaseBrowserConfig()
-    const supabase = createClient(env.url, env.publishableKey, {
+    const env = getSupabaseEnv()
+    const supabase = createClient(env.supabaseUrl, env.supabaseSecretKey, {
       auth: {
-        flowType: "implicit",
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false,
       },
     })
-    const redirectTo = new URL(
-      "/redefinir-senha",
-      resolvePublicSiteUrl(request.nextUrl.origin),
-    ).toString()
-    const { error } = await supabase.auth.resetPasswordForEmail(input.email, {
-      redirectTo,
+
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: "recovery",
+      email: input.email,
     })
+
     if (error) {
-      if (error.status === 429) {
-        return json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE })
-      }
       if (typeof error.status !== "number" || error.status >= 500) {
         return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
       }
-
       return json(200, { ok: true, message: RESET_MESSAGE })
     }
+
+    const tokenHash = data.properties?.hashed_token
+    if (!isValidRecoveryTokenHash(tokenHash)) {
+      return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+    }
+
+    const recoveryUrl = new URL(
+      "/auth/confirm",
+      resolvePublicSiteUrl(request.nextUrl.origin),
+    )
+    recoveryUrl.searchParams.set("token_hash", tokenHash)
+    recoveryUrl.searchParams.set("type", "recovery")
+
+    await sendPasswordRecoveryEmail({
+      to: input.email,
+      recoveryUrl: recoveryUrl.toString(),
+    })
   } catch {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
