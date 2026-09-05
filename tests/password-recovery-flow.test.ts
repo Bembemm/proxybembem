@@ -88,7 +88,7 @@ test("password recovery keeps overlapping PKCE flows isolated by flow id", async
     /experimental\s*:\s*\{\s*appendPkceFlowIdToRedirects\s*:\s*true\s*\}/,
   )
   assert.match(callback, /searchParams\.get\(\s*["']sb_flow_id["']\s*\)/)
-  assert.match(callback, /exchangeCodeForSession\(\s*code\s*,\s*flowId\s*\?\s*\{\s*flowId\s*\}\s*:\s*undefined\s*\)/)
+  assert.match(callback, /exchangeCodeForSession\(\s*code\s*,\s*flowId\s*\?\s*\{\s*flowId\s*\}\s*:\s*undefined\s*,?\s*\)/)
 })
 
 test("password recovery request logs only whether verifier cookies were queued", async () => {
