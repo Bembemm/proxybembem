@@ -59,22 +59,32 @@ test("password recovery helper strictly bounds token hashes and accepts only rec
   assert.equal(hasRecentRecoveryAmr(null, now), false)
 })
 
-test("free-plan recovery email uses an explicit implicit-flow redirect to the reset page", async () => {
+test("recovery request sends a scanner-safe app link instead of a consumable Supabase verify link", async () => {
   const resetRoute = await source("../app/api/account/password-reset/route.ts")
+  const emailSender = await source("../lib/server/recovery-email.ts")
+  const envExample = await source("../.env.example")
 
-  assert.match(resetRoute, /createClient/)
-  assert.match(resetRoute, /flowType\s*:\s*["']implicit["']/)
-  assert.match(resetRoute, /persistSession\s*:\s*false/)
-  assert.match(resetRoute, /detectSessionInUrl\s*:\s*false/)
-  assert.match(resetRoute, /resetPasswordForEmail\s*\(\s*input\.email\s*,/)
-  assert.match(resetRoute, /redirectTo/)
-  assert.match(resetRoute, /["']\/redefinir-senha["']/)
-  assert.doesNotMatch(resetRoute, /createSupabaseRouteClient/)
-  assert.doesNotMatch(resetRoute, /auth\/callback\?next=/)
-  assert.doesNotMatch(resetRoute, /Password recovery request diagnostic/)
+  assert.match(resetRoute, /auth\.admin\.generateLink\s*\(/)
+  assert.match(resetRoute, /type\s*:\s*["']recovery["']/)
+  assert.match(resetRoute, /input\.email/)
+  assert.match(resetRoute, /properties\?\.hashed_token|properties\.hashed_token/)
+  assert.match(resetRoute, /["']\/auth\/confirm["']/)
+  assert.match(resetRoute, /token_hash/)
+  assert.match(resetRoute, /type["']?\s*,?\s*["']recovery["']|searchParams\.set\(\s*["']type["']\s*,\s*["']recovery["']/)
+  assert.match(resetRoute, /sendPasswordRecoveryEmail/)
+  assert.doesNotMatch(resetRoute, /resetPasswordForEmail/)
+  assert.doesNotMatch(resetRoute, /flowType\s*:\s*["']implicit["']/)
+
+  assert.match(emailSender, /https:\/\/api\.resend\.com\/emails/)
+  assert.match(emailSender, /Authorization/)
+  assert.match(emailSender, /Bearer/)
+  assert.match(emailSender, /RESEND_API_KEY/)
+  assert.match(emailSender, /noreply@proxybembem\.com\.br/)
+  assert.match(emailSender, /recoveryUrl/)
+  assert.match(envExample, /RESEND_API_KEY=/)
 })
 
-test("token-hash landing remains a non-consuming fallback", async () => {
+test("token-hash landing does not consume the recovery token", async () => {
   const confirm = await source("../app/auth/confirm/route.ts")
 
   assert.match(confirm, /searchParams\.get\(\s*["']token_hash["']\s*\)/)
@@ -88,31 +98,29 @@ test("token-hash landing remains a non-consuming fallback", async () => {
   assert.match(confirm, /\/redefinir-senha/)
 })
 
-test("reset page is public so the browser can consume an implicit recovery fragment", async () => {
+test("reset page stays public while the server-held token waits for final submit", async () => {
   const page = await source("../app/redefinir-senha/page.tsx")
 
   assert.doesNotMatch(page, /requireCustomerPageAccess\s*\(/)
-  assert.doesNotMatch(page, /RECOVERY_TOKEN_COOKIE/)
   assert.doesNotMatch(page, /auth\.getClaims\s*\(/)
   assert.doesNotMatch(page, /redirect\s*\(/)
   assert.match(page, /PasswordForm[^>]*recovery/)
 })
 
-test("recovery form consumes the implicit session in the browser and changes password there", async () => {
+test("recovery form submits the new password to the server and never consumes an email fragment", async () => {
   const form = await source("../components/account/password-form.tsx")
 
-  assert.match(form, /createClient/)
-  assert.match(form, /flowType\s*:\s*["']implicit["']/)
-  assert.match(form, /detectSessionInUrl\s*:\s*true/)
-  assert.match(form, /onAuthStateChange/)
-  assert.match(form, /PASSWORD_RECOVERY/)
-  assert.match(form, /auth\.getClaims\s*\(/)
-  assert.match(form, /auth\.updateUser\s*\(\s*\{\s*password/)
-  assert.match(form, /auth\.signOut\s*\(\s*\{\s*scope:\s*["']global["']/)
+  assert.match(form, /const\s+endpoint\s*=\s*recovery/)
+  assert.match(form, /["']\/api\/account\/password-recovery["']/)
+  assert.match(form, /fetch\(\s*endpoint/)
   assert.match(form, /\/entrar\?senha=alterada/)
+  assert.doesNotMatch(form, /createClient/)
+  assert.doesNotMatch(form, /detectSessionInUrl/)
+  assert.doesNotMatch(form, /PASSWORD_RECOVERY/)
+  assert.doesNotMatch(form, /auth\.updateUser\s*\(/)
 })
 
-test("token-hash recovery fallback verifies only on final password submit", async () => {
+test("token-hash recovery verifies only on final password submit", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
 
   assert.match(
@@ -142,11 +150,12 @@ test("recovery implementation never logs recovery credential values", async () =
     await source("../app/api/account/password-reset/route.ts"),
     await source("../app/api/account/password-recovery/route.ts"),
     await source("../components/account/password-form.tsx"),
+    await source("../lib/server/recovery-email.ts"),
   ].join("\n")
 
   assert.doesNotMatch(
     combined,
-    /console\.(?:log|info|warn|error)\([^\n]*(?:token_hash|input\.password|input\.email|access_token|refresh_token|request\.nextUrl|request\.cookies)/i,
+    /console\.(?:log|info|warn|error)\([^\n]*(?:token_hash|hashed_token|input\.password|input\.email|access_token|refresh_token|recoveryUrl|request\.nextUrl|request\.cookies|RESEND_API_KEY)/i,
   )
 })
 
@@ -172,7 +181,7 @@ test("auth callback remains a safe non-recovery PKCE surface", async () => {
   assert.equal(sanitizeAccountNext("//evil.example/minha-conta"), "/minha-conta")
 })
 
-test("token-hash recovery fallback remains same-origin rate-limited and bounded", async () => {
+test("token-hash recovery remains same-origin rate-limited and bounded", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
   const rateLimit = await source("../lib/server/rate-limit.ts")
 
