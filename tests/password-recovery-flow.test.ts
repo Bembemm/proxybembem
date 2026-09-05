@@ -97,7 +97,7 @@ test("recovery token is verified only on final password submit", async () => {
 
   assert.match(
     route,
-    /auth\.verifyOtp\s*\(\s*\{\s*token_hash\s*:\s*[^,]+,\s*type\s*:\s*["']recovery["']\s*\}\s*\)/,
+    /auth\.verifyOtp\s*\(\s*\{\s*token_hash\s*:\s*[^,]+,\s*type\s*:\s*["']recovery["']\s*,?\s*\}\s*\)/,
   )
   assert.match(route, /RECOVERY_TOKEN_COOKIE/)
   assert.match(route, /clearRecoveryTokenCookie/)
