@@ -14,6 +14,9 @@ export function createSupabaseRouteClient(request: NextRequest) {
   const pendingHeaders: Record<string, string> = {}
 
   const supabase = createServerClient(env.url, env.publishableKey, {
+    auth: {
+      experimental: { appendPkceFlowIdToRedirects: true },
+    },
     cookies: {
       getAll() {
         return request.cookies.getAll()
@@ -35,5 +38,9 @@ export function createSupabaseRouteClient(request: NextRequest) {
     return response
   }
 
-  return { supabase, applyToResponse }
+  function getPendingCookieNames() {
+    return pendingCookies.map(({ name }) => name)
+  }
+
+  return { supabase, applyToResponse, getPendingCookieNames }
 }

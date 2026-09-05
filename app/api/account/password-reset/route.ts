@@ -20,6 +20,19 @@ function json(status: number, body: Record<string, unknown>) {
   })
 }
 
+function logPasswordRecoveryRequestDiagnostic(cookieNames: string[]) {
+  const verifierCookieSet = cookieNames.some((name) => /-code-verifier(?:\.\d+)?$/.test(name))
+  const flowScopedVerifierCookieSet = cookieNames.some((name) =>
+    /-flow-.+-code-verifier(?:\.\d+)?$/.test(name),
+  )
+
+  console.info("Password recovery request diagnostic", {
+    at: new Date().toISOString(),
+    verifierCookieSet,
+    flowScopedVerifierCookieSet,
+  })
+}
+
 export async function POST(request: NextRequest) {
   if (!isSameOriginAccountRequest(request)) {
     return json(403, { ok: false, message: "Requisição inválida." })
@@ -59,6 +72,7 @@ export async function POST(request: NextRequest) {
     const { error } = await routeClient.supabase.auth.resetPasswordForEmail(input.email, {
       redirectTo,
     })
+    logPasswordRecoveryRequestDiagnostic(routeClient.getPendingCookieNames())
     if (error) {
       if (error.status === 429) {
         return applyToResponse(json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE }))

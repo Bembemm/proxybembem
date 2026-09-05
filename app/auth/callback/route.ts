@@ -43,6 +43,7 @@ function logRecoveryCallbackDiagnostic(input: {
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code")
+  const flowId = request.nextUrl.searchParams.get("sb_flow_id")
   const next = sanitizeAccountNext(request.nextUrl.searchParams.get("next"))
   if (!code || code.length > 2_048) {
     return redirect(request, "/entrar?erro=callback")
@@ -56,7 +57,10 @@ export async function GET(request: NextRequest) {
   try {
     const routeClient = createSupabaseRouteClient(request)
     applyToResponse = routeClient.applyToResponse
-    const { error } = await routeClient.supabase.auth.exchangeCodeForSession(code)
+    const { error } = await routeClient.supabase.auth.exchangeCodeForSession(
+      code,
+      flowId ? { flowId } : undefined,
+    )
     exchangeCompleted = true
     if (recovery) {
       logRecoveryCallbackDiagnostic({
