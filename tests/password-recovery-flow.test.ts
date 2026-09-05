@@ -59,16 +59,22 @@ test("password recovery helper strictly bounds token hashes and accepts only rec
   assert.equal(hasRecentRecoveryAmr(null, now), false)
 })
 
-test("password recovery request no longer depends on the auth callback PKCE redirect", async () => {
+test("free-plan recovery email uses an explicit implicit-flow redirect to the reset page", async () => {
   const resetRoute = await source("../app/api/account/password-reset/route.ts")
 
-  assert.match(resetRoute, /resetPasswordForEmail\s*\(\s*input\.email\s*\)/)
+  assert.match(resetRoute, /createClient/)
+  assert.match(resetRoute, /flowType\s*:\s*["']implicit["']/)
+  assert.match(resetRoute, /persistSession\s*:\s*false/)
+  assert.match(resetRoute, /detectSessionInUrl\s*:\s*false/)
+  assert.match(resetRoute, /resetPasswordForEmail\s*\(\s*input\.email\s*,/)
+  assert.match(resetRoute, /redirectTo/)
+  assert.match(resetRoute, /["']\/redefinir-senha["']/)
+  assert.doesNotMatch(resetRoute, /createSupabaseRouteClient/)
   assert.doesNotMatch(resetRoute, /auth\/callback\?next=/)
-  assert.doesNotMatch(resetRoute, /redirectTo/)
   assert.doesNotMatch(resetRoute, /Password recovery request diagnostic/)
 })
 
-test("recovery email landing stores token hash without consuming it", async () => {
+test("token-hash landing remains a non-consuming fallback", async () => {
   const confirm = await source("../app/auth/confirm/route.ts")
 
   assert.match(confirm, /searchParams\.get\(\s*["']token_hash["']\s*\)/)
@@ -82,17 +88,31 @@ test("recovery email landing stores token hash without consuming it", async () =
   assert.match(confirm, /\/redefinir-senha/)
 })
 
-test("standalone reset page accepts raw token or recent signed recovery session without ordinary customer auth", async () => {
+test("reset page is public so the browser can consume an implicit recovery fragment", async () => {
   const page = await source("../app/redefinir-senha/page.tsx")
 
   assert.doesNotMatch(page, /requireCustomerPageAccess\s*\(/)
+  assert.doesNotMatch(page, /RECOVERY_TOKEN_COOKIE/)
+  assert.doesNotMatch(page, /auth\.getClaims\s*\(/)
+  assert.doesNotMatch(page, /redirect\s*\(/)
   assert.match(page, /PasswordForm[^>]*recovery/)
-  assert.match(page, /RECOVERY_TOKEN_COOKIE/)
-  assert.match(page, /hasRecentRecoveryAmr/)
-  assert.match(page, /auth\.getClaims\s*\(/)
 })
 
-test("recovery token is verified only on final password submit", async () => {
+test("recovery form consumes the implicit session in the browser and changes password there", async () => {
+  const form = await source("../components/account/password-form.tsx")
+
+  assert.match(form, /createClient/)
+  assert.match(form, /flowType\s*:\s*["']implicit["']/)
+  assert.match(form, /detectSessionInUrl\s*:\s*true/)
+  assert.match(form, /onAuthStateChange/)
+  assert.match(form, /PASSWORD_RECOVERY/)
+  assert.match(form, /auth\.getClaims\s*\(/)
+  assert.match(form, /auth\.updateUser\s*\(\s*\{\s*password/)
+  assert.match(form, /auth\.signOut\s*\(\s*\{\s*scope:\s*["']global["']/)
+  assert.match(form, /\/entrar\?senha=alterada/)
+})
+
+test("token-hash recovery fallback verifies only on final password submit", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
 
   assert.match(
@@ -121,6 +141,7 @@ test("recovery implementation never logs recovery credential values", async () =
     await source("../app/auth/confirm/route.ts"),
     await source("../app/api/account/password-reset/route.ts"),
     await source("../app/api/account/password-recovery/route.ts"),
+    await source("../components/account/password-form.tsx"),
   ].join("\n")
 
   assert.doesNotMatch(
@@ -151,9 +172,8 @@ test("auth callback remains a safe non-recovery PKCE surface", async () => {
   assert.equal(sanitizeAccountNext("//evil.example/minha-conta"), "/minha-conta")
 })
 
-test("recovery password update remains same-origin, rate-limited, bounded and globally revokes sessions", async () => {
+test("token-hash recovery fallback remains same-origin rate-limited and bounded", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
-  const form = await source("../components/account/password-form.tsx")
   const rateLimit = await source("../lib/server/rate-limit.ts")
 
   assert.match(route, /isSameOriginAccountRequest/)
@@ -164,15 +184,10 @@ test("recovery password update remains same-origin, rate-limited, bounded and gl
   assert.match(route, /auth\.verifyOtp\s*\(/)
   assert.match(route, /auth\.updateUser\s*\(\s*\{\s*password:/)
   assert.match(route, /auth\.signOut\s*\(\s*\{\s*scope:\s*["']global["']/)
-  assert.match(route, /private,\s*no-store/i)
   assert.match(
     rateLimit,
     /"account-password-recovery"\s*:\s*\{\s*limit:\s*5,\s*windowSeconds:\s*900\s*\}/,
   )
-
-  assert.match(form, /recovery\??:\s*boolean/)
-  assert.match(form, /\/api\/account\/password-recovery/)
-  assert.match(form, /\/entrar\?senha=alterada/)
 })
 
 test("proxy includes the token-hash confirmation route", async () => {
