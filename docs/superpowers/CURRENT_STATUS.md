@@ -55,105 +55,94 @@ Public routing already established:
 - static `public/` and `.next/static/` -> KingHost Nginx webroot `~/www`;
 - `pnpm deploy:kinghost` builds and publishes the required browser assets without deleting unrelated/older immutable files.
 
-## Password recovery — architecture replaced on 2026-09-05
+## Password recovery — final scanner-safe architecture
 
-The browser-bound recovery PKCE architecture has been replaced because production evidence showed recovery could fail when the email link opened outside the browser context that requested it.
+Production testing showed two separate failure modes in earlier attempts:
 
-Previous evidence included:
+1. browser-bound PKCE could fail when the recovery link opened outside the browser context that requested it (`flow_state_not_found` / `pkce_code_verifier_not_found`);
+2. even the later implicit-flow workaround still sent a Supabase `/auth/v1/verify` link. A real fresh email reached `/redefinir-senha#error=access_denied&error_code=otp_expired`, proving the one-time Supabase verification link could already be consumed/invalid before the application received a recovery session. Email security scanners/prefetchers are compatible with this symptom.
 
-- one successful callback with a verifier;
-- `flow_state_not_found` while a verifier cookie existed;
-- `pkce_code_verifier_not_found` when the callback opened without the verifier;
-- callback execution in Next.js was confirmed, so this was not simply a missing KingHost route.
+The recovery email therefore no longer contains a consumable Supabase `/verify` URL.
 
-The recovery flow no longer depends on `/auth/callback` or on the requesting browser's PKCE verifier.
+### Current recovery flow
 
-### New recovery flow
+1. `POST /api/account/password-reset` remains same-origin, bounded and rate-limited.
+2. The server creates a Supabase recovery link with `auth.admin.generateLink({ type: "recovery", email })` but does **not** send Supabase's generated `/verify` link.
+3. The server reads only the generated `properties.hashed_token`, validates its shape, and constructs the application-owned URL:
 
-The required Supabase **Reset Password** template is:
+   `https://www.proxybembem.com.br/auth/confirm?token_hash=...&type=recovery`
 
-```html
-<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">
-  Redefinir senha
-</a>
-```
-
-Runtime behavior:
-
-1. `POST /api/account/password-reset` calls `resetPasswordForEmail(input.email)` without a recovery callback redirect.
-2. The email lands on `GET /auth/confirm?token_hash=...&type=recovery`.
-3. `GET /auth/confirm` validates only the type/token shape, stores the token hash in a short-lived HttpOnly cookie, and redirects to clean `/redefinir-senha`.
-4. **GET never calls `verifyOtp()`**, so an email scanner/link preview does not consume the one-time recovery token.
-5. The token is verified only when the user submits the new password to `POST /api/account/password-recovery`.
-6. The server calls `verifyOtp({ token_hash, type: "recovery" })`, applies the resulting Supabase session cookies, clears the raw recovery-token cookie, and calls `updateUser({ password })`.
-7. On success, `signOut({ scope: "global" })` revokes sessions and the browser is sent back to login by the existing form flow.
-8. If `verifyOtp()` succeeds but `updateUser()` fails, the raw token remains cleared but the Supabase recovery session is preserved so the user can retry without another email.
-9. Retry is accepted only with a **recent Supabase-signed recovery AMR claim plus server `getUser()` validation**. No forgeable application `recovery=true` marker is trusted.
+4. The application sends that URL directly through the Resend API from `ProxyBembem <noreply@proxybembem.com.br>`.
+5. `GET /auth/confirm` validates only recovery type/token shape, stores the token hash in a short-lived host-only HttpOnly cookie, and redirects to clean `/redefinir-senha`.
+6. **GET /auth/confirm never calls `verifyOtp()`**, so a mail scanner, preview or ordinary first click does not consume the recovery token.
+7. `/redefinir-senha` is public and displays the password form without requiring a pre-existing recovery session.
+8. Only when the human submits the new password does `POST /api/account/password-recovery` call `verifyOtp({ token_hash, type: "recovery" })`.
+9. The server applies the resulting Supabase session, calls `updateUser({ password })`, clears the raw recovery token cookie, and on success calls `signOut({ scope: "global" })`.
+10. If token verification succeeds but password update fails, retry is accepted only using recent Supabase-signed recovery AMR plus `getUser()` validation.
 
 Security properties:
 
-- no recovery token/hash, email, password, auth code, access token, refresh token, or cookie value is logged;
-- recovery token cookie: host-only, HttpOnly, SameSite=Lax, Path=/, Secure in production, max-age 3600s;
-- Supabase's own recovery-token validity still applies;
-- recovery routes use `private, no-store` where the application controls the response;
+- opening/clicking the email does not consume the recovery token;
+- the token is still subject to Supabase's normal maximum validity and the app cookie max-age of 3600s;
+- after a successful password change the recovery token is no longer usable;
+- no recovery token/hash, email, password, Resend key, auth code, access token, refresh token or cookie value is logged;
+- recovery token cookie is host-only, HttpOnly, SameSite=Lax, Path=/ and Secure in production;
+- recovery responses controlled by the app use `private, no-store`;
 - recovery has no caller-controlled redirect destination;
-- `/auth/callback` remains for non-recovery PKCE flows;
-- temporary recovery PKCE diagnostics were removed.
+- `/auth/callback` remains only for non-recovery PKCE flows.
+
+## Resend / email configuration
+
+The user configured email delivery on 2026-09-05:
+
+- Resend account created;
+- domain `proxybembem.com.br` verified successfully with DNS on KingHost;
+- DKIM/SPF/DMARC records added;
+- Supabase custom SMTP configured with Resend for ordinary Supabase Auth mail.
+
+The new scanner-safe recovery route additionally sends recovery mail **directly through the Resend API**, so KingHost now requires one new server-only environment variable:
+
+```text
+RESEND_API_KEY=
+```
+
+Keep this value outside Git/chat/logs. Prefer a Resend key restricted to sending access/domain when the Resend UI allows it.
+
+Supabase custom SMTP may remain enabled for signup/other Auth emails; it is independent from the application-owned recovery delivery above.
 
 ## TDD and verification evidence
 
-Recovery RED baseline:
+Original TokenHash recovery RED/green history remains in Git. The latest scanner-consumption regression was reproduced and fixed separately.
 
-- `5da5adadc7c48986cd2b152c1b624d449d2a56bb` — `test: require token-hash password recovery`
-- CI run `33976137232`, job `101333043819`: old runtime failed the new recovery expectations while typecheck/build/KingHost smoke remained green.
+Scanner-safe RED:
 
-Signed-AMR security refinement test:
+- `3dcfe6af6346dcf2dce5118ad903b6127cf63efc` — `test: reproduce scanner-consumed recovery links`
+- `449346bfd99b5e8fc470ae2e71677c127f1e8561` — `test: require server-side recovery password submit`
+- CI run `33994910471`, job `101383640962`: typecheck/build/KingHost smoke passed while exactly the new recovery expectations failed, confirming the RED baseline.
 
-- `6c8f8d53b7399d591299d6fa91ee6f05daf6afb9` — `test: require signed recovery retry context`
+Final scanner-safe runtime/documentation candidate:
 
-Verified runtime candidate:
+`e8ff9c5f448039d4bd5ac9f30541294f52f111be`
 
-`6b991a1ee3cd9d88b478ff993f96235986887e94`
-
-GitHub Actions run `33976620408`, job `101334337857` verified that exact runtime descendant:
+GitHub Actions run `33995186311`, job `101384381207` verified this exact candidate:
 
 - exact KingHost Node 22.1.0: PASS
 - `pnpm install --frozen-lockfile`: PASS
 - `pnpm typecheck`: PASS
 - `pnpm build:kinghost`: PASS
 - KingHost startup-adapter smoke: PASS
-- tests: **391/391 PASS, 0 FAIL**
-- production build includes dynamic `/auth/confirm` and `/redefinir-senha` routes.
-
-Documentation was then aligned with the signed-AMR implementation in descendant commit `a05dbd0ea8dd93d92ce2da673b2e50600068e5ae`.
-
-## Hosted Supabase configuration still required
-
-The runtime code alone is not enough. Before requesting another real recovery email, update:
-
-**Supabase Dashboard -> Authentication -> Email Templates -> Reset Password**
-
-Use the token-hash link:
-
-```html
-<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery">
-  Redefinir senha
-</a>
-```
-
-The previously added callback wildcard can remain for the non-recovery callback flows, but recovery itself no longer depends on the callback or `sb_flow_id`.
-
-The built-in Supabase SMTP recently returned `429 email rate limit exceeded` during repeated testing. That is separate from the application's own rate limiter. If it is still active during acceptance, wait for the provider limit to reset or configure custom SMTP; do not spam repeated recovery requests.
+- tests: **392/392 PASS, 0 FAIL**
+- production build includes dynamic `/auth/confirm`, `/redefinir-senha`, `/api/account/password-reset`, and `/api/account/password-recovery` routes.
 
 ## Phase 3 Task 14 — remaining owner acceptance
 
-After the current candidate is on KingHost and the Reset Password email template is updated:
+Task 14 is **not complete from CI alone**. After the scanner-safe candidate is deployed to KingHost with `RESEND_API_KEY` configured:
 
-1. request **one fresh** password-recovery email;
-2. open the link normally (mobile email/custom tab is now an intended supported scenario);
-3. confirm it lands on `/redefinir-senha` without consuming the token on the initial GET;
-4. submit a new password once and confirm login works with the new password;
-5. test customer login;
+1. request exactly **one fresh** password-recovery email;
+2. confirm the new message is visible in Resend Logs and its link starts with the application domain `/auth/confirm` rather than `*.supabase.co/auth/v1/verify`;
+3. open the link normally and confirm the browser lands on clean `/redefinir-senha` without an `#error=...` fragment;
+4. submit a new password once;
+5. confirm redirect to login and successful login with the new password;
 6. test `/minha-conta`, own orders list/detail, profile and security page;
 7. confirm a second account cannot read the first account's order UUID;
 8. confirm a deliberately created safe guest order can be claimed only by verified matching email + the 64-character token;
@@ -177,12 +166,12 @@ No real Mercado Pago payment is required for Task 14.
 - Keep guest claim verified-identity + token only.
 - Keep production provider environment safety enabled.
 - Do not expose secrets in Git/chat/logs.
-- Do not request repeated recovery emails while Supabase's SMTP rate limit is active.
+- Do not repeatedly request recovery emails during acceptance; use one fresh message per test attempt.
 
 ## NEXT EXACT ACTION
 
-1. Fast-forward the verified recovery implementation/documentation into `feat/admin-dashboard-expansion` after final CI is green.
-2. In Supabase Dashboard, change **Authentication -> Email Templates -> Reset Password** to the `TokenHash` `/auth/confirm` template above.
+1. Fast-forward the verified scanner-safe recovery candidate into `feat/admin-dashboard-expansion` after final CI remains green.
+2. In Resend create/retrieve a server-only sending API key and add it to the KingHost application environment as `RESEND_API_KEY`. Do not send the key in chat.
 3. Deploy the branch to KingHost:
 
 ```bash
@@ -191,6 +180,7 @@ git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile
 NODE_ENV=production npx pnpm@10 deploy:kinghost
+git rev-parse HEAD
 ```
 
 4. Restart the application through the KingHost panel.
