@@ -208,7 +208,7 @@ test("planned account routes are bounded POST surfaces and callback is GET-only"
   assert.match(callback, /ensureOwnCustomerProfile/)
 })
 
-test("auth routes use the intended Supabase operations without admin authorization", async () => {
+test("auth routes use the intended Supabase operations without admin-session authorization", async () => {
   const signup = await source("../app/api/account/signup/route.ts")
   const login = await source("../app/api/account/login/route.ts")
   const reset = await source("../app/api/account/password-reset/route.ts")
@@ -222,7 +222,7 @@ test("auth routes use the intended Supabase operations without admin authorizati
   assert.match(signup, /whatsapp/)
   assert.match(login, /signInWithPassword\s*\(/)
   assert.match(login, /getUser\s*\(/)
-  assert.match(reset, /resetPasswordForEmail\s*\(/)
+  assert.match(reset, /auth\.admin\.generateLink\s*\(/)
   assert.match(update, /getUser\s*\(/)
   assert.match(update, /updateUser\s*\(/)
   assert.match(callback, /getUser\s*\(/)
