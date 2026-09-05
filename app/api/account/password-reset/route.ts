@@ -1,11 +1,13 @@
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
   parseAccountResetInput,
 } from "../../../../lib/server/customer-account-actions.ts"
+import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
-import { createSupabaseRouteClient } from "../../../../lib/supabase/route.ts"
+import { getSupabaseBrowserConfig } from "../../../../lib/supabase/config.ts"
 
 const RESET_MESSAGE =
   "Se o e-mail estiver cadastrado, enviaremos um link para redefinir sua senha."
@@ -40,8 +42,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const routeClient = createSupabaseRouteClient(request)
-    const { error } = await routeClient.supabase.auth.resetPasswordForEmail(input.email)
+    const env = getSupabaseBrowserConfig()
+    const supabase = createClient(env.url, env.publishableKey, {
+      auth: {
+        flowType: "implicit",
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
+    const redirectTo = new URL(
+      "/redefinir-senha",
+      resolvePublicSiteUrl(request.nextUrl.origin),
+    ).toString()
+    const { error } = await supabase.auth.resetPasswordForEmail(input.email, {
+      redirectTo,
+    })
     if (error) {
       if (error.status === 429) {
         return json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE })
