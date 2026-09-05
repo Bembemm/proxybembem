@@ -1,8 +1,15 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
 import Link from "next/link"
+import { redirect } from "next/navigation"
 
 import { PasswordForm } from "@/components/account/password-form"
-import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
+import {
+  RECOVERY_TOKEN_COOKIE,
+  hasRecentRecoveryAmr,
+  isValidRecoveryTokenHash,
+} from "@/lib/server/password-recovery"
+import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 export const metadata: Metadata = {
   title: "Redefinir senha",
@@ -12,7 +19,23 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic"
 
 export default async function ResetPasswordPage() {
-  await requireCustomerPageAccess()
+  const cookieStore = await cookies()
+  const tokenHash = cookieStore.get(RECOVERY_TOKEN_COOKIE)?.value
+  let canRecover = isValidRecoveryTokenHash(tokenHash)
+
+  if (!canRecover) {
+    try {
+      const supabase = await createSupabaseServerClient()
+      const { data, error } = await supabase.auth.getClaims()
+      canRecover = !error && hasRecentRecoveryAmr(data?.claims)
+    } catch {
+      canRecover = false
+    }
+  }
+
+  if (!canRecover) {
+    redirect("/entrar?erro=recovery")
+  }
 
   return (
     <section className="min-h-[70vh] px-4 pb-16 pt-24 sm:pt-28">
