@@ -3,7 +3,6 @@ import {
   isSameOriginAccountRequest,
   parseAccountResetInput,
 } from "../../../../lib/server/customer-account-actions.ts"
-import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
 import { createSupabaseRouteClient } from "../../../../lib/supabase/route.ts"
@@ -17,19 +16,6 @@ function json(status: number, body: Record<string, unknown>) {
   return NextResponse.json(body, {
     status,
     headers: { "Cache-Control": "private, no-store" },
-  })
-}
-
-function logPasswordRecoveryRequestDiagnostic(cookieNames: string[]) {
-  const verifierCookieSet = cookieNames.some((name) => /-code-verifier(?:\.\d+)?$/.test(name))
-  const flowScopedVerifierCookieSet = cookieNames.some((name) =>
-    /-flow-.+-code-verifier(?:\.\d+)?$/.test(name),
-  )
-
-  console.info("Password recovery request diagnostic", {
-    at: new Date().toISOString(),
-    verifierCookieSet,
-    flowScopedVerifierCookieSet,
   })
 }
 
@@ -53,43 +39,22 @@ export async function POST(request: NextRequest) {
     return json(400, { ok: false, message: "E-mail inválido." })
   }
 
-  let redirectTo: string
   try {
-    const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
-    redirectTo = new URL(
-      `/auth/callback?next=${encodeURIComponent("/redefinir-senha")}`,
-      siteUrl,
-    ).toString()
+    const routeClient = createSupabaseRouteClient(request)
+    const { error } = await routeClient.supabase.auth.resetPasswordForEmail(input.email)
+    if (error) {
+      if (error.status === 429) {
+        return json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE })
+      }
+      if (typeof error.status !== "number" || error.status >= 500) {
+        return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+      }
+
+      return json(200, { ok: true, message: RESET_MESSAGE })
+    }
   } catch {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
 
-  let applyToResponse = <T extends NextResponse>(response: T) => response
-
-  try {
-    const routeClient = createSupabaseRouteClient(request)
-    applyToResponse = routeClient.applyToResponse
-    const { error } = await routeClient.supabase.auth.resetPasswordForEmail(input.email, {
-      redirectTo,
-    })
-    logPasswordRecoveryRequestDiagnostic(routeClient.getPendingCookieNames())
-    if (error) {
-      if (error.status === 429) {
-        return applyToResponse(json(429, { ok: false, message: RESET_RATE_LIMIT_MESSAGE }))
-      }
-      if (typeof error.status !== "number" || error.status >= 500) {
-        return applyToResponse(
-          json(503, { ok: false, message: "Serviço temporariamente indisponível." }),
-        )
-      }
-
-      return applyToResponse(json(200, { ok: true, message: RESET_MESSAGE }))
-    }
-  } catch {
-    return applyToResponse(
-      json(503, { ok: false, message: "Serviço temporariamente indisponível." }),
-    )
-  }
-
-  return applyToResponse(json(200, { ok: true, message: RESET_MESSAGE }))
+  return json(200, { ok: true, message: RESET_MESSAGE })
 }
