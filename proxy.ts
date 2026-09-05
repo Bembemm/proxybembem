@@ -15,6 +15,7 @@ export const config = {
     "/esqueci-a-senha",
     "/redefinir-senha",
     "/auth/callback",
+    "/auth/confirm",
     "/minha-conta/:path*",
     "/api/account/:path*",
   ],
