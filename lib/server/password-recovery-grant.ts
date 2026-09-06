@@ -79,7 +79,8 @@ export async function issuePasswordRecoveryGrant(input: {
 
 export type PasswordRecoveryGrantClaim =
   | { status: "claimed"; userId: string; leaseId: string }
-  | { status: "busy" | "invalid" }
+  | { status: "busy" }
+  | { status: "invalid" }
 
 export async function claimPasswordRecoveryGrant(
   token: string,
@@ -105,8 +106,11 @@ export async function claimPasswordRecoveryGrant(
   const status = (row as { status?: unknown }).status
   const userId = (row as { user_id?: unknown }).user_id
 
-  if (status === "busy" || status === "invalid") {
-    return { status }
+  if (status === "busy") {
+    return { status: "busy" }
+  }
+  if (status === "invalid") {
+    return { status: "invalid" }
   }
   if (status !== "claimed" || typeof userId !== "string" || userId.length === 0) {
     throw new Error("Password recovery grant claim returned invalid data")
