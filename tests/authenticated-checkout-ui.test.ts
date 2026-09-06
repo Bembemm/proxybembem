@@ -48,6 +48,21 @@ test("cart redirects an anonymous payment attempt to login without clearing cart
   assert.match(cartContext, /localStorage/)
 })
 
+test("cart closes before sending an anonymous checkout to login", async () => {
+  const cart = await source("../components/cart-panel.tsx")
+
+  const authRequired = cart.indexOf('result?.code === "authentication_required"')
+  const redirect = cart.indexOf('window.location.assign("/entrar?next=%2Fprodutos")', authRequired)
+  const closeCart = cart.indexOf("setIsCartOpen(false)", authRequired)
+
+  assert.ok(authRequired >= 0, "missing authentication-required checkout branch")
+  assert.ok(redirect > authRequired, "missing checkout login redirect")
+  assert.ok(
+    closeCart > authRequired && closeCart < redirect,
+    "cart must close before navigating to the login page",
+  )
+})
+
 test("login handoff preserves checkout details and chosen freight only for the current tab", async () => {
   const draftSource = await source("../lib/checkout-login-draft.ts")
   assert.ok(draftSource.length > 0, "missing temporary checkout login draft helper")
