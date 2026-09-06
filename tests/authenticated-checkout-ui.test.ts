@@ -52,7 +52,6 @@ test("login handoff preserves checkout details and chosen freight only for the c
   const draftSource = await source("../lib/checkout-login-draft.ts")
   assert.ok(draftSource.length > 0, "missing temporary checkout login draft helper")
 
-  // @ts-expect-error RED: implementation intentionally does not exist yet.
   const draft = await import("../lib/checkout-login-draft.ts")
   const values = {
     nome: "Breno Teste",
