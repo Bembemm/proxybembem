@@ -13,7 +13,7 @@ Canonical continuation checkpoint. Detailed intermediate evidence stays in Git h
 - Authenticated checkout/private orders plan: `docs/superpowers/plans/2026-09-06-authenticated-checkout-private-orders.md`
 - Durable password recovery design: `docs/superpowers/specs/2026-09-05-password-recovery-durable-grant-design.md`
 - Durable password recovery plan: `docs/superpowers/plans/2026-09-05-password-recovery-durable-grant.md`
-- State: **Phase 3 Tasks 1–13 remain complete/database-validated. Authenticated checkout/private-order application work is CI-green. Task 14 production owner-auth acceptance is still pending on KingHost.**
+- State: **Phase 3 Tasks 1–13 remain complete/database-validated. Authenticated checkout/private-order application work is CI-green. Durable password-recovery migration is now applied and database-validated. Task 14 production owner-auth acceptance is still pending on KingHost.**
 - Phase 4: **do not start before Phase 3 completion.**
 
 ## Customer authentication acceptance already established
@@ -77,11 +77,23 @@ Do not reintroduce application dependencies on `public_token` or guest claim.
 
 The CI route gate now fails if any production route begins with `/pedido/` or if `/minha-conta/pedidos/[id]/page` disappears.
 
+### Final pre-migration checkpoint
+
+- commit `145393820e79c4dc266db4b8c2f8b25eac870afa` — `docs: record authenticated checkout acceptance state`
+- CI run `34053046811`, job `101539956932`: **PASS**
+- exact Node 22.1.0: PASS
+- frozen install: PASS
+- typecheck: PASS
+- KingHost build: PASS
+- production route manifest contract: **PASS**
+- startup smoke: PASS
+- tests: **402/402 PASS**
+
 ## Hosted Supabase checkpoint
 
 Hosted project: `ProxyBembem` (`kicgoocozxzkuoqajqif`), currently `ACTIVE_HEALTHY`.
 
-Do not migrate Supabase to KingHost and do not reapply Phase 1/2/3 migrations.
+Do not migrate Supabase to KingHost and do not reapply already-applied migrations.
 
 Already-applied Phase 3 migration:
 
@@ -90,24 +102,31 @@ Already-applied Phase 3 migration:
 - application: successful
 - rollback-only validation matrix: **10/10 PASS**
 
-### Durable password-recovery migration is still pending
+### Durable password-recovery migration — applied and validated
 
-Direct `list_migrations` verification on 2026-09-06 confirms that this migration is **not present** in hosted Supabase history:
+The exact Git migration was applied once to hosted Supabase on 2026-09-06:
 
 - Git file: `supabase/migrations/202609050001_password_recovery_grants.sql`
-- status: **NOT APPLIED**
+- Supabase history entry: `20260906190757_password_recovery_grants`
+- application: **successful**
+- table `public.password_recovery_grants`: present with RLS enabled
+- direct table DML for `anon`: **none**
+- direct table DML for `authenticated`: **none**
+- direct table DML for `service_role`: **none**
+- `issue_password_recovery_grant`, `claim_password_recovery_grant`, and `finish_password_recovery_grant`: `SECURITY DEFINER`, fixed empty `search_path`, executable only by `service_role`
+- key-format, expiry-order, lease-pair, primary-key, foreign-key constraints: present
+- `password_recovery_grants_user_id_idx`: present
+- non-destructive invalid-claim smoke: returned `invalid` with null user and no grant mutation
 
-Therefore:
+Supabase security advisor reports `RLS Enabled No Policy` for this backend-only table. This is expected here because direct table privileges are fully revoked and access is intentionally only through the service-role RPC boundary. The new password-recovery RPCs did not appear as authenticated-executable advisor findings.
 
-- do **not** claim it is already applied;
-- do **not** reapply any migration that is already present in hosted history;
-- before deploying code that depends on the durable recovery grant, apply this exact pending migration once and verify its RLS/privileges/RPC behavior.
+Do **not** reapply this migration.
 
-## Password recovery — code state
+## Password recovery — code/database state
 
 The application-owned durable recovery-grant implementation remains the intended recovery architecture. It uses a random application token, stores only its server-derived HMAC grant key, avoids consuming a Supabase one-time verification link on email click, and performs the password update server-side only after a durable grant claim.
 
-The implementation is CI-covered, but its **production acceptance remains incomplete** until the pending recovery migration is applied and a fresh KingHost recovery flow succeeds.
+The implementation is CI-covered and its required hosted migration is now present. Its remaining acceptance is a fresh end-to-end recovery flow on the deployed KingHost application.
 
 Do not use or retest old recovery links from superseded PKCE/TokenHash flows.
 
@@ -124,7 +143,7 @@ The runtime adapter loads the project-root `.env.production` before starting sta
 
 ## Phase 3 Task 14 — still not complete
 
-CI is not enough to mark Task 14 complete. After the final verified branch HEAD is deployed to KingHost, production acceptance must still prove all of the following without making a real paid Mercado Pago transaction solely for testing:
+CI and hosted migration validation are not enough to mark Task 14 complete. After the final verified branch HEAD is deployed to KingHost, production acceptance must still prove all of the following without making a real paid Mercado Pago transaction solely for testing:
 
 1. anonymous shopper can build cart/address/freight but payment redirects to `/entrar?next=%2Fprodutos` and creates no order/preference;
 2. after login, cart product lines remain available;
@@ -132,15 +151,15 @@ CI is not enough to mark Task 14 complete. After the final verified branch HEAD 
 4. Account A can open its private order UUID;
 5. Account B pasting Account A's exact UUID receives 404/not found with no order data;
 6. an old `/pedido/<token>` URL returns 404/not found and exposes no order/customer data;
-7. only synthetic acceptance fixtures are removed afterward.
+7. a fresh durable password-recovery request/link/reset succeeds on KingHost;
+8. only synthetic acceptance fixtures are removed afterward.
 
 Task 14 may be marked complete only after those production checks pass.
 
 ## Safety gates
 
 - Do not reapply Phase 1/2/3 migrations.
-- Do not apply a migration already present in hosted Supabase history.
-- `202609050001_password_recovery_grants.sql` is currently the one known pending recovery migration; apply it once before deploying code that depends on it.
+- Do not reapply `password_recovery_grants`; it is now in hosted migration history.
 - Do not restart Phase 3 Tasks 1–13.
 - Do not start Phase 4 before Task 14/Phase 3 completion.
 - Keep checkout ownership derived from the verified authenticated Supabase user.
@@ -151,8 +170,7 @@ Task 14 may be marked complete only after those production checks pass.
 
 ## NEXT EXACT ACTION
 
-1. Confirm the final `CURRENT_STATUS.md` commit is green in GitHub CI.
-2. Apply exactly `supabase/migrations/202609050001_password_recovery_grants.sql` once to hosted Supabase and validate it before deployment.
-3. Deploy the final verified `feat/admin-dashboard-expansion` HEAD to KingHost with the normal runbook and restart through the KingHost process authority/panel.
-4. Run the authenticated-checkout/private-order Task 14 production acceptance above plus one fresh durable password-recovery acceptance.
-5. Only after production evidence passes, mark Task 14 complete. The later all-test-data wipe and removal of `public_token`/guest-claim schema remain a separate pre-launch operation.
+1. Confirm this `CURRENT_STATUS.md` commit is green in GitHub CI.
+2. Deploy the final verified `feat/admin-dashboard-expansion` HEAD to KingHost with the normal runbook and restart through the KingHost process authority/panel.
+3. Run the authenticated-checkout/private-order Task 14 production acceptance above plus one fresh durable password-recovery acceptance.
+4. Only after production evidence passes, mark Task 14 complete. The later all-test-data wipe and removal of `public_token`/guest-claim schema remain a separate pre-launch operation.
