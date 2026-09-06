@@ -30,11 +30,11 @@ test("recovery issuance persists an app grant before sending the email", async (
 
   assert.match(resetRoute, /createPasswordRecoveryToken/)
   assert.match(resetRoute, /issuePasswordRecoveryGrant/)
-  assert.match(resetRoute, /data\.user(?:\?|)\.id|data\.user\.id/)
+  assert.match(resetRoute, /data\.user\?\.id|data\.user\.id/)
   assert.match(resetRoute, /sendPasswordRecoveryEmail/)
 
-  const issueAt = resetRoute.indexOf("issuePasswordRecoveryGrant")
-  const sendAt = resetRoute.indexOf("sendPasswordRecoveryEmail")
+  const issueAt = resetRoute.indexOf("await issuePasswordRecoveryGrant")
+  const sendAt = resetRoute.indexOf("await sendPasswordRecoveryEmail")
   assert.ok(issueAt >= 0 && sendAt >= 0 && issueAt < sendAt)
 })
 
@@ -59,7 +59,7 @@ test("durable recovery migration locks direct access and service-role RPCs", asy
   assert.match(migration, /enable row level security/i)
   assert.match(
     migration,
-    /revoke all on table public\.password_recovery_grants from public, anon, authenticated, service_role/i,
+    /revoke all on table public\.password_recovery_grants\s+from public, anon, authenticated, service_role/i,
   )
   assert.match(migration, /create or replace function public\.issue_password_recovery_grant/i)
   assert.match(migration, /create or replace function public\.claim_password_recovery_grant/i)
@@ -69,6 +69,9 @@ test("durable recovery migration locks direct access and service-role RPCs", asy
   assert.match(migration, /grant execute on function public\.issue_password_recovery_grant[\s\S]*to service_role/i)
   assert.match(migration, /grant execute on function public\.claim_password_recovery_grant[\s\S]*to service_role/i)
   assert.match(migration, /grant execute on function public\.finish_password_recovery_grant[\s\S]*to service_role/i)
+  assert.match(migration, /set revoked_at = v_now/i)
+  assert.match(migration, /return query select 'busy'::text/i)
+  assert.match(migration, /p_retry_window_seconds/i)
 })
 
 test("durable recovery implementation never logs recovery credential values", async () => {
