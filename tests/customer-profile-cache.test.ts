@@ -35,6 +35,10 @@ test("private customer-account HTML and RSC responses explicitly disable browser
   assert.match(proxy, /pathname\.startsWith\(\s*["']\/minha-conta\/["']\s*\)/)
   assert.match(
     proxy,
-    /Cache-Control["']?\s*,\s*["']private, no-cache, no-store, max-age=0, must-revalidate["']/,
+    /PRIVATE_ACCOUNT_CACHE_CONTROL\s*=\s*["']private, no-cache, no-store, max-age=0, must-revalidate["']/,
+  )
+  assert.match(
+    proxy,
+    /headers\.set\(\s*["']Cache-Control["']\s*,\s*PRIVATE_ACCOUNT_CACHE_CONTROL\s*\)/,
   )
 })
