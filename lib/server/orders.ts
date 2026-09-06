@@ -291,19 +291,6 @@ export async function getOrderByCheckoutAttemptId(
   return rows[0] ?? null
 }
 
-export async function getOrderByPublicToken(publicToken: string): Promise<OrderRecord | null> {
-  if (!/^[a-f0-9]{64}$/i.test(publicToken)) return null
-
-  const params = new URLSearchParams({
-    public_token: `eq.${publicToken}`,
-    select: ORDER_SELECT,
-    limit: "1",
-  })
-  const response = await supabaseRequest(`orders?${params.toString()}`)
-  const rows = (await response.json()) as OrderRecord[]
-  return rows[0] ?? null
-}
-
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string"
 }
