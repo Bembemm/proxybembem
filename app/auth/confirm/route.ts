@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 
 import { resolvePublicSiteUrl } from "../../../lib/server/env.ts"
+import { isPasswordRecoveryGrantActive } from "../../../lib/server/password-recovery-grant.ts"
 import {
   RECOVERY_TOKEN_COOKIE,
   RECOVERY_TOKEN_MAX_AGE_SECONDS,
@@ -20,6 +21,17 @@ export async function GET(request: NextRequest) {
   const type = request.nextUrl.searchParams.get("type")
 
   if (type !== "recovery" || !isValidRecoveryTokenHash(tokenHash)) {
+    return redirect(request, "/entrar?erro=recovery")
+  }
+
+  let active = false
+  try {
+    active = await isPasswordRecoveryGrantActive(tokenHash)
+  } catch {
+    return redirect(request, "/entrar?erro=recovery")
+  }
+
+  if (!active) {
     return redirect(request, "/entrar?erro=recovery")
   }
 
