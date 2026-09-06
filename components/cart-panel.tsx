@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { ArrowLeft, ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CartItems } from "@/components/cart-items"
@@ -94,6 +95,7 @@ function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
 }
 
 export function CartPanel() {
+  const pathname = usePathname()
   const {
     items,
     removeFromCart,
@@ -123,13 +125,15 @@ export function CartPanel() {
   )
 
   useEffect(() => {
+    if (pathname !== "/produtos") return
+
     const draft = readCheckoutLoginDraft(window.sessionStorage)
     if (!draft) return
 
     restoredShippingServiceIdRef.current = draft.shippingServiceId
     setCheckout(draft.checkout)
     setIsCartOpen(true)
-  }, [setIsCartOpen])
+  }, [pathname, setIsCartOpen])
 
   useEffect(() => {
     if (!isCartOpen) return
