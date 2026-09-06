@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
-import {
-  parseAccountProfileMetadata,
-  sanitizeAccountNext,
-} from "../../../lib/server/customer-account-actions.ts"
+import { sanitizeAccountNext } from "../../../lib/server/customer-account-actions.ts"
 import { resolvePublicSiteUrl } from "../../../lib/server/env.ts"
-import { ensureOwnCustomerProfile } from "../../../lib/server/customer-profiles.ts"
+import { createSupabaseAuthServerClient } from "../../../lib/supabase/auth-server.ts"
 import { createSupabaseRouteClient } from "../../../lib/supabase/route.ts"
 
 function redirect(request: NextRequest, path: string) {
@@ -33,51 +30,44 @@ export async function GET(request: NextRequest) {
     return redirect(request, "/entrar?erro=callback")
   }
 
+  if (canVerifyTokenHash) {
+    try {
+      const supabase = createSupabaseAuthServerClient()
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "email",
+      })
+
+      if (error || !data.user?.email_confirmed_at) {
+        return redirect(request, "/entrar?erro=callback")
+      }
+
+      // Verification is intentionally stateless here. Successful auth sessions
+      // are persisted by the browser login flow so the reverse proxy never has
+      // to transport the large Supabase Set-Cookie response on this GET.
+      return redirect(request, "/entrar?confirmado=1")
+    } catch {
+      return redirect(request, "/entrar?erro=callback")
+    }
+  }
+
+  // Legacy compatibility for already-issued PKCE confirmation emails.
   let applyToResponse = <T extends NextResponse>(response: T) => response
 
   try {
     const routeClient = createSupabaseRouteClient(request)
     applyToResponse = routeClient.applyToResponse
-
-    if (canVerifyTokenHash) {
-      const { error } = await routeClient.supabase.auth.verifyOtp({
-        token_hash: tokenHash,
-        type: "email",
-      })
-      if (error) {
-        return applyToResponse(redirect(request, "/entrar?erro=callback"))
-      }
-    } else if (canExchangeCode) {
-      const { error } = await routeClient.supabase.auth.exchangeCodeForSession(
-        code,
-        flowId ? { flowId } : undefined,
-      )
-      if (error) {
-        return applyToResponse(redirect(request, "/entrar?erro=callback"))
-      }
-    }
-
-    const { data, error: userError } = await routeClient.supabase.auth.getUser()
-    const user = data.user
-    if (userError || !user?.email_confirmed_at) {
+    const { error } = await routeClient.supabase.auth.exchangeCodeForSession(
+      code,
+      flowId ? { flowId } : undefined,
+    )
+    if (error) {
       return applyToResponse(redirect(request, "/entrar?erro=callback"))
     }
 
-    if (next === "/redefinir-senha") {
-      return applyToResponse(redirect(request, next))
-    }
-
-    let profile: ReturnType<typeof parseAccountProfileMetadata>
-    try {
-      profile = parseAccountProfileMetadata(user.user_metadata)
-    } catch {
-      return applyToResponse(redirect(request, "/minha-conta/perfil?setup=1"))
-    }
-
-    try {
-      await ensureOwnCustomerProfile(profile)
-    } catch {
-      return applyToResponse(redirect(request, "/minha-conta/perfil?setup=1"))
+    const { data, error: userError } = await routeClient.supabase.auth.getUser()
+    if (userError || !data.user?.email_confirmed_at) {
+      return applyToResponse(redirect(request, "/entrar?erro=callback"))
     }
 
     return applyToResponse(redirect(request, next))
