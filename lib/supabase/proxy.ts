@@ -47,6 +47,7 @@ export async function updateSupabaseSession(request: NextRequest) {
 
   const supabase = createServerClient(env.url, env.publishableKey, {
     cookies: {
+      encode: "tokens-only",
       getAll() {
         return request.cookies.getAll()
       },
