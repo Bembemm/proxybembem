@@ -131,7 +131,7 @@ test("recovery implementation never logs recovery credential values", async () =
   )
 })
 
-test("auth callback remains a safe non-recovery PKCE surface", async () => {
+test("auth callback keeps recovery isolated while supporting signup confirmation and legacy PKCE", async () => {
   const callback = await source("../app/auth/callback/route.ts")
   const routeClient = await source("../lib/supabase/route.ts")
 
@@ -141,9 +141,11 @@ test("auth callback remains a safe non-recovery PKCE surface", async () => {
     callback,
     /response\.headers\.set\(\s*["']Cache-Control["']\s*,\s*["']private, no-store["']\s*\)/,
   )
+  assert.match(callback, /verifyOtp/)
+  assert.match(callback, /type:\s*["']email["']/)
   assert.match(callback, /exchangeCodeForSession/)
   assert.match(callback, /sanitizeAccountNext/)
-  assert.match(callback, /ensureOwnCustomerProfile/)
+  assert.doesNotMatch(callback, /type:\s*["']recovery["']/)
   assert.match(
     routeClient,
     /experimental\s*:\s*\{\s*appendPkceFlowIdToRedirects\s*:\s*true\s*\}/,
