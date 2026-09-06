@@ -193,6 +193,22 @@ export async function POST(request: NextRequest) {
       result.kind === "created" ? 201 : 200,
     )
   } catch (error) {
+    if (
+      error instanceof CheckoutFlowValidationError &&
+      error.message === "Authenticated email mismatch"
+    ) {
+      return jsonResponse(
+        {
+          error: "Use o mesmo e-mail da sua conta para continuar.",
+          code: "account_email_mismatch",
+          fieldErrors: {
+            email: "Use o mesmo e-mail da sua conta.",
+          },
+        },
+        400,
+      )
+    }
+
     if (error instanceof CheckoutFlowValidationError) {
       return jsonResponse(
         { error: "O frete ou os dados do pedido não são mais válidos. Calcule o frete novamente." },
