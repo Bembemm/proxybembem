@@ -18,6 +18,7 @@ export function createSupabaseRouteClient(request: NextRequest) {
       experimental: { appendPkceFlowIdToRedirects: true },
     },
     cookies: {
+      encode: "tokens-only",
       getAll() {
         return request.cookies.getAll()
       },
