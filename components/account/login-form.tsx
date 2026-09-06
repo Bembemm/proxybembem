@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { FieldError } from "@/components/ui/field-error"
@@ -12,13 +11,11 @@ import {
   validateAccountEmail,
   validateAccountPassword,
 } from "@/lib/account-form"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
 
 export function AccountLoginForm({ next }: { next: string }) {
-  const router = useRouter()
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<AccountFieldErrors>({})
@@ -52,8 +49,6 @@ export function AccountLoginForm({ next }: { next: string }) {
         | {
             ok?: unknown
             message?: unknown
-            accessToken?: unknown
-            refreshToken?: unknown
           }
         | null
 
@@ -71,26 +66,7 @@ export function AccountLoginForm({ next }: { next: string }) {
         return
       }
 
-      if (
-        typeof payload.accessToken !== "string" ||
-        typeof payload.refreshToken !== "string"
-      ) {
-        setMessage("Não foi possível entrar agora. Tente novamente.")
-        return
-      }
-
-      const supabase = createSupabaseBrowserClient()
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: payload.accessToken,
-        refresh_token: payload.refreshToken,
-      })
-      if (sessionError) {
-        setMessage("Não foi possível entrar agora. Tente novamente.")
-        return
-      }
-
-      router.push(next)
-      router.refresh()
+      window.location.assign(next)
     } catch {
       setMessage("Não foi possível entrar agora. Tente novamente.")
     } finally {
