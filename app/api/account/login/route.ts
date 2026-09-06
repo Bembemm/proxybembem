@@ -5,7 +5,7 @@ import {
 } from "../../../../lib/server/customer-account-actions.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
-import { createSupabaseServerClient } from "../../../../lib/supabase/server.ts"
+import { createSupabaseAuthServerClient } from "../../../../lib/supabase/auth-server.ts"
 
 function json(status: number, body: Record<string, unknown>) {
   return Response.json(body, {
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = await createSupabaseServerClient()
-    const { error } = await supabase.auth.signInWithPassword({
+    const supabase = createSupabaseAuthServerClient()
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: input.email,
       password: input.password,
     })
@@ -44,15 +44,23 @@ export async function POST(request: NextRequest) {
       return json(401, { ok: false, message: "E-mail ou senha inválidos." })
     }
 
-    const { data, error: userError } = await supabase.auth.getUser()
     const user = data.user
-    if (userError || !user?.email_confirmed_at) {
-      await supabase.auth.signOut({ scope: "local" })
+    const session = data.session
+    if (
+      !user?.email_confirmed_at ||
+      !session?.access_token ||
+      !session.refresh_token
+    ) {
       return json(401, { ok: false, message: "E-mail ou senha inválidos." })
     }
+
+    return json(200, {
+      ok: true,
+      next: "/minha-conta",
+      accessToken: session.access_token,
+      refreshToken: session.refresh_token,
+    })
   } catch {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
-
-  return json(200, { ok: true, next: "/minha-conta" })
 }
