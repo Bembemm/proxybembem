@@ -187,7 +187,8 @@ export function sanitizeCustomerLoginNext(value: string | null | undefined) {
 
     if (
       parsed.pathname === "/minha-conta" ||
-      parsed.pathname.startsWith("/minha-conta/")
+      parsed.pathname.startsWith("/minha-conta/") ||
+      parsed.pathname === "/produtos"
     ) {
       return `${parsed.pathname}${parsed.search}${parsed.hash}`
     }
