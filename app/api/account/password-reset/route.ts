@@ -8,7 +8,10 @@ import {
   getSupabaseEnv,
   resolvePublicSiteUrl,
 } from "../../../../lib/server/env.ts"
-import { isValidRecoveryTokenHash } from "../../../../lib/server/password-recovery.ts"
+import {
+  createPasswordRecoveryToken,
+  issuePasswordRecoveryGrant,
+} from "../../../../lib/server/password-recovery-grant.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { sendPasswordRecoveryEmail } from "../../../../lib/server/recovery-email.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
@@ -67,16 +70,19 @@ export async function POST(request: NextRequest) {
       return json(200, { ok: true, message: RESET_MESSAGE })
     }
 
-    const tokenHash = data.properties?.hashed_token
-    if (!isValidRecoveryTokenHash(tokenHash)) {
+    const userId = data.user?.id
+    if (!userId) {
       return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
     }
+
+    const recoveryToken = createPasswordRecoveryToken()
+    await issuePasswordRecoveryGrant({ token: recoveryToken, userId })
 
     const recoveryUrl = new URL(
       "/auth/confirm",
       resolvePublicSiteUrl(request.nextUrl.origin),
     )
-    recoveryUrl.searchParams.set("token_hash", tokenHash)
+    recoveryUrl.searchParams.set("token_hash", recoveryToken)
     recoveryUrl.searchParams.set("type", "recovery")
 
     await sendPasswordRecoveryEmail({
