@@ -13,6 +13,19 @@ import {
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
 
+function recoveryFallbackMessage(status: number) {
+  if (status === 409) {
+    return "Já existe uma tentativa em andamento. Aguarde alguns segundos e tente novamente com este mesmo link."
+  }
+  if (status === 429) {
+    return "Muitas tentativas. Aguarde alguns minutos e tente novamente com este mesmo link."
+  }
+  if (status >= 500) {
+    return "O serviço teve uma falha temporária. Aguarde alguns segundos e tente novamente com este mesmo link."
+  }
+  return "Não foi possível redefinir a senha agora."
+}
+
 export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -57,7 +70,7 @@ export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) 
           typeof payload?.message === "string"
             ? payload.message
             : recovery
-              ? "Não foi possível redefinir a senha agora."
+              ? recoveryFallbackMessage(response.status)
               : "Não foi possível alterar a senha agora.",
         )
         return
@@ -73,7 +86,7 @@ export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) 
     } catch {
       setMessage(
         recovery
-          ? "Não foi possível redefinir a senha agora."
+          ? "Não foi possível contatar o serviço. Aguarde alguns segundos e tente novamente com este mesmo link."
           : "Não foi possível alterar a senha agora.",
       )
     } finally {
