@@ -26,7 +26,11 @@ export function Navbar() {
 
     setAccountState("loading")
     void supabase.auth.getUser().then(({ data, error }) => {
-      if (cancelled || error) return
+      if (cancelled) return
+      if (error) {
+        setAccountState("guest")
+        return
+      }
       setAccountState(data.user ? "authenticated" : "guest")
     })
 
