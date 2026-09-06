@@ -1,4 +1,3 @@
-import { revalidatePath } from "next/cache"
 import { type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
@@ -47,9 +46,6 @@ export async function POST(request: NextRequest) {
     const profile = current
       ? await updateOwnCustomerProfile(input)
       : await ensureOwnCustomerProfile(input)
-
-    revalidatePath("/minha-conta")
-    revalidatePath("/minha-conta/perfil")
 
     return json(200, {
       ok: true,
