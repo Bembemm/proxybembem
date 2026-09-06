@@ -144,10 +144,10 @@ test("account rate-limit scopes use the approved independent policies", async ()
     ["account-login", 10, 600],
     ["account-password-reset", 5, 900],
     ["account-profile", 20, 600],
-    ["account-claim", 10, 600],
   ] as const) {
     assert.match(rateLimit, new RegExp(`"${scope}"\\s*:\\s*\\{\\s*limit:\\s*${limit},\\s*windowSeconds:\\s*${seconds}\\s*\\}`))
   }
+  assert.doesNotMatch(rateLimit, /account-claim/)
 })
 
 test("proxy keeps every existing admin matcher while adding account auth surfaces", async () => {
