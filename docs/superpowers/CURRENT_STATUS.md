@@ -8,148 +8,158 @@ Canonical continuation checkpoint. Detailed intermediate evidence remains in Git
 
 - Project: Admin Dashboard + Customer Account Expansion
 - Primary branch: `feat/admin-dashboard-expansion`
+- Base branch: `main`
 - Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
 - Authenticated checkout/private orders design: `docs/superpowers/specs/2026-09-06-authenticated-checkout-private-orders-design.md`
 - Authenticated checkout/private orders plan: `docs/superpowers/plans/2026-09-06-authenticated-checkout-private-orders.md`
 - Durable password recovery design: `docs/superpowers/specs/2026-09-05-password-recovery-durable-grant-design.md`
 - Durable password recovery plan: `docs/superpowers/plans/2026-09-05-password-recovery-durable-grant.md`
-- State: **Phase 3 Tasks 1–13 remain complete/database-validated. Authenticated checkout/private-order application work is CI-green. Durable password-recovery migration is applied and database-validated. The production checkout 401 regression is now production-verified as resolved. Task 14 remains open only for the remaining browser-level private-order/public-route/password-recovery acceptance checks and synthetic fixture cleanup.**
-- Phase 4: **do not start before Phase 3 completion.**
+- State: **PHASE 3 COMPLETE. Tasks 1–14 are implemented, database-validated, CI-green, deployed to KingHost, and production-accepted.**
+- Phase 4: **unblocked, but do not start automatically before the owner chooses how to integrate/preserve the completed feature branch.**
 
-## Customer authentication acceptance already established
+## Phase 3 production acceptance — COMPLETE
 
-Real KingHost acceptance has already established the normal customer signup path through email confirmation and subsequent login. Do not restart that work unless a later regression requires it.
+The final production acceptance was completed on KingHost on 2026-09-06.
 
-Customer authorization remains independent from admin authorization and must continue deriving identity from the verified Supabase Auth user.
+Verified end-to-end behavior:
 
-## Authenticated checkout and private orders — implemented
+1. anonymous customers can build the cart, fill customer/address data and quote/select freight;
+2. starting payment while signed out saves the bounded same-tab checkout draft, closes the cart drawer, and navigates to `/entrar?next=%2Fprodutos`;
+3. the login page remains clean: the saved checkout draft does not reopen the global cart drawer on `/entrar`;
+4. password login persists the Supabase SSR session directly in response cookies and performs a full same-origin continuation only after the cookie-bearing response completes;
+5. after login, `/produtos` restores the cart/form and requests a fresh freight quote; the old signed freight quote token is never reused;
+6. authenticated `POST /api/checkout` succeeds without the previously observed `401 Unauthorized`;
+7. checkout creates an order with the verified authenticated `customer_id` and authoritative confirmed account e-mail;
+8. Mercado Pago preference creation and checkout URL generation succeed; no real paid transaction was required for acceptance;
+9. Mercado Pago return URLs target `/minha-conta/pedidos/{order-id}`;
+10. Account A can open its private order detail through `Minha Conta > Pedidos`;
+11. Account B opening Account A's exact private order URL receives not-found/404 behavior with no private order/customer data;
+12. a legacy `/pedido/<token>`-shaped URL returns not-found/404 and exposes no order/customer data;
+13. a fresh durable password-recovery request, new link, password reset and subsequent login with the new password all succeed in production;
+14. synthetic order fixtures created solely for acceptance were removed after the checks passed.
 
-The approved production model is implemented in the active application:
+Task 14 is therefore **COMPLETE**.
 
-1. catalog, cart and freight remain public;
-2. `POST /api/checkout` requires a verified authenticated customer before any order reservation or Mercado Pago preference creation;
-3. the verified account email is authoritative for checkout;
-4. every new checkout order is reserved with the authenticated `customer_id` and verified `customer_email`;
-5. checkout-attempt reuse is restricted to the same authenticated customer;
-6. Mercado Pago success/pending/failure back URLs target `/minha-conta/pedidos/{order-id}`;
-7. an expired session preserves the exact private order path through `/entrar?next=...`;
-8. another customer opening a copied order UUID receives the same not-found behavior as a missing order;
-9. anonymous cart product lines and the validated checkout draft are preserved through the login round-trip in same-tab `sessionStorage` for at most 30 minutes; the selected freight service ID may be restored only after a fresh quote, and the previous signed quote token is never reused;
-10. successful password login persists the Supabase SSR session directly in response cookies and no longer transports access/refresh tokens through browser JSON;
-11. `POST /api/checkout` participates in the Supabase session-refresh proxy matcher before its owner-auth check;
-12. `/pedido/[token]`, guest claim UI/API/service, public order lookup, and the `account-claim` rate-limit scope are removed from the active application.
+## Authenticated checkout and private-order model
 
-### Temporary legacy database compatibility
+The production model is now:
 
-`orders.public_token` still exists and is still populated because the current database column is required. The old `claim_guest_order_for_customer` RPC also remains in the Phase 3 database schema.
+- catalog, cart and freight quote remain public;
+- payment start requires a verified authenticated customer;
+- checkout ownership is derived only from the verified Supabase Auth user;
+- browser-supplied customer IDs never choose ownership;
+- verified account e-mail is authoritative;
+- checkout-attempt reuse is same-owner only;
+- customer order reads are owner-scoped and other-owner UUIDs are indistinguishable from missing orders;
+- private order navigation uses `/minha-conta/pedidos/{uuid}`;
+- `/pedido/[token]`, guest claim UI/API/service, public order lookup and the `account-claim` rate-limit scope are absent from the active application;
+- checkout/auth/private responses remain non-cacheable where required.
 
-These are **legacy schema only**. They are not used for active customer navigation or Mercado Pago return URLs, and the public order page and guest-claim API/UI are absent.
+### Login handoff regression history
 
-Do not reintroduce application dependencies on `public_token` or guest claim. Remove that legacy schema only in the later separate pre-launch clean-slate database hardening after test data is removed.
+Two production regressions discovered during Task 14 are resolved and covered by regression tests:
 
-## Production checkout acceptance — 401 resolved
+1. **checkout draft lost through login:** checkout customer/address/freight state now uses bounded same-tab `sessionStorage` for at most 30 minutes; only the selected freight service ID is remembered and freight is freshly quoted after login;
+2. **cart drawer reopened over login:** draft restoration may reopen the cart only on `/produtos`, never on `/entrar`.
 
-A previous Task 14 production pass reached `POST /api/checkout` after login and received `401 Unauthorized`. Root cause was a split session handoff: the login API used a non-persistent server client, returned Supabase tokens through JSON, and browser JavaScript later called `auth.setSession()`, while protected checkout trusted the SSR cookie session. The checkout endpoint was also outside the Supabase session-refresh proxy matcher.
+The earlier authenticated checkout `401` was also resolved by replacing the split browser/server auth handoff with server-owned SSR auth cookies and adding `/api/checkout` to the Supabase session-refresh proxy matcher.
 
-That architecture was replaced with a single server-owned session handoff:
+## CI evidence
 
-- `/api/account/login` signs in through `createSupabaseRouteClient(request)` and applies Supabase auth cookies directly to its `NextResponse`;
-- login JSON contains no access or refresh tokens;
-- browser login no longer calls `auth.setSession()`;
-- successful login performs a full same-origin navigation only after the cookie-bearing response completes;
-- `/api/checkout` is included in the Supabase proxy matcher so an eligible session can refresh before the checkout owner-auth check.
+Final deployed runtime code:
 
-A later browser regression showed the cart drawer still covering `/entrar`. The checkout code correctly closed it before navigation, but the saved checkout draft was being restored by the globally-mounted `CartPanel` on every storefront route, reopening the drawer on the login page.
-
-The restoration rule is now route-bound: the saved checkout draft may reopen the cart only on `/produtos`, which is the intended post-login continuation.
-
-### TDD / CI evidence for the final cart-login fix
-
-- RED commit `cbdd35dddbf7785009b54eff7a6c248221789609` — `test: keep saved checkout cart closed on login`
-- RED CI run `34061725508`: **405/406 PASS**, with only the new route-aware draft restoration regression test failing
-- GREEN commit `2945f495ba273055d64251bdd310df3947b629f6` — `fix: restore checkout cart only on products`
-- GREEN CI run `34061829912`: **PASS**
+- commit `2945f495ba273055d64251bdd310df3947b629f6` — `fix: restore checkout cart only on products`
+- CI run `34061829912`: **PASS**
 - exact KingHost Node 22.1.0 setup/version check: PASS
 - frozen install: PASS
 - typecheck: PASS
 - KingHost build: PASS
-- private-order production route-manifest gate: PASS
+- production route-manifest privacy gate: PASS
 - startup smoke: PASS
 - tests: **406/406 PASS**
 
-### Production evidence on 2026-09-06
+Production-acceptance progress checkpoint:
 
-The GREEN runtime was deployed to KingHost and the checkout path was repeated in production.
+- commit `51815f788c9fa0138f7864159f597749427bb852` — `docs: record production checkout acceptance progress`
+- CI run `34064472567`: **PASS**
+- typecheck/build/private-route gate/startup smoke: PASS
+- tests: **406/406 PASS**
 
-Verified evidence:
+The permanent CI route gate fails if a production route begins with `/pedido/` or if `/minha-conta/pedidos/[id]/page` disappears.
 
-- the login page no longer has the cart drawer reopened over it;
-- the checkout round-trip returned to the storefront continuation and reached payment start;
-- a new production acceptance order was created at approximately 19:31 America/Sao_Paulo;
-- the new order has a non-null `customer_id` and `customer_email`;
-- the order has a Mercado Pago `preference_id` and `checkout_url`;
-- its payment/fulfillment state remains `pending` / `awaiting_payment` because no real paid transaction is required for acceptance;
-- the stored `customer_id` matches the Supabase Auth user that owns the order;
-- the stored customer e-mail matches that confirmed Auth user's e-mail;
-- the owner Auth user is e-mail-confirmed.
+## Live database authorization evidence
 
-This production evidence closes the previously observed unauthenticated `401`: authenticated checkout now successfully creates the owned order and Mercado Pago preference and reaches the payment-start response.
+A production database check used two different already-confirmed Auth identities against the actual `public.customer_get_order(uuid)` RPC:
 
-## Live database owner-isolation check
+- owner identity -> non-null order payload;
+- different confirmed identity -> null.
 
-A rollback-only production database check was run against the newest acceptance order using two different already-confirmed Auth user identities and the actual `public.customer_get_order(uuid)` RPC.
+The RPC derives ownership from `auth.uid()` and filters by both order UUID and `customer_id`. Browser-level Account A/Account B acceptance independently passed afterward.
 
-The RPC itself is `SECURITY DEFINER`, fixed empty `search_path`, executable by `authenticated`, and derives ownership from `auth.uid()` before selecting the order by both `id` and `customer_id`.
+## Synthetic acceptance cleanup
 
-Correct claim simulation result:
+Two orders created solely during the production acceptance sequence were identified before deletion. Both were:
 
-- owner identity: order payload is non-null;
-- different confirmed identity: order payload is null.
+- `payment_status = pending`;
+- `fulfillment_status = awaiting_payment`;
+- `payment_id IS NULL`;
+- owned by an authenticated customer;
+- backed by a Mercado Pago preference/checkout URL;
+- referenced by zero `order_events` rows;
+- referenced by zero `order_attention_flags` rows.
 
-An initial diagnostic used `count(*)` against the scalar `jsonb` function and misleadingly returned one row for a null scalar result. No schema/code change was made from that diagnostic. The test was corrected to inspect nullness of the returned scalar directly, after which the expected owner isolation passed.
+They were deleted by exact UUID under a guarded transaction requiring the pending/unpaid state. Verification after commit returned **0 remaining acceptance orders**.
 
-This validates the live database authorization boundary. Browser-level Account B pasted-UUID acceptance remains required by Task 14 before the phase is formally complete.
+No Auth user was deleted as part of this narrow cleanup. Broader all-test-account/all-test-data cleanup remains a separate explicit pre-launch operation.
 
 ## Hosted Supabase checkpoint
 
-Hosted project: `ProxyBembem` (`kicgoocozxzkuoqajqif`), currently healthy.
+Hosted project: `ProxyBembem` (`kicgoocozxzkuoqajqif`).
 
 Do not migrate Supabase to KingHost and do not reapply already-applied migrations.
 
-Already-applied Phase 3 migration:
+Applied Phase 3 migration:
 
 - Git file: `supabase/migrations/202609020003_customer_accounts_orders.sql`
 - Supabase history entry: `20260902220354_customer_accounts_orders`
-- application: successful
 - rollback-only validation matrix: **10/10 PASS**
 
-### Durable password-recovery migration — applied and validated
-
-The exact Git migration was applied once to hosted Supabase on 2026-09-06:
+Applied durable password-recovery migration:
 
 - Git file: `supabase/migrations/202609050001_password_recovery_grants.sql`
 - Supabase history entry: `20260906190757_password_recovery_grants`
-- application: **successful**
-- table `public.password_recovery_grants`: present with RLS enabled
-- direct table DML for `anon`: none
-- direct table DML for `authenticated`: none
-- direct table DML for `service_role`: none
-- `issue_password_recovery_grant`, `claim_password_recovery_grant`, and `finish_password_recovery_grant`: `SECURITY DEFINER`, fixed empty `search_path`, executable only by `service_role`
-- key-format, expiry-order, lease-pair, primary-key, foreign-key constraints: present
-- `password_recovery_grants_user_id_idx`: present
-- non-destructive invalid-claim smoke: returned `invalid` with null user and no grant mutation
+- application: successful
+- `password_recovery_grants`: RLS enabled; direct table DML revoked
+- recovery grant RPCs: fixed empty `search_path`, service-role-only execution
+- invalid-claim smoke: PASS
+- fresh KingHost end-to-end password-recovery acceptance: **PASS**
 
-Supabase security advisor reports `RLS Enabled No Policy` for this backend-only table. This is expected because direct table privileges are fully revoked and access is intentionally only through the service-role RPC boundary. The new password-recovery RPCs did not appear as authenticated-executable advisor findings.
+Do **not** reapply either migration.
 
-Do **not** reapply this migration.
+## Supabase advisor classification
 
-## Password recovery — code/database state
+Current advisor findings do not block Phase 3 completion:
 
-The application-owned durable recovery-grant implementation remains the intended recovery architecture. It uses a random application token, stores only its server-derived HMAC grant key, avoids consuming a Supabase one-time verification link on e-mail click, and performs the password update server-side only after a durable grant claim.
+- `RLS Enabled No Policy` on backend-only tables is intentional where direct table privileges are revoked and access is restricted to server/RPC boundaries;
+- `customer_get_order` and `customer_list_orders` are intentionally authenticated-callable `SECURITY DEFINER` RPCs: both derive ownership from `auth.uid()`, return curated data, and passed database plus two-account browser isolation acceptance;
+- leaked-password protection is currently disabled and remains a separate pre-launch Auth hardening option;
+- `customer_profiles` policies have the advisor's `auth_rls_initplan` performance warning and can be optimized in a later performance-hardening pass;
+- the reported unused admin audit index is informational and should not be removed solely from low pre-launch usage.
 
-The implementation is CI-covered and its hosted migration is present. Its remaining acceptance is one fresh end-to-end recovery flow on the deployed KingHost application.
+Do not weaken the accepted authorization model merely to silence an intentional advisor warning.
 
-Do not use or retest old recovery links from superseded PKCE/TokenHash flows.
+## Temporary legacy database compatibility
+
+`orders.public_token` still exists and is populated because the current database column remains required. The old `claim_guest_order_for_customer` RPC also remains in the database schema.
+
+These are **legacy schema only**:
+
+- active application navigation does not use `public_token`;
+- Mercado Pago return URLs do not use it;
+- public `/pedido/[token]` application routing is absent;
+- guest claim UI/API/service is absent.
+
+Removal of `public_token` and the legacy guest-claim RPC belongs to a later explicit pre-launch clean-slate migration after the broader test-data wipe. Do not reintroduce application dependencies on them.
 
 ## KingHost runtime
 
@@ -162,37 +172,27 @@ Do not use or retest old recovery links from superseded PKCE/TokenHash flows.
 
 The runtime adapter loads the project-root `.env.production` before starting standalone Next.
 
-## Phase 3 Task 14 — remaining acceptance only
+The Phase 3 completion checkpoint is documentation-only; it does **not** require another KingHost redeploy.
 
-The production checkout/login/payment-start regression path has now passed. Task 14 is still not formally complete because the following browser-level acceptance checks remain:
+## Branch state / integration gate
 
-1. while logged in as Account A, open the newly-created order from `Minha Conta > Pedidos` and confirm its private detail page renders;
-2. copy that private order URL, sign out, sign in as a different confirmed Account B, paste Account A's exact private order URL, and confirm 404/not-found with no order/customer data;
-3. visit any legacy `/pedido/<token>`-shaped URL and confirm 404/not-found with no order/customer data;
-4. run one **fresh** durable password-recovery request/link/reset on KingHost, then log in with the new password;
-5. remove only synthetic acceptance fixtures after all checks are complete.
+`feat/admin-dashboard-expansion` is based on `main`. At the Phase 3 completion boundary it is ahead of `main` and not behind it.
 
-The live database owner-isolation check already proves Account B receives null from the underlying customer-order RPC. The browser route still needs the explicit production acceptance above because Task 14 requires end-to-end proof through the deployed application.
+Do not merge, squash, rebase, delete or force-move this branch without the owner's explicit integration choice.
 
-Task 14 may be marked complete only after those production checks pass.
-
-## Safety gates
+## Safety gates that remain
 
 - Do not reapply Phase 1/2/3 migrations.
-- Do not reapply `password_recovery_grants`; it is already in hosted migration history.
-- Do not restart Phase 3 Tasks 1–13.
-- Do not start Phase 4 before Task 14/Phase 3 completion.
-- Keep checkout ownership derived from the verified authenticated Supabase user.
-- Do not restore guest checkout, `/pedido/[token]`, guest claim UI/API, or browser-selected customer ownership.
+- Do not reapply `password_recovery_grants`.
+- Keep checkout ownership derived only from verified Supabase Auth identity.
+- Do not restore guest checkout/payment, `/pedido/[token]`, guest claim application surfaces or browser-selected customer ownership.
 - Keep customer reads owner-scoped and other-owner UUIDs indistinguishable from missing orders.
-- Keep production provider environment safety enabled.
-- Do not expose secrets, auth credentials, recovery tokens, payment credentials, order UUIDs, or customer-private data in Git/chat/logs.
+- Keep provider production-environment safety enabled.
+- Do not expose secrets, auth credentials, recovery tokens, payment credentials, order UUIDs or customer-private data in Git/chat/logs.
+- Broader test-account/test-data deletion is a separate pre-launch operation and requires an explicit scoped cleanup decision.
 
 ## NEXT EXACT ACTION
 
-1. Confirm this documentation checkpoint is green in GitHub CI; it is docs-only and does not require another KingHost runtime redeploy.
-2. In production as Account A, open the newest acceptance order from `Minha Conta > Pedidos` and confirm the private detail page renders.
-3. Copy its URL, switch to a different confirmed Account B, paste the URL, and confirm 404/not-found with no private data.
-4. Visit a dummy legacy `/pedido/teste` URL and confirm 404/not-found.
-5. Run one fresh password-recovery flow and confirm login with the new password.
-6. After those checks pass, remove only the synthetic acceptance fixtures, update this checkpoint, and mark Phase 3 Task 14 complete. The later removal of `public_token`/guest-claim schema remains a separate pre-launch operation.
+1. Confirm this Phase 3 completion documentation commit is green in GitHub CI.
+2. Choose branch integration handling for `feat/admin-dashboard-expansion` against `main`: merge, create a PR, or keep the branch as-is.
+3. Only after that integration choice, begin the next approved project phase or a separately approved pre-launch clean-slate/hardening operation.
