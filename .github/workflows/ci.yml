@@ -28,6 +28,18 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm build:kinghost
+      - name: Verify private order route contract
+        run: |
+          node - <<'NODE'
+          const manifest = require("./.next/server/app-paths-manifest.json")
+          if (Object.keys(manifest).some((route) => route.startsWith("/pedido/"))) {
+            throw new Error("Public /pedido route is still present in the production build")
+          }
+          if (!manifest["/minha-conta/pedidos/[id]/page"]) {
+            throw new Error("Private customer order detail route is missing from the production build")
+          }
+          console.log("private-order-route-contract-ok")
+          NODE
       - name: Smoke KingHost startup adapter
         run: |
           node - <<'NODE'
