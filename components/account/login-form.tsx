@@ -52,12 +52,16 @@ export function AccountLoginForm({ next }: { next: string }) {
         | null
 
       if (!response.ok || payload?.ok !== true) {
-        setAuthInvalid(response.status === 400 || response.status === 401)
-        setMessage(
-          typeof payload?.message === "string"
-            ? payload.message
-            : "E-mail ou senha inválidos.",
-        )
+        const invalidCredentials = response.status === 400 || response.status === 401
+        setAuthInvalid(invalidCredentials)
+
+        if (typeof payload?.message === "string") {
+          setMessage(payload.message)
+        } else if (invalidCredentials) {
+          setMessage("E-mail ou senha inválidos.")
+        } else {
+          setMessage("Não foi possível entrar agora. Tente novamente.")
+        }
         return
       }
 
