@@ -293,6 +293,7 @@ export function CartPanel() {
             checkout,
             shipping.selectedShipping.serviceId,
           )
+          setIsCartOpen(false)
           window.location.assign("/entrar?next=%2Fprodutos")
           return
         }
