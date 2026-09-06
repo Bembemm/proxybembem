@@ -1,4 +1,6 @@
+const { existsSync } = require("node:fs")
 const path = require("node:path")
+const { loadEnvFile } = require("node:process")
 
 function resolveKingHostPort(env = process.env) {
   const raw = env.PORT_PROXYBEMBEM_APP || env.PORT_APP || env.PORT || "3000"
@@ -19,6 +21,10 @@ function resolveKingHostHostname() {
 }
 
 function startKingHostRuntime() {
+  if (existsSync(path.join(__dirname, ".env.production"))) {
+    loadEnvFile(path.join(__dirname, ".env.production"))
+  }
+
   process.env.PORT = resolveKingHostPort(process.env)
   process.env.HOSTNAME = resolveKingHostHostname(process.env)
   require(path.join(__dirname, ".next", "standalone", "server.js"))
