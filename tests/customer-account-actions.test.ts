@@ -172,6 +172,11 @@ test("proxy keeps every existing admin matcher while adding account auth surface
   }
 })
 
+test("checkout API participates in Supabase session refresh", async () => {
+  const proxy = await source("../proxy.ts")
+  assert.ok(proxy.includes('"/api/checkout"'), "missing checkout session-refresh matcher")
+})
+
 test("planned account routes are bounded POST surfaces and callback is GET-only", async () => {
   const jsonRoutes = [
     "../app/api/account/signup/route.ts",
