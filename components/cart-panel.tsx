@@ -263,6 +263,11 @@ export function CartPanel() {
       const result = (await response.json().catch(() => null)) as CheckoutResponse | null
 
       if (!response.ok) {
+        if (result?.code === "authentication_required") {
+          window.location.assign("/entrar?next=%2Fprodutos")
+          return
+        }
+
         if (result?.fieldErrors) setErrors(result.fieldErrors)
 
         if (result?.code === "shipping_changed") {
