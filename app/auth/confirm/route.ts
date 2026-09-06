@@ -11,6 +11,7 @@ function redirect(request: NextRequest, path: string) {
   const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
   const response = NextResponse.redirect(new URL(path, siteUrl), 303)
   response.headers.set("Cache-Control", "private, no-store")
+  response.headers.set("Referrer-Policy", "no-referrer")
   return response
 }
 
