@@ -8,6 +8,8 @@ const AUTH_FLOW_PATHS = new Set([
   "/admin/setup-mfa",
 ])
 const REDIRECT_CACHE_HEADERS = ["cache-control", "expires", "pragma"] as const
+const PRIVATE_ACCOUNT_CACHE_CONTROL =
+  "private, no-cache, no-store, max-age=0, must-revalidate"
 
 function copySupabaseState(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) {
@@ -22,6 +24,21 @@ function copySupabaseState(source: NextResponse, target: NextResponse) {
   }
 
   return target
+}
+
+function disablePrivateAccountBrowserCache(
+  response: NextResponse,
+  pathname: string,
+) {
+  if (
+    pathname === "/minha-conta" ||
+    pathname.startsWith("/minha-conta/")
+  ) {
+    response.headers.set("Cache-Control", PRIVATE_ACCOUNT_CACHE_CONTROL)
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+  }
+  return response
 }
 
 export async function updateSupabaseSession(request: NextRequest) {
@@ -72,5 +89,5 @@ export async function updateSupabaseSession(request: NextRequest) {
     )
   }
 
-  return supabaseResponse
+  return disablePrivateAccountBrowserCache(supabaseResponse, pathname)
 }
