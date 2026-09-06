@@ -8,10 +8,13 @@ async function source(path: string) {
 
 test("signup confirmation verifies token hash without returning a Supabase session through the reverse proxy", async () => {
   const callback = await source("../app/auth/callback/route.ts")
-  const tokenBranch = callback.split("// Legacy compatibility for already-issued PKCE confirmation emails.")[0]
+  const tokenBranchStart = callback.indexOf("if (canVerifyTokenHash)")
+  const tokenBranchEnd = callback.indexOf("if (!code)", tokenBranchStart)
+  assert.ok(tokenBranchStart >= 0 && tokenBranchEnd > tokenBranchStart)
+  const tokenBranch = callback.slice(tokenBranchStart, tokenBranchEnd)
 
-  assert.match(tokenBranch, /searchParams\.get\(["']token_hash["']\)/)
-  assert.match(tokenBranch, /searchParams\.get\(["']type["']\)/)
+  assert.match(callback, /searchParams\.get\(["']token_hash["']\)/)
+  assert.match(callback, /searchParams\.get\(["']type["']\)/)
   assert.match(tokenBranch, /createSupabaseAuthServerClient/)
   assert.match(tokenBranch, /verifyOtp\s*\(/)
   assert.match(tokenBranch, /token_hash\s*:\s*tokenHash/)
