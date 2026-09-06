@@ -7,6 +7,7 @@ import {
 } from "../lib/server/orders.ts"
 
 const ENV_KEYS = ["SUPABASE_URL", "SUPABASE_SECRET_KEY"] as const
+const CUSTOMER_ID = "550e8400-e29b-41d4-a716-446655440123"
 
 async function withSupabaseEnv(run: () => Promise<void>) {
   const previous = new Map<string, string | undefined>()
@@ -30,7 +31,7 @@ const orderInput = {
   publicToken: "a".repeat(64),
   customerName: "Breno Bembem",
   customerEmail: "cliente@example.com",
-  customerId: null,
+  customerId: CUSTOMER_ID,
   whatsapp: "44991250332",
   cep: "86730000",
   address: {
@@ -65,7 +66,7 @@ const orderInput = {
   checkoutFingerprint: "b".repeat(64),
 }
 
-test("persists complete address, shipping, total, checkout identity and guest ownership snapshot", async (t) => {
+test("persists complete address, shipping, total, checkout identity and owned customer snapshot", async (t) => {
   await withSupabaseEnv(async () => {
     t.mock.method(
       globalThis,
@@ -77,7 +78,7 @@ test("persists complete address, shipping, total, checkout identity and guest ow
           public_token: orderInput.publicToken,
           customer_name: orderInput.customerName,
           customer_email: "cliente@example.com",
-          customer_id: null,
+          customer_id: CUSTOMER_ID,
           whatsapp: orderInput.whatsapp,
           cep: orderInput.cep,
           address_street: "Rua das Cartas",
@@ -123,7 +124,7 @@ test("persists complete address, shipping, total, checkout identity and guest ow
 
 test("persists trusted authenticated customer ownership when supplied by server flow", async (t) => {
   await withSupabaseEnv(async () => {
-    const customerId = "550e8400-e29b-41d4-a716-446655440123"
+    const customerId = "550e8400-e29b-41d4-a716-446655440999"
 
     t.mock.method(
       globalThis,
