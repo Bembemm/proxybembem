@@ -79,6 +79,19 @@ Production-acceptance documentation checkpoint:
 - CI: **PASS**
 - tests: **406/406 PASS** plus typecheck/KingHost build/private-route gate/startup smoke.
 
+Documentation reconciliation verification:
+
+- verified documentation candidate: `639626f706fe29b41f47e878823c652352c31d87`
+- CI run `34065723232`: **PASS**
+- exact Node 22.1.0 check: PASS
+- frozen install: PASS
+- typecheck: PASS
+- KingHost build: PASS
+- production route-manifest privacy gate: PASS (`private-order-route-contract-ok`)
+- startup smoke: PASS
+- tests: **406/406 PASS**
+- diff from `f50a7e1a9bf734d97860a722c861588d267e47a5`: only five operational Markdown files changed; no runtime code, tests, migrations or executable configuration changed.
+
 The permanent CI route gate fails if a production route begins with `/pedido/` or if `/minha-conta/pedidos/[id]/page` disappears.
 
 ## Hosted Supabase checkpoint
@@ -137,13 +150,13 @@ After Phase 3 acceptance, all repository Markdown was reviewed. Historical plans
 
 Operational documentation was reconciled on `feat/admin-dashboard-expansion`:
 
-- `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` now records Phase 3 as complete and the authenticated/private-order model as current;
-- `docs/superpowers/README.md` now points to the active branch, KingHost runtime and supersession rules;
-- `docs/payments-setup.md` now documents KingHost, authenticated payment start and private `/minha-conta/pedidos/{uuid}` returns instead of Vercel/`/pedido/<token>`;
-- `docs/shipping-setup.md` now documents the KingHost Cron/OAuth operation instead of Vercel Cron/Preview as current runtime;
-- this `CURRENT_STATUS.md` records that reconciliation so future sessions do not reopen completed Phase 3 work from historical Markdown.
+- `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` records Phase 3 as complete and the authenticated/private-order model as current;
+- `docs/superpowers/README.md` points to the active branch, KingHost runtime and supersession rules;
+- `docs/payments-setup.md` documents KingHost, authenticated payment start and private `/minha-conta/pedidos/{uuid}` returns instead of Vercel/`/pedido/<token>`;
+- `docs/shipping-setup.md` documents KingHost Cron/OAuth operation, manual Supabase admin recovery, and independent Production secrets instead of Vercel Cron/Preview as current runtime;
+- this `CURRENT_STATUS.md` records the completed reconciliation so future sessions do not reopen Phase 3 from historical Markdown.
 
-These are documentation-only changes and do **not** require a KingHost redeploy.
+The reconciliation candidate passed the full CI matrix at `639626f706fe29b41f47e878823c652352c31d87` / run `34065723232` with **406/406 tests**. These are documentation-only changes and do **not** require a KingHost redeploy.
 
 ## KingHost runtime
 
@@ -172,6 +185,5 @@ Do not merge, squash, rebase, delete or force-move it without the owner's explic
 
 ## NEXT EXACT ACTION
 
-1. Verify GitHub CI on the final documentation-reconciliation HEAD.
-2. Owner chooses branch integration handling for `feat/admin-dashboard-expansion`: merge into `main`, create a PR, or keep the branch as-is.
-3. Only after that choice, begin Phase 4 or a separately approved pre-launch clean-slate/hardening operation.
+1. Owner chooses branch integration handling for `feat/admin-dashboard-expansion`: merge into `main`, create a PR, or keep the branch as-is.
+2. Only after that choice, begin Phase 4 or a separately approved pre-launch clean-slate/hardening operation.
