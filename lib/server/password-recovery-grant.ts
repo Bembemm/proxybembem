@@ -77,6 +77,18 @@ export async function issuePasswordRecoveryGrant(input: {
   }
 }
 
+export async function isPasswordRecoveryGrantActive(token: string) {
+  const { supabase, grantKey } = recoveryGrantContext(token)
+  const { data, error } = await supabase.rpc("check_password_recovery_grant", {
+    p_grant_key: grantKey,
+  })
+
+  if (error || typeof data !== "boolean") {
+    throw new Error("Password recovery grant validation failed")
+  }
+  return data
+}
+
 export type PasswordRecoveryGrantClaim =
   | { status: "claimed"; userId: string; leaseId: string }
   | { status: "busy" }
