@@ -12,6 +12,7 @@ import {
   validateAccountEmail,
   validateAccountPassword,
 } from "@/lib/account-form"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
@@ -48,7 +49,12 @@ export function AccountLoginForm({ next }: { next: string }) {
         body: JSON.stringify({ email, password }),
       })
       const payload = (await response.json().catch(() => null)) as
-        | { ok?: unknown; message?: unknown }
+        | {
+            ok?: unknown
+            message?: unknown
+            accessToken?: unknown
+            refreshToken?: unknown
+          }
         | null
 
       if (!response.ok || payload?.ok !== true) {
@@ -62,6 +68,24 @@ export function AccountLoginForm({ next }: { next: string }) {
         } else {
           setMessage("Não foi possível entrar agora. Tente novamente.")
         }
+        return
+      }
+
+      if (
+        typeof payload.accessToken !== "string" ||
+        typeof payload.refreshToken !== "string"
+      ) {
+        setMessage("Não foi possível entrar agora. Tente novamente.")
+        return
+      }
+
+      const supabase = createSupabaseBrowserClient()
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: payload.accessToken,
+        refresh_token: payload.refreshToken,
+      })
+      if (sessionError) {
+        setMessage("Não foi possível entrar agora. Tente novamente.")
         return
       }
 
