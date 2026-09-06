@@ -203,9 +203,10 @@ test("planned account routes are bounded POST surfaces and callback is GET-only"
   assert.ok(callback.length > 0, "missing auth callback")
   assert.match(callback, /export\s+async\s+function\s+GET|export\s+const\s+GET/)
   assert.doesNotMatch(callback, /export\s+(?:async\s+function|const)\s+POST/)
+  assert.match(callback, /verifyOtp/)
   assert.match(callback, /exchangeCodeForSession/)
   assert.match(callback, /sanitizeAccountNext/)
-  assert.match(callback, /ensureOwnCustomerProfile/)
+  assert.match(callback, /\/entrar\?confirmado=1/)
 })
 
 test("auth routes use the intended Supabase operations without admin-session authorization", async () => {
