@@ -41,21 +41,19 @@ test("password signup sends the exact validated password to Supabase", async () 
   assert.match(signupRoute, /password:\s*input\.password/)
 })
 
-test("successful password login transports the session in JSON and lets the browser persist it", async () => {
+test("successful password login persists the SSR session in response cookies without exposing auth tokens", async () => {
   const loginRoute = await source("../app/api/account/login/route.ts")
   const loginForm = await source("../components/account/login-form.tsx")
 
-  assert.match(loginRoute, /createSupabaseAuthServerClient/)
+  assert.match(loginRoute, /createSupabaseRouteClient/)
   assert.match(loginRoute, /signInWithPassword\s*\(/)
-  assert.match(loginRoute, /getUser\s*\(\s*session\.access_token/)
-  assert.match(loginRoute, /accessToken/)
-  assert.match(loginRoute, /refreshToken/)
-  assert.doesNotMatch(loginRoute, /createSupabaseServerClient/)
+  assert.match(loginRoute, /getUser\s*\(/)
+  assert.match(loginRoute, /applyToResponse\s*\(/)
+  assert.doesNotMatch(loginRoute, /createSupabaseAuthServerClient/)
+  assert.doesNotMatch(loginRoute, /accessToken|refreshToken/)
 
-  assert.match(loginForm, /createSupabaseBrowserClient/)
-  assert.match(loginForm, /auth\.setSession\s*\(/)
-  assert.match(loginForm, /access_token:\s*payload\.accessToken/)
-  assert.match(loginForm, /refresh_token:\s*payload\.refreshToken/)
+  assert.doesNotMatch(loginForm, /auth\.setSession\s*\(/)
+  assert.doesNotMatch(loginForm, /accessToken|refreshToken/)
 })
 
 test("login UI does not misreport gateway or server failures as bad credentials", async () => {
