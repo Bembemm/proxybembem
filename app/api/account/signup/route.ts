@@ -6,7 +6,7 @@ import {
 import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
-import { createSupabaseServerClient } from "../../../../lib/supabase/server.ts"
+import { createSupabaseAuthServerClient } from "../../../../lib/supabase/auth-server.ts"
 
 function json(status: number, body: Record<string, unknown>) {
   return Response.json(body, {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = await createSupabaseServerClient()
+    const supabase = createSupabaseAuthServerClient()
     const { error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
