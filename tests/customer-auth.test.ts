@@ -16,6 +16,12 @@ const VERIFIED_USER = {
 const PRIVATE_ORDER_PATH =
   "/minha-conta/pedidos/550e8400-e29b-41d4-a716-446655440000"
 
+const requireCustomerPageAccessWithNext =
+  requireCustomerPageAccessWithDependencies as unknown as (
+    deps: CustomerAuthDependencies,
+    next?: string,
+  ) => Promise<unknown>
+
 class RedirectSignal extends Error {
   readonly path: string
 
@@ -78,7 +84,7 @@ test("protected customer pages redirect missing or unverified identity to /entra
 test("protected customer pages preserve only a sanitized local return path", async () => {
   await assert.rejects(
     () =>
-      requireCustomerPageAccessWithDependencies(
+      requireCustomerPageAccessWithNext(
         dependencies(null),
         PRIVATE_ORDER_PATH,
       ),
@@ -89,7 +95,7 @@ test("protected customer pages preserve only a sanitized local return path", asy
 
   await assert.rejects(
     () =>
-      requireCustomerPageAccessWithDependencies(
+      requireCustomerPageAccessWithNext(
         dependencies(null),
         "https://evil.example/minha-conta",
       ),
