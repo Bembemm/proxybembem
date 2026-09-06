@@ -33,6 +33,22 @@ test("checkout route rejects missing verified customer before starting checkout"
   assert.match(authBranch, /401/)
 })
 
+test("checkout route maps account email mismatch to one field-specific response", async () => {
+  const text = await source()
+
+  const mismatch = text.indexOf('error.message === "Authenticated email mismatch"')
+  const genericValidation = text.lastIndexOf("if (error instanceof CheckoutFlowValidationError)")
+
+  assert.ok(mismatch >= 0, "route must explicitly identify account email mismatch")
+  assert.ok(genericValidation >= 0, "generic checkout validation fallback must remain")
+  assert.ok(mismatch < genericValidation, "specific account mismatch must be handled before generic validation")
+
+  assert.match(text, /code:\s*["']account_email_mismatch["']/)
+  assert.match(text, /error:\s*["']Use o mesmo e-mail da sua conta para continuar\.["']/)
+  assert.match(text, /email:\s*["']Use o mesmo e-mail da sua conta\.["']/)
+  assert.match(text, /400/)
+})
+
 test("checkout responses remain non-cacheable", async () => {
   const text = await source()
 
