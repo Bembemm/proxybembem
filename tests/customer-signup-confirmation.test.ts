@@ -8,20 +8,20 @@ async function source(path: string) {
 
 test("signup confirmation verifies token hash without returning a Supabase session through the reverse proxy", async () => {
   const callback = await source("../app/auth/callback/route.ts")
+  const tokenBranch = callback.split("// Legacy compatibility for already-issued PKCE confirmation emails.")[0]
 
-  assert.match(callback, /searchParams\.get\(["']token_hash["']\)/)
-  assert.match(callback, /searchParams\.get\(["']type["']\)/)
-  assert.match(callback, /createSupabaseAuthServerClient/)
-  assert.match(callback, /verifyOtp\s*\(/)
-  assert.match(callback, /token_hash\s*:\s*tokenHash/)
-  assert.match(callback, /type\s*:\s*["']email["']/)
-  assert.match(callback, /\/entrar\?confirmado=1/)
+  assert.match(tokenBranch, /searchParams\.get\(["']token_hash["']\)/)
+  assert.match(tokenBranch, /searchParams\.get\(["']type["']\)/)
+  assert.match(tokenBranch, /createSupabaseAuthServerClient/)
+  assert.match(tokenBranch, /verifyOtp\s*\(/)
+  assert.match(tokenBranch, /token_hash\s*:\s*tokenHash/)
+  assert.match(tokenBranch, /type\s*:\s*["']email["']/)
+  assert.match(tokenBranch, /\/entrar\?confirmado=1/)
 
   // The normal signup confirmation path must not attempt to persist the
-  // returned Supabase session in response cookies. KingHost has shown 502s
-  // specifically on successful auth responses while ordinary 401 responses
-  // pass through normally.
-  assert.doesNotMatch(callback, /verifyOtp[\s\S]{0,800}applyToResponse/)
+  // returned Supabase session in response cookies. The old PKCE compatibility
+  // branch may still use route response cookies for already-issued emails.
+  assert.doesNotMatch(tokenBranch, /applyToResponse|createSupabaseRouteClient/)
 
   // Keep the legacy PKCE callback temporarily for already-issued emails.
   assert.match(callback, /exchangeCodeForSession\s*\(/)
@@ -44,6 +44,7 @@ test("successful password login transports the session in JSON and lets the brow
 
   assert.match(loginRoute, /createSupabaseAuthServerClient/)
   assert.match(loginRoute, /signInWithPassword\s*\(/)
+  assert.match(loginRoute, /getUser\s*\(\s*session\.access_token/)
   assert.match(loginRoute, /accessToken/)
   assert.match(loginRoute, /refreshToken/)
   assert.doesNotMatch(loginRoute, /createSupabaseServerClient/)
