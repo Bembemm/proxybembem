@@ -34,8 +34,8 @@ export default async function OrderDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  await requireCustomerPageAccess()
   const { id } = await params
+  await requireCustomerPageAccess(`/minha-conta/pedidos/${id}`)
   let order: Awaited<ReturnType<typeof getOwnOrderById>>
   try {
     order = await getOwnOrderById(id)
