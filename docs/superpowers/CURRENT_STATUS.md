@@ -1,41 +1,117 @@
 # ProxyBembem — Current Status
 
-**Updated:** 2026-09-05
+**Updated:** 2026-09-06
 
-Canonical continuation checkpoint. Detailed intermediate evidence stays in Git history and in `docs/superpowers/plans/`; this file records the current state and exact resume action.
+Canonical continuation checkpoint. Detailed intermediate evidence stays in Git history and in `docs/superpowers/plans/`; this file records the current verified state and exact resume action.
 
 ## Active project
 
 - Project: Admin Dashboard + Customer Account Expansion
 - Primary branch: `feat/admin-dashboard-expansion`
 - Phase 3 plan: `docs/superpowers/plans/2026-09-02-customer-account-orders.md`
+- Authenticated checkout/private orders design: `docs/superpowers/specs/2026-09-06-authenticated-checkout-private-orders-design.md`
+- Authenticated checkout/private orders plan: `docs/superpowers/plans/2026-09-06-authenticated-checkout-private-orders.md`
 - Durable password recovery design: `docs/superpowers/specs/2026-09-05-password-recovery-durable-grant-design.md`
 - Durable password recovery plan: `docs/superpowers/plans/2026-09-05-password-recovery-durable-grant.md`
-- State: **Phase 3 Tasks 1–13 complete/applied/database-validated; Task 14 owner-auth acceptance remains pending on KingHost.**
+- State: **Phase 3 Tasks 1–13 remain complete/database-validated. Authenticated checkout/private-order application work is CI-green. Task 14 production owner-auth acceptance is still pending on KingHost.**
 - Phase 4: **do not start before Phase 3 completion.**
 
-## Database checkpoint — Phase 3 stays applied; one new recovery migration is pending
+## Customer authentication acceptance already established
 
-The hosted Supabase `ProxyBembem` project remains the backend. Do not migrate it to KingHost and do not reapply Phase 1/2/3 migrations.
+Real KingHost acceptance has already established the normal customer signup path through email confirmation and subsequent login. Do not restart that work unless a later regression requires it.
+
+Customer authorization remains independent from admin authorization and must continue deriving identity from the verified Supabase Auth user.
+
+## Authenticated checkout and private orders — implemented
+
+The approved production model is now implemented in the active application:
+
+1. catalog, cart and freight remain public;
+2. `POST /api/checkout` requires a verified authenticated customer before any order reservation or Mercado Pago preference creation;
+3. the verified account email is authoritative for checkout;
+4. every new checkout order is reserved with the authenticated `customer_id` and verified `customer_email`;
+5. checkout-attempt reuse is restricted to the same authenticated customer;
+6. Mercado Pago success/pending/failure back URLs target `/minha-conta/pedidos/{order-id}`;
+7. an expired session preserves the exact private order path through `/entrar?next=...`;
+8. another customer opening a copied order UUID receives the same not-found behavior as a missing order;
+9. anonymous cart state is preserved through the login redirect;
+10. `/pedido/[token]`, guest claim UI/API/service, public order lookup, and the `account-claim` rate-limit scope are removed from the active application.
+
+### Temporary legacy database compatibility
+
+`orders.public_token` still exists and is still populated because the current database column is required. The old `claim_guest_order_for_customer` RPC also remains in the Phase 3 database schema.
+
+These are **legacy schema only**:
+
+- they are not used for active customer navigation;
+- they are not used in Mercado Pago return URLs;
+- the public order page and guest-claim API/UI are absent;
+- they remain pending the separate pre-launch clean-slate database hardening after test data is removed.
+
+Do not reintroduce application dependencies on `public_token` or guest claim.
+
+## Checkout/private-order verification evidence
+
+### Task 5 removal fix
+
+- commit `50256dc9e9a541044e81df8389c186299c8ac757` — `test: remove deleted public order status from policy scan`
+- CI run `34052605374`: **PASS**
+- exact KingHost Node 22.1.0 setup/version check: PASS
+- frozen install: PASS
+- typecheck: PASS
+- KingHost build: PASS
+- startup smoke: PASS
+- tests: **402/402 PASS**
+
+### Permanent production-route privacy gate
+
+- commit `37f2252c1252230128655098a19f4ab81e63319e` — `ci: verify private order route contract`
+- CI run `34052887704`, job `101539530601`: **PASS**
+- exact Node 22.1.0: PASS
+- frozen install: PASS
+- typecheck: PASS
+- KingHost build: PASS
+- production route manifest contract: **`private-order-route-contract-ok`**
+- startup smoke: PASS
+- tests: **402/402 PASS**
+
+The CI route gate now fails if any production route begins with `/pedido/` or if `/minha-conta/pedidos/[id]/page` disappears.
+
+## Hosted Supabase checkpoint
+
+Hosted project: `ProxyBembem` (`kicgoocozxzkuoqajqif`), currently `ACTIVE_HEALTHY`.
+
+Do not migrate Supabase to KingHost and do not reapply Phase 1/2/3 migrations.
 
 Already-applied Phase 3 migration:
 
 - Git file: `supabase/migrations/202609020003_customer_accounts_orders.sql`
-- applied Supabase history entry: `20260902220354_customer_accounts_orders`
+- Supabase history entry: `20260902220354_customer_accounts_orders`
 - application: successful
 - rollback-only validation matrix: **10/10 PASS**
-- cleanup after validation: zero synthetic orders/profiles/claim events/Auth users left behind
 
-New recovery migration:
+### Durable password-recovery migration is still pending
+
+Direct `list_migrations` verification on 2026-09-06 confirms that this migration is **not present** in hosted Supabase history:
 
 - Git file: `supabase/migrations/202609050001_password_recovery_grants.sql`
-- status: **NOT APPLIED to hosted Supabase yet**
-- reason: Supabase connector became unavailable during this implementation; apply this exact migration once through Supabase SQL Editor before deploying the durable-grant code
-- do not reapply any older migration while doing this
+- status: **NOT APPLIED**
+
+Therefore:
+
+- do **not** claim it is already applied;
+- do **not** reapply any migration that is already present in hosted history;
+- before deploying code that depends on the durable recovery grant, apply this exact pending migration once and verify its RLS/privileges/RPC behavior.
+
+## Password recovery — code state
+
+The application-owned durable recovery-grant implementation remains the intended recovery architecture. It uses a random application token, stores only its server-derived HMAC grant key, avoids consuming a Supabase one-time verification link on email click, and performs the password update server-side only after a durable grant claim.
+
+The implementation is CI-covered, but its **production acceptance remains incomplete** until the pending recovery migration is applied and a fresh KingHost recovery flow succeeds.
+
+Do not use or retest old recovery links from superseded PKCE/TokenHash flows.
 
 ## KingHost runtime
-
-KingHost Node.js III is the selected application runtime.
 
 - application: `proxybembem`
 - Node.js: **22.1.0**
@@ -44,153 +120,39 @@ KingHost Node.js III is the selected application runtime.
 - port: KingHost-provided environment variable; never hard-code an allocated port
 - canonical runbook: `docs/deployment/kinghost.md`
 
-The runtime adapter now loads the project-root `.env.production` before starting standalone Next, so root production env is authoritative and does not depend on a stale `.next/standalone/.env.production` copy.
+The runtime adapter loads the project-root `.env.production` before starting standalone Next.
 
-## Password recovery — durable scanner-safe architecture
+## Phase 3 Task 14 — still not complete
 
-Production acceptance exposed three concrete defects in earlier recovery designs:
+CI is not enough to mark Task 14 complete. After the final verified branch HEAD is deployed to KingHost, production acceptance must still prove all of the following without making a real paid Mercado Pago transaction solely for testing:
 
-1. browser-bound PKCE could fail when the recovery link opened outside the requesting browser context;
-2. sending a Supabase `/auth/v1/verify` URL allowed mail scanners/prefetchers to consume the one-time provider link before the application received it;
-3. the later TokenHash final-submit flow called `verifyOtp()` before changing the password. In real KingHost acceptance, the first password submit returned a transient `502`; a subsequent submit returned `401`, and login with the intended new password failed. The first request had consumed the one-time recovery token before password storage was guaranteed.
+1. anonymous shopper can build cart/address/freight but payment redirects to `/entrar?next=%2Fprodutos` and creates no order/preference;
+2. after login, cart product lines remain available;
+3. authenticated checkout creates an order with the logged-in account UUID/email and returns toward `/minha-conta/pedidos/{uuid}`;
+4. Account A can open its private order UUID;
+5. Account B pasting Account A's exact UUID receives 404/not found with no order data;
+6. an old `/pedido/<token>` URL returns 404/not found and exposes no order/customer data;
+7. only synthetic acceptance fixtures are removed afterward.
 
-The TokenHash final-submit architecture is therefore superseded by an application-owned durable recovery grant.
-
-### Current durable recovery flow
-
-1. `POST /api/account/password-reset` remains same-origin, body-bounded and rate-limited.
-2. The server calls `auth.admin.generateLink({ type: "recovery", email })` only to resolve the server-authenticated target account/user id; Supabase's generated `/verify` URL and `hashed_token` are not sent to the browser.
-3. The application creates a fresh **256-bit random Base64URL token**.
-4. The database stores only `HMAC-SHA256(token)` using the existing server-only `RATE_LIMIT_SECRET` with explicit domain separation; the raw bearer token is never stored in Postgres.
-5. Issuing a new grant revokes older outstanding grants for the same user.
-6. Resend sends only the application URL `/auth/confirm?token_hash=<app-token>&type=recovery`.
-7. `GET /auth/confirm` validates the application-token shape, writes it to the existing host-only HttpOnly recovery cookie, sets `Cache-Control: private, no-store` and `Referrer-Policy: no-referrer`, then redirects to clean `/redefinir-senha`. It does not consume the grant.
-8. Final `POST /api/account/password-recovery` requires same-origin, rate limit, bounded password input and the recovery cookie.
-9. The server atomically claims the grant through a service-role-only RPC. The claim uses a **45-second lease** and shortens the remaining grant lifetime to at most **300 seconds** after first use.
-10. Only after a successful claim does the server call `auth.admin.updateUserById(user_id, { password })` with the server-only Supabase secret client.
-11. A provider/system failure releases the lease so the same valid link can be retried. A concurrent in-flight attempt returns retryable `409` without clearing the recovery cookie.
-12. Successful password storage marks the grant consumed and clears the recovery cookie.
-
-### Recovery-grant database security
-
-`public.password_recovery_grants` stores only:
-
-- 64-character HMAC grant key;
-- `user_id`;
-- create/expire timestamps;
-- lease id/expiry;
-- consumed/revoked timestamps.
-
-It stores no raw recovery token, email, password, access token or refresh token.
-
-Security controls in `202609050001_password_recovery_grants.sql`:
-
-- RLS enabled;
-- direct table access revoked from `public`, `anon`, `authenticated` and `service_role`;
-- `issue_password_recovery_grant`, `claim_password_recovery_grant` and `finish_password_recovery_grant` are `SECURITY DEFINER` with empty `search_path`;
-- RPC execute is explicitly granted only to `service_role`;
-- max initial grant TTL is 3600 seconds;
-- claim lease is bounded and concurrent claims fail as `busy`;
-- successful completion is one-way (`consumed_at`).
-
-The unavoidable cross-system edge after Auth password storage but before Postgres finalization is bounded: the claim remains leased temporarily, the post-claim grant lifetime is at most five minutes, and successful finalization clears the browser token. If finalization fails after password storage, the app explicitly tells the user that the password was changed and to log in with it.
-
-## Recovery UI behavior
-
-The password form now distinguishes retryable failures instead of collapsing every non-JSON/gateway response into one generic message:
-
-- `409`: wait a few seconds and retry the same link;
-- `429`: wait a few minutes and retry the same link;
-- `5xx` or network/gateway failure: wait briefly and retry the same link;
-- invalid/expired/consumed grant: `401` and the cookie is cleared.
-
-## TDD and verification evidence
-
-Durable-grant RED:
-
-- commit `21665c2e9dbef248efbd948f998293fe24c3f2af` — `test: reproduce non-retryable password recovery submit`
-- CI run `34002326553`, job `101403284775`: failed because the durable recovery helper/behavior did not yet exist, confirming the intended RED baseline.
-
-Durable-grant green before the final referrer hardening:
-
-- commit `317f9a8f24d92a1b04adc976c780223569a83eee`
-- CI run `34002610124`, job `101404061176`
-- exact Node 22.1.0: PASS
-- frozen install: PASS
-- typecheck: PASS
-- KingHost build: PASS
-- startup smoke: PASS
-- tests: **398/398 PASS**
-
-Referrer hardening RED:
-
-- commit `a878b65dceaf48c7bf45eed051634e6d1bcd0c9c`
-- CI run `34002740927`, job `101404410233`: typecheck/build/smoke passed; exactly the new recovery referrer test failed because `/auth/confirm` did not yet set `Referrer-Policy: no-referrer`.
-
-Referrer hardening green:
-
-- commit `b450e3ef97e4d7fb2dd461c4a4810ea27027a5f8`
-- CI run `34002852049`, job `101404706419`
-- exact Node 22.1.0: PASS
-- frozen install: PASS
-- typecheck: PASS
-- KingHost build: PASS
-- startup smoke: PASS
-- full tests: PASS
-
-The code is verified in CI, but production acceptance is **not complete** until the new migration is applied, this branch is deployed, and a fresh recovery flow succeeds on KingHost.
-
-## Resend / email configuration
-
-Already configured and independently verified on KingHost:
-
-- domain `proxybembem.com.br` verified in Resend;
-- sender `ProxyBembem <noreply@proxybembem.com.br>`;
-- `RESEND_API_KEY` present in root `.env.production` and direct Node `fetch` to Resend returned HTTP 200;
-- Supabase custom SMTP with Resend may remain enabled for ordinary Supabase Auth mail.
-
-Keep provider keys outside Git/chat/logs.
-
-## Phase 3 Task 14 — remaining owner acceptance
-
-Task 14 is **not complete from CI alone**. After applying the one new recovery migration and deploying the durable-grant code:
-
-1. ensure recovery rate-limit buckets are not already saturated from prior debugging;
-2. request exactly one **new** password-recovery email after deployment; old recovery links from the superseded architecture are incompatible;
-3. open only the newest application-domain `/auth/confirm` link;
-4. confirm the browser lands on clean `/redefinir-senha`;
-5. submit a new password once;
-6. confirm `200`/redirect to login and successful login with the new password;
-7. if a transient gateway failure occurs before completion, wait briefly and retry the **same** new link rather than requesting another email;
-8. verify the used link/grant cannot be reused after success;
-9. continue the remaining `/minha-conta`, own-order isolation and guest-claim Task 14 acceptance checks.
-
-No real Mercado Pago payment is required for Task 14.
+Task 14 may be marked complete only after those production checks pass.
 
 ## Safety gates
 
 - Do not reapply Phase 1/2/3 migrations.
-- Apply only `202609050001_password_recovery_grants.sql` once before deploying this code.
+- Do not apply a migration already present in hosted Supabase history.
+- `202609050001_password_recovery_grants.sql` is currently the one known pending recovery migration; apply it once before deploying code that depends on it.
 - Do not restart Phase 3 Tasks 1–13.
 - Do not start Phase 4 before Task 14/Phase 3 completion.
-- Keep customer authorization `auth.uid()`-derived.
-- Keep guest claim verified-identity + token only.
+- Keep checkout ownership derived from the verified authenticated Supabase user.
+- Do not restore guest checkout, `/pedido/[token]`, guest claim UI/API, or browser-selected customer ownership.
+- Keep customer reads owner-scoped and other-owner UUIDs indistinguishable from missing orders.
 - Keep production provider environment safety enabled.
-- Do not expose secrets or recovery credential values in Git/chat/logs.
+- Do not expose secrets, auth credentials, recovery tokens, payment credentials, or customer-private data in Git/chat/logs.
 
 ## NEXT EXACT ACTION
 
-1. Apply exactly `supabase/migrations/202609050001_password_recovery_grants.sql` once to hosted Supabase and validate its RLS/privileges/RPCs.
-2. Only after the migration is confirmed, deploy `feat/admin-dashboard-expansion` to KingHost:
-
-```bash
-cd ~/apps_nodejs/proxybembem
-git pull --ff-only
-nvm use
-npx pnpm@10 install --frozen-lockfile
-NODE_ENV=production npx pnpm@10 deploy:kinghost
-git rev-parse HEAD
-```
-
-3. Restart through the KingHost panel/process authority.
-4. Request one fresh recovery email and complete the durable recovery acceptance above.
+1. Confirm the final `CURRENT_STATUS.md` commit is green in GitHub CI.
+2. Apply exactly `supabase/migrations/202609050001_password_recovery_grants.sql` once to hosted Supabase and validate it before deployment.
+3. Deploy the final verified `feat/admin-dashboard-expansion` HEAD to KingHost with the normal runbook and restart through the KingHost process authority/panel.
+4. Run the authenticated-checkout/private-order Task 14 production acceptance above plus one fresh durable password-recovery acceptance.
+5. Only after production evidence passes, mark Task 14 complete. The later all-test-data wipe and removal of `public_token`/guest-claim schema remain a separate pre-launch operation.
