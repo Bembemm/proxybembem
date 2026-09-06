@@ -1,14 +1,11 @@
+import { isValidPasswordRecoveryToken } from "./password-recovery-grant.ts"
+
 export const RECOVERY_TOKEN_COOKIE = "proxybembem-recovery-token"
 export const RECOVERY_TOKEN_MAX_AGE_SECONDS = 3600
-
-// Supabase Auth currently derives recovery token hashes with SHA-224,
-// which produces 56 hexadecimal characters. Keep the upper bound defensive
-// without rejecting the provider's valid token format.
-const RECOVERY_TOKEN_PATTERN = /^[A-Za-z0-9_-]{56,512}$/
 const RECOVERY_AMR_FUTURE_SKEW_SECONDS = 300
 
 export function isValidRecoveryTokenHash(value: unknown): value is string {
-  return typeof value === "string" && RECOVERY_TOKEN_PATTERN.test(value)
+  return isValidPasswordRecoveryToken(value)
 }
 
 export function recoveryTokenCookieOptions() {
