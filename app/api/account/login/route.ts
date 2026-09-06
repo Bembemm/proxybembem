@@ -40,17 +40,15 @@ export async function POST(request: NextRequest) {
       email: input.email,
       password: input.password,
     })
-    if (error) {
+    const session = data.session
+    if (error || !session?.access_token || !session.refresh_token) {
       return json(401, { ok: false, message: "E-mail ou senha inválidos." })
     }
 
-    const user = data.user
-    const session = data.session
-    if (
-      !user?.email_confirmed_at ||
-      !session?.access_token ||
-      !session.refresh_token
-    ) {
+    const { data: verified, error: userError } = await supabase.auth.getUser(
+      session.access_token,
+    )
+    if (userError || !verified.user?.email_confirmed_at) {
       return json(401, { ok: false, message: "E-mail ou senha inválidos." })
     }
 
