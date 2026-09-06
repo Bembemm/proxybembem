@@ -20,3 +20,14 @@ test("navbar exposes Entrar for guests and Meu perfil for authenticated customer
   const accountItemRenders = navbar.match(/accountItem/g) ?? []
   assert.ok(accountItemRenders.length >= 3, "account link should be shared by desktop and mobile navigation")
 })
+
+test("navbar resolves an unauthenticated getUser error to guest instead of staying in loading", () => {
+  const navbar = source("components/navbar.tsx")
+
+  assert.doesNotMatch(navbar, /if \(cancelled \|\| error\) return/)
+  assert.match(navbar, /if \(cancelled\) return/)
+  assert.match(
+    navbar,
+    /if \(error\) \{\s*setAccountState\(["']guest["']\)\s*return\s*\}/,
+  )
+})
