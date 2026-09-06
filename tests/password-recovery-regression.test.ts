@@ -1,12 +1,16 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { isValidRecoveryTokenHash } from "../lib/server/password-recovery.ts"
+import {
+  createPasswordRecoveryToken,
+  isValidPasswordRecoveryToken,
+} from "../lib/server/password-recovery-grant.ts"
 
-test("password recovery accepts Supabase recovery token hashes without assuming a 64-character minimum", () => {
-  assert.equal(isValidRecoveryTokenHash("a".repeat(56)), true)
-  assert.equal(isValidRecoveryTokenHash("A9_-".repeat(14)), true)
-  assert.equal(isValidRecoveryTokenHash(""), false)
-  assert.equal(isValidRecoveryTokenHash("a".repeat(513)), false)
-  assert.equal(isValidRecoveryTokenHash("abc def"), false)
+test("password recovery uses an application-owned 256-bit Base64URL token", () => {
+  const token = createPasswordRecoveryToken()
+  assert.equal(token.length, 43)
+  assert.equal(isValidPasswordRecoveryToken(token), true)
+  assert.equal(isValidPasswordRecoveryToken("a".repeat(42)), false)
+  assert.equal(isValidPasswordRecoveryToken("a".repeat(44)), false)
+  assert.equal(isValidPasswordRecoveryToken("abc def"), false)
 })
