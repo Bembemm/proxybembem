@@ -16,7 +16,7 @@ function requireSource(value: string, label: string) {
   assert.ok(value.length > 0, `missing ${label}`)
 }
 
-test("login next sanitizer allows only account pages or one canonical public-order token route", async () => {
+test("login next sanitizer allows only account pages and the products checkout continuation", async () => {
   const actions = await accountActions()
 
   assert.equal(
@@ -24,8 +24,8 @@ test("login next sanitizer allows only account pages or one canonical public-ord
     "/minha-conta/pedidos?pagina=2",
   )
   assert.equal(
-    actions.sanitizeCustomerLoginNext(`/pedido/${TOKEN}`),
-    `/pedido/${TOKEN}`,
+    actions.sanitizeCustomerLoginNext("/produtos?categoria=decks"),
+    "/produtos?categoria=decks",
   )
 
   for (const unsafe of [
@@ -33,6 +33,7 @@ test("login next sanitizer allows only account pages or one canonical public-ord
     "//evil.example/minha-conta",
     "/admin",
     "/pedido/abc",
+    `/pedido/${TOKEN}`,
     `/pedido/${TOKEN}/extra`,
     "javascript:alert(1)",
   ]) {
