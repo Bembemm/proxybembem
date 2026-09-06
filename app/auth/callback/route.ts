@@ -51,6 +51,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (!code) {
+    return redirect(request, "/entrar?erro=callback")
+  }
+
   // Legacy compatibility for already-issued PKCE confirmation emails.
   let applyToResponse = <T extends NextResponse>(response: T) => response
 
