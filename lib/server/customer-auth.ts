@@ -1,4 +1,5 @@
 import { normalizeCheckoutEmail } from "../checkout.ts"
+import { sanitizeCustomerLoginNext } from "./customer-account-actions.ts"
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const NIL_UUID = "00000000-0000-0000-0000-000000000000"
@@ -64,10 +65,15 @@ export async function getOptionalCustomerIdentityWithDependencies(
 
 export async function requireCustomerPageAccessWithDependencies(
   deps: CustomerAuthDependencies,
+  next?: string,
 ): Promise<CustomerIdentity> {
   const identity = await getOptionalCustomerIdentityWithDependencies(deps)
   if (identity) return identity
-  return await deps.redirect("/entrar")
+
+  const safeNext = next ? sanitizeCustomerLoginNext(next) : null
+  return await deps.redirect(
+    safeNext ? `/entrar?next=${encodeURIComponent(safeNext)}` : "/entrar",
+  )
 }
 
 async function createProductionDependencies(): Promise<CustomerAuthDependencies> {
@@ -91,6 +97,11 @@ export async function getOptionalCustomerIdentity(): Promise<CustomerIdentity | 
   return getOptionalCustomerIdentityWithDependencies(await createProductionDependencies())
 }
 
-export async function requireCustomerPageAccess(): Promise<CustomerIdentity> {
-  return requireCustomerPageAccessWithDependencies(await createProductionDependencies())
+export async function requireCustomerPageAccess(
+  next?: string,
+): Promise<CustomerIdentity> {
+  return requireCustomerPageAccessWithDependencies(
+    await createProductionDependencies(),
+    next,
+  )
 }
