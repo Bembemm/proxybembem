@@ -27,3 +27,14 @@ test("profile save invalidates visited customer-account routes through a server 
   assert.doesNotMatch(route, /from\s+["']next\/cache["']/)
   assert.match(shell, /<Link[\s\S]*?prefetch=\{false\}[\s\S]*?href=\{item\.href\}/)
 })
+
+test("private customer-account HTML and RSC responses explicitly disable browser HTTP caching", async () => {
+  const proxy = await source("../lib/supabase/proxy.ts")
+
+  assert.match(proxy, /pathname\s*===\s*["']\/minha-conta["']/)
+  assert.match(proxy, /pathname\.startsWith\(\s*["']\/minha-conta\/["']\s*\)/)
+  assert.match(
+    proxy,
+    /Cache-Control["']?\s*,\s*["']private, no-cache, no-store, max-age=0, must-revalidate["']/,
+  )
+})
