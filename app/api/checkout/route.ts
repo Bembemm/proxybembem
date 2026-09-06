@@ -136,6 +136,16 @@ export async function POST(request: NextRequest) {
     }
 
     const customerIdentity = await getOptionalCustomerIdentity()
+    if (!customerIdentity) {
+      return jsonResponse(
+        {
+          error: "Entre na sua conta para continuar o pagamento.",
+          code: "authentication_required",
+        },
+        401,
+      )
+    }
+
     const result = await executeCheckoutFlow({
       items: payload.items,
       customer,
