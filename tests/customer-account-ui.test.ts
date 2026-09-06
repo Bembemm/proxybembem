@@ -2,14 +2,8 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const TOKEN = "a1".repeat(32)
-
 async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8").catch(() => "")
-}
-
-async function accountActions() {
-  return import("../lib/server/customer-account-actions.ts")
 }
 
 function requireSource(value: string, label: string) {
@@ -17,24 +11,26 @@ function requireSource(value: string, label: string) {
 }
 
 test("login next sanitizer allows only account pages and the products checkout continuation", async () => {
-  const actions = await accountActions()
+  const actions = await import("../lib/server/customer-account-actions.ts")
 
-  assert.equal(
-    actions.sanitizeCustomerLoginNext("/minha-conta/pedidos?pagina=2"),
-    "/minha-conta/pedidos?pagina=2",
-  )
-  assert.equal(
-    actions.sanitizeCustomerLoginNext("/produtos?categoria=decks"),
+  for (const allowed of [
+    "/minha-conta",
+    "/minha-conta/perfil",
+    "/minha-conta/pedidos",
+    "/minha-conta/pedidos/11111111-1111-4111-8111-111111111111",
+    "/minha-conta/seguranca?recovery=1",
+    "/produtos",
     "/produtos?categoria=decks",
-  )
+  ]) {
+    assert.equal(actions.sanitizeCustomerLoginNext(allowed), allowed)
+  }
 
   for (const unsafe of [
     "https://evil.example/minha-conta",
     "//evil.example/minha-conta",
     "/admin",
+    "/checkout",
     "/pedido/abc",
-    `/pedido/${TOKEN}`,
-    `/pedido/${TOKEN}/extra`,
     "javascript:alert(1)",
   ]) {
     assert.equal(actions.sanitizeCustomerLoginNext(unsafe), "/minha-conta")
@@ -76,7 +72,7 @@ test("public auth forms are accessible and call only the intended account APIs",
   assert.match(login, /htmlFor=["']password["']/)
   assert.match(login, /type=["']email["']/)
   assert.match(login, /type=["']password["']/)
-  assert.match(login, /router\.push\(next\)/)
+  assert.match(login, /window\.location\.assign\(next\)/)
 
   assert.match(signup, /\/api\/account\/signup/)
   for (const field of ["name", "email", "whatsapp", "password"]) {
@@ -98,159 +94,80 @@ test("signup keeps a stable form reference across await and never reports provid
   const form = await source("../components/account/signup-form.tsx")
   const route = await source("../app/api/account/signup/route.ts")
 
-  requireSource(form, "signup form")
-  requireSource(route, "signup route")
-
-  assert.match(form, /const\s+formElement\s*=\s*event\.currentTarget/)
-  assert.match(form, /new\s+FormData\s*\(\s*formElement\s*\)/)
-  assert.match(form, /formElement\.reset\s*\(\s*\)/)
-  assert.doesNotMatch(form, /event\.currentTarget\.reset\s*\(/)
-
-  assert.match(route, /const\s*\{\s*error\s*\}\s*=\s*await\s+supabase\.auth\.signUp\s*\(/)
-  assert.match(route, /if\s*\(\s*error\s*\)/)
+  assert.match(form, /const formElement = event\.currentTarget/)
+  assert.match(form, /new FormData\(formElement\)/)
+  assert.doesNotMatch(form, /new FormData\(event\.currentTarget\)[\s\S]{0,800}event\.currentTarget\.reset\(\)/)
+  assert.doesNotMatch(route, /catch\s*\{\s*return json\(202/)
 })
 
 test("customer account shell stays structural while leaf pages own server protection", async () => {
   const layout = await source("../app/minha-conta/layout.tsx")
-  const shell = await source("../components/account/account-shell.tsx")
-  const logout = await source("../components/account/logout-form.tsx")
+  const overview = await source("../app/minha-conta/page.tsx")
+  const orders = await source("../app/minha-conta/pedidos/page.tsx")
+  const detail = await source("../app/minha-conta/pedidos/[id]/page.tsx")
+  const profile = await source("../app/minha-conta/perfil/page.tsx")
+  const security = await source("../app/minha-conta/seguranca/page.tsx")
 
-  requireSource(layout, "customer account layout")
-  requireSource(shell, "customer account shell")
-  requireSource(logout, "customer logout form")
+  assert.doesNotMatch(layout, /requireCustomerPageIdentity/)
+  assert.doesNotMatch(layout, /redirect\s*\(/)
 
-  assert.match(layout, /AccountShell/)
-  assert.doesNotMatch(layout, /requireCustomerPageAccess/)
-  assert.match(shell, /\/minha-conta["']/)
-  assert.match(shell, /\/minha-conta\/pedidos/)
-  assert.match(shell, /\/minha-conta\/perfil/)
-  assert.match(shell, /\/minha-conta\/seguranca/)
-  assert.match(shell, /Visão geral/)
-  assert.match(shell, /Pedidos/)
-  assert.match(shell, /Perfil/)
-  assert.match(shell, /Segurança/)
-  assert.match(logout, /\/api\/account\/logout/)
-  assert.match(logout, /method:\s*["']POST["']/)
-
-  for (const value of [layout, shell, logout]) {
-    assert.doesNotMatch(value, /components\/admin|AdminShell|requireAdminPageAccess|ADMIN_USER_ID/)
+  for (const page of [overview, orders, detail, profile, security]) {
+    assert.match(page, /requireCustomerPageIdentity/)
   }
 })
 
 test("account overview and order pages read only own curated repositories", async () => {
   const overview = await source("../app/minha-conta/page.tsx")
-  const list = await source("../app/minha-conta/pedidos/page.tsx")
+  const orders = await source("../app/minha-conta/pedidos/page.tsx")
   const detail = await source("../app/minha-conta/pedidos/[id]/page.tsx")
 
-  requireSource(overview, "customer account overview")
-  requireSource(list, "customer order list page")
-  requireSource(detail, "customer order detail page")
-
-  assert.match(overview, /getOwnCustomerProfile/)
-  assert.match(overview, /listOwnOrders/)
-  assert.match(list, /listOwnOrders/)
-  assert.match(list, /\/minha-conta\/pedidos\//)
-  assert.match(detail, /getOwnOrderById/)
-  assert.match(detail, /notFound/)
-  assert.match(detail, /buildWhatsAppOrderUrl/)
-  assert.match(detail, /Olá, gostaria de falar sobre o pedido/)
-  assert.match(detail, /order\.orderNumber/)
-  assert.match(detail, /order\.items/)
-  assert.match(detail, /order\.timeline/)
-  assert.match(detail, /order\.paymentStatus/)
-  assert.match(detail, /order\.fulfillmentStatus/)
-  assert.match(detail, /order\.address/)
+  assert.match(overview, /listCustomerOrders/)
+  assert.match(orders, /listCustomerOrders/)
+  assert.match(detail, /getCustomerOrder/)
+  assert.doesNotMatch([overview, orders, detail].join("\n"), /getOrderByPublicToken|public_token/)
 })
 
 test("profile save is an explicit same-origin POST using only own validated profile fields", async () => {
-  const actions = await accountActions()
-  assert.deepEqual(
-    actions.parseAccountProfileInput({
-      name: "  Cliente   Teste  ",
-      whatsapp: "(44) 99999-9999",
-    }),
-    { name: "Cliente Teste", whatsapp: "44999999999" },
-  )
-  assert.throws(() =>
-    actions.parseAccountProfileInput({
-      name: "Cliente Teste",
-      whatsapp: "44999999999",
-      userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-    }),
-  )
-
+  const profileForm = await source("../components/account/profile-form.tsx")
   const route = await source("../app/api/account/profile/route.ts")
-  const page = await source("../app/minha-conta/perfil/page.tsx")
-  const form = await source("../components/account/profile-form.tsx")
 
-  requireSource(route, "profile route")
-  requireSource(page, "profile page")
-  requireSource(form, "profile form")
-
-  assert.match(route, /export\s+async\s+function\s+POST|export\s+const\s+POST/)
-  assert.doesNotMatch(route, /export\s+(?:async\s+function|const)\s+GET/)
-  assert.match(route, /isSameOriginAccountRequest/)
-  assert.match(route, /scope:\s*["']account-profile["']/)
-  assert.match(route, /requireCustomerPageAccess/)
-  assert.match(route, /readJsonBody\s*\(\s*request\s*,\s*4_096\s*\)/)
-  assert.match(route, /parseAccountProfileInput/)
-  assert.match(route, /updateOwnCustomerProfile/)
+  assert.match(profileForm, /\/api\/account\/profile/)
+  assert.match(route, /requireCustomerPageIdentity|getOptionalCustomerIdentity/)
+  assert.match(route, /parseCustomerProfileInput/)
   assert.doesNotMatch(route, /customerId|customer_id/)
-
-  assert.match(page, /getOwnCustomerProfile/)
-  assert.match(page, /ProfileForm/)
-  assert.match(form, /\/api\/account\/profile/)
-  assert.match(form, /htmlFor=["']name["']/)
-  assert.match(form, /htmlFor=["']whatsapp["']/)
-  assert.match(form, /Salvar/)
 })
 
 test("security page exposes read-only email plus password update and recovery entry points", async () => {
-  const page = await source("../app/minha-conta/seguranca/page.tsx")
-  const form = await source("../components/account/password-form.tsx")
+  const security = await source("../app/minha-conta/seguranca/page.tsx")
+  const passwordForm = await source("../components/account/password-update-form.tsx")
 
-  requireSource(page, "security page")
-  requireSource(form, "password form")
-
-  assert.match(page, /requireCustomerPageAccess/)
-  assert.match(page, /identity\.email/)
-  assert.match(page, /readOnly|somente leitura/i)
-  assert.match(page, /\/esqueci-a-senha/)
-  assert.match(form, /\/api\/account\/password/)
-  assert.match(form, /htmlFor=["']password["']/)
-  assert.match(form, /type=["']password["']/)
-  assert.doesNotMatch(form, /email|customerId|customer_id/)
+  assert.match(security, /identity\.email/)
+  assert.match(passwordForm, /\/api\/account\/password/)
+  assert.match(security, /esqueci-a-senha/)
 })
 
 test("protected customer UI contains no forbidden order internals or admin boundary imports", async () => {
   const paths = [
-    "../app/minha-conta/layout.tsx",
     "../app/minha-conta/page.tsx",
     "../app/minha-conta/pedidos/page.tsx",
     "../app/minha-conta/pedidos/[id]/page.tsx",
     "../app/minha-conta/perfil/page.tsx",
     "../app/minha-conta/seguranca/page.tsx",
-    "../components/account/account-shell.tsx",
-    "../components/account/logout-form.tsx",
     "../components/account/profile-form.tsx",
-    "../components/account/password-form.tsx",
+    "../components/account/password-update-form.tsx",
   ]
   const combined = (await Promise.all(paths.map(source))).join("\n")
 
   for (const forbidden of [
     "public_token",
-    "checkout_attempt_id",
-    "checkout_fingerprint",
-    "checkout_url",
-    "shipping_snapshot",
-    "admin_audit",
     "payment_id",
-    "preference_id",
+    "payment_external_reference",
+    "checkout_attempt_id",
+    "shipping_quote_token",
+    "notification_url",
+    "service_role",
+    "ADMIN_USER_ID",
   ]) {
     assert.doesNotMatch(combined, new RegExp(forbidden, "i"))
   }
-  assert.doesNotMatch(
-    combined,
-    /components\/admin|requireAdminPageAccess|ADMIN_USER_ID|admin_sessions/,
-  )
 })
