@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowLeft, ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CartItems } from "@/components/cart-items"
@@ -16,6 +16,11 @@ import {
   type CheckoutData,
   type CheckoutErrors,
 } from "@/lib/checkout"
+import {
+  clearCheckoutLoginDraft,
+  readCheckoutLoginDraft,
+  saveCheckoutLoginDraft,
+} from "@/lib/checkout-login-draft"
 import {
   applyShippingChanged,
   invalidateCheckoutSelection,
@@ -104,6 +109,7 @@ export function CartPanel() {
   const [isQuoting, setIsQuoting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const restoredShippingServiceIdRef = useRef<string | null>(null)
 
   const destinationCep = digitsOnly(checkout.cep)
   const hasValidCep = /^\d{8}$/.test(destinationCep)
@@ -115,6 +121,15 @@ export function CartPanel() {
         .join("|"),
     [items],
   )
+
+  useEffect(() => {
+    const draft = readCheckoutLoginDraft(window.sessionStorage)
+    if (!draft) return
+
+    restoredShippingServiceIdRef.current = draft.shippingServiceId
+    setCheckout(draft.checkout)
+    setIsCartOpen(true)
+  }, [setIsCartOpen])
 
   useEffect(() => {
     if (!isCartOpen) return
@@ -178,10 +193,16 @@ export function CartPanel() {
           throw new Error("Nenhuma opção de frete disponível para este CEP.")
         }
 
+        const restoredShippingServiceId = restoredShippingServiceIdRef.current
+        const restoredShipping = restoredShippingServiceId
+          ? options.find((option) => option.serviceId === restoredShippingServiceId) ?? null
+          : null
+        restoredShippingServiceIdRef.current = null
+
         setShipping((current) => ({
           ...current,
           shippingOptions: options,
-          selectedShipping: null,
+          selectedShipping: restoredShipping,
           shippingError: null,
           checkoutAttemptId: null,
         }))
@@ -213,6 +234,8 @@ export function CartPanel() {
     setErrors((current) => ({ ...current, [field]: undefined }))
     setCheckoutError(null)
 
+    if (field === "cep") restoredShippingServiceIdRef.current = null
+
     setShipping((current) =>
       field === "cep"
         ? invalidateCheckoutSelection(current)
@@ -221,6 +244,7 @@ export function CartPanel() {
   }
 
   const handleShippingSelect = (option: PublicShippingOption) => {
+    restoredShippingServiceIdRef.current = null
     setShipping((current) => selectShippingOption(current, option))
     setCheckoutError(null)
   }
@@ -264,6 +288,11 @@ export function CartPanel() {
 
       if (!response.ok) {
         if (result?.code === "authentication_required") {
+          saveCheckoutLoginDraft(
+            window.sessionStorage,
+            checkout,
+            shipping.selectedShipping.serviceId,
+          )
           window.location.assign("/entrar?next=%2Fprodutos")
           return
         }
@@ -296,6 +325,7 @@ export function CartPanel() {
         throw new Error("Unsafe checkout URL")
       }
 
+      clearCheckoutLoginDraft(window.sessionStorage)
       window.location.assign(result.checkoutUrl)
     } catch {
       setCheckoutError(
