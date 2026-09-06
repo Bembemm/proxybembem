@@ -1,4 +1,4 @@
-import { validateCheckout, type CheckoutData } from "@/lib/checkout"
+import { validateCheckout, type CheckoutData } from "./checkout.ts"
 
 interface StorageLike {
   getItem(key: string): string | null
