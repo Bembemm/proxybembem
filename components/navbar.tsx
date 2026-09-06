@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const navItems = [
   { label: "Início", href: "/" },
@@ -12,9 +13,34 @@ const navItems = [
   { label: "Contato", href: "/contato" },
 ] as const
 
+type AccountState = "loading" | "guest" | "authenticated"
+
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [accountState, setAccountState] = useState<AccountState>("loading")
   const pathname = usePathname()
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createSupabaseBrowserClient()
+
+    setAccountState("loading")
+    void supabase.auth.getUser().then(({ data, error }) => {
+      if (cancelled || error) return
+      setAccountState(data.user ? "authenticated" : "guest")
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [pathname])
+
+  const accountItem =
+    accountState === "loading"
+      ? null
+      : accountState === "authenticated"
+        ? { label: "Meu perfil", href: "/minha-conta/perfil" }
+        : { label: "Entrar", href: "/entrar" }
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
@@ -56,6 +82,19 @@ export function Navbar() {
               {item.label}
             </Link>
           ))}
+          {accountItem ? (
+            <Link
+              href={accountItem.href}
+              aria-current={isActive(accountItem.href) ? "page" : undefined}
+              className={`text-base tracking-wide uppercase transition-colors ${
+                isActive(accountItem.href)
+                  ? "text-[#8B5CF6] font-semibold"
+                  : "text-slate-600 hover:text-[#8B5CF6]"
+              }`}
+            >
+              {accountItem.label}
+            </Link>
+          ) : null}
         </div>
       </nav>
 
@@ -80,6 +119,20 @@ export function Navbar() {
                 {item.label}
               </Link>
             ))}
+            {accountItem ? (
+              <Link
+                href={accountItem.href}
+                onClick={() => setIsOpen(false)}
+                aria-current={isActive(accountItem.href) ? "page" : undefined}
+                className={`py-3 px-2 text-base tracking-wide uppercase text-left transition-colors rounded-lg ${
+                  isActive(accountItem.href)
+                    ? "text-[#8B5CF6] font-semibold bg-[#8B5CF6]/10"
+                    : "text-slate-600 hover:text-[#8B5CF6] hover:bg-slate-100"
+                }`}
+              >
+                {accountItem.label}
+              </Link>
+            ) : null}
           </div>
         </div>
       )}
