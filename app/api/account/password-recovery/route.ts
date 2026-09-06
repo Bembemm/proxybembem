@@ -91,11 +91,8 @@ export async function POST(request: NextRequest) {
     })
     updateError = result.error
   } catch {
-    const released = await releaseRecoveryGrant(token, claim.leaseId)
-    return json(released ? 503 : 503, {
-      ok: false,
-      message: "Serviço temporariamente indisponível.",
-    })
+    await releaseRecoveryGrant(token, claim.leaseId)
+    return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
 
   if (updateError) {
