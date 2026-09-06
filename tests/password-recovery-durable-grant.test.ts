@@ -38,6 +38,36 @@ test("recovery issuance persists an app grant before sending the email", async (
   assert.ok(issueAt >= 0 && sendAt >= 0 && issueAt < sendAt)
 })
 
+test("recovery confirmation rejects consumed revoked or expired grants before setting a cookie", async () => {
+  const confirmRoute = await source("../app/auth/confirm/route.ts")
+  const grantHelper = await source("../lib/server/password-recovery-grant.ts")
+  const validationMigration = await source(
+    "../supabase/migrations/202609050002_password_recovery_grant_validation.sql",
+  )
+
+  assert.match(confirmRoute, /isPasswordRecoveryGrantActive/)
+  assert.match(confirmRoute, /await\s+isPasswordRecoveryGrantActive\s*\(\s*tokenHash\s*\)/)
+  const checkAt = confirmRoute.indexOf("await isPasswordRecoveryGrantActive")
+  const cookieAt = confirmRoute.indexOf("response.cookies.set")
+  assert.ok(checkAt >= 0 && cookieAt >= 0 && checkAt < cookieAt)
+
+  assert.match(grantHelper, /check_password_recovery_grant/)
+  assert.match(validationMigration, /create or replace function public\.check_password_recovery_grant/i)
+  assert.match(validationMigration, /security definer/i)
+  assert.match(validationMigration, /set search_path = ''/i)
+  assert.match(validationMigration, /consumed_at is null/i)
+  assert.match(validationMigration, /revoked_at is null/i)
+  assert.match(validationMigration, /expires_at > clock_timestamp\(\)/i)
+  assert.match(
+    validationMigration,
+    /revoke all on function public\.check_password_recovery_grant\(text\)[\s\S]*from public, anon, authenticated, service_role/i,
+  )
+  assert.match(
+    validationMigration,
+    /grant execute on function public\.check_password_recovery_grant\(text\)[\s\S]*to service_role/i,
+  )
+})
+
 test("final recovery uses a durable grant and server-only admin password update", async () => {
   const route = await source("../app/api/account/password-recovery/route.ts")
 
