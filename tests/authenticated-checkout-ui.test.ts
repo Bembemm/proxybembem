@@ -63,6 +63,15 @@ test("cart closes before sending an anonymous checkout to login", async () => {
   )
 })
 
+test("saved checkout draft reopens the cart only after returning to products", async () => {
+  const cart = await source("../components/cart-panel.tsx")
+
+  assert.match(cart, /usePathname/)
+  assert.match(cart, /const\s+pathname\s*=\s*usePathname\(\)/)
+  assert.match(cart, /if\s*\(\s*pathname\s*!==\s*["']\/produtos["']\s*\)\s*return/)
+  assert.match(cart, /\[pathname,\s*setIsCartOpen\]/)
+})
+
 test("login handoff preserves checkout details and chosen freight only for the current tab", async () => {
   const draftSource = await source("../lib/checkout-login-draft.ts")
   assert.ok(draftSource.length > 0, "missing temporary checkout login draft helper")
