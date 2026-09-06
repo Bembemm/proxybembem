@@ -18,5 +18,6 @@ export const config = {
     "/auth/confirm",
     "/minha-conta/:path*",
     "/api/account/:path*",
+    "/api/checkout",
   ],
 }
