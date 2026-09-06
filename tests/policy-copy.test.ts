@@ -6,7 +6,6 @@ const SOURCE_FILES = [
   "components/footer.tsx",
   "components/checkout-form.tsx",
   "components/order-summary.tsx",
-  "components/order-status.tsx",
   "lib/checkout.ts",
   "data/products.ts",
 ]
