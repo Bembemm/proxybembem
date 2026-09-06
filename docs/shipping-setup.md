@@ -65,6 +65,8 @@ CRON_SECRET=
 
 Para um ambiente Sandbox isolado, use `MELHOR_ENVIO_ENVIRONMENT=sandbox` e credenciais/callback próprios desse ambiente.
 
+Use **segredos Production próprios e independentes**; não copie `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` ou `RATE_LIMIT_SECRET` do Sandbox.
+
 A área administrativa também depende de Supabase Auth:
 
 ```text
@@ -95,6 +97,8 @@ Integração Melhor Envio -> Conectar Melhor Envio
 ```
 
 Existe uma única conta administrativa autorizada por UUID. Senha sem TOTP/AAL2 não libera páginas nem ações administrativas protegidas. A sessão administrativa server-side expira após 30 minutos de inatividade e não possui bypass/trusted-device.
+
+Se o proprietário perder o Authenticator, a **recuperação administrativa é manual pelo Supabase**; não existe bypass, SMS ou fluxo público que transforme apenas a senha em acesso administrativo.
 
 Ao conectar/reconectar o Melhor Envio:
 
