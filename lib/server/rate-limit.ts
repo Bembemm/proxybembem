@@ -10,7 +10,6 @@ export type RateLimitScope =
   | "account-password-reset"
   | "account-password-recovery"
   | "account-profile"
-  | "account-claim"
 
 const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   "shipping-quote": { limit: 60, windowSeconds: 600 },
@@ -21,7 +20,6 @@ const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> =
   "account-password-reset": { limit: 5, windowSeconds: 900 },
   "account-password-recovery": { limit: 5, windowSeconds: 900 },
   "account-profile": { limit: 20, windowSeconds: 600 },
-  "account-claim": { limit: 10, windowSeconds: 600 },
 }
 
 function firstUsableForwardedValue(value: string | null): string | null {
