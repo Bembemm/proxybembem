@@ -47,3 +47,60 @@ test("cart redirects an anonymous payment attempt to login without clearing cart
   assert.match(cartContext, /proxybembem-cart-v1/)
   assert.match(cartContext, /localStorage/)
 })
+
+test("login handoff preserves checkout details and chosen freight only for the current tab", async () => {
+  const draftSource = await source("../lib/checkout-login-draft.ts")
+  assert.ok(draftSource.length > 0, "missing temporary checkout login draft helper")
+
+  const draft = await import("../lib/checkout-login-draft.ts")
+  const values = {
+    nome: "Breno Teste",
+    email: "breno@example.com",
+    whatsapp: "(44) 99999-9999",
+    cep: "86730-000",
+    rua: "Rua Teste",
+    numero: "123",
+    complemento: "Apto 4",
+    bairro: "Centro",
+    cidade: "Astorga",
+    uf: "PR",
+  }
+
+  const memory = new Map<string, string>()
+  const storage = {
+    getItem(key: string) {
+      return memory.get(key) ?? null
+    },
+    setItem(key: string, value: string) {
+      memory.set(key, value)
+    },
+    removeItem(key: string) {
+      memory.delete(key)
+    },
+  }
+
+  const savedAt = 1_000_000
+  assert.equal(
+    draft.saveCheckoutLoginDraft(storage, values, "2", savedAt),
+    true,
+    "valid checkout state should be saved for the login round-trip",
+  )
+  assert.deepEqual(draft.readCheckoutLoginDraft(storage, savedAt + 60_000), {
+    checkout: values,
+    shippingServiceId: "2",
+  })
+  assert.equal(
+    draft.readCheckoutLoginDraft(storage, savedAt + 31 * 60_000),
+    null,
+    "login draft must expire instead of becoming persistent customer data",
+  )
+
+  assert.doesNotMatch(draftSource, /localStorage/)
+
+  const cart = await source("../components/cart-panel.tsx")
+  assert.match(cart, /sessionStorage/)
+  assert.match(cart, /saveCheckoutLoginDraft/)
+  assert.match(cart, /readCheckoutLoginDraft/)
+  assert.match(cart, /setIsCartOpen\(true\)/)
+  assert.match(cart, /restoredShippingServiceIdRef/)
+})
