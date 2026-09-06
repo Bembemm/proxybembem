@@ -109,7 +109,7 @@ test("signup keeps a stable form reference across await and never reports provid
   assert.match(route, /if\s*\(\s*error\s*\)/)
 })
 
-test("protected customer account shell uses storefront identity and server-side customer protection", async () => {
+test("customer account shell stays structural while leaf pages own server protection", async () => {
   const layout = await source("../app/minha-conta/layout.tsx")
   const shell = await source("../components/account/account-shell.tsx")
   const logout = await source("../components/account/logout-form.tsx")
@@ -118,8 +118,8 @@ test("protected customer account shell uses storefront identity and server-side 
   requireSource(shell, "customer account shell")
   requireSource(logout, "customer logout form")
 
-  assert.match(layout, /requireCustomerPageAccess/)
   assert.match(layout, /AccountShell/)
+  assert.doesNotMatch(layout, /requireCustomerPageAccess/)
   assert.match(shell, /\/minha-conta["']/)
   assert.match(shell, /\/minha-conta\/pedidos/)
   assert.match(shell, /\/minha-conta\/perfil/)
