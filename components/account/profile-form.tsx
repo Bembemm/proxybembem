@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
+import { refreshCustomerAccountViews } from "@/app/minha-conta/perfil/actions"
 import { FieldError } from "@/components/ui/field-error"
 import {
   hasAccountFieldErrors,
@@ -63,6 +64,7 @@ export function ProfileForm({
         return
       }
 
+      await refreshCustomerAccountViews()
       setMessage("Dados salvos.")
       router.refresh()
     } catch {
