@@ -2,7 +2,6 @@ import { normalizeCheckoutEmail } from "../checkout.ts"
 import { isAllowedCheckoutOrigin, resolvePublicSiteUrl } from "./env.ts"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PUBLIC_ORDER_PATH_RE = /^\/pedido\/[A-Fa-f0-9]{64}$/
 const PASSWORD_RECOVERY_PATH = "/redefinir-senha"
 
 interface AccountSignupInput {
@@ -191,14 +190,6 @@ export function sanitizeCustomerLoginNext(value: string | null | undefined) {
       parsed.pathname === "/produtos"
     ) {
       return `${parsed.pathname}${parsed.search}${parsed.hash}`
-    }
-
-    if (
-      PUBLIC_ORDER_PATH_RE.test(parsed.pathname) &&
-      parsed.search === "" &&
-      parsed.hash === ""
-    ) {
-      return parsed.pathname
     }
   } catch {
     return "/minha-conta"
