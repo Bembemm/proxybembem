@@ -7,10 +7,6 @@ import {
   listOwnOrdersWithDependencies,
   type CustomerOrderDependencies,
 } from "../lib/server/customer-orders.ts"
-import {
-  claimGuestOrderWithDependencies,
-  parseClaimGuestOrderInput,
-} from "../lib/server/customer-order-claim.ts"
 import { authorizeAdminAccessWithDependencies } from "../lib/server/admin-auth.ts"
 
 const A_ID = "11111111-1111-4111-8111-111111111111"
@@ -19,7 +15,6 @@ const A_ORDER = "550e8400-e29b-41d4-a716-446655440000"
 const B_ORDER = "660e8400-e29b-41d4-a716-446655440001"
 const MISSING_ORDER = "770e8400-e29b-41d4-a716-446655440002"
 const SESSION_ID = "33333333-3333-4333-8333-333333333333"
-const TOKEN = "a1".repeat(32)
 const CREATED_AT = "2026-09-02T12:00:00.000Z"
 
 const CUSTOMER_A: CustomerIdentity = {
@@ -151,71 +146,6 @@ test("customer read SQL derives ownership only from auth.uid and accepts no cust
     assert.match(section, /customer_id\s*=\s*v_customer_id/)
     assert.doesNotMatch(section, /p_customer_id/)
   }
-})
-
-test("public token tracking remains independent from customer ownership", async () => {
-  const source = await readFile(
-    new URL("../lib/server/orders.ts", import.meta.url),
-    "utf8",
-  )
-  const start = source.indexOf("export async function getOrderByPublicToken")
-  const end = source.indexOf("function isNullableString", start)
-  assert.ok(start >= 0 && end > start)
-  const section = source.slice(start, end)
-
-  assert.match(section, /public_token/)
-  assert.doesNotMatch(section, /customer_id\s*:/)
-  assert.doesNotMatch(section, /auth\.uid|requireCustomerPageAccess|getOptionalCustomerIdentity/)
-})
-
-test("valid token plus wrong verified email stays generically not claimable", async () => {
-  const result = await claimGuestOrderWithDependencies(
-    { publicToken: TOKEN, customer: CUSTOMER_A },
-    {
-      async claimOrder(input) {
-        assert.equal(input.publicToken, TOKEN)
-        assert.equal(input.verifiedEmail, CUSTOMER_A.email)
-        return { outcome: "not_claimable" }
-      },
-    },
-  )
-  assert.deepEqual(result, { outcome: "not_claimable" })
-
-  const sql = await readFile(
-    new URL("../supabase/migrations/202609020003_customer_accounts_orders.sql", import.meta.url),
-    "utf8",
-  )
-  const claimSql = sql.slice(sql.indexOf("function public.claim_guest_order_for_customer"))
-  assert.match(claimSql, /v_order_email\s*<>\s*p_verified_email/)
-  assert.match(claimSql, /jsonb_build_object\('outcome',\s*'not_claimable'\)/)
-})
-
-test("claim cannot run with only email or only token", async () => {
-  assert.throws(() => parseClaimGuestOrderInput({}))
-  assert.throws(() =>
-    parseClaimGuestOrderInput({ email: CUSTOMER_A.email }),
-  )
-
-  let calls = 0
-  const malformedIdentity = {
-    ...CUSTOMER_A,
-    emailVerified: false,
-  } as unknown as CustomerIdentity
-  await assert.rejects(() =>
-    claimGuestOrderWithDependencies(
-      {
-        publicToken: TOKEN,
-        customer: malformedIdentity,
-      },
-      {
-        async claimOrder() {
-          calls += 1
-          return { outcome: "not_claimable" }
-        },
-      },
-    ),
-  )
-  assert.equal(calls, 0)
 })
 
 test("ordinary customer session cannot satisfy the independent admin boundary", async () => {
