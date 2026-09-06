@@ -51,8 +51,9 @@ export class CheckoutFlowProviderError extends Error {
 }
 
 interface AttemptOrderView {
+  id: string
   orderNumber: string
-  publicToken: string
+  customerId: string | null
   checkoutFingerprint: string | null
   checkoutUrl: string | null
 }
@@ -118,7 +119,7 @@ export interface CheckoutFlowDependencies {
 export interface CheckoutFlowInput {
   items: unknown
   customer: CheckoutData
-  customerIdentity?: CustomerIdentity | null
+  customerIdentity: CustomerIdentity
   selectedQuoteToken: string
   checkoutAttemptId: string
   siteUrl: string
@@ -140,6 +141,9 @@ export type CheckoutFlowResult =
       kind: "attempt_conflict"
     }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+const NIL_UUID = "00000000-0000-0000-0000-000000000000"
+
 function publicOptions(result: ShippingQuoteResult): PublicShippingOption[] {
   return result.options.map((option) => ({
     serviceId: option.serviceId,
@@ -152,14 +156,16 @@ function publicOptions(result: ShippingQuoteResult): PublicShippingOption[] {
 }
 
 function toAttemptOrder(order: {
+  id: string
   order_number: string
-  public_token: string
+  customer_id: string | null
   checkout_fingerprint: string | null
   checkout_url: string | null
 }): AttemptOrderView {
   return {
+    id: order.id,
     orderNumber: order.order_number,
-    publicToken: order.public_token,
+    customerId: order.customer_id,
     checkoutFingerprint: order.checkout_fingerprint,
     checkoutUrl: order.checkout_url,
   }
@@ -190,6 +196,20 @@ function createDefaultDependencies(): CheckoutFlowDependencies {
   }
 }
 
+function isTrustedCheckoutIdentity(value: CustomerIdentity | null | undefined): value is CustomerIdentity {
+  return Boolean(
+    value &&
+      value.emailVerified === true &&
+      typeof value.userId === "string" &&
+      UUID_PATTERN.test(value.userId) &&
+      value.userId !== NIL_UUID &&
+      typeof value.email === "string" &&
+      value.email.length > 0 &&
+      value.email.length <= 254 &&
+      value.email === value.email.trim().toLowerCase(),
+  )
+}
+
 function validateInput(input: CheckoutFlowInput) {
   if (
     typeof input.selectedQuoteToken !== "string" ||
@@ -208,8 +228,11 @@ function validateInput(input: CheckoutFlowInput) {
     throw new CheckoutFlowValidationError("Invalid customer data")
   }
 
-  const customerIdentity = input.customerIdentity ?? null
-  if (customerIdentity && customer.email !== customerIdentity.email) {
+  const customerIdentity = input.customerIdentity
+  if (!isTrustedCheckoutIdentity(customerIdentity)) {
+    throw new CheckoutFlowValidationError("Authenticated customer required")
+  }
+  if (customer.email !== customerIdentity.email) {
     throw new CheckoutFlowValidationError("Authenticated email mismatch")
   }
 
@@ -219,7 +242,11 @@ function validateInput(input: CheckoutFlowInput) {
 function existingAttemptResult(
   existing: AttemptOrderView,
   checkoutFingerprint: string,
+  customerId: string,
 ): CheckoutFlowResult | null {
+  if (existing.customerId !== customerId) {
+    return { kind: "attempt_conflict" }
+  }
   if (existing.checkoutFingerprint !== checkoutFingerprint) {
     return { kind: "attempt_conflict" }
   }
@@ -237,6 +264,7 @@ async function waitForConcurrentPreference(input: {
   deps: CheckoutFlowDependencies
   attemptId: string
   checkoutFingerprint: string
+  customerId: string
 }): Promise<CheckoutFlowResult | null> {
   const sleep = input.deps.sleep ?? ((milliseconds: number) =>
     new Promise<void>((resolve) => setTimeout(resolve, milliseconds)))
@@ -245,7 +273,11 @@ async function waitForConcurrentPreference(input: {
     await sleep(100)
     const order = await input.deps.findOrderByAttempt(input.attemptId)
     if (!order) continue
-    const resolved = existingAttemptResult(order, input.checkoutFingerprint)
+    const resolved = existingAttemptResult(
+      order,
+      input.checkoutFingerprint,
+      input.customerId,
+    )
     if (resolved) return resolved
   }
 
@@ -305,7 +337,11 @@ export async function executeCheckoutFlow(
 
   const existing = await deps.findOrderByAttempt(attemptId)
   if (existing) {
-    const resolved = existingAttemptResult(existing, checkoutFingerprint)
+    const resolved = existingAttemptResult(
+      existing,
+      checkoutFingerprint,
+      customerIdentity.userId,
+    )
     if (resolved) return resolved
   }
 
@@ -330,8 +366,8 @@ export async function executeCheckoutFlow(
       orderNumber: deps.generateOrderNumber(),
       publicToken: deps.generatePublicToken(),
       customerName: customer.nome,
-      customerEmail: customerIdentity?.email ?? customer.email,
-      customerId: customerIdentity?.userId ?? null,
+      customerEmail: customerIdentity.email,
+      customerId: customerIdentity.userId,
       whatsapp: customer.whatsapp,
       cep: customer.cep,
       address: {
@@ -375,14 +411,18 @@ export async function executeCheckoutFlow(
       if (!(error instanceof OrderConflictError)) throw error
       const concurrent = await deps.findOrderByAttempt(attemptId)
       if (!concurrent) throw error
-      const resolved = existingAttemptResult(concurrent, checkoutFingerprint)
+      const resolved = existingAttemptResult(
+        concurrent,
+        checkoutFingerprint,
+        customerIdentity.userId,
+      )
       if (resolved) return resolved
       reserved = concurrent
     }
   }
 
   const orderNumber = reserved.orderNumber
-  const returnUrl = `${input.siteUrl}/pedido/${reserved.publicToken}`
+  const returnUrl = `${input.siteUrl}/minha-conta/pedidos/${reserved.id}`
   const leaseId = (deps.generateLeaseId ?? (() => randomUUID()))()
   const claimPreference = deps.claimPreference ?? (async () => ({ outcome: "claimed" as const }))
 
@@ -415,6 +455,7 @@ export async function executeCheckoutFlow(
       deps,
       attemptId,
       checkoutFingerprint,
+      customerId: customerIdentity.userId,
     })
     if (concurrentResult) return concurrentResult
     throw new CheckoutFlowProviderError()
@@ -461,7 +502,11 @@ export async function executeCheckoutFlow(
     if (!completed) {
       const concurrent = await deps.findOrderByAttempt(attemptId)
       if (concurrent) {
-        const resolved = existingAttemptResult(concurrent, checkoutFingerprint)
+        const resolved = existingAttemptResult(
+          concurrent,
+          checkoutFingerprint,
+          customerIdentity.userId,
+        )
         if (resolved) return resolved
       }
       throw new Error("Checkout preference lease completion failed")
