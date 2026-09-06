@@ -13,6 +13,9 @@ const VERIFIED_USER = {
   email_confirmed_at: "2026-09-02T12:00:00.000Z",
 }
 
+const PRIVATE_ORDER_PATH =
+  "/minha-conta/pedidos/550e8400-e29b-41d4-a716-446655440000"
+
 class RedirectSignal extends Error {
   readonly path: string
 
@@ -70,6 +73,30 @@ test("protected customer pages redirect missing or unverified identity to /entra
       (error: unknown) => error instanceof RedirectSignal && error.path === "/entrar",
     )
   }
+})
+
+test("protected customer pages preserve only a sanitized local return path", async () => {
+  await assert.rejects(
+    () =>
+      requireCustomerPageAccessWithDependencies(
+        dependencies(null),
+        PRIVATE_ORDER_PATH,
+      ),
+    (error: unknown) =>
+      error instanceof RedirectSignal &&
+      error.path === `/entrar?next=${encodeURIComponent(PRIVATE_ORDER_PATH)}`,
+  )
+
+  await assert.rejects(
+    () =>
+      requireCustomerPageAccessWithDependencies(
+        dependencies(null),
+        "https://evil.example/minha-conta",
+      ),
+    (error: unknown) =>
+      error instanceof RedirectSignal &&
+      error.path === "/entrar?next=%2Fminha-conta",
+  )
 })
 
 test("protected customer pages return only the verified customer identity", async () => {
