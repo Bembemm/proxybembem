@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { FieldError } from "@/components/ui/field-error"
@@ -19,6 +20,7 @@ const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
 
 export function AccountSignupForm() {
+  const router = useRouter()
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [whatsapp, setWhatsapp] = useState("")
@@ -61,18 +63,20 @@ export function AccountSignupForm() {
       const payload = (await response.json().catch(() => null)) as
         | { ok?: unknown; message?: unknown }
         | null
-      setMessage(
-        typeof payload?.message === "string"
-          ? payload.message
-          : response.ok
-            ? "Confira seu e-mail para verificar a conta."
-            : "Não foi possível criar a conta agora.",
-      )
+
       if (response.ok && payload?.ok === true) {
         formElement.reset()
         setWhatsapp("")
         setErrors({})
+        router.push("/cadastro-recebido")
+        return
       }
+
+      setMessage(
+        typeof payload?.message === "string"
+          ? payload.message
+          : "Não foi possível criar a conta agora.",
+      )
     } catch {
       setMessage("Não foi possível criar a conta agora.")
     } finally {
