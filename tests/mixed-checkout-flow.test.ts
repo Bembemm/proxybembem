@@ -16,6 +16,7 @@ const ITEMS = [
   { productId: 2, quantity: 2 },
 ]
 const CART_FINGERPRINT = createCartFingerprint(ITEMS)
+const ORDER_ID = "550e8400-e29b-41d4-a716-446655440777"
 const CUSTOMER: CheckoutData = {
   nome: "Cliente Teste",
   email: "cliente@example.com",
@@ -28,8 +29,13 @@ const CUSTOMER: CheckoutData = {
   cidade: "São Paulo",
   uf: "SP",
 }
+const CUSTOMER_IDENTITY = {
+  userId: "550e8400-e29b-41d4-a716-446655440123",
+  email: "cliente@example.com",
+  emailVerified: true as const,
+}
 
-test("reserves and forwards two trusted catalog products in one checkout", async () => {
+test("reserves and forwards two trusted catalog products in one owned checkout", async () => {
   const reservedInputs: Array<Parameters<CheckoutFlowDependencies["reserveOrder"]>[0]> = []
   const preferenceInputs: Array<Parameters<CheckoutFlowDependencies["createPreference"]>[0]> = []
   const quoteToken = createShippingQuoteToken(
@@ -64,11 +70,13 @@ test("reserves and forwards two trusted catalog products in one checkout", async
     reserveOrder: async (input) => {
       reservedInputs.push(input)
       return {
+        id: ORDER_ID,
         orderNumber: input.orderNumber,
+        customerId: CUSTOMER_IDENTITY.userId,
         publicToken: input.publicToken,
         checkoutFingerprint: input.checkoutFingerprint ?? null,
         checkoutUrl: null,
-      }
+      } as unknown as Awaited<ReturnType<CheckoutFlowDependencies["reserveOrder"]>>
     },
     updateOrder: async () => undefined,
     createPreference: async (input) => {
@@ -88,6 +96,7 @@ test("reserves and forwards two trusted catalog products in one checkout", async
     {
       items: ITEMS,
       customer: CUSTOMER,
+      customerIdentity: CUSTOMER_IDENTITY,
       selectedQuoteToken: quoteToken,
       checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440099",
       siteUrl: "https://preview.example.com",
@@ -102,6 +111,8 @@ test("reserves and forwards two trusted catalog products in one checkout", async
   assert.equal(preferenceInputs.length, 1)
 
   const reserved = reservedInputs[0]!
+  assert.equal(reserved.customerId, CUSTOMER_IDENTITY.userId)
+  assert.equal(reserved.customerEmail, CUSTOMER_IDENTITY.email)
   assert.equal(reserved.subtotalCents, 25988)
   assert.equal(reserved.shipping?.amountCents, 1842)
   assert.equal(reserved.totalCents, 27830)
@@ -137,5 +148,9 @@ test("reserves and forwards two trusted catalog products in one checkout", async
       { productId: 1, unitPriceCents: 11990, quantity: 1 },
       { productId: 2, unitPriceCents: 6999, quantity: 2 },
     ],
+  )
+  assert.equal(
+    preferenceInputs[0]!.returnUrl,
+    `https://preview.example.com/minha-conta/pedidos/${ORDER_ID}`,
   )
 })
