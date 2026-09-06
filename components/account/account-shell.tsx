@@ -20,6 +20,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
+                prefetch={false}
                 href={item.href}
                 className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700"
               >
