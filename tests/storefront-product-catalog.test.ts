@@ -32,6 +32,16 @@ test("storefront routes load published products from the server repository with 
   assert.match(homeRoute, /<HomePage\s+featuredProducts=/)
 })
 
+test("storefront catalog pages render at request time instead of capturing a build-time snapshot", () => {
+  const productsRoute = source("app/produtos/page.tsx")
+  const homeRoute = source("app/page.tsx")
+
+  for (const route of [productsRoute, homeRoute]) {
+    assert.match(route, /export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/)
+    assert.doesNotMatch(route, /force-static/)
+  }
+})
+
 test("catalog repository failure renders a controlled storefront unavailable state", () => {
   const productsRoute = source("app/produtos/page.tsx")
   const homeRoute = source("app/page.tsx")
