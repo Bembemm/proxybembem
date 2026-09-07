@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import type { CatalogProduct } from "../lib/products/product.ts"
 import {
   ShippingUnavailableError,
   createShippingQuoteBuilder,
@@ -14,10 +15,47 @@ import {
 
 const QUOTE_SECRET = "12345678901234567890123456789012"
 
+function catalogProduct(input: {
+  id: number
+  title: string
+  discountPrice: number
+}): CatalogProduct {
+  return {
+    id: input.id,
+    status: "published",
+    title: input.title,
+    image: "/products/deck-commander.png",
+    imagePath: "/products/deck-commander.png",
+    originalPrice: input.discountPrice + 30,
+    discountPrice: input.discountPrice,
+    tag: null,
+    category: "Decks",
+    colors: [],
+    featured: true,
+    highlights: [],
+    description: "Produto de teste",
+    details: [],
+    sections: [],
+    shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+    displayOrder: input.id,
+    createdAt: "2026-09-07T12:00:00.000Z",
+    updatedAt: "2026-09-07T12:00:00.000Z",
+  }
+}
+
+const TEST_PRODUCTS = [
+  catalogProduct({ id: 1, title: "Deck Commander Proxy 100 Cartas", discountPrice: 119.9 }),
+  catalogProduct({ id: 2, title: "Deck Proxy 60 Cartas", discountPrice: 69.99 }),
+]
+
+const resolveProducts = async (ids: number[]) =>
+  TEST_PRODUCTS.filter((product) => ids.includes(product.id))
+
 test("builds trusted mixed-product freight options and keeps provider packages server-side", async () => {
   let providerInput: unknown = null
   const buildShippingQuoteResult = createShippingQuoteBuilder({
     getQuoteSecret: () => QUOTE_SECRET,
+    resolveProducts,
     quoteProvider: async (input) => {
       providerInput = input
       return [
@@ -132,13 +170,18 @@ test("builds trusted mixed-product freight options and keeps provider packages s
   })
 })
 
-test("rejects an invalid destination CEP before provider or secret work", async () => {
+test("rejects an invalid destination CEP before catalog provider or secret work", async () => {
+  let resolverCalls = 0
   let providerCalls = 0
   let secretCalls = 0
   const buildShippingQuoteResult = createShippingQuoteBuilder({
     getQuoteSecret: () => {
       secretCalls += 1
       return QUOTE_SECRET
+    },
+    resolveProducts: async () => {
+      resolverCalls += 1
+      throw new Error("must not resolve")
     },
     quoteProvider: async () => {
       providerCalls += 1
@@ -150,6 +193,7 @@ test("rejects an invalid destination CEP before provider or secret work", async 
     () => buildShippingQuoteResult({ destinationCep: "123", items: [{ productId: 1, quantity: 1 }] }),
     /CEP/,
   )
+  assert.equal(resolverCalls, 0)
   assert.equal(providerCalls, 0)
   assert.equal(secretCalls, 0)
 })
@@ -157,6 +201,7 @@ test("rejects an invalid destination CEP before provider or secret work", async 
 test("returns a controlled unavailable error when the provider has no valid services", async () => {
   const buildShippingQuoteResult = createShippingQuoteBuilder({
     getQuoteSecret: () => QUOTE_SECRET,
+    resolveProducts,
     quoteProvider: async () => [],
   })
 
@@ -173,6 +218,7 @@ test("returns a controlled unavailable error when the provider has no valid serv
 test("keeps shipping provider failures generic", async () => {
   const buildShippingQuoteResult = createShippingQuoteBuilder({
     getQuoteSecret: () => QUOTE_SECRET,
+    resolveProducts,
     quoteProvider: async () => {
       throw new MelhorEnvioProviderError(401)
     },
