@@ -270,7 +270,10 @@ export function createProductImageUploadHandler(
       const authorization = validateUploadAuthorization(
         await deps.issueSignedUpload(validated.value),
       )
-      return jsonResponse(200, authorization)
+      return jsonResponse(200, {
+        path: authorization.path,
+        token: authorization.token,
+      })
     } catch {
       return jsonResponse(503, { error: "product_image_unavailable" })
     }
