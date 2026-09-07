@@ -10,6 +10,8 @@ const AUTH_FLOW_PATHS = new Set([
 const REDIRECT_CACHE_HEADERS = ["cache-control", "expires", "pragma"] as const
 const PRIVATE_ACCOUNT_CACHE_CONTROL =
   "private, no-cache, no-store, max-age=0, must-revalidate"
+const PRIVATE_ADMIN_CACHE_CONTROL =
+  "private, no-cache, no-store, max-age=0, must-revalidate"
 
 function copySupabaseState(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) {
@@ -26,15 +28,19 @@ function copySupabaseState(source: NextResponse, target: NextResponse) {
   return target
 }
 
-function disablePrivateAccountBrowserCache(
+function disablePrivateBrowserCache(
   response: NextResponse,
   pathname: string,
 ) {
-  if (
-    pathname === "/minha-conta" ||
-    pathname.startsWith("/minha-conta/")
-  ) {
-    response.headers.set("Cache-Control", PRIVATE_ACCOUNT_CACHE_CONTROL)
+  const isPrivateAccount =
+    pathname === "/minha-conta" || pathname.startsWith("/minha-conta/")
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/")
+
+  if (isPrivateAccount || isAdmin) {
+    response.headers.set(
+      "Cache-Control",
+      isAdmin ? PRIVATE_ADMIN_CACHE_CONTROL : PRIVATE_ACCOUNT_CACHE_CONTROL,
+    )
     response.headers.set("Pragma", "no-cache")
     response.headers.set("Expires", "0")
   }
@@ -84,11 +90,14 @@ export async function updateSupabaseSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = "/admin/login"
     url.search = ""
-    return copySupabaseState(
-      supabaseResponse,
-      NextResponse.redirect(url, { status: 303 }),
+    return disablePrivateBrowserCache(
+      copySupabaseState(
+        supabaseResponse,
+        NextResponse.redirect(url, { status: 303 }),
+      ),
+      pathname,
     )
   }
 
-  return disablePrivateAccountBrowserCache(supabaseResponse, pathname)
+  return disablePrivateBrowserCache(supabaseResponse, pathname)
 }
