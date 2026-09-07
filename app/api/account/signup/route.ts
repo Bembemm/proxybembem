@@ -1,9 +1,13 @@
+import { createClient } from "@supabase/supabase-js"
 import { type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
   parseAccountSignupInput,
 } from "../../../../lib/server/customer-account-actions.ts"
-import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
+import {
+  getSupabaseEnv,
+  resolvePublicSiteUrl,
+} from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
 import { createSupabaseAuthServerClient } from "../../../../lib/supabase/auth-server.ts"
@@ -13,6 +17,39 @@ function json(status: number, body: Record<string, unknown>) {
     status,
     headers: { "Cache-Control": "private, no-store" },
   })
+}
+
+async function registeredEmailExists(email: string) {
+  const env = getSupabaseEnv()
+  const admin = createClient(env.supabaseUrl, env.supabaseSecretKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  })
+
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: 1_000,
+    })
+    if (error) {
+      throw new Error("Customer signup email lookup failed")
+    }
+
+    if (
+      data.users.some(
+        (user) => user.email?.trim().toLowerCase() === email,
+      )
+    ) {
+      return true
+    }
+
+    if (data.users.length < 1_000) {
+      return false
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -33,6 +70,18 @@ export async function POST(request: NextRequest) {
     input = parseAccountSignupInput(await readJsonBody(request, 4_096))
   } catch {
     return json(400, { ok: false, message: "Dados de cadastro inválidos." })
+  }
+
+  try {
+    if (await registeredEmailExists(input.email)) {
+      return json(409, {
+        ok: false,
+        message:
+          "Este e-mail já está cadastrado. Entre na sua conta ou redefina sua senha.",
+      })
+    }
+  } catch {
+    return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
 
   let emailRedirectTo: string
