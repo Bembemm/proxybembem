@@ -4,6 +4,8 @@ import test from "node:test"
 
 const productDomainUrl = new URL("../lib/products/product.ts", import.meta.url)
 const repositoryUrl = new URL("../lib/server/product-catalog.ts", import.meta.url)
+const PRODUCT_DOMAIN_IMPORT = "../lib/products/product.ts"
+const PRODUCT_REPOSITORY_IMPORT = "../lib/server/product-catalog.ts"
 
 const ENV_KEYS = ["SUPABASE_URL", "SUPABASE_SECRET_KEY"] as const
 
@@ -56,8 +58,8 @@ async function loadModules() {
   assert.equal(existsSync(productDomainUrl), true, "shared product domain must exist")
   assert.equal(existsSync(repositoryUrl), true, "product catalog repository must exist")
 
-  const domain = await import("../lib/products/product.ts")
-  const repository = await import("../lib/server/product-catalog.ts")
+  const domain = await import(PRODUCT_DOMAIN_IMPORT)
+  const repository = await import(PRODUCT_REPOSITORY_IMPORT)
   return { domain, repository }
 }
 
@@ -65,16 +67,20 @@ test("published catalog maps database cents and shipping into the current Produc
   const { repository } = await loadModules()
 
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
-      const url = new URL(String(input))
-      assert.equal(url.origin, "https://example.supabase.co")
-      assert.equal(url.pathname, "/rest/v1/products")
-      assert.equal(url.searchParams.get("status"), "eq.published")
-      assert.equal(url.searchParams.get("order"), "display_order.asc,id.asc")
-      assert.equal((init?.headers as Record<string, string>)?.apikey, "server-secret")
-      assert.equal(init?.cache, "no-store")
-      return Response.json([row()])
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const url = new URL(String(input))
+        assert.equal(url.origin, "https://example.supabase.co")
+        assert.equal(url.pathname, "/rest/v1/products")
+        assert.equal(url.searchParams.get("status"), "eq.published")
+        assert.equal(url.searchParams.get("order"), "display_order.asc,id.asc")
+        assert.equal((init?.headers as Record<string, string>)?.apikey, "server-secret")
+        assert.equal(init?.cache, "no-store")
+        return Response.json([row()])
+      },
+    )
 
     const products = await repository.listPublishedProducts()
     assert.equal(products.length, 1)
@@ -138,15 +144,19 @@ test("published id lookup filters storage to published products and preserves re
   const { repository } = await loadModules()
 
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input) => {
-      const url = new URL(String(input))
-      assert.equal(url.searchParams.get("status"), "eq.published")
-      assert.equal(url.searchParams.get("id"), "in.(1,2)")
-      return Response.json([
-        row(),
-        row({ id: 2, title: "Deck Proxy 60 Cartas", display_order: 2 }),
-      ])
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (input: Parameters<typeof fetch>[0]) => {
+        const url = new URL(String(input))
+        assert.equal(url.searchParams.get("status"), "eq.published")
+        assert.equal(url.searchParams.get("id"), "in.(1,2)")
+        return Response.json([
+          row(),
+          row({ id: 2, title: "Deck Proxy 60 Cartas", display_order: 2 }),
+        ])
+      },
+    )
 
     const products = await repository.getPublishedProductsByIds([2, 1, 2])
     assert.deepEqual(products.map((product: { id: number }) => product.id), [1, 2])
@@ -157,24 +167,28 @@ test("admin catalog can list all lifecycle states with bounded search and pagina
   const { repository } = await loadModules()
 
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
-      const url = new URL(String(input))
-      assert.equal(url.searchParams.get("status"), "eq.archived")
-      assert.equal(url.searchParams.get("title"), "ilike.*Deck*")
-      assert.equal(url.searchParams.get("limit"), "10")
-      assert.equal(url.searchParams.get("offset"), "10")
-      assert.equal((init?.headers as Record<string, string>)?.Prefer, "count=exact")
-      return new Response(
-        JSON.stringify([row({ status: "archived" })]),
-        {
-          status: 200,
-          headers: {
-            "Content-Type": "application/json",
-            "Content-Range": "10-10/11",
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const url = new URL(String(input))
+        assert.equal(url.searchParams.get("status"), "eq.archived")
+        assert.equal(url.searchParams.get("title"), "ilike.*Deck*")
+        assert.equal(url.searchParams.get("limit"), "10")
+        assert.equal(url.searchParams.get("offset"), "10")
+        assert.equal((init?.headers as Record<string, string>)?.Prefer, "count=exact")
+        return new Response(
+          JSON.stringify([row({ status: "archived" })]),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Range": "10-10/11",
+            },
           },
-        },
-      )
-    })
+        )
+      },
+    )
 
     const result = await repository.listAdminProducts({
       query: " Deck ",
@@ -193,11 +207,15 @@ test("admin product lookup returns null only for a missing valid id", async (t) 
   const { repository } = await loadModules()
 
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input) => {
-      const url = new URL(String(input))
-      assert.equal(url.searchParams.get("id"), "eq.99")
-      return Response.json([])
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (input: Parameters<typeof fetch>[0]) => {
+        const url = new URL(String(input))
+        assert.equal(url.searchParams.get("id"), "eq.99")
+        return Response.json([])
+      },
+    )
 
     assert.equal(await repository.getAdminProduct(99), null)
     await assert.rejects(() => repository.getAdminProduct(0), /invalid product id/i)
