@@ -30,6 +30,22 @@ test("signup confirmation verifies token hash without returning a Supabase sessi
   assert.match(callback, /exchangeCodeForSession\s*\(/)
 })
 
+test("used or expired signup confirmation links get a dedicated customer message", async () => {
+  const callback = await source("../app/auth/callback/route.ts")
+  const loginPage = await source("../app/entrar/page.tsx")
+  const tokenBranchStart = callback.indexOf("if (canVerifyTokenHash)")
+  const tokenBranchEnd = callback.indexOf("if (!code)", tokenBranchStart)
+  assert.ok(tokenBranchStart >= 0 && tokenBranchEnd > tokenBranchStart)
+  const tokenBranch = callback.slice(tokenBranchStart, tokenBranchEnd)
+
+  assert.match(tokenBranch, /\/entrar\?erro=confirmacao/)
+  assert.match(loginPage, /params\.erro\s*===\s*["']confirmacao["']/)
+  assert.match(
+    loginPage,
+    /Este link de confirmação já foi utilizado ou expirou\. Se sua conta já estiver confirmada, basta entrar\./,
+  )
+})
+
 test("signup rejects an already registered email before asking Supabase to create another account", async () => {
   const signupRoute = await source("../app/api/account/signup/route.ts")
 
