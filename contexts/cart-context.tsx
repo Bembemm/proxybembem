@@ -3,41 +3,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { products } from "@/data/products"
 import { parseStoredCart, serializeCart } from "@/lib/cart-storage"
+import type { Product } from "@/lib/products/product"
 
-export interface ProductDetail {
-  label: string
-  value: string
-}
-
-export interface ProductSection {
-  title: string
-  paragraphs: string[]
-}
-
-export interface ProductShipping {
-  weightKg: number
-  lengthCm: number
-  widthCm: number
-  heightCm: number
-}
-
-export interface Product {
-  id: number
-  title: string
-  image: string
-  originalPrice: number
-  discountPrice: number
-  tag: string | null
-  category: string
-  colors?: string[]
-  featured?: boolean
-  notice?: string
-  highlights?: string[]
-  description: string
-  details: ProductDetail[]
-  sections: ProductSection[]
-  shipping: ProductShipping
-}
+export type {
+  Product,
+  ProductDetail,
+  ProductSection,
+  ProductShipping,
+} from "@/lib/products/product"
 
 export interface CartItem {
   product: Product
