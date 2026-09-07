@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       })
 
       if (error || !data.user?.email_confirmed_at) {
-        return redirect(request, "/entrar?erro=callback")
+        return redirect(request, "/entrar?erro=confirmacao")
       }
 
       // Verification is intentionally stateless here. Successful auth sessions
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       // to transport the large Supabase Set-Cookie response on this GET.
       return redirect(request, "/entrar?confirmado=1")
     } catch {
-      return redirect(request, "/entrar?erro=callback")
+      return redirect(request, "/entrar?erro=confirmacao")
     }
   }
 
