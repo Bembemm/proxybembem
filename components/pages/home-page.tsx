@@ -7,7 +7,6 @@ import { Check, Eye, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProductDetailModal } from "@/components/product-detail-modal"
 import { useCart, type Product } from "@/contexts/cart-context"
-import { featuredProducts } from "@/data/products"
 
 function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -59,7 +58,13 @@ function AddToCartButton({ product }: { product: Product }) {
   )
 }
 
-export function HomePage() {
+export function HomePage({
+  featuredProducts,
+  unavailable = false,
+}: {
+  featuredProducts: Product[]
+  unavailable?: boolean
+}) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -118,6 +123,17 @@ export function HomePage() {
               Confira nossa seleção especial e acesse a página de produtos para ver o catálogo completo.
             </p>
           </div>
+
+          {unavailable && (
+            <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-6 sm:p-8 mb-4 sm:mb-6 text-center rounded-xl" role="status">
+              <p className="text-slate-700 text-base sm:text-lg font-medium">
+                Catálogo temporariamente indisponível.
+              </p>
+              <p className="text-slate-500 text-sm sm:text-base mt-2">
+                Tente novamente em alguns instantes.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-5xl mx-auto">
             {featuredProducts.map((product) => {

@@ -8,9 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { ProductDetailModal } from "@/components/product-detail-modal"
 import { useCart, type Product } from "@/contexts/cart-context"
-import { products } from "@/data/products"
-
-const categories = Array.from(new Set(products.map((product) => product.category)))
 
 function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -57,11 +54,19 @@ function AddToCartButton({ product }: { product: Product }) {
   )
 }
 
-export function ProductsPage() {
+export function ProductsPage({
+  products,
+  unavailable = false,
+}: {
+  products: Product[]
+  unavailable?: boolean
+}) {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const categories = Array.from(new Set(products.map((product) => product.category)))
 
   const openProductModal = (product: Product) => {
     setSelectedProduct(product)
@@ -142,6 +147,17 @@ export function ProductsPage() {
           </aside>
 
           <div className="flex-1 min-w-0">
+            {unavailable && (
+              <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-6 sm:p-8 mb-4 sm:mb-6 text-center rounded-lg" role="status">
+                <p className="text-slate-700 text-base sm:text-lg font-medium">
+                  Catálogo temporariamente indisponível.
+                </p>
+                <p className="text-slate-500 text-sm sm:text-base mt-2">
+                  Tente novamente em alguns instantes.
+                </p>
+              </div>
+            )}
+
             <div className="mb-4 sm:mb-6" aria-live="polite">
               <p className="text-sm sm:text-base text-slate-700">
                 {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""} encontrado
@@ -218,7 +234,7 @@ export function ProductsPage() {
               ))}
             </div>
 
-            {filteredProducts.length === 0 && (
+            {!unavailable && filteredProducts.length === 0 && (
               <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-8 sm:p-12 text-center rounded-lg">
                 <p className="text-slate-700 text-base sm:text-lg">
                   Nenhum produto encontrado com os filtros selecionados.
