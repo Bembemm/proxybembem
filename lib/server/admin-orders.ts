@@ -7,7 +7,6 @@ import {
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const ORDER_NUMBER_RE = /^PB-[A-F0-9]{12}$/
 const PAYMENT_FILTER_RE = /^[a-z][a-z0-9_]{0,99}$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const MAX_QUERY_LENGTH = 100
@@ -194,8 +193,7 @@ function parseListRow(value: unknown): AdminOrderListRow {
   if (
     typeof value.id !== "string" ||
     !UUID_RE.test(value.id) ||
-    typeof value.order_number !== "string" ||
-    !ORDER_NUMBER_RE.test(value.order_number) ||
+    !isNonEmptyBoundedString(value.order_number, 100) ||
     !isNonEmptyBoundedString(value.customer_name, 500) ||
     !isNonEmptyBoundedString(value.whatsapp, 100) ||
     !isNonnegativeSafeInteger(value.subtotal_cents) ||
@@ -228,8 +226,7 @@ function parseDetailRow(value: unknown): AdminOrderDetail {
   if (
     typeof value.id !== "string" ||
     !UUID_RE.test(value.id) ||
-    typeof value.order_number !== "string" ||
-    !ORDER_NUMBER_RE.test(value.order_number) ||
+    !isNonEmptyBoundedString(value.order_number, 100) ||
     !isNonEmptyBoundedString(value.customer_name, 500) ||
     !isNullableString(value.customer_email) ||
     !isNonEmptyBoundedString(value.whatsapp, 100) ||
