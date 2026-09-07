@@ -1,12 +1,12 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import type { Product } from "../lib/products/product.ts"
+import type { CatalogProduct } from "../lib/products/product.ts"
 import {
   buildCheckoutOrder,
   type CheckoutOrder,
 } from "../lib/server/checkout-order.ts"
 
-type ResolveCheckoutProducts = (ids: number[]) => Promise<Product[]>
+type ResolveCheckoutProducts = (ids: number[]) => Promise<CatalogProduct[]>
 type AsyncBuildCheckoutOrder = (
   value: unknown,
   resolveProducts: ResolveCheckoutProducts,
@@ -14,7 +14,7 @@ type AsyncBuildCheckoutOrder = (
 
 const buildAsync = buildCheckoutOrder as unknown as AsyncBuildCheckoutOrder
 
-function catalogProduct(overrides: Partial<Product> = {}): Product {
+function catalogProduct(overrides: Partial<CatalogProduct> = {}): CatalogProduct {
   return {
     id: 1,
     status: "published",
