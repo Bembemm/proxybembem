@@ -1,95 +1,146 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { buildCheckoutOrder } from "../lib/server/checkout-order.ts"
+import type { Product } from "../lib/products/product.ts"
+import {
+  buildCheckoutOrder,
+  type CheckoutOrder,
+} from "../lib/server/checkout-order.ts"
 
-test("rebuilds price and title from the server catalog", () => {
-  const result = buildCheckoutOrder([
-    { productId: 1, quantity: 2, price: 0.01, title: "Fake" } as never,
-  ])
+type ResolveCheckoutProducts = (ids: number[]) => Promise<Product[]>
+type AsyncBuildCheckoutOrder = (
+  value: unknown,
+  resolveProducts: ResolveCheckoutProducts,
+) => Promise<CheckoutOrder>
 
-  assert.equal(result.subtotalCents, 23980)
+const buildAsync = buildCheckoutOrder as unknown as AsyncBuildCheckoutOrder
+
+function catalogProduct(overrides: Partial<Product> = {}): Product {
+  return {
+    id: 1,
+    status: "published",
+    title: "Deck resolvido pelo catálogo",
+    image: "/products/deck-commander.png",
+    imagePath: "/products/deck-commander.png",
+    originalPrice: 149.9,
+    discountPrice: 123.45,
+    tag: null,
+    category: "Decks",
+    colors: [],
+    featured: true,
+    highlights: [],
+    description: "Produto de teste",
+    details: [],
+    sections: [],
+    shipping: {
+      weightKg: 0.7,
+      lengthCm: 27,
+      widthCm: 20,
+      heightCm: 5,
+    },
+    displayOrder: 1,
+    createdAt: "2026-09-07T12:00:00.000Z",
+    updatedAt: "2026-09-07T12:00:00.000Z",
+    ...overrides,
+  }
+}
+
+test("rebuilds checkout title price and shipping from resolver, not browser data", async () => {
+  const resolved = catalogProduct()
+  const resolverCalls: number[][] = []
+
+  const result = await buildAsync(
+    [
+      {
+        productId: 1,
+        quantity: 2,
+        price: 0.01,
+        title: "Browser fake",
+        shipping: { weightKg: 0.001, lengthCm: 1, widthCm: 1, heightCm: 1 },
+      },
+    ],
+    async (ids) => {
+      resolverCalls.push(ids)
+      return [resolved]
+    },
+  )
+
+  assert.deepEqual(resolverCalls, [[1]])
+  assert.equal(result.subtotalCents, 24690)
   assert.deepEqual(result.items, [
     {
       productId: 1,
-      title: "Deck Commander Proxy 100 Cartas",
-      unitPriceCents: 11990,
+      title: "Deck resolvido pelo catálogo",
+      unitPriceCents: 12345,
       quantity: 2,
       shipping: {
-        weightKg: 0.5,
-        lengthCm: 25,
-        widthCm: 19,
-        heightCm: 4,
+        weightKg: 0.7,
+        lengthCm: 27,
+        widthCm: 20,
+        heightCm: 5,
       },
     },
   ])
 })
 
-test("builds a trusted mixed-product order from two catalog products", () => {
-  const result = buildCheckoutOrder([
-    {
-      productId: 1,
-      quantity: 1,
-      price: 0.01,
-      title: "Fake 100",
-      shipping: { weightKg: 0.001, lengthCm: 1, widthCm: 1, heightCm: 1 },
-    } as never,
-    {
-      productId: 2,
-      quantity: 2,
-      price: 0.01,
-      title: "Fake 60",
-      shipping: { weightKg: 0.001, lengthCm: 1, widthCm: 1, heightCm: 1 },
-    } as never,
-  ])
-
-  assert.deepEqual(result.items, [
-    {
-      productId: 1,
-      title: "Deck Commander Proxy 100 Cartas",
-      unitPriceCents: 11990,
-      quantity: 1,
-      shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
-    },
-    {
-      productId: 2,
-      title: "Deck Proxy 60 Cartas",
-      unitPriceCents: 6999,
-      quantity: 2,
-      shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
-    },
-  ])
-  assert.equal(result.subtotalCents, 25988)
+test("rejects a draft archived or missing product because resolver omits it", async () => {
+  await assert.rejects(
+    () =>
+      buildAsync(
+        [
+          { productId: 1, quantity: 1 },
+          { productId: 2, quantity: 1 },
+        ],
+        async () => [catalogProduct({ id: 1 })],
+      ),
+    /Unknown product/,
+  )
 })
 
-test("merges duplicate product lines before calculating totals", () => {
-  const result = buildCheckoutOrder([
-    { productId: 1, quantity: 1 },
-    { productId: 1, quantity: 2 },
-  ])
+test("uses a changed current price returned by resolver", async () => {
+  const result = await buildAsync(
+    [{ productId: 1, quantity: 1 }],
+    async () => [catalogProduct({ discountPrice: 131.27 })],
+  )
+
+  assert.equal(result.items[0]?.unitPriceCents, 13127)
+  assert.equal(result.subtotalCents, 13127)
+})
+
+test("merges duplicate product lines before calculating totals", async () => {
+  const result = await buildAsync(
+    [
+      { productId: 1, quantity: 1 },
+      { productId: 1, quantity: 2 },
+    ],
+    async () => [catalogProduct({ discountPrice: 119.9 })],
+  )
 
   assert.equal(result.items.length, 1)
-  assert.equal(result.items[0].quantity, 3)
+  assert.equal(result.items[0]?.quantity, 3)
   assert.equal(result.subtotalCents, 35970)
 })
 
-test("rejects unknown products and abusive quantities", () => {
-  assert.throws(() => buildCheckoutOrder([{ productId: 999, quantity: 1 }]))
-  assert.throws(() => buildCheckoutOrder([{ productId: 1, quantity: 21 }]))
-})
+test("keeps cart quantity limits before resolving products", async () => {
+  let resolverCalls = 0
+  const resolver = async () => {
+    resolverCalls += 1
+    return [catalogProduct()]
+  }
 
-test("rebuilds shipping metadata from the server catalog", () => {
-  const result = buildCheckoutOrder([
-    {
-      productId: 1,
-      quantity: 2,
-      shipping: { weightKg: 0.001, lengthCm: 1, widthCm: 1, heightCm: 1 },
-    } as never,
-  ])
-
-  assert.deepEqual(result.items[0].shipping, {
-    weightKg: 0.5,
-    lengthCm: 25,
-    widthCm: 19,
-    heightCm: 4,
-  })
+  await assert.rejects(
+    () => buildAsync([{ productId: 1, quantity: 21 }], resolver),
+    /Invalid cart item/,
+  )
+  await assert.rejects(
+    () =>
+      buildAsync(
+        [
+          { productId: 1, quantity: 11 },
+          { productId: 1, quantity: 10 },
+        ],
+        resolver,
+      ),
+    /Quantity limit exceeded/,
+  )
+  assert.equal(resolverCalls, 0)
 })
