@@ -1,6 +1,8 @@
 import { HomePage } from "@/components/pages/home-page"
 import { listPublishedProducts } from "@/lib/server/product-catalog"
 
+export const dynamic = "force-dynamic"
+
 export default async function Home() {
   let products: Awaited<ReturnType<typeof listPublishedProducts>> = []
   let unavailable = false
