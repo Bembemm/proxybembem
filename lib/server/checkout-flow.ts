@@ -4,7 +4,10 @@ import {
   validateCheckout,
   type CheckoutData,
 } from "../checkout.ts"
-import { buildCheckoutOrder } from "./checkout-order.ts"
+import {
+  buildCheckoutOrder,
+  type ResolveCheckoutProducts,
+} from "./checkout-order.ts"
 import { selectMercadoPagoCheckoutUrl, type MercadoPagoEnvironment } from "./checkout-url.ts"
 import { createCheckoutFingerprint, parseCheckoutAttemptId } from "./checkout-idempotency.ts"
 import {
@@ -26,6 +29,7 @@ import {
   updateOrderByNumber,
   type CreateOrderInput,
 } from "./orders.ts"
+import { getPublishedProductsByIds } from "./product-catalog.ts"
 import {
   buildShippingQuoteResult,
   type PublicShippingOption,
@@ -61,7 +65,7 @@ interface AttemptOrderView {
 interface PreferenceInput {
   accessToken: string
   orderNumber: string
-  items: ReturnType<typeof buildCheckoutOrder>["items"]
+  items: Awaited<ReturnType<typeof buildCheckoutOrder>>["items"]
   shipping: {
     serviceName: string
     carrierName: string
@@ -82,6 +86,7 @@ interface OrderUpdatePatch {
 export interface CheckoutFlowDependencies {
   quoteSecret: string
   nowMs: () => number
+  resolveProducts: ResolveCheckoutProducts
   buildQuote: (input: {
     items: unknown
     destinationCep: string
@@ -175,6 +180,7 @@ function createDefaultDependencies(): CheckoutFlowDependencies {
   return {
     quoteSecret: getMelhorEnvioEnv().quoteSecret,
     nowMs: () => Date.now(),
+    resolveProducts: getPublishedProductsByIds,
     buildQuote: buildShippingQuoteResult,
     findOrderByAttempt: async (attemptId) => {
       const order = await getOrderByCheckoutAttemptId(attemptId)
@@ -290,7 +296,7 @@ export async function executeCheckoutFlow(
 ): Promise<CheckoutFlowResult> {
   const deps = dependencies ?? createDefaultDependencies()
   const { attemptId, customer, customerIdentity } = validateInput(input)
-  const checkoutOrder = buildCheckoutOrder(input.items)
+  const checkoutOrder = await buildCheckoutOrder(input.items, deps.resolveProducts)
   const cartFingerprint = createCartFingerprint(
     checkoutOrder.items.map((item) => ({
       productId: item.productId,
