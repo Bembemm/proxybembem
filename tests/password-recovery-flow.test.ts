@@ -61,13 +61,31 @@ test("recovery link landing never consumes a credential", async () => {
   assert.match(confirm, /\/redefinir-senha/)
 })
 
-test("reset page stays public while the HttpOnly grant token waits for submit", async () => {
+test("reset page stays public but renders the form only for an active recovery grant", async () => {
   const page = await source("../app/redefinir-senha/page.tsx")
 
   assert.doesNotMatch(page, /requireCustomerPageAccess\s*\(/)
   assert.doesNotMatch(page, /auth\.getClaims\s*\(/)
-  assert.doesNotMatch(page, /redirect\s*\(/)
+  assert.match(page, /cookies\s*\(\s*\)/)
+  assert.match(page, /RECOVERY_TOKEN_COOKIE/)
+  assert.match(page, /isValidPasswordRecoveryToken/)
+  assert.match(page, /isPasswordRecoveryGrantActive/)
+  assert.match(page, /redirect\s*\(\s*["']\/entrar\?erro=recovery["']\s*\)/)
   assert.match(page, /PasswordForm[^>]*recovery/)
+
+  const activeCheck = page.indexOf("isPasswordRecoveryGrantActive")
+  const form = page.indexOf("<PasswordForm recovery")
+  assert.ok(activeCheck >= 0 && form > activeCheck)
+})
+
+test("used or expired recovery links get a dedicated customer message", async () => {
+  const loginPage = await source("../app/entrar/page.tsx")
+
+  assert.match(loginPage, /params\.erro\s*===\s*["']recovery["']/)
+  assert.match(
+    loginPage,
+    /Este link de recuperação já foi utilizado ou expirou\. Solicite um novo link se precisar redefinir a senha novamente\./,
+  )
 })
 
 test("recovery form submits the new password only to the server", async () => {
