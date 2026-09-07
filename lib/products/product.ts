@@ -19,10 +19,8 @@ export interface ProductShipping {
 
 export interface Product {
   id: number
-  status: ProductStatus
   title: string
   image: string
-  imagePath: string
   originalPrice: number
   discountPrice: number
   tag: string | null
@@ -35,6 +33,11 @@ export interface Product {
   details: ProductDetail[]
   sections: ProductSection[]
   shipping: ProductShipping
+}
+
+export interface CatalogProduct extends Product {
+  status: ProductStatus
+  imagePath: string
   displayOrder: number
   createdAt: string
   updatedAt: string
@@ -122,7 +125,11 @@ function parseSections(value: unknown): ProductSection[] {
 
 function publicImageUrl(imagePath: string, supabaseUrl: string) {
   if (imagePath.startsWith("/")) return imagePath
-  if (imagePath.includes("..") || imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+  if (
+    imagePath.includes("..") ||
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://")
+  ) {
     throw new Error("Invalid product catalog response")
   }
 
@@ -133,7 +140,7 @@ function publicImageUrl(imagePath: string, supabaseUrl: string) {
   return `${new URL(supabaseUrl).origin}/storage/v1/object/public/product-images/${encodedPath}`
 }
 
-export function parseProductRow(value: unknown, supabaseUrl: string): Product {
+export function parseProductRow(value: unknown, supabaseUrl: string): CatalogProduct {
   if (!isRecord(value)) throw new Error("Invalid product catalog response")
 
   if (
