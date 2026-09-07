@@ -36,14 +36,18 @@ function disablePrivateBrowserCache(
     pathname === "/minha-conta" || pathname.startsWith("/minha-conta/")
   const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/")
 
-  if (isPrivateAccount || isAdmin) {
-    response.headers.set(
-      "Cache-Control",
-      isAdmin ? PRIVATE_ADMIN_CACHE_CONTROL : PRIVATE_ACCOUNT_CACHE_CONTROL,
-    )
+  if (isPrivateAccount) {
+    response.headers.set("Cache-Control", PRIVATE_ACCOUNT_CACHE_CONTROL)
     response.headers.set("Pragma", "no-cache")
     response.headers.set("Expires", "0")
   }
+
+  if (isAdmin) {
+    response.headers.set("Cache-Control", PRIVATE_ADMIN_CACHE_CONTROL)
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+  }
+
   return response
 }
 
