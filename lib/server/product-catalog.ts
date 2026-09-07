@@ -1,7 +1,7 @@
 import {
   isProductStatus,
   parseProductRow,
-  type Product,
+  type CatalogProduct,
   type ProductStatus,
 } from "../products/product.ts"
 import { getSupabaseEnv } from "./env.ts"
@@ -44,7 +44,7 @@ export interface ListAdminProductsInput {
 }
 
 export interface AdminProductListResult {
-  products: Product[]
+  products: CatalogProduct[]
   total: number
   page: number
   pageSize: number
@@ -84,7 +84,10 @@ async function productCatalogRequest(params: URLSearchParams, init?: RequestInit
   return { response, supabaseUrl }
 }
 
-async function parseRows(response: Response, supabaseUrl: string): Promise<Product[]> {
+async function parseRows(
+  response: Response,
+  supabaseUrl: string,
+): Promise<CatalogProduct[]> {
   const payload = (await response.json()) as unknown
   if (!Array.isArray(payload)) {
     throw new Error("Invalid product catalog response")
@@ -92,7 +95,7 @@ async function parseRows(response: Response, supabaseUrl: string): Promise<Produ
   return payload.map((value) => parseProductRow(value, supabaseUrl))
 }
 
-export async function listPublishedProducts(): Promise<Product[]> {
+export async function listPublishedProducts(): Promise<CatalogProduct[]> {
   const params = new URLSearchParams({
     select: PRODUCT_SELECT,
     status: "eq.published",
@@ -108,7 +111,9 @@ export async function listPublishedProducts(): Promise<Product[]> {
   return products
 }
 
-export async function getPublishedProductsByIds(ids: number[]): Promise<Product[]> {
+export async function getPublishedProductsByIds(
+  ids: number[],
+): Promise<CatalogProduct[]> {
   if (!Array.isArray(ids) || ids.length > 50) {
     throw new Error("Invalid product ids")
   }
@@ -207,7 +212,7 @@ export async function listAdminProducts(
   }
 }
 
-export async function getAdminProduct(id: number): Promise<Product | null> {
+export async function getAdminProduct(id: number): Promise<CatalogProduct | null> {
   assertProductId(id)
   const params = new URLSearchParams({
     select: PRODUCT_SELECT,
