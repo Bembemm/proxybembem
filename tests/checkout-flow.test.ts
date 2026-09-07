@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import type { CheckoutData } from "../lib/checkout.ts"
+import type { CatalogProduct } from "../lib/products/product.ts"
 import { OrderConflictError } from "../lib/server/orders.ts"
 import {
   createCartFingerprint,
@@ -16,6 +17,28 @@ const SECRET = "12345678901234567890123456789012"
 const ITEMS = [{ productId: 1, quantity: 1 }]
 const CART_FINGERPRINT = createCartFingerprint(ITEMS)
 const ORDER_ID = "550e8400-e29b-41d4-a716-446655440777"
+
+const TEST_PRODUCT: CatalogProduct = {
+  id: 1,
+  status: "published",
+  title: "Deck Commander Proxy 100 Cartas",
+  image: "/products/deck-commander.png",
+  imagePath: "/products/deck-commander.png",
+  originalPrice: 149.9,
+  discountPrice: 119.9,
+  tag: null,
+  category: "Decks",
+  colors: [],
+  featured: true,
+  highlights: [],
+  description: "Produto de teste",
+  details: [],
+  sections: [],
+  shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+  displayOrder: 1,
+  createdAt: "2026-09-07T12:00:00.000Z",
+  updatedAt: "2026-09-07T12:00:00.000Z",
+}
 
 const CUSTOMER: CheckoutData = {
   nome: "Breno Bembem",
@@ -73,6 +96,8 @@ function makeDependencies(
   return {
     quoteSecret: SECRET,
     nowMs: () => 2_000,
+    resolveProducts: async (ids) =>
+      ids.includes(TEST_PRODUCT.id) ? [TEST_PRODUCT] : [],
     buildQuote: async () => ({
       cartFingerprint: CART_FINGERPRINT,
       options: [
