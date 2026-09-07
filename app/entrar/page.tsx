@@ -25,6 +25,7 @@ export default async function LoginPage({
   const emailConfirmed = params.confirmado === "1"
   const callbackError = params.erro === "callback"
   const confirmationError = params.erro === "confirmacao"
+  const recoveryError = params.erro === "recovery"
 
   return (
     <section className="min-h-[70vh] px-4 pb-16 pt-24 sm:pt-28">
@@ -46,6 +47,11 @@ export default async function LoginPage({
         {confirmationError ? (
           <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
             Este link de confirmação já foi utilizado ou expirou. Se sua conta já estiver confirmada, basta entrar.
+          </p>
+        ) : null}
+        {recoveryError ? (
+          <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            Este link de recuperação já foi utilizado ou expirou. Solicite um novo link se precisar redefinir a senha novamente.
           </p>
         ) : null}
         {callbackError ? (
