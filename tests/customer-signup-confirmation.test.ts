@@ -30,6 +30,25 @@ test("signup confirmation verifies token hash without returning a Supabase sessi
   assert.match(callback, /exchangeCodeForSession\s*\(/)
 })
 
+test("signup rejects an already registered email before asking Supabase to create another account", async () => {
+  const signupRoute = await source("../app/api/account/signup/route.ts")
+
+  assert.match(signupRoute, /getSupabaseEnv/)
+  assert.match(signupRoute, /auth\.admin\.listUsers\s*\(/)
+  assert.match(signupRoute, /perPage\s*:\s*1_000/)
+  assert.match(signupRoute, /user\.email/)
+  assert.match(signupRoute, /input\.email/)
+  assert.match(signupRoute, /json\(409/)
+  assert.match(
+    signupRoute,
+    /Este e-mail já está cadastrado\. Entre na sua conta ou redefina sua senha\./,
+  )
+
+  const duplicateCheck = signupRoute.indexOf("auth.admin.listUsers")
+  const signup = signupRoute.indexOf("auth.signUp")
+  assert.ok(duplicateCheck >= 0 && signup > duplicateCheck)
+})
+
 test("password signup sends the exact validated password to Supabase", async () => {
   const signupForm = await source("../components/account/signup-form.tsx")
   const signupRoute = await source("../app/api/account/signup/route.ts")
