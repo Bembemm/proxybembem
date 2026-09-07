@@ -24,6 +24,7 @@ export default async function LoginPage({
   const passwordChanged = params.senha === "alterada"
   const emailConfirmed = params.confirmado === "1"
   const callbackError = params.erro === "callback"
+  const confirmationError = params.erro === "confirmacao"
 
   return (
     <section className="min-h-[70vh] px-4 pb-16 pt-24 sm:pt-28">
@@ -40,6 +41,11 @@ export default async function LoginPage({
         {emailConfirmed ? (
           <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
             E-mail confirmado. Entre com a senha criada no cadastro.
+          </p>
+        ) : null}
+        {confirmationError ? (
+          <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            Este link de confirmação já foi utilizado ou expirou. Se sua conta já estiver confirmada, basta entrar.
           </p>
         ) : null}
         {callbackError ? (
