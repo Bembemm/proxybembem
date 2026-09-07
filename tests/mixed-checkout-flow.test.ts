@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import type { CheckoutData } from "../lib/checkout.ts"
-import type { Product } from "../lib/products/product.ts"
+import type { CatalogProduct } from "../lib/products/product.ts"
 import {
   executeCheckoutFlow,
   type CheckoutFlowDependencies,
@@ -40,7 +40,7 @@ function resolvedProduct(input: {
   id: number
   title: string
   discountPrice: number
-}): Product {
+}): CatalogProduct {
   return {
     id: input.id,
     status: "published",
