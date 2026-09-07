@@ -21,7 +21,7 @@ export function LoginForm() {
       const supabase = createSupabaseBrowserClient()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        setMessage("Não foi possível entrar. Verifique os dados e tente novamente.")
+        setMessage("E-mail ou senha incorretos.")
         return
       }
 
