@@ -30,6 +30,18 @@ test("signup confirmation verifies token hash without returning a Supabase sessi
   assert.match(callback, /exchangeCodeForSession\s*\(/)
 })
 
+test("signup confirmation success message is one-time and cleans its URL marker", async () => {
+  const loginPage = await source("../app/entrar/page.tsx")
+  const cleanup = await source("../components/account/login-confirmation-flash-cleanup.tsx")
+
+  assert.match(loginPage, /LoginConfirmationFlashCleanup/)
+  assert.match(cleanup, /["']use client["']/)
+  assert.match(cleanup, /useEffect\s*\(/)
+  assert.match(cleanup, /searchParams\.delete\(["']confirmado["']\)/)
+  assert.match(cleanup, /history\.replaceState\s*\(/)
+  assert.doesNotMatch(cleanup, /searchParams\.delete\(["']next["']\)/)
+})
+
 test("used or expired signup confirmation links get a dedicated customer message", async () => {
   const callback = await source("../app/auth/callback/route.ts")
   const loginPage = await source("../app/entrar/page.tsx")
