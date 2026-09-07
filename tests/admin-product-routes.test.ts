@@ -119,17 +119,18 @@ async function json(response: Response) {
 }
 
 async function withRouteEnv(run: () => Promise<void>) {
-  const previousNodeEnv = process.env.NODE_ENV
-  const previousSiteUrl = process.env.NEXT_PUBLIC_SITE_URL
-  process.env.NODE_ENV = "development"
-  delete process.env.NEXT_PUBLIC_SITE_URL
+  const env = process.env as Record<string, string | undefined>
+  const previousNodeEnv = env.NODE_ENV
+  const previousSiteUrl = env.NEXT_PUBLIC_SITE_URL
+  env.NODE_ENV = "development"
+  delete env.NEXT_PUBLIC_SITE_URL
   try {
     await run()
   } finally {
-    if (previousNodeEnv === undefined) delete process.env.NODE_ENV
-    else process.env.NODE_ENV = previousNodeEnv
-    if (previousSiteUrl === undefined) delete process.env.NEXT_PUBLIC_SITE_URL
-    else process.env.NEXT_PUBLIC_SITE_URL = previousSiteUrl
+    if (previousNodeEnv === undefined) delete env.NODE_ENV
+    else env.NODE_ENV = previousNodeEnv
+    if (previousSiteUrl === undefined) delete env.NEXT_PUBLIC_SITE_URL
+    else env.NEXT_PUBLIC_SITE_URL = previousSiteUrl
   }
 }
 
