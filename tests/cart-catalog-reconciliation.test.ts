@@ -40,7 +40,10 @@ test("restored cart drops IDs missing from the published catalog", () => {
 
   assert.equal(result.removedCount, 1)
   assert.deepEqual(
-    result.items.map((item) => ({ id: item.product.id, quantity: item.quantity })),
+    result.items.map((item: { product: { id: number }; quantity: number }) => ({
+      id: item.product.id,
+      quantity: item.quantity,
+    })),
     [{ id: 2, quantity: 3 }],
   )
 })
