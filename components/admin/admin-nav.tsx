@@ -2,6 +2,7 @@ export type AdminSection =
   | "overview"
   | "orders"
   | "production"
+  | "products"
   | "integrations"
 
 const NAV_ITEMS: ReadonlyArray<{
@@ -12,6 +13,7 @@ const NAV_ITEMS: ReadonlyArray<{
   { section: "overview", label: "Visão geral", href: "/admin" },
   { section: "orders", label: "Pedidos", href: "/admin/pedidos" },
   { section: "production", label: "Produção", href: "/admin/producao" },
+  { section: "products", label: "Produtos", href: "/admin/produtos" },
   {
     section: "integrations",
     label: "Integrações",
