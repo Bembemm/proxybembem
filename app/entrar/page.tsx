@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { AccountLoginForm } from "@/components/account/login-form"
+import { LoginConfirmationFlashCleanup } from "@/components/account/login-confirmation-flash-cleanup"
 import { sanitizeCustomerLoginNext } from "@/lib/server/customer-account-actions"
 
 export const metadata: Metadata = {
@@ -39,6 +40,7 @@ export default async function LoginPage({
             Senha redefinida. Entre com sua nova senha.
           </p>
         ) : null}
+        {emailConfirmed ? <LoginConfirmationFlashCleanup /> : null}
         {emailConfirmed ? (
           <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
             E-mail confirmado. Entre com a senha criada no cadastro.
