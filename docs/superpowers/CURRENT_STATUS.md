@@ -1,6 +1,6 @@
 # ProxyBembem — Current Status
 
-**Updated:** 2026-09-07
+**Updated:** 2026-09-08
 
 Canonical continuation checkpoint. Detailed intermediate evidence remains in Git history and historical files under `docs/superpowers/plans/` and `docs/superpowers/specs/`. When an old plan/spec conflicts with this file or `ADMIN_DASHBOARD_MASTER_PLAN.md`, this newer operational checkpoint controls.
 
@@ -16,7 +16,7 @@ Canonical continuation checkpoint. Detailed intermediate evidence remains in Git
 - Current Phase 4 implementation plan: `docs/superpowers/plans/2026-09-07-admin-product-catalog-implementation.md`
 - Current Phase 4 design: `docs/superpowers/specs/2026-09-07-admin-product-catalog-design.md`
 - Phase 3: **COMPLETE — implemented, database-validated, CI-green, deployed to KingHost and production-accepted.**
-- Phase 4: **IN PROGRESS — Stage 1 Supabase catalog cutover is production-accepted; Stage 2 protected product administration is next.**
+- Phase 4: **IN PROGRESS — Stage 1 catalog cutover and Stage 2 protected product administration are production-accepted; Stage 3 admin navigation redesign is next.**
 - No merge, squash, rebase, branch deletion or force-move has been requested; work continues on the active feature branch.
 
 ## Phase 3 accepted model — unchanged
@@ -106,7 +106,55 @@ After deploying the accepted SHA to KingHost and restarting the managed applicat
 4. a valid CEP can calculate freight;
 5. an authenticated checkout reaches the Mercado Pago pre-payment flow without requiring a real paid transaction.
 
-This completes the Task 6 production-acceptance checkpoint and unblocks Stage 2.
+This completed the Task 6 production-acceptance checkpoint and unblocked Stage 2.
+
+## Phase 4 — Stage 2 protected product administration — COMPLETE / PRODUCTION ACCEPTED
+
+Stage 2 Tasks 7–12 are complete and production-accepted.
+
+### Accepted capabilities
+
+- product create/update validation is bounded and server-owned;
+- new products start as `draft`;
+- publishing, archiving and reactivation are explicit lifecycle mutations;
+- physical delete is absent;
+- archived reactivation returns to `draft`, never directly to `published`;
+- optimistic concurrency uses the exact `updated_at` revision and stale saves return stable `409 product_conflict` rather than overwriting newer data;
+- all product mutation routes remain behind same-origin checks plus the existing touched owner AAL2/admin-session boundary;
+- product image authorization accepts only JPEG/PNG/WebP up to 8 MiB, writes unique immutable paths to `product-images` and never enables overwrite;
+- `/admin/produtos`, `/admin/produtos/novo` and `/admin/produtos/[id]` are protected admin surfaces;
+- the editor uses explicit save, Brazilian currency input converted to integer cents, repeatable content controls, collapsed shipping details, direct signed Storage upload and explicit lifecycle controls;
+- archive requires confirmation;
+- unsaved edits warn before unload;
+- public storefront and cart continue resolving the current published catalog from Supabase.
+
+### Stage 2 production regression and accepted runtime SHA
+
+The initial Stage 2 deployment exposed a browser navigation-cache regression: after a product lifecycle change, a normal client-side navigation back to the mutable storefront could reuse an older RSC payload even though a full reload returned the current Supabase-backed state.
+
+The accepted production fix keeps the catalog server-authoritative and forces fresh-document navigation only for the mutable storefront destinations `Início` and `Produtos`, avoiding reuse of the stale RSC navigation payload while preserving normal Next navigation elsewhere.
+
+Accepted runtime SHA:
+
+- `32b418383bbdfe1d8d196822025e34adfcd083a1` — `fix: bypass stale RSC cache for catalog navigation`
+- GitHub Actions run `34241546616`: **PASS**
+- exact KingHost Node **22.1.0** setup/check: PASS
+- frozen pnpm install: PASS
+- typecheck: PASS
+- KingHost production build: PASS
+- private-order route contract: PASS
+- KingHost startup smoke: PASS
+- tests: **474/474 PASS**
+
+The dedicated regression test confirms successful admin product saves/lifecycle changes invalidate the public catalog path and that mutable storefront destinations bypass the soft navigation path that had reproduced the stale RSC payload.
+
+### Stage 2 owner production acceptance — 2026-09-08
+
+After deploying `32b418383bbdfe1d8d196822025e34adfcd083a1` to KingHost and restarting the managed application, the owner confirmed the previously failing real-browser scenario is fixed: after publishing/archiving the Stage 2 test product, navigating normally through the storefront `Produtos` entry reflects the current catalog without a manual refresh.
+
+Together with the preceding Stage 2 production checks, this closes Task 12 and unblocks Stage 3.
+
+No real paid Mercado Pago transaction was required for Stage 2 acceptance.
 
 ## Hosted Supabase checkpoint
 
@@ -121,7 +169,7 @@ The product catalog Storage bucket is `product-images`. Public image read is all
 
 ## Supabase advisor classification
 
-Current findings do not block the accepted Stage 1 catalog cutover:
+Current findings do not block the accepted catalog/admin rollout:
 
 - `RLS Enabled No Policy` is intentional on `products` and other backend-only tables where direct browser-role privileges are revoked;
 - `customer_get_order` / `customer_list_orders` intentionally remain authenticated-callable `SECURITY DEFINER` ownership boundaries deriving identity from `auth.uid()`;
@@ -139,7 +187,7 @@ Do not weaken accepted authorization merely to silence intentional advisor warni
 
 The earlier Phase 3 operational documentation reconciliation remains complete. Historical plans/specs intentionally remain historical artifacts even when their unchecked boxes or superseded architecture statements no longer describe live state.
 
-This file now supersedes the older Master Plan Phase 4 line that described Phase 4 as not started: Phase 4 is in progress and Stage 1 is accepted. The detailed execution authority for current Phase 4 work is `2026-09-07-admin-product-catalog-implementation.md`.
+This file now supersedes older Master Plan/implementation-plan progress lines that describe Stage 2 as pending. The detailed execution authority for the remaining Phase 4 work is `2026-09-07-admin-product-catalog-implementation.md`.
 
 ## KingHost runtime
 
@@ -154,7 +202,7 @@ This file now supersedes the older Master Plan Phase 4 line that described Phase
 
 - Do not reapply any already-applied migration, including the two product-catalog migrations above.
 - Keep Supabase as the only runtime product authority after the accepted cutover.
-- Do not restore `data/products.ts` as a runtime fallback.
+- Do not restore `data/products.ts` as a runtime fallback; now that Stage 2 is accepted, remove the rollback file in a separate tested commit when no runtime dependency remains.
 - Keep product lifecycle exactly `draft | published | archived`; no physical-delete admin flow.
 - Archived product reactivation returns to `draft`; publishing remains explicit.
 - Keep product IDs stable and non-editable.
@@ -170,11 +218,13 @@ This file now supersedes the older Master Plan Phase 4 line that described Phase
 
 ## NEXT EXACT ACTION
 
-Continue **Stage 2 — Protected product administration**, starting with **Task 7** in `docs/superpowers/plans/2026-09-07-admin-product-catalog-implementation.md`:
+Continue **Stage 3 — Admin navigation redesign**, starting with **Task 13** in `docs/superpowers/plans/2026-09-07-admin-product-catalog-implementation.md`:
 
-1. RED: add `tests/admin-products.test.ts` for bounded form validation, draft creation, explicit publish, archive-without-delete, reactivate-to-draft and stale `updated_at` conflict;
-2. verify the focused RED failure;
-3. implement `lib/products/product-form.ts` and `lib/server/admin-products.ts` with structured validation and compare-and-swap optimistic concurrency;
-4. focused GREEN + typecheck;
-5. commit `feat: add protected product mutations`;
-6. continue to Task 8 only after Task 7 is independently green and reviewed.
+1. first remove `data/products.ts` in a separate tested cleanup commit if branch inspection confirms zero runtime dependencies;
+2. RED: add `tests/admin-sidebar-ui.test.ts` and update `tests/admin-auth-ui.test.ts` only where the new shared navigation contract requires it;
+3. verify the focused RED failure is exactly the missing sidebar/mobile-drawer behavior;
+4. implement the desktop persistent/sticky sidebar and mobile dismissible Radix drawer while preserving the existing `AdminShell({ activeSection, title, description, children })` API where practical;
+5. keep the fixed sections exactly `Visão geral`, `Pedidos`, `Produção`, `Produtos`, `Integrações`, `Sair`;
+6. preserve logout as POST `/api/admin/logout` and all existing admin no-store/session/MFA protections;
+7. focused GREEN + typecheck, then full CI;
+8. continue to Task 14 only after Task 13 is independently green and reviewed.
