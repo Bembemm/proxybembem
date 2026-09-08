@@ -1,19 +1,10 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"
-import { products } from "../data/products.ts"
 
 function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
 }
-
-test("rollback catalog preserves the current 60-card public prices", () => {
-  const product = products.find((candidate) => candidate.id === 2)
-
-  assert.ok(product)
-  assert.equal(product.originalPrice, 99.99)
-  assert.equal(product.discountPrice, 69.99)
-})
 
 test("home receives a featured-products preview instead of importing the full catalog", () => {
   const home = source("components/pages/home-page.tsx")

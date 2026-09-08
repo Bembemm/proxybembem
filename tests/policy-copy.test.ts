@@ -7,7 +7,6 @@ const SOURCE_FILES = [
   "components/checkout-form.tsx",
   "components/order-summary.tsx",
   "lib/checkout.ts",
-  "data/products.ts",
 ]
 
 function storefrontSource() {

@@ -6,6 +6,10 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
 }
 
+test("legacy static product rollback catalog is retired after Stage 2 acceptance", () => {
+  assert.equal(existsSync(new URL("../data/products.ts", import.meta.url)), false)
+})
+
 test("public storefront components receive products and never import the static runtime catalog", () => {
   const productsPage = source("components/pages/products-page.tsx")
   const homePage = source("components/pages/home-page.tsx")
