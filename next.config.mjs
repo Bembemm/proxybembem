@@ -22,8 +22,22 @@ function resolveSupabaseBrowserOrigin() {
   }
 }
 
+function resolveSupabaseProductImagePattern(origin) {
+  if (!origin) return null
+  const url = new URL(origin)
+  return {
+    protocol: "https",
+    hostname: url.hostname,
+    port: url.port,
+    pathname: "/storage/v1/object/public/product-images/**",
+  }
+}
+
 const melhorEnvioOAuthOrigin = melhorEnvioFormActionOrigin()
 const supabaseBrowserOrigin = resolveSupabaseBrowserOrigin()
+const supabaseProductImagePattern = resolveSupabaseProductImagePattern(
+  supabaseBrowserOrigin,
+)
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -73,6 +87,11 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  images: {
+    remotePatterns: supabaseProductImagePattern
+      ? [supabaseProductImagePattern]
+      : [],
+  },
   async redirects() {
     return [
       {
