@@ -38,6 +38,8 @@ https://www.proxybembem.com.br/api/melhor-envio/oauth/callback
 
 Uma conta Melhor Envio da ProxyBembem por ambiente. O aplicativo Production deve ser separado do aplicativo Sandbox e usar credenciais próprias.
 
+Não reutilize Client ID, Client Secret, tokens ou chave de criptografia entre Sandbox e Production.
+
 ## Variáveis
 
 ```text
@@ -55,25 +57,42 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ADMIN_USER_ID=
 ```
 
-Segredos reais ficam somente no ambiente privado. Não reutilize chaves de Sandbox em Production e nunca envie valores reais em chat/screenshot/commit/log.
+Use segredos Production próprios e independentes; não copie `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` ou `RATE_LIMIT_SECRET` do Sandbox.
+
+Para gerar localmente um segredo independente de 32 bytes:
+
+```bash
+openssl rand -hex 32
+```
+
+Segredos reais ficam somente no ambiente privado. **Nunca envie valores reais em chat, screenshot, commit, issue, documentação ou log.**
 
 ## Admin e autorização OAuth
 
 Fluxo:
 
 ```text
-/admin/login -> senha -> TOTP -> /admin -> Integrações -> Melhor Envio
+/admin/login -> senha -> Authenticator (TOTP) -> /admin -> Integrações -> Melhor Envio
 ```
 
 A página administrativa protegida da integração é `/admin/integrations/melhor-envio`.
 
 A página de integração está dentro do novo shell administrativo compartilhado (sidebar desktop / drawer mobile), mas a segurança permanece a mesma: owner UUID, AAL2/TOTP e sessão administrativa ativa. O redesign não cria bypass.
 
+A sessão administrativa server-side expira após 30 minutos de inatividade. Se o proprietário perder o Authenticator, a recuperação administrativa é manual pelo Supabase; não existe bypass por SMS, trusted-device ou somente senha.
+
 Conectar/reconectar continua validando origem, rate limit, proprietário, AAL2 e sessão; `state` é aleatório, hasheado, temporário e one-shot. Tokens são criptografados antes de persistir e a UI recebe apenas status sanitizado.
 
 ## Renovação automática
 
 Tokens usam AES-256-GCM, versionamento e lease atômica. O token manager refresca preventivamente e, após falha de autenticação reconhecida, faz no máximo um retry com versão nova. Refresh definitivamente rejeitado marca `reauthorization_required`.
+
+Fluxo conceitual de renovação:
+
+```text
+claim lease -> decrypt refresh_token -> refresh no provedor ->
+criptografar novos tokens -> commit compare-and-set
+```
 
 ## Refresh de manutenção KingHost
 
@@ -136,9 +155,11 @@ O runtime atual não compra etiqueta, não gera impressão e não rastreia autom
 ## Checklist Production
 
 - `MELHOR_ENVIO_ENVIRONMENT=production`;
+- aplicativo Production separado;
 - callback produtivo exato;
 - scope somente `shipping-calculate`;
-- admin exige senha + TOTP/AAL2;
+- admin exige senha + Authenticator/TOTP/AAL2;
+- sessão admin expira após 30 minutos de inatividade;
 - tokens criptografados;
 - PAC/SEDEX IDs 1/2 apenas;
 - mudança de carrinho/CEP invalida seleção antiga;
