@@ -14,6 +14,7 @@ const LIFECYCLE_ACTIONS = new URL(
   "../components/admin/products/product-lifecycle-actions.tsx",
   import.meta.url,
 )
+const NAVBAR = new URL("../components/navbar.tsx", import.meta.url)
 
 test("public catalog revalidation is a Server Action covering home and products", () => {
   assert.equal(
@@ -43,4 +44,19 @@ test("successful admin product saves and lifecycle mutations invalidate client n
     lifecycleSource,
     /!response\.ok[\s\S]*await revalidatePublicProductCatalog\(\)[\s\S]*onUpdated/,
   )
+})
+
+test("mutable storefront destinations bypass soft navigation that can reuse stale RSC payloads", () => {
+  const source = readFileSync(NAVBAR, "utf8")
+
+  assert.match(
+    source,
+    /label:\s*["']Início["'],\s*href:\s*["']\/["'],\s*freshDocument:\s*true/,
+  )
+  assert.match(
+    source,
+    /label:\s*["']Produtos["'],\s*href:\s*["']\/produtos["'],\s*freshDocument:\s*true/,
+  )
+  assert.match(source, /item\.freshDocument\s*\?\s*\(\s*<a\b/)
+  assert.match(source, /<a\s+[\s\S]*href=\{item\.href\}/)
 })
