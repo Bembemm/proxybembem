@@ -48,7 +48,8 @@ test("orders preserve their responsive operational content under the shared side
   assert.match(list, /Paginação dos pedidos/)
   assert.match(detail, /sm:grid-cols-2 lg:grid-cols-4/)
   assert.match(detail, /grid gap-5 lg:grid-cols-2/)
-  assert.match(detail, /Ações operacionais/)
+  assert.match(detail, /title=["']Produção["']/)
+  assert.match(detail, /allowedAdminFulfillmentTransitions/)
 })
 
 test("production and product management stay width-safe inside the persistent sidebar", async () => {
