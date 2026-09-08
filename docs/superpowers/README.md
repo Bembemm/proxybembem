@@ -5,58 +5,53 @@ Always start with:
 - `docs/superpowers/CURRENT_STATUS.md`
 - `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`
 
-`CURRENT_STATUS.md` is the canonical continuation checkpoint. It records the verified live state, active branch/runtime, completed phase, validation evidence, blockers and the exact next action.
+`CURRENT_STATUS.md` is the canonical continuation checkpoint. Historical files under `docs/superpowers/plans/` and `docs/superpowers/specs/` preserve implementation/design history and may contain unchecked RED/GREEN steps even after work has been completed.
 
 ## Current project/runtime
 
 - active feature branch: `feat/admin-dashboard-expansion`;
-- production application runtime: KingHost Node.js 22.1.0;
-- database/Auth backend: hosted Supabase project, kept separate from KingHost;
-- canonical KingHost deployment runbook: `docs/deployment/kinghost.md`;
-- Phase 3 customer accounts/private orders: COMPLETE and production-accepted;
-- Phase 4: unblocked but not started until the owner chooses branch integration handling.
+- base branch: `main`;
+- production app: KingHost Node.js 22.1.0;
+- backend/Auth: hosted Supabase, separate from KingHost;
+- deploy runbook: `docs/deployment/kinghost.md`;
+- Phase 3 customer accounts/private orders: complete and production-accepted;
+- Phase 4 Supabase catalog + protected product admin + admin sidebar redesign: implementation complete and automatically verified;
+- final Phase 4 browser production smoke: explicitly deferred by the owner on 2026-09-08 and still required before full production sign-off;
+- Phase 5 must not start automatically before branch integration choice.
 
 ## Do not infer live progress from old checkboxes
 
-Files under `docs/superpowers/plans/` and `docs/superpowers/specs/` are implementation/design artifacts. They intentionally preserve historical requirements and RED/GREEN planning structure. Many were written before implementation and their `- [ ]` markers were not retroactively checked.
+When old plans/specs conflict with `CURRENT_STATUS.md` or the Master Plan, use the operational docs. Do not rewrite historical plans merely to make old checkboxes look current.
 
-Treat those checkboxes and historical architecture statements as **history**, not live state, whenever they conflict with `CURRENT_STATUS.md` or the current Master Plan.
+Important supersessions:
 
-Important supersessions include:
-
-- the 2026-08-28 static Melhor Envio bearer-token plan was superseded by the approved single-account OAuth lifecycle;
-- Vercel runtime/deployment instructions were superseded by KingHost and `docs/deployment/kinghost.md`;
-- the original Phase 3 guest checkout + `/pedido/[token]` model was superseded before launch by `2026-09-06-authenticated-checkout-private-orders-design.md`;
-- the earlier Supabase TokenHash password-recovery design was superseded by the durable application-owned recovery-grant design.
-
-Do not edit historical plans/specs merely to make their old narrative look current. Update operational docs instead.
+- Vercel deployment instructions were replaced by KingHost;
+- the original guest checkout/public-token order model was replaced by authenticated payment start + private account orders;
+- old password-recovery approaches were replaced by the durable application-owned grant flow;
+- the static runtime product catalog was replaced by Supabase `public.products`;
+- the old admin top navigation was replaced by the shared desktop sidebar/mobile drawer.
 
 ## Resume order
 
 1. Read `CURRENT_STATUS.md`.
-2. Read the Master Plan current checkpoint/invariants.
-3. Verify the real branch HEAD and GitHub CI state.
-4. If runtime work is involved, verify KingHost/Supabase state relevant to that task.
-5. Read only the current/superseding plan/spec relevant to the next action.
-6. Continue the task identified in `CURRENT_STATUS.md`.
-7. Do not redo completed migrations/provider/production acceptance unless a regression or explicit new operation requires it.
+2. Read the Master Plan checkpoint/invariants.
+3. Verify the real feature-branch HEAD and CI status.
+4. For runtime/database work, verify relevant KingHost/Supabase live state.
+5. Read only the current plan/spec needed for the next action.
+6. Do not redo completed migrations or accepted production checks unless a regression or explicit operation requires it.
+7. If Phase 4 is being signed off for Production, run the deferred browser smoke first.
 
 ## End-of-session rule
 
-After any meaningful implementation, acceptance test, blocker or decision, update `CURRENT_STATUS.md` before ending the session with:
-
-- current branch/HEAD or relevant runtime candidate;
-- completed task/phase;
-- verification evidence;
-- blocker/status;
-- exact next action;
-- provider/database/hosting caveats future sessions must preserve.
+After meaningful implementation, acceptance, blocker or decision, update `CURRENT_STATUS.md` with exact SHA, verification evidence, runtime/database caveats and the exact next action.
 
 ## Safety / rollout constraints
 
-- Work on `feat/admin-dashboard-expansion` until the owner explicitly chooses another branch/integration strategy.
+- Work on `feat/admin-dashboard-expansion` until the owner explicitly chooses integration handling.
 - Never merge, squash, rebase, delete or force-move the feature branch without explicit owner approval.
-- Never write provider/Supabase secrets, passwords, recovery tokens, TOTP material or customer-private identifiers into docs, commits, logs, screenshots or chat.
-- Do not reapply already-applied Supabase migrations.
+- Never expose provider/Supabase secrets, passwords, recovery tokens, TOTP material or customer-private identifiers.
+- Never reapply already-applied Supabase migrations.
+- Keep Supabase as the product runtime authority; do not restore the static catalog fallback.
 - Do not restore guest checkout/payment, `/pedido/[token]` or guest-claim application surfaces.
-- Do not start Phase 4 automatically before the owner chooses how to integrate/preserve the completed Phase 3 branch.
+- Do not start Phase 5 automatically before the owner chooses whether to merge, create a PR or keep the branch.
+- The deferred manual production smoke must be remembered before declaring Phase 4 fully production-accepted.

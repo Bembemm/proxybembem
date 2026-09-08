@@ -1,10 +1,10 @@
 # Configuração de frete com Melhor Envio
 
-A integração usa o Melhor Envio **somente para cotação de frete no checkout**. A compra, geração e impressão de etiqueta continuam manuais no painel do Melhor Envio depois que o pagamento do cliente for aprovado.
+A integração atual usa o Melhor Envio **somente para cotação de frete no checkout**. Compra, geração e impressão de etiqueta continuam manuais no painel do Melhor Envio depois da aprovação do pagamento.
 
-O runtime atual da aplicação é KingHost Node.js 22.1.0. Supabase continua hospedado separadamente e armazena o estado OAuth criptografado/RPCs necessários.
+Runtime: KingHost Node.js 22.1.0. Supabase permanece hospedado separadamente e mantém OAuth/token state criptografado, catálogo e RPCs.
 
-## 1. Arquitetura atual
+## Arquitetura atual
 
 O backend consulta:
 
@@ -12,44 +12,33 @@ O backend consulta:
 POST /api/v2/me/shipment/calculate
 ```
 
-Bases do provedor:
+Bases:
 
 ```text
 Sandbox:    https://sandbox.melhorenvio.com.br
 Production: https://melhorenvio.com.br
 ```
 
-A requisição é server-side com Bearer token obtido pelo token manager OAuth, `Accept: application/json`, `Content-Type: application/json` e o `User-Agent` da ProxyBembem. O navegador nunca recebe access token, refresh token, Client Secret ou chave de criptografia.
+A chamada é server-side com Bearer token do token manager OAuth. O navegador nunca recebe access token, refresh token, Client Secret ou chave de criptografia.
 
-O único scope solicitado pelo fluxo atual é:
+Scope atual:
 
 ```text
 shipping-calculate
 ```
 
-Não amplie permissões para compra, geração ou impressão de etiquetas enquanto essas etapas permanecerem manuais. A ampliação de escopo pertence à futura Phase 5 e exige revisão/aceitação próprias.
+Não amplie escopo para compra/geração/impressão de etiquetas antes da Phase 5 e de uma aprovação específica de gasto/permissão.
 
-## 2. OAuth e callback
-
-A aplicação usa OAuth2 single-account: uma conta Melhor Envio da própria ProxyBembem por ambiente, sem conexão de contas de clientes/terceiros.
-
-Callback implementado:
+## OAuth / callback
 
 ```text
 /api/melhor-envio/oauth/callback
-```
-
-Callback produtivo canônico:
-
-```text
 https://www.proxybembem.com.br/api/melhor-envio/oauth/callback
 ```
 
-`MELHOR_ENVIO_REDIRECT_URI` deve coincidir exatamente com a URL cadastrada no aplicativo do provedor. Sandbox e Production usam aplicativos/credenciais separados; não reutilize Client ID, Client Secret, tokens ou chave de criptografia entre ambientes por conveniência.
+Uma conta Melhor Envio da ProxyBembem por ambiente. Sandbox/Production usam credenciais separadas.
 
-## 3. Variáveis e segredos
-
-Contrato atual do Melhor Envio:
+## Variáveis
 
 ```text
 MELHOR_ENVIO_ENVIRONMENT=production
@@ -61,204 +50,105 @@ MELHOR_ENVIO_USER_AGENT=ProxyBembem (contato@proxybembem.com.br)
 SHIPPING_ORIGIN_CEP=86730000
 SHIPPING_QUOTE_SECRET=
 CRON_SECRET=
-```
-
-Para um ambiente Sandbox isolado, use `MELHOR_ENVIO_ENVIRONMENT=sandbox` e credenciais/callback próprios desse ambiente.
-
-Use **segredos Production próprios e independentes**; não copie `MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY`, `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` ou `RATE_LIMIT_SECRET` do Sandbox.
-
-A área administrativa também depende de Supabase Auth:
-
-```text
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ADMIN_USER_ID=
 ```
 
-`NEXT_PUBLIC_SUPABASE_URL` e a publishable key são configuração pública de Auth; não concedem privilégio administrativo por si só. `ADMIN_USER_ID` e as credenciais privilegiadas do backend são server-only.
+Segredos reais ficam somente no ambiente privado. Não reutilize chaves de Sandbox em Production e nunca envie valores reais em chat/screenshot/commit/log.
 
-Gere valores independentes para criptografia, assinatura de cotação, Cron e rate limit. Exemplo local para um segredo de 32 bytes:
+## Admin e autorização OAuth
 
-```bash
-openssl rand -hex 32
-```
-
-`MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY` exige exatamente 64 caracteres hexadecimais (256 bits). Não reutilize esse valor como `SHIPPING_QUOTE_SECRET`, `CRON_SECRET` ou `RATE_LIMIT_SECRET`.
-
-**Nunca envie valores reais em chat, screenshot, commit, issue, documentação ou log.** Configure-os diretamente no ambiente privado da KingHost/secret store apropriado.
-
-## 4. Login administrativo e autorização OAuth
-
-O fluxo é protegido pelo admin existente:
+Fluxo:
 
 ```text
-/admin/login -> email + senha -> Authenticator -> /admin ->
-Integração Melhor Envio -> Conectar Melhor Envio
+/admin/login -> senha -> TOTP -> /admin -> Integrações -> Melhor Envio
 ```
 
-Existe uma única conta administrativa autorizada por UUID. Senha sem TOTP/AAL2 não libera páginas nem ações administrativas protegidas. A sessão administrativa server-side expira após 30 minutos de inatividade e não possui bypass/trusted-device.
+A página de integração está dentro do novo shell administrativo compartilhado (sidebar desktop / drawer mobile), mas a segurança permanece a mesma: owner UUID, AAL2/TOTP e sessão administrativa ativa. O redesign não cria bypass.
 
-Se o proprietário perder o Authenticator, a **recuperação administrativa é manual pelo Supabase**; não existe bypass, SMS ou fluxo público que transforme apenas a senha em acesso administrativo.
+Conectar/reconectar continua validando origem, rate limit, proprietário, AAL2 e sessão; `state` é aleatório, hasheado, temporário e one-shot. Tokens são criptografados antes de persistir e a UI recebe apenas status sanitizado.
 
-Ao conectar/reconectar o Melhor Envio:
+## Renovação automática
 
-1. entre no admin por HTTPS;
-2. conclua senha + TOTP;
-3. abra `/admin/integrations/melhor-envio`;
-4. inicie **Conectar Melhor Envio**;
-5. o servidor valida origem, rate limit, proprietário, AAL2 e sessão administrativa ativa;
-6. gera `state` aleatório e persiste somente o SHA-256 com validade curta;
-7. redireciona ao Melhor Envio solicitando apenas `shipping-calculate`;
-8. o callback consome o `state` uma única vez;
-9. troca o código por tokens;
-10. access/refresh token são criptografados antes de persistir;
-11. a UI recebe somente status sanitizado de sucesso/falha.
+Tokens usam AES-256-GCM, versionamento e lease atômica. O token manager refresca preventivamente e, após falha de autenticação reconhecida, faz no máximo um retry com versão nova. Refresh definitivamente rejeitado marca `reauthorization_required`.
 
-O callback é público porque o provedor precisa chamá-lo; sua segurança depende do `state` aleatório, hasheado, temporário e one-shot.
-
-## 5. Armazenamento e renovação automática
-
-Os tokens persistidos no Supabase usam envelopes AES-256-GCM. O AAD vincula cada valor ao ambiente (`sandbox`/`production`) e ao tipo (`access`/`refresh`).
-
-O token manager usa versionamento e lease atômica para impedir corridas de refresh. Conceitualmente:
-
-```text
-claim lease -> decrypt refresh_token -> refresh no provedor ->
-criptografar novos tokens -> commit compare-and-set
-```
-
-A renovação preventiva começa quando o access token se aproxima da expiração. Se uma cotação receber uma falha de autenticação reconhecida do provedor, o site força obtenção de uma versão mais nova e repete a cotação no máximo uma vez. Um token que acabou de ser rejeitado não pode ser reutilizado nesse retry.
-
-Se o refresh for rejeitado como credencial inválida/revogada, a autorização entra em `reauthorization_required`; o frete falha de forma genérica até o proprietário autorizar novamente pelo admin.
-
-## 6. Refresh de manutenção na KingHost
-
-A rota interna é:
+## Refresh de manutenção KingHost
 
 ```text
 GET /api/internal/melhor-envio/refresh
 ```
 
-Ela aceita o mesmo `CRON_SECRET` de duas formas:
+Aceita `CRON_SECRET` via `X-CRON-AUTH` (Cron KingHost) ou `Authorization: Bearer` para diagnóstico controlado. Cadência operacional atual: diária às **03:17**. A resposta é sanitizada e nunca contém tokens.
 
-```text
-X-CRON-AUTH: <CRON_SECRET>
-```
+## Produto e catálogo usados na cotação
 
-para o Cronjob da KingHost, ou:
+`public.products` é a única autoridade runtime. Para cada produto publicado o backend resolve pelo ID:
 
-```text
-Authorization: Bearer <CRON_SECRET>
-```
-
-para diagnóstico manual controlado.
-
-O Cronjob da KingHost deve seguir a configuração canônica de `docs/deployment/kinghost.md`. A cadência operacional atual é diária às **03:17**.
-
-A rota usa o mesmo token manager do checkout e retorna somente status sanitizado (`{"ok":true}` em sucesso). Falha de autenticação retorna `401`; falha de refresh retorna `503`. Nenhum token aparece na resposta.
-
-## 7. Dados de produto usados na cotação
-
-Para cada item confiável do catálogo, o backend envia:
-
-- peso em quilogramas;
-- largura, altura e comprimento em centímetros;
-- valor segurado em reais;
+- preço/valor segurado;
+- peso kg;
+- comprimento/largura/altura cm;
 - quantidade.
 
-Os produtos atuais usam provisoriamente o seguinte perfil físico de pacote:
+O navegador envia IDs/quantidades, mas **não** é autoridade desses valores. Produtos draft/archived não podem ser usados para um checkout novo.
 
-```text
-Deck Commander Proxy 100 Cartas
-Peso:        0,50 kg
-Comprimento: 25 cm
-Largura:     19 cm
-Altura:      4 cm
+Os dois produtos originais usam provisoriamente 0,50 kg e 25 x 19 x 4 cm. Produtos criados/editados pelo admin armazenam suas próprias dimensões/peso no Supabase. Atualize esses valores quando houver medidas físicas confiáveis e repita smoke de cotação.
 
-Deck Proxy 60 Cartas
-Peso:        0,50 kg
-Comprimento: 25 cm
-Largura:     19 cm
-Altura:      4 cm
-```
+## Cotação / proteção contra alteração
 
-Esses valores são estimativas do produto embalado. Quando houver medidas reais confiáveis, atualize o catálogo e repita os testes de cotação.
-
-O backend reconstrói preço, peso e dimensões pelo ID do produto. Valores enviados pelo navegador não são autoridade.
-
-## 8. Preço, serviço e proteção contra alteração
-
-O endpoint público é:
+Endpoint público:
 
 ```text
 POST /api/shipping/quote
 ```
 
-Fluxo de segurança:
+Fluxo:
 
-1. navegador envia somente IDs/quantidades e CEP;
-2. servidor reconstrói carrinho e metadados físicos;
-3. token manager obtém um access token utilizável;
-4. servidor consulta Melhor Envio;
+1. browser envia IDs/quantidades + CEP;
+2. servidor reconstrói catálogo/metadados físicos atuais;
+3. token manager obtém credencial utilizável;
+4. Melhor Envio é consultado;
 5. opções válidas recebem token HMAC temporário;
-6. no checkout, o servidor recota o mesmo carrinho/CEP;
+6. checkout recota o mesmo carrinho/CEP;
 7. mudança de serviço/preço retorna `shipping_changed` e exige nova confirmação;
-8. somente depois o pedido/preferência do Mercado Pago é criado.
+8. só depois pedido/preferência é criada.
 
-O preço exibido no navegador nunca é fonte de verdade.
+Production aceita somente Correios IDs **1 (PAC)** e **2 (SEDEX)**; outras modalidades são descartadas de forma controlada.
 
-Em Production, o código atual aceita somente os serviços Correios IDs **1 (PAC)** e **2 (SEDEX)**. Outros serviços são descartados; se PAC/SEDEX não estiverem disponíveis, a cotação falha de forma controlada em vez de usar uma modalidade inesperada.
+## Login do cliente
 
-## 9. Relação com o login do cliente
+Frete pode ser cotado sem login. Se o cliente precisar entrar antes do pagamento, o rascunho é preservado somente na mesma aba e o frete é **cotado novamente** após login; quote token antigo nunca é reutilizado.
 
-O cliente pode cotar frete sem login. A conta verificada só é obrigatória ao iniciar pagamento.
+## Depois do pagamento
 
-Se o usuário precisa entrar:
+Etiqueta não é automática nesta fase. Após pagamento aprovado:
 
-- o checkout salva temporariamente apenas o rascunho necessário na mesma aba;
-- a tela de login não reabre o carrinho por cima;
-- ao voltar para `/produtos`, o endereço é restaurado;
-- o frete é **cotado novamente**;
-- somente o ID do serviço escolhido é lembrado para tentar selecionar a nova cotação equivalente;
-- o quote token antigo nunca é reutilizado.
+1. confira endereço/serviço/valor no pedido;
+2. entre manualmente no Melhor Envio;
+3. compre o envio/etiqueta;
+4. gere/imprima;
+5. poste o pacote.
 
-## 10. Depois que o cliente pagar
+O runtime atual não compra etiqueta, não gera impressão e não rastreia automaticamente.
 
-A geração de etiqueta **não é automática** nesta fase. Depois que o pedido estiver aprovado:
-
-1. confira endereço, serviço escolhido e valor do frete no pedido;
-2. entre no Melhor Envio;
-3. compre manualmente o envio/etiqueta;
-4. gere e imprima a etiqueta;
-5. poste o pacote na modalidade correspondente.
-
-O site atual não chama APIs de compra, geração, impressão ou rastreio e não precisa de webhook do Melhor Envio para esse fluxo.
-
-## 11. Checklist operacional de Production
+## Checklist Production
 
 - `MELHOR_ENVIO_ENVIRONMENT=production`;
-- aplicativo Production separado;
-- callback exatamente `https://www.proxybembem.com.br/api/melhor-envio/oauth/callback`;
-- somente scope `shipping-calculate`;
+- callback produtivo exato;
+- scope somente `shipping-calculate`;
 - admin exige senha + TOTP/AAL2;
-- credenciais/tokens persistidos somente de forma criptografada;
-- cotação real funciona para CEP válido;
-- apenas PAC/SEDEX IDs 1/2 são aceitos em Production;
-- mudança de CEP/carrinho invalida seleção anterior;
+- tokens criptografados;
+- PAC/SEDEX IDs 1/2 apenas;
+- mudança de carrinho/CEP invalida seleção antiga;
 - mudança de preço exige reconfirmação;
-- `state` OAuth consumido não pode ser reutilizado;
-- Cron da KingHost chama a rota de refresh com segredo e recebe resposta sanitizada;
-- Mercado Pago recebe produtos + frete do servidor no mesmo total;
-- nenhum segredo aparece em logs ou respostas.
+- OAuth state não pode ser reutilizado;
+- Cron usa segredo e resposta sanitizada;
+- produto/preço/peso/dimensões vêm do catálogo Supabase atual;
+- Mercado Pago recebe produtos + frete reconstruídos no servidor;
+- nenhum segredo aparece em logs/respostas.
 
-## 12. Deploy e manutenção
+O smoke final da Stage 3/admin foi adiado pelo proprietário em 2026-09-08. Antes do sign-off final da Phase 4, lembrar de testar também a página `Integrações > Melhor Envio` dentro da sidebar desktop e drawer mobile, além de uma cotação válida; não é necessário gastar saldo/comprar etiqueta.
 
-Deploy da aplicação/rotas segue exclusivamente:
+## Deploy / manutenção
 
-```text
-docs/deployment/kinghost.md
-```
-
-Não use instruções antigas de Vercel Cron/Preview como procedimento operacional atual.
-
-O Supabase continua hospedado e **não deve ser migrado para a KingHost**. Não reaplique migrations já registradas. Consulte `docs/superpowers/CURRENT_STATUS.md` antes de qualquer mudança de banco, OAuth, runtime ou rollout.
+Use somente `docs/deployment/kinghost.md`. Supabase não deve ser migrado para KingHost e migrations registradas não devem ser reaplicadas. Consulte `docs/superpowers/CURRENT_STATUS.md` antes de mudanças de OAuth, banco, runtime ou rollout.
