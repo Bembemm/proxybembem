@@ -62,10 +62,10 @@ Implemented and automatically verified:
 - existing owner UUID + password + TOTP/AAL2 + active app-session boundary preserved;
 - protected admin responses remain non-cacheable.
 
-Final code candidate before documentation reconciliation:
+Final verified Phase 4 rollout candidate after documentation reconciliation:
 
-- SHA `2a35d04583eccf0b139815efe26fd4cc04459604`
-- GitHub Actions run `34248478882`: PASS
+- SHA `22d9baba83b181f99e365bf93036ab6bb882654b`
+- GitHub Actions run `34267705861`: PASS
 - Node **22.1.0**: PASS
 - frozen pnpm install: PASS
 - typecheck: PASS
@@ -75,6 +75,8 @@ Final code candidate before documentation reconciliation:
 - tests: **483/483 PASS**
 
 The production build explicitly contains `/admin`, `/admin/pedidos`, `/admin/pedidos/[id]`, `/admin/producao`, `/admin/integrations/melhor-envio`, `/admin/produtos`, `/admin/produtos/[id]` and `/admin/produtos/novo`.
+
+This status-only follow-up commit records that verified checkpoint and does not change runtime behavior. Its own CI must also stay green before treating the branch as ready for integration choice.
 
 ## Supabase product hardening — APPLIED / VERIFIED
 
@@ -127,7 +129,6 @@ Therefore:
 
 ## NEXT EXACT ACTION
 
-1. Reconcile the live operational documentation and run fresh CI on the resulting exact SHA.
-2. Stop for the owner integration choice: merge to `main`, create a PR, or keep the feature branch as-is.
-3. Before treating Stage 3 as fully production-accepted, remind the owner to run the deferred manual production smoke checklist.
-4. Do not start Phase 5 automatically before the integration choice.
+1. Stop for the owner integration choice: merge to `main`, create a PR, or keep the feature branch as-is.
+2. Before treating Stage 3 / Phase 4 as fully production-accepted, remind the owner to deploy the final branch SHA and run the deferred manual production smoke checklist.
+3. Do not start Phase 5 automatically before the integration choice.
