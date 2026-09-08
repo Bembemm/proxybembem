@@ -36,7 +36,7 @@ Não amplie escopo para compra/geração/impressão de etiquetas antes da Phase 
 https://www.proxybembem.com.br/api/melhor-envio/oauth/callback
 ```
 
-Uma conta Melhor Envio da ProxyBembem por ambiente. Sandbox/Production usam credenciais separadas.
+Uma conta Melhor Envio da ProxyBembem por ambiente. O aplicativo Production deve ser separado do aplicativo Sandbox e usar credenciais próprias.
 
 ## Variáveis
 
@@ -64,6 +64,8 @@ Fluxo:
 ```text
 /admin/login -> senha -> TOTP -> /admin -> Integrações -> Melhor Envio
 ```
+
+A página administrativa protegida da integração é `/admin/integrations/melhor-envio`.
 
 A página de integração está dentro do novo shell administrativo compartilhado (sidebar desktop / drawer mobile), mas a segurança permanece a mesma: owner UUID, AAL2/TOTP e sessão administrativa ativa. O redesign não cria bypass.
 
