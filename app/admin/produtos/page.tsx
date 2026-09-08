@@ -84,7 +84,7 @@ export default async function AdminProductsPage({
       title="Produtos"
       description="Gerencie o catálogo da loja, acompanhe o status de publicação e abra cada produto para edição."
     >
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-slate-950">Catálogo</h2>
@@ -94,7 +94,7 @@ export default async function AdminProductsPage({
           </div>
           <a
             href="/admin/produtos/novo"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition sm:w-auto bg-violet-600 hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
           >
             <Plus className="size-4" aria-hidden="true" />
             Novo produto
@@ -102,8 +102,8 @@ export default async function AdminProductsPage({
         </div>
 
         <form method="get" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_220px_auto] sm:items-end">
-            <label>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_220px_auto] xl:items-end">
+            <label className="sm:col-span-2 xl:col-span-1">
               <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Buscar
               </span>

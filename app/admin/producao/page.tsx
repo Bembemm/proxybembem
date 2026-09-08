@@ -141,7 +141,7 @@ export default async function AdminProductionPage() {
       title="Produção"
       description="Filas operacionais em ordem de chegada para acompanhar o preparo até o envio."
     >
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="min-w-0 grid gap-4 xl:grid-cols-3">
         <ProductionQueue title="Aguardando produção" result={awaitingProduction} />
         <ProductionQueue title="Em produção" result={inProduction} />
         <ProductionQueue title="Pronto para envio" result={readyToShip} />

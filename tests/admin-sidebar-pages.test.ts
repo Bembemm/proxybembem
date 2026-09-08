@@ -39,18 +39,16 @@ test("overview and integrations fit inside the sidebar content region on narrow 
   assert.match(integration, /className=["'][^"']*w-full[^"']*sm:w-auto/)
 })
 
-test("orders keep all content while delaying wide grids until the sidebar has enough room", async () => {
+test("orders preserve their responsive operational content under the shared sidebar", async () => {
   const list = await source("../app/admin/pedidos/page.tsx")
   const detail = await source("../app/admin/pedidos/[id]/page.tsx")
 
-  assert.match(list, /className=["']min-w-0 space-y-6["']/)
-  assert.match(list, /sm:grid-cols-2 xl:grid-cols-4/)
-  assert.doesNotMatch(list, /sm:grid-cols-2 lg:grid-cols-4/)
-
-  assert.match(detail, /className=["']min-w-0 space-y-5["']/)
-  assert.match(detail, /sm:grid-cols-2 xl:grid-cols-4/)
-  assert.match(detail, /grid gap-5 xl:grid-cols-2/)
-  assert.doesNotMatch(detail, /grid gap-5 lg:grid-cols-2/)
+  assert.match(list, /grid gap-3 sm:grid-cols-2 lg:grid-cols-4/)
+  assert.match(list, /md:grid-cols-\[minmax\(0,1\.3fr\)_minmax\(0,1fr\)_auto\]/)
+  assert.match(list, /Paginação dos pedidos/)
+  assert.match(detail, /sm:grid-cols-2 lg:grid-cols-4/)
+  assert.match(detail, /grid gap-5 lg:grid-cols-2/)
+  assert.match(detail, /Ações operacionais/)
 })
 
 test("production and product management stay width-safe inside the persistent sidebar", async () => {

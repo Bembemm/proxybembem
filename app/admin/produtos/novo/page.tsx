@@ -14,7 +14,7 @@ export default async function NewAdminProductPage() {
       title="Novo produto"
       description="Cadastre o produto como rascunho, revise as informações e publique somente quando estiver pronto para a loja."
     >
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
         <a
           href="/admin/produtos"
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-violet-700"

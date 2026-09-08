@@ -29,7 +29,7 @@ export default async function MelhorEnvioIntegrationPage({
       title="Integração Melhor Envio"
       description="Autorize a conta do Melhor Envio usada no cálculo de frete da loja."
     >
-      <div className="max-w-xl space-y-5">
+      <div className="min-w-0 w-full max-w-xl space-y-5">
         {message ? (
           <p
             role="status"
@@ -42,7 +42,7 @@ export default async function MelhorEnvioIntegrationPage({
         <form method="post" action="/api/internal/melhor-envio/oauth/start">
           <button
             type="submit"
-            className="rounded-lg border border-violet-600 bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700"
+            className="w-full rounded-lg border border-violet-600 bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 sm:w-auto"
           >
             Conectar Melhor Envio
           </button>

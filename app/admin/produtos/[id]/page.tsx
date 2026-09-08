@@ -35,7 +35,7 @@ export default async function EditAdminProductPage({
       title={`Editar: ${product.title}`}
       description="Atualize o catálogo com salvamento explícito e controle de publicação."
     >
-      <div className="space-y-5">
+      <div className="min-w-0 space-y-5">
         <a
           href="/admin/produtos"
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-violet-700"
