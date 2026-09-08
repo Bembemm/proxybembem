@@ -9,7 +9,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "../../ui/accordion.tsx"
+} from "../../ui/accordion"
 import { ProductImageField } from "./product-image-field.tsx"
 import { ProductLifecycleActions } from "./product-lifecycle-actions.tsx"
 import { RepeatableFields } from "./repeatable-fields.tsx"
