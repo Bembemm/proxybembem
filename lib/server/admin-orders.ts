@@ -52,6 +52,7 @@ export interface AdminOrderDetail {
   shipping_carrier_name: string | null
   shipping_delivery_days: number | null
   shipping_cents: number | null
+  shipping_snapshot: unknown | null
   total_cents: number | null
   payment_provider: string
   preference_id: string | null
@@ -103,6 +104,7 @@ const ADMIN_ORDER_DETAIL_SELECT = [
   "shipping_carrier_name",
   "shipping_delivery_days",
   "shipping_cents",
+  "shipping_snapshot",
   "total_cents",
   "payment_provider",
   "preference_id",
@@ -244,6 +246,7 @@ function parseDetailRow(value: unknown): AdminOrderDetail {
     !isNullableString(value.shipping_carrier_name) ||
     !isNullableNonnegativeSafeInteger(value.shipping_delivery_days) ||
     !isNullableNonnegativeSafeInteger(value.shipping_cents) ||
+    !("shipping_snapshot" in value) ||
     !isNullableNonnegativeSafeInteger(value.total_cents) ||
     !isNonEmptyBoundedString(value.payment_provider, 100) ||
     !isNullableString(value.preference_id) ||
