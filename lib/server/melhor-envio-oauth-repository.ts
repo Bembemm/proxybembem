@@ -1,4 +1,8 @@
 import { getSupabaseEnv, type MelhorEnvioEnvironment } from "./env.ts"
+import {
+  normalizeMelhorEnvioScopes,
+  type MelhorEnvioOAuthScope,
+} from "./melhor-envio-oauth-scopes.ts"
 
 export type MelhorEnvioCredentialStatus = "active" | "reauthorization_required"
 
@@ -7,6 +11,7 @@ export interface MelhorEnvioCredentialRecord {
   accessTokenEnvelope: string
   refreshTokenEnvelope: string
   accessTokenExpiresAt: string
+  authorizedScopes: MelhorEnvioOAuthScope[]
   tokenVersion: number
   status: MelhorEnvioCredentialStatus
   refreshLeaseOwner: string | null
@@ -19,6 +24,7 @@ const CREDENTIAL_SELECT = [
   "access_token_envelope",
   "refresh_token_envelope",
   "access_token_expires_at",
+  "authorized_scopes",
   "token_version",
   "status",
   "refresh_lease_owner",
@@ -110,6 +116,14 @@ function parseNullableString(value: unknown): string | null {
   return value
 }
 
+function parseAuthorizedScopes(value: unknown): MelhorEnvioOAuthScope[] {
+  try {
+    return normalizeMelhorEnvioScopes(value)
+  } catch {
+    throw repositoryResponseError()
+  }
+}
+
 function parseCredentialRow(
   value: unknown,
   expectedEnvironment: MelhorEnvioEnvironment,
@@ -123,6 +137,7 @@ function parseCredentialRow(
   const accessTokenEnvelope = row.access_token_envelope
   const refreshTokenEnvelope = row.refresh_token_envelope
   const accessTokenExpiresAt = row.access_token_expires_at
+  const authorizedScopes = parseAuthorizedScopes(row.authorized_scopes)
   const tokenVersion = row.token_version
   const status = row.status
   const refreshLeaseOwner = parseNullableString(row.refresh_lease_owner)
@@ -171,6 +186,7 @@ function parseCredentialRow(
     accessTokenEnvelope,
     refreshTokenEnvelope,
     accessTokenExpiresAt,
+    authorizedScopes,
     tokenVersion,
     status,
     refreshLeaseOwner,
@@ -233,13 +249,16 @@ export async function upsertAuthorizedCredential(input: {
   accessTokenEnvelope: string
   refreshTokenEnvelope: string
   accessTokenExpiresAt: string
+  authorizedScopes: readonly MelhorEnvioOAuthScope[]
 }): Promise<void> {
+  const authorizedScopes = normalizeMelhorEnvioScopes([...input.authorizedScopes])
   parsePositiveVersion(
-    await postRpc("upsert_melhor_envio_authorized_credential", {
+    await postRpc("upsert_melhor_envio_authorized_credential_v2", {
       p_environment: input.environment,
       p_access_token_envelope: input.accessTokenEnvelope,
       p_refresh_token_envelope: input.refreshTokenEnvelope,
       p_access_token_expires_at: input.accessTokenExpiresAt,
+      p_authorized_scopes: authorizedScopes,
     }),
   )
 }
