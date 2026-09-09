@@ -37,6 +37,7 @@ type PurchaseProps = {
 type CancelProps = {
   kind: "cancel"
   action: string
+  buttonLabel: string
   currentState: string
 }
 
@@ -118,7 +119,7 @@ export function ShipmentConfirmAction(props: PurchaseProps | CancelProps) {
           type="button"
           className="inline-flex w-full items-center justify-center rounded-lg border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:border-rose-400 hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 sm:w-auto"
         >
-          Cancelar etiqueta
+          {props.buttonLabel}
         </button>
       </DialogTrigger>
 
