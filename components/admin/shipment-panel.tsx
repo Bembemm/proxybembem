@@ -230,6 +230,7 @@ export function ShipmentPanel({
                 <ShipmentConfirmAction
                   kind="cancel"
                   action={`/api/internal/admin/shipments/${shipment.id}/cancel`}
+                  buttonLabel="Cancelar etiqueta"
                   currentState={STATE_LABELS[shipment.state]}
                 />
               ) : null}
