@@ -18,9 +18,8 @@ type HandlerModule = {
 }
 
 async function loadModule(): Promise<HandlerModule> {
-  const module = (await import(
-    "../lib/server/melhor-envio-tracking-handler.ts"
-  )) as Partial<HandlerModule>
+  const path = "../lib/server/melhor-envio-tracking-handler.ts"
+  const module = (await import(path)) as Partial<HandlerModule>
   assert.equal(typeof module.createMelhorEnvioTrackingHandler, "function")
   return module as HandlerModule
 }
@@ -34,12 +33,13 @@ function request(headers?: HeadersInit) {
 
 test("tracking maintenance fails closed on missing or wrong CRON_SECRET before shipment reads", async () => {
   const module = await loadModule()
-  for (const variant of [
+  const variants: Array<{ headers: HeadersInit; missingSecret: boolean }> = [
     { headers: { authorization: `Bearer ${CRON_SECRET}` }, missingSecret: true },
     { headers: {}, missingSecret: false },
     { headers: { authorization: "Bearer wrong" }, missingSecret: false },
     { headers: { "x-cron-auth": "wrong" }, missingSecret: false },
-  ]) {
+  ]
+  for (const variant of variants) {
     let refreshes = 0
     const handler = module.createMelhorEnvioTrackingHandler({
       getCronSecret: () => {
@@ -62,10 +62,11 @@ test("tracking maintenance fails closed on missing or wrong CRON_SECRET before s
 
 test("manual Bearer and KingHost X-CRON-AUTH invoke one bounded hourly tracking batch", async () => {
   const module = await loadModule()
-  for (const headers of [
+  const headerVariants: HeadersInit[] = [
     { authorization: `Bearer ${CRON_SECRET}` },
     { "x-cron-auth": CRON_SECRET },
-  ]) {
+  ]
+  for (const headers of headerVariants) {
     const inputs: Array<{ limit: number }> = []
     const handler = module.createMelhorEnvioTrackingHandler({
       getCronSecret: () => CRON_SECRET,
