@@ -38,18 +38,18 @@ function assertBackendOnlyTable(text: string, table: string) {
   )
 }
 
-test("creates one fixed PF sender profile per Melhor Envio environment with bounded address data", async () => {
+test("creates independent PF and PJ sender profiles per Melhor Envio environment with bounded address data", async () => {
   const text = await sql()
 
   assert.match(text, /create\s+table\s+if\s+not\s+exists\s+public\.shipping_sender_profiles/)
   assert.match(text, /id\s+uuid\s+primary\s+key\s+default\s+gen_random_uuid\(\)/)
-  assert.match(text, /environment\s+text\s+not\s+null\s+unique/)
+  assert.match(text, /environment\s+text\s+not\s+null/)
   assert.match(text, /environment\s+in\s*\(\s*'sandbox'\s*,\s*'production'\s*\)/)
-  assert.match(text, /person_type\s+text\s+not\s+null[^,]*check\s*\(\s*person_type\s*=\s*'pf'\s*\)/)
+  assert.match(text, /person_type\s+text\s+not\s+null[^;]*'pf'[^;]*'pj'/)
+  assert.match(text, /unique\s*\(\s*environment\s*,\s*person_type\s*\)/)
 
   for (const field of [
     "full_name",
-    "cpf",
     "email",
     "phone",
     "postal_code",
@@ -61,10 +61,15 @@ test("creates one fixed PF sender profile per Melhor Envio environment with boun
   ]) {
     assert.match(text, new RegExp(`${field}\\s+text\\s+not\\s+null`), `${field} must be required`)
   }
-  assert.match(text, /complement\s+text/)
+  for (const field of ["cpf", "cnpj", "state_register", "economic_activity_code", "complement"]) {
+    assert.match(text, new RegExp(`${field}\\s+text`), `${field} must exist`)
+  }
   assert.match(text, /cpf[^;]*\^\\d\{11\}\$/)
+  assert.match(text, /cnpj[^;]*\^\\d\{14\}\$/)
   assert.match(text, /postal_code[^;]*\^\\d\{8\}\$/)
   assert.match(text, /state[^;]*\^\[a-z\]\{2\}\$/)
+  assert.match(text, /person_type\s*=\s*'pf'[^;]*cpf\s+is\s+not\s+null[^;]*cnpj\s+is\s+null/)
+  assert.match(text, /person_type\s*=\s*'pj'[^;]*cnpj\s+is\s+not\s+null[^;]*cpf\s+is\s+null/)
   assert.match(text, /version\s+bigint\s+not\s+null\s+default\s+1[^,]*check\s*\(\s*version\s*>\s*0\s*\)/)
   assert.match(text, /created_at\s+timestamptz\s+not\s+null\s+default\s+now\(\)/)
   assert.match(text, /updated_at\s+timestamptz\s+not\s+null\s+default\s+now\(\)/)
@@ -72,14 +77,16 @@ test("creates one fixed PF sender profile per Melhor Envio environment with boun
   assertBackendOnlyTable(text, "shipping_sender_profiles")
 })
 
-test("creates strict Melhor Envio shipment rows with immutable trusted snapshots and bounded provider identifiers", async () => {
+test("creates strict Melhor Envio shipment rows with both fiscal document modes and immutable snapshots", async () => {
   const text = await sql()
   assert.match(text, /create\s+table\s+if\s+not\s+exists\s+public\.shipments/)
   assert.match(text, /order_id\s+uuid\s+not\s+null\s+references\s+public\.orders\s*\(\s*id\s*\)\s+on\s+delete\s+restrict/)
   assert.match(text, /sender_profile_id\s+uuid\s+not\s+null\s+references\s+public\.shipping_sender_profiles\s*\(\s*id\s*\)\s+on\s+delete\s+restrict/)
   assert.match(text, /provider\s+text\s+not\s+null[^,]*check\s*\(\s*provider\s*=\s*'melhor_envio'\s*\)/)
   assert.match(text, /environment[^;]*'sandbox'[^;]*'production'/)
-  assert.match(text, /document_mode\s+text\s+not\s+null[^,]*check\s*\(\s*document_mode\s*=\s*'declaration_content'\s*\)/)
+  assert.match(text, /document_mode\s+text\s+not\s+null[^;]*'declaration_content'[^;]*'invoice'/)
+  assert.match(text, /invoice_key\s+text/)
+  assert.match(text, /invoice_key[^;]*\^\\d\{44\}\$/)
 
   for (const state of [
     "draft",
@@ -99,11 +106,7 @@ test("creates strict Melhor Envio shipment rows with immutable trusted snapshots
     assert.ok(text.includes(`'${state}'`), `shipment state ${state} must be constrained`)
   }
 
-  for (const snapshot of [
-    "recipient_snapshot",
-    "sender_snapshot",
-    "package_snapshot",
-  ]) {
+  for (const snapshot of ["recipient_snapshot", "sender_snapshot", "package_snapshot"]) {
     assert.match(text, new RegExp(`${snapshot}\\s+jsonb\\s+not\\s+null`))
     assert.match(text, new RegExp(`jsonb_typeof\\s*\\(\\s*${snapshot}\\s*\\)\\s*=\\s*'object'`))
   }
