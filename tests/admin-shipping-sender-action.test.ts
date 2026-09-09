@@ -13,8 +13,12 @@ type AdminAccessResult =
 type SenderProfile = {
   id: string
   environment: "sandbox" | "production"
+  personType: "pf" | "pj"
   fullName: string
-  cpf: string
+  cpf: string | null
+  cnpj: string | null
+  stateRegister: string | null
+  economicActivityCode: string | null
   email: string
   phone: string
   postalCode: string
@@ -33,7 +37,10 @@ type ActionModule = {
     authorizeAdmin(): Promise<AdminAccessResult>
     consumeRateLimit(request: NextRequest): Promise<boolean>
     getConfig(): { environment: "sandbox" | "production"; originCep: string }
-    getSenderProfile(environment: "sandbox" | "production"): Promise<SenderProfile | null>
+    getSenderProfile(
+      environment: "sandbox" | "production",
+      personType: "pf" | "pj",
+    ): Promise<SenderProfile | null>
     upsertSenderProfile(input: Record<string, unknown>): Promise<SenderProfile>
   }): (request: NextRequest) => Promise<Response>
 }
@@ -84,8 +91,12 @@ function profile(overrides: Partial<SenderProfile> = {}): SenderProfile {
   return {
     id: PROFILE_ID,
     environment: "production",
+    personType: "pf",
     fullName: "Breno Bembem",
     cpf: VALID_CPF,
+    cnpj: null,
+    stateRegister: null,
+    economicActivityCode: null,
     email: "contato@proxybembem.com.br",
     phone: "44999999999",
     postalCode: "86730000",
@@ -101,10 +112,7 @@ function profile(overrides: Partial<SenderProfile> = {}): SenderProfile {
   }
 }
 
-function request(input: {
-  origin?: string
-  fields?: Record<string, string>
-} = {}) {
+function request(input: { origin?: string; fields?: Record<string, string> } = {}) {
   const body = new URLSearchParams({
     fullName: "  Breno Bembem  ",
     cpf: "529.982.247-25",
@@ -228,7 +236,7 @@ test("requires active AAL2 admin before reading or mutating sender storage", asy
   })
 })
 
-test("normalizes sender form fields and ignores browser environment overrides", async () => {
+test("normalizes PF sender form fields and ignores browser environment overrides", async () => {
   await withPreviewEnv(async () => {
     const action = await loadAction()
     let written: Record<string, unknown> | null = null
@@ -246,8 +254,12 @@ test("normalizes sender form fields and ignores browser environment overrides", 
       environment: "production",
       adminUserId: ADMIN_ID,
       expectedVersion: 3,
+      personType: "pf",
       fullName: "Breno Bembem",
       cpf: VALID_CPF,
+      cnpj: null,
+      stateRegister: null,
+      economicActivityCode: null,
       email: "contato@proxybembem.com.br",
       phone: "44999999999",
       postalCode: "86730000",
@@ -262,7 +274,7 @@ test("normalizes sender form fields and ignores browser environment overrides", 
   })
 })
 
-test("blank CPF on an optimistic edit reuses the server-side stored CPF without rendering it back", async () => {
+test("blank CPF on an optimistic edit reuses only the PF server-side stored CPF", async () => {
   await withPreviewEnv(async () => {
     const action = await loadAction()
     let written: Record<string, unknown> | null = null
@@ -310,7 +322,7 @@ test("rejects invalid CPF checksum, origin CEP mismatch and malformed bounded fi
   })
 })
 
-test("maps optimistic sender conflict to safe feedback and keeps all CPF values out of responses", async () => {
+test("maps optimistic sender conflict to safe feedback and keeps tax document values out of responses", async () => {
   await withPreviewEnv(async () => {
     const action = await loadAction()
     const sender = await loadSender()
@@ -339,7 +351,7 @@ test("production route wires touched admin auth and the admin-shipping-config ra
   assert.match(route, /getMelhorEnvioShipmentEnv/)
 })
 
-test("admin integration UI shows environment, connection and masked sender state without embedding full CPF", async () => {
+test("admin integration UI shows environment connection and both masked sender modes without embedding full documents", async () => {
   const [page, form] = await Promise.all([
     readFile(new URL("../app/admin/integrations/melhor-envio/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/admin/melhor-envio-sender-form.tsx", import.meta.url), "utf8").catch(() => ""),
@@ -347,10 +359,12 @@ test("admin integration UI shows environment, connection and masked sender state
   const combined = `${page}\n${form}`
   assert.match(combined, /Ambiente|environment/i)
   assert.match(combined, /conectad|conex/i)
-  assert.match(combined, /Remetente/i)
-  assert.match(combined, /maskCpf|maskedCpf/i)
+  assert.match(combined, /Pessoa Física|CPF/i)
+  assert.match(combined, /MEI|Pessoa Jurídica|CNPJ/i)
+  assert.match(combined, /maskCpf/i)
+  assert.match(combined, /maskCnpj/i)
   assert.match(form, /expectedVersion/)
-  assert.match(form, /name=["']cpf["']/)
-  assert.doesNotMatch(form, /value=\{[^}]*\.cpf\}/)
-  assert.doesNotMatch(combined, /52998224725|529\.982\.247-25/)
+  assert.match(form, /personType/)
+  assert.doesNotMatch(form, /value=\{[^}]*\.(?:cpf|cnpj)\}/)
+  assert.doesNotMatch(combined, /52998224725|529\.982\.247-25|46867029000176/)
 })
