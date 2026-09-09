@@ -14,6 +14,10 @@ import {
   type MelhorEnvioCredentialRecord,
 } from "./melhor-envio-oauth-repository.ts"
 import {
+  hasMelhorEnvioScopes,
+  type MelhorEnvioOAuthScope,
+} from "./melhor-envio-oauth-scopes.ts"
+import {
   decryptMelhorEnvioToken,
   encryptMelhorEnvioToken,
   type MelhorEnvioTokenKind,
@@ -22,6 +26,7 @@ import {
 export interface UsableMelhorEnvioAccessToken {
   accessToken: string
   tokenVersion: number
+  authorizedScopes: MelhorEnvioOAuthScope[]
 }
 
 export type MelhorEnvioTokenManagerErrorCode =
@@ -111,6 +116,15 @@ function ensureActive(record: MelhorEnvioCredentialRecord) {
   if (record.status !== "active") managerError("reauthorization_required")
 }
 
+function ensureRequiredScopes(
+  record: MelhorEnvioCredentialRecord,
+  requiredScopes: readonly MelhorEnvioOAuthScope[],
+) {
+  if (!hasMelhorEnvioScopes(record.authorizedScopes, requiredScopes)) {
+    managerError("reauthorization_required")
+  }
+}
+
 function decryptAccess(
   deps: TokenManagerDependencies,
   config: ReturnType<TokenManagerDependencies["getOAuthConfig"]>,
@@ -125,6 +139,7 @@ function decryptAccess(
         encryptionKeyHex: config.tokenEncryptionKey,
       }),
       tokenVersion: record.tokenVersion,
+      authorizedScopes: [...record.authorizedScopes],
     }
   } catch {
     managerError("invalid_credential")
@@ -135,12 +150,14 @@ async function waitForNewerCommittedToken(input: {
   deps: TokenManagerDependencies
   config: ReturnType<TokenManagerDependencies["getOAuthConfig"]>
   minimumVersion: number
+  requiredScopes: readonly MelhorEnvioOAuthScope[]
 }): Promise<UsableMelhorEnvioAccessToken> {
   for (let attempt = 0; attempt < LOSER_WAIT_ATTEMPTS; attempt += 1) {
     await input.deps.sleep(LOSER_WAIT_INTERVAL_MS)
     const record = await input.deps.loadCredential(input.config.environment)
     if (!record) continue
     ensureActive(record)
+    ensureRequiredScopes(record, input.requiredScopes)
 
     if (record.tokenVersion <= input.minimumVersion) continue
     if (parseExpiry(record) <= input.deps.now() + MIN_IMMEDIATE_VALIDITY_MS) {
@@ -158,6 +175,7 @@ async function refreshAsWinner(input: {
   config: ReturnType<TokenManagerDependencies["getOAuthConfig"]>
   record: MelhorEnvioCredentialRecord
   leaseOwner: string
+  requiredScopes: readonly MelhorEnvioOAuthScope[]
 }): Promise<UsableMelhorEnvioAccessToken> {
   let refreshToken: string
   try {
@@ -199,6 +217,7 @@ async function refreshAsWinner(input: {
         deps: input.deps,
         config: input.config,
         minimumVersion: input.record.tokenVersion,
+        requiredScopes: input.requiredScopes,
       })
     }
 
@@ -257,12 +276,14 @@ async function refreshAsWinner(input: {
       deps: input.deps,
       config: input.config,
       minimumVersion: input.record.tokenVersion,
+      requiredScopes: input.requiredScopes,
     })
   }
 
   return {
     accessToken: refreshed.accessToken,
     tokenVersion: input.record.tokenVersion + 1,
+    authorizedScopes: [...input.record.authorizedScopes],
   }
 }
 
@@ -270,10 +291,14 @@ export function createMelhorEnvioTokenManager(deps: TokenManagerDependencies) {
   return async function getAccessToken(options?: {
     forceRefresh?: boolean
     rejectedTokenVersion?: number
+    requiredScopes?: readonly MelhorEnvioOAuthScope[]
   }): Promise<UsableMelhorEnvioAccessToken> {
     const config = deps.getOAuthConfig()
     const forceRefresh = options?.forceRefresh === true
     const rejectedVersion = options?.rejectedTokenVersion
+    const requiredScopes = options?.requiredScopes ?? []
+
+    if (!Array.isArray(requiredScopes)) managerError("invalid_credential")
 
     if (
       forceRefresh &&
@@ -287,6 +312,7 @@ export function createMelhorEnvioTokenManager(deps: TokenManagerDependencies) {
     const record = await deps.loadCredential(config.environment)
     if (!record) managerError("reauthorization_required")
     ensureActive(record)
+    ensureRequiredScopes(record, requiredScopes)
 
     const expiresAt = parseExpiry(record)
 
@@ -305,6 +331,7 @@ export function createMelhorEnvioTokenManager(deps: TokenManagerDependencies) {
           deps,
           config,
           minimumVersion: rejected,
+          requiredScopes,
         })
       }
     } else if (expiresAt > deps.now() + PROACTIVE_REFRESH_MS) {
@@ -335,10 +362,17 @@ export function createMelhorEnvioTokenManager(deps: TokenManagerDependencies) {
         minimumVersion: forceRefresh
           ? (rejectedVersion as number)
           : record.tokenVersion,
+        requiredScopes,
       })
     }
 
-    return refreshAsWinner({ deps, config, record, leaseOwner })
+    return refreshAsWinner({
+      deps,
+      config,
+      record,
+      leaseOwner,
+      requiredScopes,
+    })
   }
 }
 
