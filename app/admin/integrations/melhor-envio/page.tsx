@@ -85,7 +85,7 @@ export default async function MelhorEnvioIntegrationPage({
       title="Integração Melhor Envio"
       description="Gerencie a autorização e o remetente usados nas operações de frete."
     >
-      <div className="min-w-0 w-full max-w-3xl space-y-6">
+      <div className="min-w-0 w-full max-w-xl space-y-6">
         {message ? (
           <p
             role="status"
