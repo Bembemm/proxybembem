@@ -68,6 +68,7 @@ function detail(overrides: Record<string, unknown> = {}) {
       { kind: "payment_approved", created_at: CREATED_AT },
       { kind: "production_started", created_at: UPDATED_AT },
     ],
+    shipment: null,
     ...overrides,
   }
 }
@@ -215,6 +216,7 @@ test("detail strictly maps customer-safe immutable order data and timeline", asy
       { kind: "payment_approved", createdAt: CREATED_AT },
       { kind: "production_started", createdAt: UPDATED_AT },
     ],
+    shipment: null,
   })
 })
 

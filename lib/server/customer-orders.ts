@@ -17,6 +17,19 @@ const TIMELINE_KINDS = new Set([
   "completed",
   "canceled",
 ])
+const CUSTOMER_SHIPMENT_STATUSES = new Set([
+  "preparing",
+  "posted",
+  "in_transit",
+  "delivered",
+  "canceled",
+  "attention",
+])
+const CUSTOMER_SHIPMENT_TIMELINE_KINDS = new Set([
+  "posted",
+  "in_transit",
+  "delivered",
+])
 
 export interface CustomerOrderSummary {
   id: string
@@ -50,6 +63,28 @@ export interface CustomerOrderTimelineEntry {
   createdAt: string
 }
 
+export type CustomerShipmentStatus =
+  | "preparing"
+  | "posted"
+  | "in_transit"
+  | "delivered"
+  | "canceled"
+  | "attention"
+
+export interface CustomerShipmentTimelineEntry {
+  kind: "posted" | "in_transit" | "delivered"
+  createdAt: string
+}
+
+export interface CustomerShipmentProjection {
+  carrierName: string
+  serviceName: string
+  trackingCode: string | null
+  status: CustomerShipmentStatus
+  updatedAt: string
+  timeline: CustomerShipmentTimelineEntry[]
+}
+
 export interface CustomerOrderDetail {
   id: string
   orderNumber: string
@@ -76,6 +111,7 @@ export interface CustomerOrderDetail {
     state: string | null
   }
   timeline: CustomerOrderTimelineEntry[]
+  shipment: CustomerShipmentProjection | null
 }
 
 export interface CustomerOrderDependencies {
@@ -289,6 +325,55 @@ function parseTimeline(value: unknown): CustomerOrderTimelineEntry[] {
   })
 }
 
+function parseCustomerShipment(value: unknown): CustomerShipmentProjection | null {
+  const message = "Customer order detail returned an invalid response"
+  if (value === null) return null
+  const row = requireExactKeys(
+    value,
+    ["carrier_name", "service_name", "tracking_code", "status", "updated_at", "timeline"],
+    message,
+  )
+  if (
+    typeof row.status !== "string" ||
+    !CUSTOMER_SHIPMENT_STATUSES.has(row.status) ||
+    !Array.isArray(row.timeline) ||
+    row.timeline.length > 3
+  ) {
+    throw new Error(message)
+  }
+
+  const seen = new Set<string>()
+  let previousTimestamp = Number.NEGATIVE_INFINITY
+  const timeline = row.timeline.map((candidate) => {
+    const entry = requireExactKeys(candidate, ["kind", "created_at"], message)
+    if (
+      typeof entry.kind !== "string" ||
+      !CUSTOMER_SHIPMENT_TIMELINE_KINDS.has(entry.kind) ||
+      seen.has(entry.kind)
+    ) {
+      throw new Error(message)
+    }
+    const createdAt = parseTimestamp(entry.created_at, message)
+    const timestamp = Date.parse(createdAt)
+    if (timestamp < previousTimestamp) throw new Error(message)
+    previousTimestamp = timestamp
+    seen.add(entry.kind)
+    return {
+      kind: entry.kind as CustomerShipmentTimelineEntry["kind"],
+      createdAt,
+    }
+  })
+
+  return {
+    carrierName: parseRequiredText(row.carrier_name, 120, message),
+    serviceName: parseRequiredText(row.service_name, 120, message),
+    trackingCode: parseOptionalText(row.tracking_code, 128, message),
+    status: row.status as CustomerShipmentStatus,
+    updatedAt: parseTimestamp(row.updated_at, message),
+    timeline,
+  }
+}
+
 function parseEmail(value: unknown, message: string) {
   if (value === null) return null
   if (
@@ -339,6 +424,7 @@ function parseDetail(value: unknown): CustomerOrderDetail {
       "address_city",
       "address_state",
       "timeline",
+      "shipment",
     ],
     message,
   )
@@ -377,6 +463,7 @@ function parseDetail(value: unknown): CustomerOrderDetail {
       state: parseAddressState(row.address_state, message),
     },
     timeline: parseTimeline(row.timeline),
+    shipment: parseCustomerShipment(row.shipment),
   }
 }
 
