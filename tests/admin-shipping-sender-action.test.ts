@@ -46,7 +46,7 @@ const ADMIN_ID = "22222222-2222-4222-8222-222222222222"
 const AUTH_SESSION_ID = "33333333-3333-4333-8333-333333333333"
 const PROFILE_ID = "44444444-4444-4444-8444-444444444444"
 const VALID_CPF = "52998224725"
-const ENV_KEYS = ["NEXT_PUBLIC_SITE_URL", "NODE_ENV"] as const
+const ENV_KEYS = ["NEXT_PUBLIC_SITE_URL"] as const
 
 async function loadAction(): Promise<ActionModule> {
   const url = new URL("../lib/server/admin-shipping-sender-action.ts", import.meta.url).href
@@ -62,7 +62,6 @@ async function withPreviewEnv(run: () => Promise<void>) {
   const previous = new Map<string, string | undefined>()
   for (const key of ENV_KEYS) previous.set(key, process.env[key])
   process.env.NEXT_PUBLIC_SITE_URL = "https://preview.example"
-  process.env.NODE_ENV = "test"
   try {
     await run()
   } finally {
@@ -276,7 +275,8 @@ test("blank CPF on an optimistic edit reuses the server-side stored CPF without 
 
     const response = await POST(request({ fields: { cpf: "" } }))
     assert.equal(response.status, 303)
-    assert.equal(written?.cpf, VALID_CPF)
+    assert.ok(written !== null)
+    assert.equal((written as Record<string, unknown>).cpf, VALID_CPF)
     assert.ok(!(await response.text()).includes(VALID_CPF))
     assert.ok(!(response.headers.get("location") ?? "").includes(VALID_CPF))
   })
@@ -285,14 +285,15 @@ test("blank CPF on an optimistic edit reuses the server-side stored CPF without 
 test("rejects invalid CPF checksum, origin CEP mismatch and malformed bounded fields before upsert", async () => {
   await withPreviewEnv(async () => {
     const action = await loadAction()
-    for (const fields of [
+    const invalidFields: Array<Record<string, string>> = [
       { cpf: "111.111.111-11" },
       { postalCode: "01001-000" },
       { state: "Parana" },
       { fullName: "x" },
       { phone: "123" },
       { email: "not-an-email" },
-    ]) {
+    ]
+    for (const fields of invalidFields) {
       let writes = 0
       const POST = action.createAdminShippingSenderActionHandler(baseDeps({
         upsertSenderProfile: async () => {
