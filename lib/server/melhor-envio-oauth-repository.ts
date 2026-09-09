@@ -19,6 +19,7 @@ export interface MelhorEnvioCredentialRecord {
 }
 
 const REQUEST_TIMEOUT_MS = 10_000
+const QUOTE_ONLY_SCOPES = ["shipping-calculate"] as const
 const CREDENTIAL_SELECT = [
   "environment",
   "access_token_envelope",
@@ -249,9 +250,11 @@ export async function upsertAuthorizedCredential(input: {
   accessTokenEnvelope: string
   refreshTokenEnvelope: string
   accessTokenExpiresAt: string
-  authorizedScopes: readonly MelhorEnvioOAuthScope[]
+  authorizedScopes?: readonly MelhorEnvioOAuthScope[]
 }): Promise<void> {
-  const authorizedScopes = normalizeMelhorEnvioScopes([...input.authorizedScopes])
+  const authorizedScopes = normalizeMelhorEnvioScopes([
+    ...(input.authorizedScopes ?? QUOTE_ONLY_SCOPES),
+  ])
   parsePositiveVersion(
     await postRpc("upsert_melhor_envio_authorized_credential_v2", {
       p_environment: input.environment,
