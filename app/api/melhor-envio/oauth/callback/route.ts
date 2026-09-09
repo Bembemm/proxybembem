@@ -9,6 +9,7 @@ import {
   consumeOAuthState,
   upsertAuthorizedCredential,
 } from "../../../../../lib/server/melhor-envio-oauth-repository.ts"
+import { MELHOR_ENVIO_PHASE5_SCOPES } from "../../../../../lib/server/melhor-envio-oauth-scopes.ts"
 import { encryptMelhorEnvioToken } from "../../../../../lib/server/melhor-envio-token-crypto.ts"
 
 export const runtime = "nodejs"
@@ -105,6 +106,7 @@ export async function GET(request: NextRequest) {
       accessTokenEnvelope,
       refreshTokenEnvelope,
       accessTokenExpiresAt,
+      authorizedScopes: MELHOR_ENVIO_PHASE5_SCOPES,
     })
 
     return redirectToAdmin(request, "connected")
