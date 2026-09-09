@@ -27,6 +27,7 @@ type Difference =
 type PurchaseProps = {
   kind: "purchase"
   action: string
+  buttonLabel: string
   environment: "sandbox" | "production"
   customerPaidCents: number
   labelCostCents: number
@@ -59,7 +60,7 @@ export function ShipmentConfirmAction(props: PurchaseProps | CancelProps) {
             type="button"
             className="inline-flex w-full items-center justify-center rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto"
           >
-            Comprar etiqueta por {formatMoney(props.labelCostCents)}
+            {props.buttonLabel}
           </button>
         </DialogTrigger>
 
