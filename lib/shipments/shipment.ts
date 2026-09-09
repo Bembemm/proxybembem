@@ -16,7 +16,7 @@ export const SHIPMENT_STATES = [
 
 export const SHIPMENT_PROVIDERS = ["melhor_envio"] as const
 export const SHIPMENT_ENVIRONMENTS = ["sandbox", "production"] as const
-export const SHIPMENT_DOCUMENT_MODES = ["declaration_content"] as const
+export const SHIPMENT_DOCUMENT_MODES = ["declaration_content", "invoice"] as const
 
 export type ShipmentState = (typeof SHIPMENT_STATES)[number]
 export type ShipmentProvider = (typeof SHIPMENT_PROVIDERS)[number]
