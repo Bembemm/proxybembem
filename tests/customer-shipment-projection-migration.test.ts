@@ -41,7 +41,7 @@ test("projection exposes exactly curated shipment fields and maps internal state
     assert.match(sql, new RegExp(`'${key}'\\s*,`, "i"))
   }
 
-  assert.match(sql, /when\s+v_shipment\.state\s+in\s*\([^)]*'draft'[^)]*'generated'[^)]*\)\s+then\s+'preparing'/is)
+  assert.match(sql, /when\s+v_shipment\.state\s+in\s*\([^)]*'draft'[^)]*'generated'[^)]*\)\s+then\s+'preparing'[\s\S]*/i)
   assert.match(sql, /when\s+v_shipment\.state\s*=\s*'posted'\s+then\s+'posted'/i)
   assert.match(sql, /when\s+v_shipment\.state\s*=\s*'in_transit'\s+then\s+'in_transit'/i)
   assert.match(sql, /when\s+v_shipment\.state\s*=\s*'delivered'\s+then\s+'delivered'/i)
@@ -82,7 +82,7 @@ test("shipment timeline is public-only, deduped by kind and chronologically orde
   assert.match(sql, /group\s+by\s+t\.kind/i)
   assert.match(sql, /min\s*\(\s*t\.created_at\s*\)/i)
   assert.match(sql, /order\s+by\s+t\.created_at/i)
-  assert.doesNotMatch(sql, /metadata\s*->>\s*'provider_status'[^;]*jsonb_build_object/is)
+  assert.doesNotMatch(sql, /metadata\s*->>\s*'provider_status'[^;]*jsonb_build_object[\s\S]*/i)
 })
 
 test("projection selects only the current latest shipment for the already-owned order", async () => {
