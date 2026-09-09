@@ -7,6 +7,7 @@ import {
   getMelhorEnvioAccessToken,
   type UsableMelhorEnvioAccessToken,
 } from "./melhor-envio-token-manager.ts"
+import { hasValidCnpjChecksum, hasValidCpfChecksum } from "./shipping-sender.ts"
 
 const REQUEST_TIMEOUT_MS = 10_000
 const MAX_RESPONSE_BYTES = 64 * 1024
@@ -17,11 +18,12 @@ const MAX_URL = 4096
 const MAX_DESCRIPTION = 255
 const MAX_TRACKING_BATCH = 20
 const PROVIDER_ID_RE = /^[A-Za-z0-9._:-]{1,256}$/
-const CPF_RE = /^\d{11}$/
 const PHONE_RE = /^\d{10,15}$/
 const POSTAL_CODE_RE = /^\d{8}$/
 const STATE_RE = /^[A-Z]{2}$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const NF_E_KEY_RE = /^\d{44}$/
+const CNAE_RE = /^\d{7}$/
 
 export type MelhorEnvioShipmentProviderErrorClassification =
   | "unauthenticated"
@@ -45,8 +47,12 @@ export class MelhorEnvioShipmentProviderError extends Error {
 }
 
 export interface MelhorEnvioShipmentSender {
+  personType?: "pf" | "pj"
   fullName: string
-  cpf: string
+  cpf: string | null
+  cnpj?: string | null
+  stateRegister?: string | null
+  economicActivityCode?: string | null
   email: string
   phone: string
   postalCode: string
@@ -209,11 +215,7 @@ function parseOptionalMoneyCents(value: unknown, status: number): number | null 
   return value === undefined || value === null ? null : parseMoneyCents(value, status)
 }
 
-function parseOptionalString(
-  value: unknown,
-  status: number,
-  max: number,
-): string | null {
+function parseOptionalString(value: unknown, status: number, max: number): string | null {
   if (value === undefined || value === null) return null
   if (!boundedString(value, 1, max)) providerError("invalid_response", status)
   return value
@@ -316,9 +318,11 @@ function validatePerson(input: {
 function validateCartInput(input: {
   sender: MelhorEnvioShipmentSender
   snapshot: MelhorEnvioShipmentSnapshot
-  documentMode: "declaration_content"
+  documentMode: "declaration_content" | "invoice"
+  invoiceKey?: string | null
 }) {
-  if (input.documentMode !== "declaration_content") {
+  const personType = input.sender.personType ?? "pf"
+  if (input.documentMode !== "declaration_content" && input.documentMode !== "invoice") {
     throw new Error("Invalid Melhor Envio shipment document mode")
   }
 
@@ -334,9 +338,34 @@ function validateCartInput(input: {
     city: input.sender.city,
     state: input.sender.state,
   })
-  if (!CPF_RE.test(input.sender.cpf)) {
+
+  if (input.documentMode === "declaration_content") {
+    if (
+      personType !== "pf" ||
+      typeof input.sender.cpf !== "string" ||
+      !hasValidCpfChecksum(input.sender.cpf) ||
+      (input.sender.cnpj ?? null) !== null ||
+      (input.invoiceKey ?? null) !== null
+    ) {
+      throw new Error("Invalid Melhor Envio shipment sender")
+    }
+  } else if (
+    personType !== "pj" ||
+    input.sender.cpf !== null ||
+    typeof input.sender.cnpj !== "string" ||
+    !hasValidCnpjChecksum(input.sender.cnpj) ||
+    !boundedString(input.sender.stateRegister, 1, 32) ||
+    !(
+      (input.sender.economicActivityCode ?? null) === null ||
+      (typeof input.sender.economicActivityCode === "string" &&
+        CNAE_RE.test(input.sender.economicActivityCode))
+    ) ||
+    typeof input.invoiceKey !== "string" ||
+    !NF_E_KEY_RE.test(input.invoiceKey)
+  ) {
     throw new Error("Invalid Melhor Envio shipment sender")
   }
+
   validatePerson(input.snapshot.recipient)
 
   if (!/^\d+$/.test(input.snapshot.service.id)) {
@@ -457,30 +486,52 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
   async function addShipmentToMelhorEnvioCart(input: {
     sender: MelhorEnvioShipmentSender
     snapshot: MelhorEnvioShipmentSnapshot
-    documentMode: "declaration_content"
+    documentMode: "declaration_content" | "invoice"
+    invoiceKey?: string | null
   }) {
     const serviceId = validateCartInput(input)
+    const isInvoice = input.documentMode === "invoice"
+    const commonFrom = {
+      name: input.sender.fullName,
+      email: input.sender.email,
+      phone: input.sender.phone,
+      address: input.sender.street,
+      complement: input.sender.complement ?? "",
+      number: input.sender.number,
+      district: input.sender.neighborhood,
+      city: input.sender.city,
+      postal_code: input.sender.postalCode,
+      state_abbr: input.sender.state,
+      country_id: "BR",
+    }
+    const from = isInvoice
+      ? {
+          ...commonFrom,
+          company_document: input.sender.cnpj,
+          state_register: input.sender.stateRegister,
+          ...(input.sender.economicActivityCode
+            ? { economic_activity_code: input.sender.economicActivityCode }
+            : {}),
+        }
+      : {
+          ...commonFrom,
+          document: input.sender.cpf,
+          state_register: "ISENTO",
+        }
+    const commonOptions = {
+      insurance_value: reais(input.snapshot.package.insuranceValueCents),
+      receipt: false,
+      own_hand: false,
+      reverse: false,
+    }
+
     const result = await request({
       path: "/api/v2/me/cart",
       method: "POST",
       requiredScopes: ["cart-write"],
       body: {
         service: serviceId,
-        from: {
-          name: input.sender.fullName,
-          email: input.sender.email,
-          phone: input.sender.phone,
-          document: input.sender.cpf,
-          state_register: "ISENTO",
-          address: input.sender.street,
-          complement: input.sender.complement ?? "",
-          number: input.sender.number,
-          district: input.sender.neighborhood,
-          city: input.sender.city,
-          postal_code: input.sender.postalCode,
-          state_abbr: input.sender.state,
-          country_id: "BR",
-        },
+        from,
         to: {
           name: input.snapshot.recipient.name,
           email: input.snapshot.recipient.email,
@@ -507,12 +558,13 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
             weight: input.snapshot.package.weight,
           },
         ],
-        options: {
-          insurance_value: reais(input.snapshot.package.insuranceValueCents),
-          receipt: false,
-          own_hand: false,
-          reverse: false,
-        },
+        options: isInvoice
+          ? {
+              ...commonOptions,
+              non_commercial: false,
+              invoice: { key: input.invoiceKey },
+            }
+          : commonOptions,
       },
     })
 
@@ -584,11 +636,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
       providerShipmentId: id,
       status: parseOptionalString(result.payload.status, result.status, MAX_STATUS),
       priceCents: parseOptionalMoneyCents(result.payload.price, result.status),
-      trackingCode: parseOptionalString(
-        result.payload.tracking,
-        result.status,
-        MAX_TRACKING_CODE,
-      ),
+      trackingCode: parseOptionalString(result.payload.tracking, result.status, MAX_TRACKING_CODE),
       trackingUrl: parseOptionalHttpsUrl(result.payload.tracking_url, result.status),
     }
   }
