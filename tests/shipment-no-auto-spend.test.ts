@@ -6,6 +6,7 @@ import {
   type ShipmentPurchaseServiceDependencies,
 } from "../lib/server/shipment-lifecycle-service.ts"
 import { MelhorEnvioShipmentProviderError } from "../lib/server/melhor-envio-shipment-client.ts"
+import type { ShipmentOperationResult } from "../lib/server/shipment-operations.ts"
 
 const SHIPMENT_ID = "11111111-1111-4111-8111-111111111111"
 const ORDER_ID = "22222222-2222-4222-8222-222222222222"
@@ -14,6 +15,21 @@ const OPERATION_ID = "44444444-4444-4444-8444-444444444444"
 
 async function source(path: string) {
   return readFile(new URL(`../${path}`, import.meta.url), "utf8")
+}
+
+function transitioned(
+  previousState: ShipmentOperationResult["previousState"],
+  state: ShipmentOperationResult["state"],
+  version: number,
+): ShipmentOperationResult {
+  return {
+    outcome: "transitioned",
+    shipmentId: SHIPMENT_ID,
+    orderId: ORDER_ID,
+    previousState,
+    state,
+    version,
+  }
 }
 
 function basePurchaseDeps(overrides: Partial<ShipmentPurchaseServiceDependencies> = {}): ShipmentPurchaseServiceDependencies {
@@ -41,12 +57,12 @@ function basePurchaseDeps(overrides: Partial<ShipmentPurchaseServiceDependencies
       trackingCode: null,
       trackingUrl: null,
     }),
-    claimPurchase: async () => ({ outcome: "transitioned", state: "purchase_pending", version: 2 }),
+    claimPurchase: async () => transitioned("in_cart", "purchase_pending", 2),
     checkout: async () => ({ providerOrderId: "provider-order-1", purchasedCostCents: 1890 }),
-    commitPurchase: async () => ({ outcome: "transitioned", state: "purchased", version: 3 }),
-    revertPurchase: async () => ({ outcome: "transitioned", state: "in_cart", version: 3 }),
-    markAttention: async () => ({ outcome: "transitioned", state: "attention_required", version: 3 }),
-    resolveReconciliation: async () => ({ outcome: "transitioned", state: "purchased", version: 3 }),
+    commitPurchase: async () => transitioned("purchase_pending", "purchased", 3),
+    revertPurchase: async () => transitioned("purchase_pending", "in_cart", 3),
+    markAttention: async () => transitioned("purchase_pending", "attention_required", 3),
+    resolveReconciliation: async () => transitioned("attention_required", "purchased", 3),
     createOperationId: () => OPERATION_ID,
     ...overrides,
   }
@@ -94,7 +110,7 @@ test("ambiguous checkout invokes provider checkout once total and moves to recon
     },
     markAttention: async () => {
       attentionCalls += 1
-      return { outcome: "transitioned", state: "attention_required", version: 3 }
+      return transitioned("purchase_pending", "attention_required", 3)
     },
   }))
 
