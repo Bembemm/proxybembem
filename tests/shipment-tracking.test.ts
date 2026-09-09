@@ -86,7 +86,8 @@ type Module = {
 }
 
 async function loadModule(): Promise<Module> {
-  const module = (await import("../lib/server/shipment-tracking.ts")) as Partial<Module>
+  const path = "../lib/server/shipment-tracking.ts"
+  const module = (await import(path)) as Partial<Module>
   assert.equal(typeof module.normalizeMelhorEnvioTrackingStatus, "function")
   assert.equal(typeof module.fingerprintTrackingEvent, "function")
   assert.equal(typeof module.createShipmentTrackingService, "function")
