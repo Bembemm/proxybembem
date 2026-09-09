@@ -9,56 +9,67 @@ export interface MelhorEnvioSenderFormProfile {
   neighborhood: string
   city: string
   state: string
-  maskedCpf: string
+  maskedTaxDocument: string
+  stateRegister: string | null
+  economicActivityCode: string | null
   version: number
 }
 
 export function MelhorEnvioSenderForm({
   profile,
   originCep,
+  personType,
 }: {
   profile: MelhorEnvioSenderFormProfile | null
   originCep: string
+  personType: "pf" | "pj"
 }) {
+  const isCompany = personType === "pj"
+  const documentName = isCompany ? "CNPJ" : "CPF"
+  const documentField = isCompany ? "cnpj" : "cpf"
+
   return (
     <form
       method="post"
       action="/api/internal/admin/integrations/melhor-envio/sender"
       className="space-y-5"
     >
-      <input
-        type="hidden"
-        name="expectedVersion"
-        value={profile?.version ?? ""}
-      />
+      <input type="hidden" name="personType" value={personType} />
+      <input type="hidden" name="expectedVersion" value={profile?.version ?? ""} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">
-          <span>Nome completo</span>
+          <span>{isCompany ? "Razão social / nome empresarial" : "Nome completo"}</span>
           <input
             name="fullName"
             required
             minLength={2}
             maxLength={120}
             defaultValue={profile?.fullName ?? ""}
-            autoComplete="name"
+            autoComplete={isCompany ? "organization" : "name"}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
           />
         </label>
 
         <label className="space-y-1.5 text-sm font-medium text-slate-700">
-          <span>CPF</span>
+          <span>{documentName}</span>
           <input
-            name="cpf"
+            name={documentField}
             inputMode="numeric"
             autoComplete="off"
-            placeholder={profile ? "Deixe em branco para manter" : "000.000.000-00"}
+            placeholder={
+              profile
+                ? "Deixe em branco para manter"
+                : isCompany
+                  ? "00.000.000/0000-00"
+                  : "000.000.000-00"
+            }
             required={!profile}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
           />
           {profile ? (
             <span className="block text-xs font-normal text-slate-500">
-              CPF atual: {profile.maskedCpf}. Para trocar, informe o novo CPF.
+              {documentName} atual: {profile.maskedTaxDocument}. Para trocar, informe o novo {documentName}.
             </span>
           ) : null}
         </label>
@@ -75,6 +86,34 @@ export function MelhorEnvioSenderForm({
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
           />
         </label>
+
+        {isCompany ? (
+          <>
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <span>Inscrição estadual</span>
+              <input
+                name="stateRegister"
+                required
+                maxLength={32}
+                defaultValue={profile?.stateRegister ?? ""}
+                autoComplete="off"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+              />
+            </label>
+
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              <span>CNAE (opcional)</span>
+              <input
+                name="economicActivityCode"
+                inputMode="numeric"
+                maxLength={10}
+                defaultValue={profile?.economicActivityCode ?? ""}
+                autoComplete="off"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+              />
+            </label>
+          </>
+        ) : null}
 
         <label className="space-y-1.5 text-sm font-medium text-slate-700 sm:col-span-2">
           <span>E-mail</span>
