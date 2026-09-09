@@ -1,18 +1,29 @@
 import { randomUUID } from "node:crypto"
 import type { AdminOrderDetail } from "./admin-orders.ts"
 import { getAdminOrderById } from "./admin-orders.ts"
-import { getMelhorEnvioOAuthEnv, type MelhorEnvioEnvironment } from "./env.ts"
+import {
+  getMelhorEnvioOAuthEnv,
+  getMelhorEnvioShipmentEnv,
+  type MelhorEnvioEnvironment,
+} from "./env.ts"
 import {
   addShipmentToMelhorEnvioCart,
   MelhorEnvioShipmentProviderError,
+  purchaseMelhorEnvioShipment,
+  readMelhorEnvioShipment,
+  type ProviderShipmentState,
 } from "./melhor-envio-shipment-client.ts"
 import { MelhorEnvioTokenManagerError } from "./melhor-envio-token-manager.ts"
 import {
   claimShipmentPrepare,
+  claimShipmentPurchase,
   commitShipmentCart,
+  commitShipmentPurchase,
   createShipmentDraft,
   markShipmentAttention,
+  resolveShipmentReconciliation,
   revertShipmentPrepare,
+  revertShipmentPurchase,
   type ShipmentOperationResult,
 } from "./shipment-operations.ts"
 import {
@@ -22,7 +33,7 @@ import {
 } from "./shipment-snapshot.ts"
 import {
   getActiveShipmentForOrder,
-  type ShipmentRecord,
+  getShipmentById,
 } from "./shipments.ts"
 import {
   getShippingSenderProfile,
@@ -46,6 +57,39 @@ export type ShipmentActionResult =
       reason: "cart_outcome_unknown"
     }
 
+export type ShipmentPurchaseActionResult =
+  | { outcome: "purchase_disabled" }
+  | { outcome: "not_found" }
+  | { outcome: "invalid_state"; shipmentId: string; orderId: string }
+  | { outcome: "busy"; shipmentId: string; orderId: string }
+  | {
+      outcome: "price_changed"
+      shipmentId: string
+      orderId: string
+      providerCostCents: number
+    }
+  | {
+      outcome: "purchased"
+      shipmentId: string
+      orderId: string
+      purchasedCostCents: number
+    }
+  | { outcome: "provider_rejected"; shipmentId: string; orderId: string }
+  | { outcome: "reauthorization_required"; shipmentId: string; orderId: string }
+  | {
+      outcome: "attention_required"
+      shipmentId: string
+      orderId: string
+      reason: "purchase_outcome_unknown"
+    }
+  | {
+      outcome: "reconciled_purchased"
+      shipmentId: string
+      orderId: string
+      purchasedCostCents: number
+    }
+  | { outcome: "reconciled_not_purchased"; shipmentId: string; orderId: string }
+
 interface ActiveShipmentLike {
   id: string
   orderId: string
@@ -59,6 +103,22 @@ interface ActiveShipmentLike {
   serviceId?: string
   serviceName?: string
   carrierName?: string
+}
+
+interface PurchaseShipmentLike {
+  id: string
+  orderId: string
+  environment: MelhorEnvioEnvironment
+  provider: "melhor_envio"
+  state: string
+  stableStateBeforeAttention: string | null
+  attentionReason: string | null
+  providerShipmentId: string | null
+  providerCostCents: number | null
+  purchasedCostCents: number | null
+  operationKind: string | null
+  operationId: string | null
+  version: number
 }
 
 export interface ShipmentPreparationServiceDependencies {
@@ -83,8 +143,31 @@ export interface ShipmentPreparationServiceDependencies {
   createOperationId(): string
 }
 
+export interface ShipmentPurchaseServiceDependencies {
+  getConfig(): {
+    environment: MelhorEnvioEnvironment
+    labelPurchaseEnabled: boolean
+  }
+  getShipment(shipmentId: string): Promise<PurchaseShipmentLike | null>
+  readProvider(input: {
+    providerShipmentId: string
+    source: "cart" | "order"
+  }): Promise<ProviderShipmentState>
+  claimPurchase(input: Parameters<typeof claimShipmentPurchase>[0]): Promise<ShipmentOperationResult>
+  checkout(input: Parameters<typeof purchaseMelhorEnvioShipment>[0]): ReturnType<typeof purchaseMelhorEnvioShipment>
+  commitPurchase(input: Parameters<typeof commitShipmentPurchase>[0]): Promise<ShipmentOperationResult>
+  revertPurchase(input: Parameters<typeof revertShipmentPurchase>[0]): Promise<ShipmentOperationResult>
+  markAttention(input: Parameters<typeof markShipmentAttention>[0]): Promise<ShipmentOperationResult>
+  resolveReconciliation(input: Parameters<typeof resolveShipmentReconciliation>[0]): Promise<ShipmentOperationResult>
+  createOperationId(): string
+}
+
 function assertUuid(value: string, label: string) {
   if (!UUID_RE.test(value)) throw new Error(`Invalid shipment ${label}`)
+}
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0
 }
 
 function senderSnapshot(sender: ShippingSenderProfile) {
@@ -361,7 +444,401 @@ export function createShipmentPreparationService(
   return { prepareAdminShipment }
 }
 
-const defaultService = createShipmentPreparationService({
+function purchaseStateIsEligible(
+  shipment: PurchaseShipmentLike,
+  environment: MelhorEnvioEnvironment,
+) {
+  return (
+    shipment.provider === "melhor_envio" &&
+    shipment.environment === environment &&
+    shipment.state === "in_cart" &&
+    shipment.operationKind === null &&
+    shipment.operationId === null &&
+    typeof shipment.providerShipmentId === "string" &&
+    shipment.providerShipmentId.length > 0
+  )
+}
+
+function reconciliationStateIsEligible(
+  shipment: PurchaseShipmentLike,
+  environment: MelhorEnvioEnvironment,
+) {
+  return (
+    shipment.provider === "melhor_envio" &&
+    shipment.environment === environment &&
+    shipment.state === "attention_required" &&
+    shipment.stableStateBeforeAttention === "in_cart" &&
+    shipment.attentionReason === "purchase_outcome_unknown" &&
+    shipment.operationKind === null &&
+    shipment.operationId === null &&
+    typeof shipment.providerShipmentId === "string" &&
+    shipment.providerShipmentId.length > 0
+  )
+}
+
+export function createShipmentPurchaseService(
+  deps: ShipmentPurchaseServiceDependencies,
+) {
+  async function revertPurchaseClaim(input: {
+    shipmentId: string
+    adminUserId: string
+    expectedVersion: number
+    operationId: string
+  }) {
+    await deps.revertPurchase(input)
+  }
+
+  async function enterPurchaseAttention(input: {
+    shipmentId: string
+    orderId: string
+    adminUserId: string
+    expectedVersion: number
+    operationId: string
+  }): Promise<ShipmentPurchaseActionResult> {
+    try {
+      await deps.markAttention({
+        shipmentId: input.shipmentId,
+        adminUserId: input.adminUserId,
+        expectedVersion: input.expectedVersion,
+        operationId: input.operationId,
+        reason: "purchase_outcome_unknown",
+      })
+    } catch {
+      // The provider checkout must never be retried merely because local persistence is uncertain.
+    }
+    return {
+      outcome: "attention_required",
+      shipmentId: input.shipmentId,
+      orderId: input.orderId,
+      reason: "purchase_outcome_unknown",
+    }
+  }
+
+  function unavailablePurchaseRead(
+    error: unknown,
+    shipment: PurchaseShipmentLike,
+  ): ShipmentPurchaseActionResult | null {
+    if (error instanceof MelhorEnvioTokenManagerError) {
+      if (error.code === "reauthorization_required") {
+        return {
+          outcome: "reauthorization_required",
+          shipmentId: shipment.id,
+          orderId: shipment.orderId,
+        }
+      }
+      return null
+    }
+    if (error instanceof MelhorEnvioShipmentProviderError) {
+      if (error.classification === "unauthenticated") {
+        return {
+          outcome: "reauthorization_required",
+          shipmentId: shipment.id,
+          orderId: shipment.orderId,
+        }
+      }
+      if (error.classification === "definite_rejection") {
+        return {
+          outcome: "provider_rejected",
+          shipmentId: shipment.id,
+          orderId: shipment.orderId,
+        }
+      }
+    }
+    return null
+  }
+
+  async function purchaseAdminShipment(input: {
+    shipmentId: string
+    adminUserId: string
+    expectedCostCents: number
+  }): Promise<ShipmentPurchaseActionResult> {
+    assertUuid(input.shipmentId, "identifier")
+    assertUuid(input.adminUserId, "administrator")
+    if (!isPositiveSafeInteger(input.expectedCostCents)) {
+      throw new Error("Invalid shipment confirmed cost")
+    }
+
+    const config = deps.getConfig()
+    if (!config.labelPurchaseEnabled) {
+      return { outcome: "purchase_disabled" }
+    }
+
+    const shipment = await deps.getShipment(input.shipmentId)
+    if (!shipment) return { outcome: "not_found" }
+    if (!purchaseStateIsEligible(shipment, config.environment)) {
+      return {
+        outcome: "invalid_state",
+        shipmentId: shipment.id,
+        orderId: shipment.orderId,
+      }
+    }
+
+    let providerState: ProviderShipmentState
+    try {
+      providerState = await deps.readProvider({
+        providerShipmentId: shipment.providerShipmentId as string,
+        source: "cart",
+      })
+    } catch (error) {
+      const mapped = unavailablePurchaseRead(error, shipment)
+      if (mapped) return mapped
+      throw new Error("Shipment purchase preflight failed")
+    }
+
+    if (!isPositiveSafeInteger(providerState.priceCents)) {
+      throw new Error("Shipment purchase preflight failed")
+    }
+    if (providerState.priceCents !== input.expectedCostCents) {
+      return {
+        outcome: "price_changed",
+        shipmentId: shipment.id,
+        orderId: shipment.orderId,
+        providerCostCents: providerState.priceCents,
+      }
+    }
+
+    const operationId = deps.createOperationId()
+    assertUuid(operationId, "operation")
+    const claim = await deps.claimPurchase({
+      shipmentId: shipment.id,
+      adminUserId: input.adminUserId,
+      expectedVersion: shipment.version,
+      operationId,
+    })
+    if (claim.outcome === "not_found") return { outcome: "not_found" }
+    if (
+      claim.outcome !== "transitioned" ||
+      claim.state !== "purchase_pending" ||
+      !claim.version
+    ) {
+      return { outcome: "busy", shipmentId: shipment.id, orderId: shipment.orderId }
+    }
+
+    const mutation = {
+      shipmentId: shipment.id,
+      adminUserId: input.adminUserId,
+      expectedVersion: claim.version,
+      operationId,
+    }
+
+    let purchase: { providerOrderId: string; purchasedCostCents: number }
+    try {
+      purchase = await deps.checkout({
+        providerShipmentId: shipment.providerShipmentId as string,
+        currentCostCents: providerState.priceCents,
+      })
+    } catch (error) {
+      if (error instanceof MelhorEnvioTokenManagerError) {
+        await revertPurchaseClaim(mutation)
+        if (error.code === "reauthorization_required") {
+          return {
+            outcome: "reauthorization_required",
+            shipmentId: shipment.id,
+            orderId: shipment.orderId,
+          }
+        }
+        throw new Error("Shipment purchase failed")
+      }
+      if (error instanceof MelhorEnvioShipmentProviderError) {
+        if (error.classification === "definite_rejection") {
+          await revertPurchaseClaim(mutation)
+          return {
+            outcome: "provider_rejected",
+            shipmentId: shipment.id,
+            orderId: shipment.orderId,
+          }
+        }
+        if (error.classification === "unauthenticated") {
+          await revertPurchaseClaim(mutation)
+          return {
+            outcome: "reauthorization_required",
+            shipmentId: shipment.id,
+            orderId: shipment.orderId,
+          }
+        }
+      }
+      return enterPurchaseAttention({
+        ...mutation,
+        orderId: shipment.orderId,
+      })
+    }
+
+    if (
+      !isPositiveSafeInteger(purchase.purchasedCostCents) ||
+      purchase.purchasedCostCents !== providerState.priceCents ||
+      typeof purchase.providerOrderId !== "string" ||
+      purchase.providerOrderId.length < 1
+    ) {
+      return enterPurchaseAttention({
+        ...mutation,
+        orderId: shipment.orderId,
+      })
+    }
+
+    try {
+      const committed = await deps.commitPurchase({
+        ...mutation,
+        providerOrderId: purchase.providerOrderId,
+        purchasedCostCents: purchase.purchasedCostCents,
+      })
+      if (committed.outcome !== "transitioned" || committed.state !== "purchased") {
+        return enterPurchaseAttention({
+          ...mutation,
+          orderId: shipment.orderId,
+        })
+      }
+    } catch {
+      return enterPurchaseAttention({
+        ...mutation,
+        orderId: shipment.orderId,
+      })
+    }
+
+    return {
+      outcome: "purchased",
+      shipmentId: shipment.id,
+      orderId: shipment.orderId,
+      purchasedCostCents: purchase.purchasedCostCents,
+    }
+  }
+
+  async function reconcileAdminShipmentPurchase(input: {
+    shipmentId: string
+    adminUserId: string
+  }): Promise<ShipmentPurchaseActionResult> {
+    assertUuid(input.shipmentId, "identifier")
+    assertUuid(input.adminUserId, "administrator")
+
+    const config = deps.getConfig()
+    const shipment = await deps.getShipment(input.shipmentId)
+    if (!shipment) return { outcome: "not_found" }
+    if (!reconciliationStateIsEligible(shipment, config.environment)) {
+      return {
+        outcome: "invalid_state",
+        shipmentId: shipment.id,
+        orderId: shipment.orderId,
+      }
+    }
+
+    const providerShipmentId = shipment.providerShipmentId as string
+    let providerOrder: ProviderShipmentState | null = null
+    let orderConfirmedAbsent = false
+
+    try {
+      providerOrder = await deps.readProvider({ providerShipmentId, source: "order" })
+    } catch (error) {
+      if (error instanceof MelhorEnvioTokenManagerError) {
+        if (error.code === "reauthorization_required") {
+          return {
+            outcome: "reauthorization_required",
+            shipmentId: shipment.id,
+            orderId: shipment.orderId,
+          }
+        }
+        return {
+          outcome: "attention_required",
+          shipmentId: shipment.id,
+          orderId: shipment.orderId,
+          reason: "purchase_outcome_unknown",
+        }
+      }
+      if (
+        error instanceof MelhorEnvioShipmentProviderError &&
+        error.classification === "definite_rejection" &&
+        error.status === 404
+      ) {
+        orderConfirmedAbsent = true
+      } else {
+        return {
+          outcome: "attention_required",
+          shipmentId: shipment.id,
+          orderId: shipment.orderId,
+          reason: "purchase_outcome_unknown",
+        }
+      }
+    }
+
+    if (providerOrder) {
+      const purchasedCostCents = providerOrder.priceCents ?? shipment.providerCostCents
+      if (!isPositiveSafeInteger(purchasedCostCents)) {
+        return {
+          outcome: "attention_required",
+          shipmentId: shipment.id,
+          orderId: shipment.orderId,
+          reason: "purchase_outcome_unknown",
+        }
+      }
+      const resolved = await deps.resolveReconciliation({
+        shipmentId: shipment.id,
+        adminUserId: input.adminUserId,
+        expectedVersion: shipment.version,
+        resolution: "purchased",
+        providerOrderId: providerShipmentId,
+        purchasedCostCents,
+      })
+      if (resolved.outcome !== "transitioned" || resolved.state !== "purchased") {
+        return { outcome: "busy", shipmentId: shipment.id, orderId: shipment.orderId }
+      }
+      return {
+        outcome: "reconciled_purchased",
+        shipmentId: shipment.id,
+        orderId: shipment.orderId,
+        purchasedCostCents,
+      }
+    }
+
+    if (!orderConfirmedAbsent) {
+      return {
+        outcome: "attention_required",
+        shipmentId: shipment.id,
+        orderId: shipment.orderId,
+        reason: "purchase_outcome_unknown",
+      }
+    }
+
+    try {
+      await deps.readProvider({ providerShipmentId, source: "cart" })
+    } catch (error) {
+      if (
+        error instanceof MelhorEnvioTokenManagerError &&
+        error.code === "reauthorization_required"
+      ) {
+        return {
+          outcome: "reauthorization_required",
+          shipmentId: shipment.id,
+          orderId: shipment.orderId,
+        }
+      }
+      return {
+        outcome: "attention_required",
+        shipmentId: shipment.id,
+        orderId: shipment.orderId,
+        reason: "purchase_outcome_unknown",
+      }
+    }
+
+    const resolved = await deps.resolveReconciliation({
+      shipmentId: shipment.id,
+      adminUserId: input.adminUserId,
+      expectedVersion: shipment.version,
+      resolution: "not_purchased",
+      providerOrderId: null,
+      purchasedCostCents: null,
+    })
+    if (resolved.outcome !== "transitioned" || resolved.state !== "in_cart") {
+      return { outcome: "busy", shipmentId: shipment.id, orderId: shipment.orderId }
+    }
+    return {
+      outcome: "reconciled_not_purchased",
+      shipmentId: shipment.id,
+      orderId: shipment.orderId,
+    }
+  }
+
+  return { purchaseAdminShipment, reconcileAdminShipmentPurchase }
+}
+
+const defaultPreparationService = createShipmentPreparationService({
   getConfig: () => {
     const env = getMelhorEnvioOAuthEnv()
     return { environment: env.environment, originCep: env.originCep }
@@ -404,4 +881,26 @@ const defaultService = createShipmentPreparationService({
   createOperationId: randomUUID,
 })
 
-export const prepareAdminShipment = defaultService.prepareAdminShipment
+const defaultPurchaseService = createShipmentPurchaseService({
+  getConfig: () => {
+    const env = getMelhorEnvioShipmentEnv()
+    return {
+      environment: env.environment,
+      labelPurchaseEnabled: env.labelPurchaseEnabled,
+    }
+  },
+  getShipment: getShipmentById,
+  readProvider: readMelhorEnvioShipment,
+  claimPurchase: claimShipmentPurchase,
+  checkout: purchaseMelhorEnvioShipment,
+  commitPurchase: commitShipmentPurchase,
+  revertPurchase: revertShipmentPurchase,
+  markAttention: markShipmentAttention,
+  resolveReconciliation: resolveShipmentReconciliation,
+  createOperationId: randomUUID,
+})
+
+export const prepareAdminShipment = defaultPreparationService.prepareAdminShipment
+export const purchaseAdminShipment = defaultPurchaseService.purchaseAdminShipment
+export const reconcileAdminShipmentPurchase =
+  defaultPurchaseService.reconcileAdminShipmentPurchase
