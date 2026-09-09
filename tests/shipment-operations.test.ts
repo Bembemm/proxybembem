@@ -325,11 +325,15 @@ test("purchase claim is durable and commit/revert cannot omit the operation UUID
       },
     ]
     let index = 0
-    t.mock.method(globalThis, "fetch", async (request, init) => {
-      const item = calls[index++]
-      assertRpcRequest(request, init, item.rpc, item.body)
-      return Response.json(item.result)
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (request: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const item = calls[index++]
+        assertRpcRequest(request, init, item.rpc, item.body)
+        return Response.json(item.result)
+      },
+    )
 
     for (const item of calls) await item.fn(item.input)
     assert.equal(index, calls.length)
@@ -340,32 +344,36 @@ test("uncertain outcomes use a bounded attention reason and purchase reconciliat
   await withSupabaseEnv(async () => {
     const module = await loadModule()
     let calls = 0
-    t.mock.method(globalThis, "fetch", async (request, init) => {
-      calls += 1
-      if (calls === 1) {
-        assertRpcRequest(request, init, "admin_mark_shipment_attention", {
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (request: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        calls += 1
+        if (calls === 1) {
+          assertRpcRequest(request, init, "admin_mark_shipment_attention", {
+            p_shipment_id: SHIPMENT_ID,
+            p_admin_user_id: ADMIN_ID,
+            p_expected_version: 2,
+            p_operation_id: OPERATION_ID,
+            p_reason: "purchase_outcome_unknown",
+          })
+          return Response.json(
+            rpcResult({ previous_state: "purchase_pending", state: "attention_required" }),
+          )
+        }
+        assertRpcRequest(request, init, "admin_resolve_shipment_reconciliation", {
           p_shipment_id: SHIPMENT_ID,
           p_admin_user_id: ADMIN_ID,
-          p_expected_version: 2,
-          p_operation_id: OPERATION_ID,
-          p_reason: "purchase_outcome_unknown",
+          p_expected_version: 3,
+          p_resolution: "purchased",
+          p_provider_order_id: PROVIDER_ID,
+          p_purchased_cost_cents: 1842,
         })
         return Response.json(
-          rpcResult({ previous_state: "purchase_pending", state: "attention_required" }),
+          rpcResult({ previous_state: "attention_required", state: "purchased", version: 4 }),
         )
-      }
-      assertRpcRequest(request, init, "admin_resolve_shipment_reconciliation", {
-        p_shipment_id: SHIPMENT_ID,
-        p_admin_user_id: ADMIN_ID,
-        p_expected_version: 3,
-        p_resolution: "purchased",
-        p_provider_order_id: PROVIDER_ID,
-        p_purchased_cost_cents: 1842,
-      })
-      return Response.json(
-        rpcResult({ previous_state: "attention_required", state: "purchased", version: 4 }),
-      )
-    })
+      },
+    )
 
     await module.markShipmentAttention({
       ...commonMutation(),
@@ -467,11 +475,15 @@ test("generation cancellation posting and tracking use separate narrow RPCs", as
       },
     ]
     let index = 0
-    t.mock.method(globalThis, "fetch", async (request, init) => {
-      const item = cases[index++]
-      assertRpcRequest(request, init, item.rpc, item.body)
-      return Response.json(rpcResult())
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (request: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const item = cases[index++]
+        assertRpcRequest(request, init, item.rpc, item.body)
+        return Response.json(rpcResult())
+      },
+    )
 
     for (const item of cases) await item.fn(item.input)
     assert.equal(index, cases.length)
