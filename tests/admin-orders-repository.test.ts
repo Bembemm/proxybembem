@@ -79,6 +79,7 @@ function detailRow(overrides: Record<string, unknown> = {}) {
     shipping_carrier_name: "Correios",
     shipping_delivery_days: 3,
     shipping_cents: 1842,
+    shipping_snapshot: null,
     total_cents: 13832,
     payment_provider: "mercadopago",
     preference_id: "pref-123",
@@ -259,6 +260,7 @@ test("loads one admin order by canonical UUID using only the approved detail sel
           "whatsapp",
           "cep",
           "items",
+          "shipping_snapshot",
           "total_cents",
           "payment_status",
           "payment_status_detail",
@@ -274,7 +276,6 @@ test("loads one admin order by canonical UUID using only the approved detail sel
           "checkout_attempt_id",
           "checkout_fingerprint",
           "checkout_url",
-          "shipping_snapshot",
         ]) {
           assert.ok(!select.split(",").includes(forbidden), `leaked ${forbidden}`)
         }
