@@ -6,6 +6,8 @@ const MIGRATION = new URL(
   "../supabase/migrations/202609080004_shipment_operations.sql",
   import.meta.url,
 )
+const SHIPMENTS_MODULE = "../lib/server/shipments.ts"
+const OPERATIONS_MODULE = "../lib/server/shipment-operations.ts"
 const SHIPMENT_ID = "11111111-1111-4111-8111-111111111111"
 const ORDER_ID = "22222222-2222-4222-8222-222222222222"
 const ADMIN_ID = "33333333-3333-4333-8333-333333333333"
@@ -45,7 +47,7 @@ test("draft RPC validates declaration/PF and invoice/PJ document combinations", 
 
 test("shipment repository accepts invoice rows only with a valid persisted NF-e key", async (t) => {
   await withSupabaseEnv(async () => {
-    const module = await import("../lib/server/shipments.ts")
+    const module = await import(SHIPMENTS_MODULE)
     let calls = 0
     t.mock.method(globalThis, "fetch", async () => {
       calls += 1
@@ -97,7 +99,7 @@ test("shipment repository accepts invoice rows only with a valid persisted NF-e 
 
 test("invoice draft forwards the trusted document mode and NF-e key to the atomic RPC", async (t) => {
   await withSupabaseEnv(async () => {
-    const module = await import("../lib/server/shipment-operations.ts")
+    const module = await import(OPERATIONS_MODULE)
     t.mock.method(
       globalThis,
       "fetch",
