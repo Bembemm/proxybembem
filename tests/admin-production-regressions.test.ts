@@ -83,6 +83,7 @@ function detailRow() {
     shipping_carrier_name: null,
     shipping_delivery_days: null,
     shipping_cents: null,
+    shipping_snapshot: null,
     total_cents: 13832,
     payment_provider: "mercadopago",
     preference_id: null,
