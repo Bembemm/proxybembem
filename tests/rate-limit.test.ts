@@ -168,3 +168,40 @@ test("uses a separate 5-per-15-minute bucket for Melhor Envio OAuth starts", asy
     )
   })
 })
+
+test("shipment admin actions use distinct HMAC buckets with bounded config mutation and spend policies", async (t) => {
+  await withEnv(async () => {
+    const rawIp = "192.0.2.55"
+    const cases = [
+      { scope: "admin-shipping-config", limit: 10, windowSeconds: 600 },
+      { scope: "admin-shipping-mutation", limit: 20, windowSeconds: 300 },
+      { scope: "admin-shipping-spend", limit: 5, windowSeconds: 300 },
+    ] as const
+    let index = 0
+
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const expected = cases[index++]
+        const expectedBucket = createHmac("sha256", RATE_SECRET)
+          .update(`${expected.scope}:${rawIp}`)
+          .digest("hex")
+        assert.deepEqual(JSON.parse(String(init?.body)), {
+          p_bucket_key: expectedBucket,
+          p_limit: expected.limit,
+          p_window_seconds: expected.windowSeconds,
+        })
+        return new Response("true", { status: 200 })
+      },
+    )
+
+    const request = new Request("https://store.test/api/internal/admin/shipping", {
+      headers: { "x-real-ip": rawIp },
+    })
+    for (const expected of cases) {
+      assert.equal(await consumeRateLimit({ request, scope: expected.scope }), true)
+    }
+    assert.equal(index, cases.length)
+  })
+})
