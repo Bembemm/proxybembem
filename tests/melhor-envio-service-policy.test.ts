@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { createMelhorEnvioQuoter } from "../lib/server/melhor-envio.ts"
+import type { MelhorEnvioOAuthScope } from "../lib/server/melhor-envio-oauth-scopes.ts"
 
 const products = [
   {
@@ -53,6 +54,8 @@ function mixedServicesResponse() {
 }
 
 function dependencies(environment: "sandbox" | "production") {
+  const authorizedScopes: MelhorEnvioOAuthScope[] = ["shipping-calculate"]
+
   return {
     getConfig: () => ({
       environment,
@@ -62,7 +65,7 @@ function dependencies(environment: "sandbox" | "production") {
     getAccessToken: async () => ({
       accessToken: "test-token",
       tokenVersion: 1,
-      authorizedScopes: ["shipping-calculate"] as const,
+      authorizedScopes,
     }),
   }
 }
