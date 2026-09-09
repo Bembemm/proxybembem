@@ -39,7 +39,7 @@ test("shipment domain exports the exact approved state provider environment and 
   assert.deepEqual(domain.SHIPMENT_STATES, EXPECTED_STATES)
   assert.deepEqual(domain.SHIPMENT_PROVIDERS, ["melhor_envio"])
   assert.deepEqual(domain.SHIPMENT_ENVIRONMENTS, ["sandbox", "production"])
-  assert.deepEqual(domain.SHIPMENT_DOCUMENT_MODES, ["declaration_content"])
+  assert.deepEqual(domain.SHIPMENT_DOCUMENT_MODES, ["declaration_content", "invoice"])
 })
 
 test("shipment domain guards accept only exact persisted vocabulary values", async () => {
@@ -56,5 +56,6 @@ test("shipment domain guards accept only exact persisted vocabulary values", asy
   assert.equal(domain.isShipmentEnvironment("production"), true)
   assert.equal(domain.isShipmentEnvironment("preview"), false)
   assert.equal(domain.isShipmentDocumentMode("declaration_content"), true)
-  assert.equal(domain.isShipmentDocumentMode("invoice"), false)
+  assert.equal(domain.isShipmentDocumentMode("invoice"), true)
+  assert.equal(domain.isShipmentDocumentMode("mei"), false)
 })
