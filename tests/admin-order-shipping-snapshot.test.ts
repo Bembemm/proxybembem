@@ -84,6 +84,8 @@ test("admin order detail retrieves raw shipping_snapshot only for server-side sh
     )
 
     const detail = await getAdminOrderById(ORDER_ID)
-    assert.deepEqual(detail?.shipping_snapshot, detailRow().shipping_snapshot)
+    const rawSnapshot = (detail as (typeof detail & { shipping_snapshot?: unknown }) | null)
+      ?.shipping_snapshot
+    assert.deepEqual(rawSnapshot, detailRow().shipping_snapshot)
   })
 })
