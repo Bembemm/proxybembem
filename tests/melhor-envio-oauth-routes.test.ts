@@ -302,7 +302,7 @@ test("OAuth callback consumes state once before token exchange and rejects an ex
   })
 })
 
-test("OAuth callback exchanges only after state consumption and atomically persists encrypted tokens", async (t) => {
+test("OAuth callback exchanges only after state consumption and atomically persists encrypted tokens and exact Phase 5 scopes", async (t) => {
   await withEnv(async () => {
     const order: string[] = []
     let upsertBody: Record<string, unknown> | null = null
@@ -327,7 +327,7 @@ test("OAuth callback exchanges only after state consumption and atomically persi
             expires_in: 2_592_000,
           })
         }
-        if (url.pathname === "/rest/v1/rpc/upsert_melhor_envio_authorized_credential") {
+        if (url.pathname === "/rest/v1/rpc/upsert_melhor_envio_authorized_credential_v2") {
           order.push("upsert-credential")
           upsertBody = JSON.parse(String(init?.body)) as Record<string, unknown>
           return Response.json(1)
@@ -350,6 +350,7 @@ test("OAuth callback exchanges only after state consumption and atomically persi
     const persistedCredential = upsertBody as Record<string, unknown> | null
     assert.ok(persistedCredential)
     assert.equal(persistedCredential.p_environment, "sandbox")
+    assert.deepEqual(persistedCredential.p_authorized_scopes, PHASE5_SCOPE.split(" "))
     assert.notEqual(persistedCredential.p_access_token_envelope, "live-access-token")
     assert.notEqual(persistedCredential.p_refresh_token_envelope, "live-refresh-token")
     assert.equal(
