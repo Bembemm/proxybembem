@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 const ENV_KEYS = ["SUPABASE_URL", "SUPABASE_SECRET_KEY"] as const
+const QUOTE_ONLY_SCOPES = ["shipping-calculate"] as const
 
 type Environment = "sandbox" | "production"
 type FetchInput = Parameters<typeof fetch>[0]
@@ -22,6 +23,7 @@ type RepositoryModule = {
     accessTokenEnvelope: string
     refreshTokenEnvelope: string
     accessTokenExpiresAt: string
+    authorizedScopes: string[]
     tokenVersion: number
     status: "active" | "reauthorization_required"
     refreshLeaseOwner: string | null
@@ -32,6 +34,7 @@ type RepositoryModule = {
     accessTokenEnvelope: string
     refreshTokenEnvelope: string
     accessTokenExpiresAt: string
+    authorizedScopes?: readonly ["shipping-calculate"]
   }): Promise<void>
   claimRefreshLease(input: {
     environment: Environment
@@ -61,7 +64,7 @@ type RepositoryModule = {
 }
 
 async function loadRepository(): Promise<RepositoryModule> {
-  return (await import("../lib/server/melhor-envio-oauth-repository.ts")) as RepositoryModule
+  return (await import("../lib/server/melhor-envio-oauth-repository.ts")) as unknown as RepositoryModule
 }
 
 async function withSupabaseEnv(run: () => Promise<void>) {
@@ -146,7 +149,7 @@ test("consumes OAuth state only through the atomic RPC and parses a strict boole
   })
 })
 
-test("loads only the requested environment and maps one strict credential row", async (t) => {
+test("loads only the requested environment and maps one strict scope-aware credential row", async (t) => {
   await withSupabaseEnv(async () => {
     t.mock.method(globalThis, "fetch", async (input: FetchInput, init?: FetchInit) => {
       const { url } = assertCommonRequest(input, init)
@@ -156,7 +159,7 @@ test("loads only the requested environment and maps one strict credential row", 
       assert.equal(parsed.searchParams.get("limit"), "1")
       assert.equal(
         parsed.searchParams.get("select"),
-        "environment,access_token_envelope,refresh_token_envelope,access_token_expires_at,token_version,status,refresh_lease_owner,refresh_lease_expires_at",
+        "environment,access_token_envelope,refresh_token_envelope,access_token_expires_at,authorized_scopes,token_version,status,refresh_lease_owner,refresh_lease_expires_at",
       )
       assert.equal(init?.method, "GET")
 
@@ -166,6 +169,7 @@ test("loads only the requested environment and maps one strict credential row", 
           access_token_envelope: "v1.iv.access.tag",
           refresh_token_envelope: "v1.iv.refresh.tag",
           access_token_expires_at: "2026-09-20T12:00:00.000Z",
+          authorized_scopes: [...QUOTE_ONLY_SCOPES],
           token_version: 4,
           status: "active",
           refresh_lease_owner: null,
@@ -180,6 +184,7 @@ test("loads only the requested environment and maps one strict credential row", 
       accessTokenEnvelope: "v1.iv.access.tag",
       refreshTokenEnvelope: "v1.iv.refresh.tag",
       accessTokenExpiresAt: "2026-09-20T12:00:00.000Z",
+      authorizedScopes: [...QUOTE_ONLY_SCOPES],
       tokenVersion: 4,
       status: "active",
       refreshLeaseOwner: null,
@@ -196,13 +201,13 @@ test("returns null only when the credential query returns no row", async (t) => 
   })
 })
 
-test("stores initial authorization only through the atomic credential upsert RPC", async (t) => {
+test("authorization with no explicit scope evidence fails closed to quote-only through the v2 RPC", async (t) => {
   await withSupabaseEnv(async () => {
     t.mock.method(globalThis, "fetch", async (input: FetchInput, init?: FetchInit) => {
       const { url } = assertCommonRequest(input, init)
       assert.equal(
         url,
-        "https://project.supabase.co/rest/v1/rpc/upsert_melhor_envio_authorized_credential",
+        "https://project.supabase.co/rest/v1/rpc/upsert_melhor_envio_authorized_credential_v2",
       )
       assert.doesNotMatch(url, /melhor_envio_oauth_credentials\?/)
       assert.equal(init?.method, "POST")
@@ -211,6 +216,7 @@ test("stores initial authorization only through the atomic credential upsert RPC
         p_access_token_envelope: "v1.iv.access.tag",
         p_refresh_token_envelope: "v1.iv.refresh.tag",
         p_access_token_expires_at: "2026-09-20T12:00:00.000Z",
+        p_authorized_scopes: [...QUOTE_ONLY_SCOPES],
       })
       return Response.json(2)
     })
@@ -337,6 +343,7 @@ test("rejects malformed Supabase response shapes instead of coercing them", asyn
           access_token_envelope: "access",
           refresh_token_envelope: "refresh",
           access_token_expires_at: "bad-date",
+          authorized_scopes: [...QUOTE_ONLY_SCOPES],
           token_version: 0,
           status: "active",
           refresh_lease_owner: null,
