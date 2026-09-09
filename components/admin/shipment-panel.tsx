@@ -150,6 +150,7 @@ export function ShipmentPanel({
                   <ShipmentConfirmAction
                     kind="purchase"
                     action={`/api/internal/admin/shipments/${shipment.id}/purchase`}
+                    buttonLabel={`Comprar etiqueta por ${formatMoney(shipment.providerCostCents)}`}
                     environment={shipment.environment}
                     customerPaidCents={shipment.customerShippingCents}
                     labelCostCents={shipment.providerCostCents}
