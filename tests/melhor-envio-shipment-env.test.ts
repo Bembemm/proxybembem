@@ -2,7 +2,6 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 const ENV_KEYS = [
-  "NODE_ENV",
   "MELHOR_ENVIO_ENVIRONMENT",
   "MELHOR_ENVIO_CLIENT_ID",
   "MELHOR_ENVIO_CLIENT_SECRET",
@@ -21,7 +20,6 @@ async function withEnv(
   const previous = new Map<string, string | undefined>()
   for (const key of ENV_KEYS) previous.set(key, process.env[key])
 
-  process.env.NODE_ENV = "development"
   process.env.MELHOR_ENVIO_ENVIRONMENT = "sandbox"
   process.env.MELHOR_ENVIO_CLIENT_ID = "12345"
   process.env.MELHOR_ENVIO_CLIENT_SECRET = "client-secret"
