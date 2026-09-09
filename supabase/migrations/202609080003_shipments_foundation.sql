@@ -1,9 +1,16 @@
 create table if not exists public.shipping_sender_profiles (
   id uuid primary key default gen_random_uuid(),
-  environment text not null unique check (environment in ('sandbox', 'production')),
-  person_type text not null default 'pf' check (person_type = 'pf'),
+  environment text not null check (environment in ('sandbox', 'production')),
+  person_type text not null check (person_type in ('pf', 'pj')),
   full_name text not null check (char_length(full_name) between 2 and 120),
-  cpf text not null check (cpf ~ '^\d{11}$'),
+  cpf text check (cpf is null or cpf ~ '^\d{11}$'),
+  cnpj text check (cnpj is null or cnpj ~ '^\d{14}$'),
+  state_register text check (
+    state_register is null or char_length(state_register) between 1 and 32
+  ),
+  economic_activity_code text check (
+    economic_activity_code is null or economic_activity_code ~ '^\d{7}$'
+  ),
   email text not null check (char_length(email) between 3 and 254),
   phone text not null check (phone ~ '^\d{10,13}$'),
   postal_code text not null check (postal_code ~ '^\d{8}$'),
@@ -17,7 +24,13 @@ create table if not exists public.shipping_sender_profiles (
   state text not null check (state ~ '^[A-Z]{2}$'),
   version bigint not null default 1 check (version > 0),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (environment, person_type),
+  check (
+    (person_type = 'pf' and cpf is not null and cnpj is null and state_register is null and economic_activity_code is null)
+    or
+    (person_type = 'pj' and cnpj is not null and cpf is null and state_register is not null)
+  )
 );
 
 alter table public.shipping_sender_profiles enable row level security;
@@ -32,7 +45,8 @@ create table if not exists public.shipments (
   provider text not null default 'melhor_envio' check (provider = 'melhor_envio'),
   environment text not null check (environment in ('sandbox', 'production')),
   document_mode text not null default 'declaration_content'
-    check (document_mode = 'declaration_content'),
+    check (document_mode in ('declaration_content', 'invoice')),
+  invoice_key text check (invoice_key is null or invoice_key ~ '^\d{44}$'),
   state text not null default 'draft' check (
     state in (
       'draft',
@@ -120,6 +134,10 @@ create table if not exists public.shipments (
   check (
     (state = 'attention_required' and attention_reason is not null)
     or (state <> 'attention_required')
+  ),
+  check (
+    (document_mode = 'invoice' and invoice_key is not null)
+    or (document_mode = 'declaration_content' and invoice_key is null)
   )
 );
 
@@ -170,8 +188,12 @@ create or replace function public.admin_upsert_shipping_sender_profile(
   p_environment text,
   p_admin_user_id uuid,
   p_expected_version bigint,
+  p_person_type text,
   p_full_name text,
   p_cpf text,
+  p_cnpj text,
+  p_state_register text,
+  p_economic_activity_code text,
   p_email text,
   p_phone text,
   p_postal_code text,
@@ -191,12 +213,15 @@ declare
   v_current public.shipping_sender_profiles%rowtype;
   v_profile public.shipping_sender_profiles%rowtype;
   v_outcome text;
-  v_cpf_changed boolean := false;
+  v_tax_document_changed boolean := false;
 begin
   if p_environment not in ('sandbox', 'production')
+    or p_person_type not in ('pf', 'pj')
     or p_admin_user_id is null
     or char_length(p_full_name) not between 2 and 120
-    or p_cpf !~ '^\d{11}$'
+    or (p_person_type = 'pf' and (p_cpf is null or p_cpf !~ '^\d{11}$' or p_cnpj is not null or p_state_register is not null or p_economic_activity_code is not null))
+    or (p_person_type = 'pj' and (p_cnpj is null or p_cnpj !~ '^\d{14}$' or p_cpf is not null or p_state_register is null or char_length(p_state_register) not between 1 and 32))
+    or (p_economic_activity_code is not null and p_economic_activity_code !~ '^\d{7}$')
     or char_length(p_email) not between 3 and 254
     or p_phone !~ '^\d{10,13}$'
     or p_postal_code !~ '^\d{8}$'
@@ -212,13 +237,17 @@ begin
   end if;
 
   perform pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended('shipping_sender_profile:' || p_environment, 0)
+    pg_catalog.hashtextextended(
+      'shipping_sender_profile:' || p_environment || ':' || p_person_type,
+      0
+    )
   );
 
   select *
     into v_current
     from public.shipping_sender_profiles
    where environment = p_environment
+     and person_type = p_person_type
    for update;
 
   if not found then
@@ -231,6 +260,9 @@ begin
       person_type,
       full_name,
       cpf,
+      cnpj,
+      state_register,
+      economic_activity_code,
       email,
       phone,
       postal_code,
@@ -243,9 +275,12 @@ begin
       version
     ) values (
       p_environment,
-      'pf',
+      p_person_type,
       p_full_name,
       p_cpf,
+      p_cnpj,
+      p_state_register,
+      p_economic_activity_code,
       p_email,
       p_phone,
       p_postal_code,
@@ -260,17 +295,23 @@ begin
     returning * into v_profile;
 
     v_outcome := 'created';
-    v_cpf_changed := true;
+    v_tax_document_changed := true;
   else
     if p_expected_version is null or v_current.version <> p_expected_version then
       return pg_catalog.jsonb_build_object('outcome', 'conflict');
     end if;
 
-    v_cpf_changed := v_current.cpf <> p_cpf;
+    v_tax_document_changed :=
+      v_current.cpf is distinct from p_cpf
+      or v_current.cnpj is distinct from p_cnpj
+      or v_current.state_register is distinct from p_state_register;
 
     update public.shipping_sender_profiles as s
        set full_name = p_full_name,
            cpf = p_cpf,
+           cnpj = p_cnpj,
+           state_register = p_state_register,
+           economic_activity_code = p_economic_activity_code,
            email = p_email,
            phone = p_phone,
            postal_code = p_postal_code,
@@ -309,7 +350,8 @@ begin
     pg_catalog.jsonb_build_object('version', v_profile.version),
     pg_catalog.jsonb_build_object(
       'environment', p_environment,
-      'cpf_changed', v_cpf_changed
+      'person_type', p_person_type,
+      'tax_document_changed', v_tax_document_changed
     )
   );
 
@@ -321,6 +363,9 @@ begin
       'person_type', v_profile.person_type,
       'full_name', v_profile.full_name,
       'cpf', v_profile.cpf,
+      'cnpj', v_profile.cnpj,
+      'state_register', v_profile.state_register,
+      'economic_activity_code', v_profile.economic_activity_code,
       'email', v_profile.email,
       'phone', v_profile.phone,
       'postal_code', v_profile.postal_code,
@@ -338,8 +383,8 @@ end;
 $$;
 
 revoke all on function public.admin_upsert_shipping_sender_profile(
-  text, uuid, bigint, text, text, text, text, text, text, text, text, text, text, text
+  text, uuid, bigint, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text
 ) from public, anon, authenticated;
 grant execute on function public.admin_upsert_shipping_sender_profile(
-  text, uuid, bigint, text, text, text, text, text, text, text, text, text, text, text
+  text, uuid, bigint, text, text, text, text, text, text, text, text, text, text, text, text, text, text, text
 ) to service_role;
