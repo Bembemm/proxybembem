@@ -487,15 +487,14 @@ test("posting and cancellation SQL never mutate payment or cancel the customer o
 test("shared reconciliation contract supports cancellation resolution without adding a new RPC", async () => {
   const operations = await readFile(new URL("../lib/server/shipment-operations.ts", import.meta.url), "utf8")
   const migration = await readFile(
-    new URL("../supabase/migrations/202609080004_shipment_operations.sql", import.meta.url),
+    new URL("../supabase/migrations/202609080005_shipment_cancel_reconciliation.sql", import.meta.url),
     "utf8",
   )
   assert.match(operations, /RECONCILIATIONS\s*=\s*\[[^\]]*["']canceled["'][^\]]*["']not_canceled["'][^\]]*\]/)
-  const start = migration.indexOf("create or replace function public.admin_resolve_shipment_reconciliation")
-  const end = migration.indexOf("create or replace function public.admin_claim_shipment_generation", start)
-  const block = migration.slice(start, end)
-  assert.match(block, /cancel_outcome_unknown/)
-  assert.match(block, /'canceled'/)
-  assert.match(block, /'not_canceled'/)
-  assert.match(block, /stable_state_before_attention/)
+  assert.match(migration, /create or replace function public\.admin_resolve_shipment_reconciliation/)
+  assert.match(migration, /cancel_outcome_unknown/)
+  assert.match(migration, /'canceled'/)
+  assert.match(migration, /'not_canceled'/)
+  assert.match(migration, /stable_state_before_attention/)
+  assert.doesNotMatch(migration, /create or replace function public\.admin_[a-z_]*cancel_reconciliation/)
 })

@@ -4,7 +4,7 @@ import { isShipmentEnvironment, isShipmentState, type ShipmentState } from "../s
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const INVOICE_KEY_RE = /^\d{44}$/
 const ATTENTION_REASONS = ["purchase_outcome_unknown", "cart_outcome_unknown", "cancel_outcome_unknown"] as const
-const RECONCILIATIONS = ["purchased", "not_purchased"] as const
+const RECONCILIATIONS = ["purchased", "not_purchased", "canceled", "not_canceled"] as const
 const TRACKING_STATES = ["posted", "in_transit", "delivered"] as const
 const OUTCOMES = ["created", "transitioned", "not_found", "conflict", "invalid_state", "operation_mismatch", "active_exists"] as const
 
@@ -270,7 +270,7 @@ export async function resolveShipmentReconciliation(input: {
     p_shipment_id: input.shipmentId,
     p_admin_user_id: input.adminUserId,
     p_expected_version: input.expectedVersion,
-    p_resolution: "not_purchased",
+    p_resolution: input.resolution,
     p_provider_order_id: null,
     p_purchased_cost_cents: null,
   })
