@@ -13,6 +13,18 @@ const ENV_KEYS = [
   "SHIPPING_QUOTE_SECRET",
 ] as const
 
+const PHASE5_SCOPE = [
+  "shipping-calculate",
+  "cart-read",
+  "cart-write",
+  "orders-read",
+  "shipping-checkout",
+  "shipping-generate",
+  "shipping-print",
+  "shipping-tracking",
+  "shipping-cancel",
+].join(" ")
+
 type OAuthTokens = {
   tokenType: "Bearer"
   accessToken: string
@@ -74,7 +86,7 @@ function successfulTokenResponse() {
   })
 }
 
-test("builds a least-privilege sandbox authorization URL without the client secret", async () => {
+test("builds a least-privilege Phase 5 sandbox authorization URL without the client secret", async () => {
   await withOAuthEnv("sandbox", async () => {
     const oauth = await loadOAuth()
     const state = "state-value-with-256-bits-of-randomness-placeholder"
@@ -89,13 +101,13 @@ test("builds a least-privilege sandbox authorization URL without the client secr
     )
     assert.equal(url.searchParams.get("response_type"), "code")
     assert.equal(url.searchParams.get("state"), state)
-    assert.equal(url.searchParams.get("scope"), "shipping-calculate")
+    assert.equal(url.searchParams.get("scope"), PHASE5_SCOPE)
     assert.equal(url.searchParams.getAll("scope").length, 1)
     assert.doesNotMatch(url.toString(), /client-secret-never-leak/)
   })
 })
 
-test("uses the production OAuth host without changing scope or callback", async () => {
+test("uses the production OAuth host without changing Phase 5 scope or callback", async () => {
   await withOAuthEnv("production", async () => {
     const oauth = await loadOAuth()
     const url = new URL(oauth.buildMelhorEnvioAuthorizationUrl({ state: "state-value" }))
@@ -105,7 +117,7 @@ test("uses the production OAuth host without changing scope or callback", async 
       url.searchParams.get("redirect_uri"),
       "https://www.proxybembem.com.br/api/melhor-envio/oauth/callback",
     )
-    assert.equal(url.searchParams.get("scope"), "shipping-calculate")
+    assert.equal(url.searchParams.get("scope"), PHASE5_SCOPE)
   })
 })
 
