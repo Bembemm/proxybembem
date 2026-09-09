@@ -165,3 +165,181 @@ create index if not exists shipment_events_order_created_idx
 alter table public.shipment_events enable row level security;
 revoke all on table public.shipment_events from public, anon, authenticated;
 grant select on table public.shipment_events to service_role;
+
+create or replace function public.admin_upsert_shipping_sender_profile(
+  p_environment text,
+  p_admin_user_id uuid,
+  p_expected_version bigint,
+  p_full_name text,
+  p_cpf text,
+  p_email text,
+  p_phone text,
+  p_postal_code text,
+  p_street text,
+  p_number text,
+  p_complement text,
+  p_neighborhood text,
+  p_city text,
+  p_state text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_current public.shipping_sender_profiles%rowtype;
+  v_profile public.shipping_sender_profiles%rowtype;
+  v_outcome text;
+  v_cpf_changed boolean := false;
+begin
+  if p_environment not in ('sandbox', 'production')
+    or p_admin_user_id is null
+    or char_length(p_full_name) not between 2 and 120
+    or p_cpf !~ '^\d{11}$'
+    or char_length(p_email) not between 3 and 254
+    or p_phone !~ '^\d{10,13}$'
+    or p_postal_code !~ '^\d{8}$'
+    or char_length(p_street) not between 1 and 120
+    or char_length(p_number) not between 1 and 20
+    or (p_complement is not null and char_length(p_complement) not between 1 and 80)
+    or char_length(p_neighborhood) not between 1 and 80
+    or char_length(p_city) not between 1 and 80
+    or p_state !~ '^[A-Z]{2}$'
+    or (p_expected_version is not null and p_expected_version <= 0)
+  then
+    raise exception 'invalid shipping sender input';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('shipping_sender_profile:' || p_environment, 0)
+  );
+
+  select *
+    into v_current
+    from public.shipping_sender_profiles
+   where environment = p_environment
+   for update;
+
+  if not found then
+    if p_expected_version is not null then
+      return pg_catalog.jsonb_build_object('outcome', 'conflict');
+    end if;
+
+    insert into public.shipping_sender_profiles (
+      environment,
+      person_type,
+      full_name,
+      cpf,
+      email,
+      phone,
+      postal_code,
+      street,
+      number,
+      complement,
+      neighborhood,
+      city,
+      state,
+      version
+    ) values (
+      p_environment,
+      'pf',
+      p_full_name,
+      p_cpf,
+      p_email,
+      p_phone,
+      p_postal_code,
+      p_street,
+      p_number,
+      p_complement,
+      p_neighborhood,
+      p_city,
+      p_state,
+      1
+    )
+    returning * into v_profile;
+
+    v_outcome := 'created';
+    v_cpf_changed := true;
+  else
+    if p_expected_version is null or v_current.version <> p_expected_version then
+      return pg_catalog.jsonb_build_object('outcome', 'conflict');
+    end if;
+
+    v_cpf_changed := v_current.cpf <> p_cpf;
+
+    update public.shipping_sender_profiles as s
+       set full_name = p_full_name,
+           cpf = p_cpf,
+           email = p_email,
+           phone = p_phone,
+           postal_code = p_postal_code,
+           street = p_street,
+           number = p_number,
+           complement = p_complement,
+           neighborhood = p_neighborhood,
+           city = p_city,
+           state = p_state,
+           version = s.version + 1,
+           updated_at = pg_catalog.now()
+     where s.id = v_current.id
+    returning * into v_profile;
+
+    v_outcome := 'updated';
+  end if;
+
+  insert into public.admin_audit_log (
+    admin_user_id,
+    entity_type,
+    entity_id,
+    action,
+    previous_values,
+    new_values,
+    metadata
+  ) values (
+    p_admin_user_id,
+    'shipping_sender_profile',
+    v_profile.id::text,
+    case when v_outcome = 'created' then 'sender_created' else 'sender_updated' end,
+    case
+      when v_outcome = 'updated'
+        then pg_catalog.jsonb_build_object('version', v_current.version)
+      else null
+    end,
+    pg_catalog.jsonb_build_object('version', v_profile.version),
+    pg_catalog.jsonb_build_object(
+      'environment', p_environment,
+      'cpf_changed', v_cpf_changed
+    )
+  );
+
+  return pg_catalog.jsonb_build_object(
+    'outcome', v_outcome,
+    'profile', pg_catalog.jsonb_build_object(
+      'id', v_profile.id,
+      'environment', v_profile.environment,
+      'person_type', v_profile.person_type,
+      'full_name', v_profile.full_name,
+      'cpf', v_profile.cpf,
+      'email', v_profile.email,
+      'phone', v_profile.phone,
+      'postal_code', v_profile.postal_code,
+      'street', v_profile.street,
+      'number', v_profile.number,
+      'complement', v_profile.complement,
+      'neighborhood', v_profile.neighborhood,
+      'city', v_profile.city,
+      'state', v_profile.state,
+      'version', v_profile.version,
+      'updated_at', v_profile.updated_at
+    )
+  );
+end;
+$$;
+
+revoke all on function public.admin_upsert_shipping_sender_profile(
+  text, uuid, bigint, text, text, text, text, text, text, text, text, text, text, text
+) from public, anon, authenticated;
+grant execute on function public.admin_upsert_shipping_sender_profile(
+  text, uuid, bigint, text, text, text, text, text, text, text, text, text, text, text
+) to service_role;
