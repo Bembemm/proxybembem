@@ -59,7 +59,11 @@ function dependencies(environment: "sandbox" | "production") {
       userAgent: "ProxyBembem (contato@proxybembem.com.br)",
       originCep: "86730000",
     }),
-    getAccessToken: async () => ({ accessToken: "test-token", tokenVersion: 1 }),
+    getAccessToken: async () => ({
+      accessToken: "test-token",
+      tokenVersion: 1,
+      authorizedScopes: ["shipping-calculate"] as const,
+    }),
   }
 }
 
