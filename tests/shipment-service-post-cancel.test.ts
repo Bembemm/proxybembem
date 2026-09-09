@@ -220,7 +220,9 @@ test("confirmed cancellation claims before provider call then commits provider-c
   const calls: Array<{ name: string; input?: unknown }> = []
   const service = module.createShipmentPostCancelService(
     baseDeps({
-      ensureCancelAuthorization: async () => calls.push({ name: "auth" }),
+      ensureCancelAuthorization: async () => {
+        calls.push({ name: "auth" })
+      },
       claimCancel: async (input) => {
         calls.push({ name: "claim", input })
         return operationResult({ previousState: "generated", state: "cancel_pending", version: 8 })
@@ -488,7 +490,7 @@ test("shared reconciliation contract supports cancellation resolution without ad
     new URL("../supabase/migrations/202609080004_shipment_operations.sql", import.meta.url),
     "utf8",
   )
-  assert.match(operations, /RECONCILIATIONS\s*=\s*\[[^\]]*["']canceled["'][^\]]*["']not_canceled["']/s)
+  assert.match(operations, /RECONCILIATIONS\s*=\s*\[[^\]]*["']canceled["'][^\]]*["']not_canceled["'][^\]]*\]/)
   const start = migration.indexOf("create or replace function public.admin_resolve_shipment_reconciliation")
   const end = migration.indexOf("create or replace function public.admin_claim_shipment_generation", start)
   const block = migration.slice(start, end)
