@@ -169,7 +169,7 @@ test("ordinary customer session cannot satisfy the independent admin boundary", 
     authorizeSession: async () => {
       authorizeCalls += 1
       return "active" as const
-n    },
+    },
     activateSession: async () => null,
     revokeSession: async () => false,
   }
