@@ -283,3 +283,17 @@ export async function getActiveShipmentForOrder(orderId: string): Promise<Shipme
     order: "created_at.desc",
   }))
 }
+
+export async function listActiveShipmentsForTracking(limit: number): Promise<ShipmentRecord[]> {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 20) {
+    throw new Error("Invalid shipment tracking limit")
+  }
+  const trackingStateFilter = "state=in.(purchased,generated,posted,in_transit)"
+  const providerShipmentFilter = "provider_shipment_id=not.is.null"
+  const response = await shipmentRequest(
+    `shipments?select=${encodeURIComponent(SHIPMENT_SELECT)}&${trackingStateFilter}&${providerShipmentFilter}&operation_kind=is.null&order=updated_at.asc&limit=${limit}`,
+  )
+  const payload = (await response.json()) as unknown
+  if (!Array.isArray(payload) || payload.length > limit) invalid()
+  return payload.map(parseShipment)
+}
