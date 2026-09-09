@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeft, ExternalLink } from "lucide-react"
 import { notFound } from "next/navigation"
 import { AdminShell } from "../../../../components/admin/admin-shell.tsx"
 import { DangerConfirmForm } from "../../../../components/admin/danger-confirm-form.tsx"
+import { ShipmentPanel } from "../../../../components/admin/shipment-panel.tsx"
 import {
   FulfillmentStatusBadge,
   PaymentStatusBadge,
@@ -15,6 +16,7 @@ import {
 } from "../../../../lib/server/fulfillment.ts"
 import { listOpenOrderAttention } from "../../../../lib/server/order-attention.ts"
 import { listOrderEvents } from "../../../../lib/server/order-events.ts"
+import { getAdminShipmentProjectionForOrder } from "../../../../lib/server/shipments.ts"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -162,10 +164,11 @@ export default async function AdminOrderDetailPage({
   const order = await getAdminOrderById(id)
   if (!order) notFound()
 
-  const [events, attention, audit] = await Promise.all([
+  const [events, attention, audit, shipment] = await Promise.all([
     listOrderEvents(id),
     listOpenOrderAttention(id),
     listAdminAuditForEntity({ entityType: "order", entityId: id }),
+    getAdminShipmentProjectionForOrder(id),
   ])
 
   const query = await searchParams
@@ -254,6 +257,7 @@ export default async function AdminOrderDetailPage({
                 )
               }
               if (target === "shipped") {
+                if (order.shipping_provider === "melhor_envio") return null
                 return (
                   <ActionForm
                     key={target}
@@ -298,6 +302,14 @@ export default async function AdminOrderDetailPage({
             <p className="text-sm text-slate-500">Não há transições operacionais disponíveis para este pedido.</p>
           ) : null}
         </Section>
+
+        {order.shipping_provider === "melhor_envio" ? (
+          <ShipmentPanel
+            orderId={order.id}
+            orderFulfillmentStatus={order.fulfillment_status}
+            shipment={shipment}
+          />
+        ) : null}
 
         <Section title="Alertas" description="Pendências abertas que precisam de atenção operacional.">
           {attention.length > 0 ? (
