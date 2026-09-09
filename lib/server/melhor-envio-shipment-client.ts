@@ -2,9 +2,7 @@ import {
   getMelhorEnvioShipmentEnv,
   type MelhorEnvioEnvironment,
 } from "./env.ts"
-import {
-  type MelhorEnvioOAuthScope,
-} from "./melhor-envio-oauth-scopes.ts"
+import type { MelhorEnvioOAuthScope } from "./melhor-envio-oauth-scopes.ts"
 import {
   getMelhorEnvioAccessToken,
   type UsableMelhorEnvioAccessToken,
@@ -187,7 +185,11 @@ function parseMoneyCents(value: unknown, status: number): number {
   if (typeof value === "number") {
     if (!Number.isFinite(value) || value <= 0) providerError("invalid_response", status)
     const cents = Math.round(value * 100)
-    if (!Number.isSafeInteger(cents) || cents <= 0 || Math.abs(value * 100 - cents) > 1e-7) {
+    if (
+      !Number.isSafeInteger(cents) ||
+      cents <= 0 ||
+      Math.abs(value * 100 - cents) > 1e-7
+    ) {
       providerError("invalid_response", status)
     }
     return cents
@@ -196,16 +198,15 @@ function parseMoneyCents(value: unknown, status: number): number {
   if (typeof value !== "string") providerError("invalid_response", status)
   const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value)
   if (!match) providerError("invalid_response", status)
-  const reais = Number(match[1])
+  const whole = Number(match[1])
   const fraction = Number((match[2] ?? "").padEnd(2, "0") || "0")
-  const cents = reais * 100 + fraction
+  const cents = whole * 100 + fraction
   if (!Number.isSafeInteger(cents) || cents <= 0) providerError("invalid_response", status)
   return cents
 }
 
 function parseOptionalMoneyCents(value: unknown, status: number): number | null {
-  if (value === undefined || value === null) return null
-  return parseMoneyCents(value, status)
+  return value === undefined || value === null ? null : parseMoneyCents(value, status)
 }
 
 function parseOptionalString(
@@ -236,8 +237,7 @@ function parseHttpsUrl(value: unknown, status: number): string {
 }
 
 function parseOptionalHttpsUrl(value: unknown, status: number): string | null {
-  if (value === undefined || value === null) return null
-  return parseHttpsUrl(value, status)
+  return value === undefined || value === null ? null : parseHttpsUrl(value, status)
 }
 
 function baseUrl(environment: MelhorEnvioEnvironment) {
@@ -266,10 +266,7 @@ async function readBoundedJson(response: Response): Promise<unknown> {
 }
 
 function isAuthenticationFailure(status: number, payload: unknown) {
-  return (
-    status === 401 ||
-    (isRecord(payload) && payload.message === "Unauthenticated.")
-  )
+  return status === 401 || (isRecord(payload) && payload.message === "Unauthenticated.")
 }
 
 function classifyRejectedResponse(status: number): never {
@@ -324,6 +321,7 @@ function validateCartInput(input: {
   if (input.documentMode !== "declaration_content") {
     throw new Error("Invalid Melhor Envio shipment document mode")
   }
+
   validatePerson({
     name: input.sender.fullName,
     email: input.sender.email,
@@ -348,6 +346,7 @@ function validateCartInput(input: {
   if (!positiveSafeInteger(serviceId)) {
     throw new Error("Invalid Melhor Envio shipment service")
   }
+
   if (
     !boundedString(input.snapshot.service.name, 1, 120) ||
     !boundedString(input.snapshot.service.carrier, 1, 120) ||
@@ -428,13 +427,13 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
         providerError("outcome_unknown", null)
       }
 
-      const payload = await readBoundedJson(response)
-      return { status: response.status, payload }
+      return {
+        status: response.status,
+        payload: await readBoundedJson(response),
+      }
     }
 
-    const firstToken = await deps.getAccessToken({
-      requiredScopes: input.requiredScopes,
-    })
+    const firstToken = await deps.getAccessToken({ requiredScopes: input.requiredScopes })
     let result = await execute(firstToken)
 
     if (isAuthenticationFailure(result.status, result.payload)) {
@@ -532,6 +531,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
     if (!positiveSafeInteger(input.currentCostCents)) {
       throw new Error("Invalid Melhor Envio shipment confirmed cost")
     }
+
     const result = await request({
       path: "/api/v2/me/shipment/checkout",
       method: "POST",
@@ -539,6 +539,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
       body: { orders: [input.providerShipmentId] },
     })
     if (!isRecord(result.payload)) providerError("invalid_response", result.status)
+
     return {
       providerOrderId: input.providerShipmentId,
       purchasedCostCents: input.currentCostCents,
@@ -565,6 +566,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
     if (input.source !== "cart" && input.source !== "order") {
       throw new Error("Invalid Melhor Envio shipment read source")
     }
+
     const result = await request({
       path:
         input.source === "cart"
@@ -574,8 +576,10 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
       requiredScopes: [input.source === "cart" ? "cart-read" : "orders-read"],
     })
     if (!isRecord(result.payload)) providerError("invalid_response", result.status)
+
     const id = parseProviderId(result.payload.id, result.status)
     if (id !== input.providerShipmentId) providerError("invalid_response", result.status)
+
     return {
       providerShipmentId: id,
       status: parseOptionalString(result.payload.status, result.status, MAX_STATUS),
@@ -611,6 +615,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
     if (input.format !== "pdf" && input.format !== "jpeg" && input.format !== "zpl") {
       throw new Error("Invalid Melhor Envio DACE format")
     }
+
     const result = await request({
       path: `/api/v2/me/imprimir/dace/${input.format}/${encodeURIComponent(input.providerShipmentId)}`,
       method: "GET",
@@ -630,6 +635,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
     ) {
       throw new Error("Invalid Melhor Envio tracking batch")
     }
+
     const seen = new Set<string>()
     for (const id of input.providerShipmentIds) {
       assertProviderId(id)
@@ -644,8 +650,9 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
       body: { orders: input.providerShipmentIds },
     })
     if (!isRecord(result.payload)) providerError("invalid_response", result.status)
+    const trackingPayload = result.payload
 
-    const payloadKeys = Object.keys(result.payload)
+    const payloadKeys = Object.keys(trackingPayload)
     if (
       payloadKeys.length !== input.providerShipmentIds.length ||
       payloadKeys.some((key) => !seen.has(key))
@@ -654,7 +661,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
     }
 
     return input.providerShipmentIds.map((id) => {
-      const raw = result.payload[id]
+      const raw = trackingPayload[id]
       if (!isRecord(raw)) providerError("invalid_response", result.status)
       const parsedId = parseProviderId(raw.id, result.status)
       if (parsedId !== id || !boundedString(raw.status, 1, MAX_STATUS)) {
@@ -677,6 +684,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
     if (!boundedString(input.description, 3, MAX_DESCRIPTION)) {
       throw new Error("Invalid Melhor Envio cancellation description")
     }
+
     const result = await request({
       path: "/api/v2/me/shipment/cancel",
       method: "POST",
