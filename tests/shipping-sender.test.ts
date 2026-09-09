@@ -7,8 +7,12 @@ type Environment = "sandbox" | "production"
 type SenderProfile = {
   id: string
   environment: Environment
+  personType: "pf" | "pj"
   fullName: string
-  cpf: string
+  cpf: string | null
+  cnpj: string | null
+  stateRegister: string | null
+  economicActivityCode: string | null
   email: string
   phone: string
   postalCode: string
@@ -24,13 +28,17 @@ type SenderProfile = {
 
 type SenderModule = {
   ShippingSenderConflictError: new () => Error & { code?: string }
-  getShippingSenderProfile(environment: Environment): Promise<SenderProfile | null>
+  getShippingSenderProfile(environment: Environment, personType?: "pf" | "pj"): Promise<SenderProfile | null>
   upsertShippingSenderProfile(input: {
     environment: Environment
     adminUserId: string
     expectedVersion: number | null
+    personType?: "pf" | "pj"
     fullName: string
-    cpf: string
+    cpf: string | null
+    cnpj?: string | null
+    stateRegister?: string | null
+    economicActivityCode?: string | null
     email: string
     phone: string
     postalCode: string
@@ -77,6 +85,9 @@ function row(overrides: Record<string, unknown> = {}) {
     person_type: "pf",
     full_name: "Breno Bembem",
     cpf: VALID_CPF,
+    cnpj: null,
+    state_register: null,
+    economic_activity_code: null,
     email: "contato@proxybembem.com.br",
     phone: "44999999999",
     postal_code: "86730000",
@@ -96,8 +107,12 @@ function mappedProfile(overrides: Partial<SenderProfile> = {}): SenderProfile {
   return {
     id: PROFILE_ID,
     environment: "production",
+    personType: "pf",
     fullName: "Breno Bembem",
     cpf: VALID_CPF,
+    cnpj: null,
+    stateRegister: null,
+    economicActivityCode: null,
     email: "contato@proxybembem.com.br",
     phone: "44999999999",
     postalCode: "86730000",
@@ -113,7 +128,7 @@ function mappedProfile(overrides: Partial<SenderProfile> = {}): SenderProfile {
   }
 }
 
-test("reads one strict backend sender profile and masks CPF for presentation", async (t) => {
+test("reads one strict backend PF sender profile and masks CPF for presentation", async (t) => {
   await withSupabaseEnv(async () => {
     const sender = await loadSender()
     t.mock.method(globalThis, "fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
@@ -121,8 +136,10 @@ test("reads one strict backend sender profile and masks CPF for presentation", a
       assert.equal(url.origin, "https://example.supabase.co")
       assert.equal(url.pathname, "/rest/v1/shipping_sender_profiles")
       assert.equal(url.searchParams.get("environment"), "eq.production")
+      assert.equal(url.searchParams.get("person_type"), "eq.pf")
       assert.equal(url.searchParams.get("limit"), "1")
       assert.match(url.searchParams.get("select") ?? "", /cpf/)
+      assert.match(url.searchParams.get("select") ?? "", /cnpj/)
       assert.equal((init?.headers as Record<string, string>)?.apikey, "server-secret")
       assert.equal(init?.cache, "no-store")
       return Response.json([row()])
@@ -134,7 +151,7 @@ test("reads one strict backend sender profile and masks CPF for presentation", a
   })
 })
 
-test("returns null only for a missing environment profile and rejects malformed storage rows", async (t) => {
+test("returns null only for a missing person-type profile and rejects malformed storage rows", async (t) => {
   await withSupabaseEnv(async () => {
     const sender = await loadSender()
     let calls = 0
@@ -149,7 +166,7 @@ test("returns null only for a missing environment profile and rejects malformed 
   })
 })
 
-test("upserts only through the service-role RPC with exact optimistic version input", async (t) => {
+test("PF upsert uses the dual-profile RPC with exact optimistic version input", async (t) => {
   await withSupabaseEnv(async () => {
     const sender = await loadSender()
     t.mock.method(globalThis, "fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
@@ -160,8 +177,12 @@ test("upserts only through the service-role RPC with exact optimistic version in
         p_environment: "production",
         p_admin_user_id: ADMIN_ID,
         p_expected_version: 3,
+        p_person_type: "pf",
         p_full_name: "Breno Bembem",
         p_cpf: VALID_CPF,
+        p_cnpj: null,
+        p_state_register: null,
+        p_economic_activity_code: null,
         p_email: "contato@proxybembem.com.br",
         p_phone: "44999999999",
         p_postal_code: "86730000",
@@ -224,7 +245,7 @@ test("maps only the explicit RPC conflict outcome to a typed optimistic conflict
   })
 })
 
-test("sender upsert migration is fixed-search-path service-role only, versioned and never audits CPF values", async () => {
+test("sender upsert migration is fixed-search-path service-role only, versioned and never audits tax-document values", async () => {
   const migration = await readFile(
     new URL("../supabase/migrations/202609080003_shipments_foundation.sql", import.meta.url),
     "utf8",
@@ -242,5 +263,5 @@ test("sender upsert migration is fixed-search-path service-role only, versioned 
 
   const auditInsert = migration.match(/insert into public\.admin_audit_log[\s\S]*?;/i)?.[0] ?? ""
   assert.ok(auditInsert.length > 0)
-  assert.doesNotMatch(auditInsert, /p_cpf|v_profile\.cpf|old_cpf|new_cpf/i)
+  assert.doesNotMatch(auditInsert, /p_cpf|v_profile\.cpf|p_cnpj|v_profile\.cnpj|old_cpf|new_cpf/i)
 })
