@@ -5,6 +5,7 @@ type Environment = "sandbox" | "production"
 type TokenOptions = {
   forceRefresh?: boolean
   rejectedTokenVersion?: number
+  requiredScopes?: readonly string[]
 }
 type QuoterDependencies = {
   getConfig(): {
@@ -15,6 +16,7 @@ type QuoterDependencies = {
   getAccessToken(options?: TokenOptions): Promise<{
     accessToken: string
     tokenVersion: number
+    authorizedScopes: string[]
   }>
 }
 type ShippingProductInput = {
@@ -40,6 +42,8 @@ type QuoteResult = Array<{
 }>
 type CreateQuoter = (deps: QuoterDependencies) => (input: QuoteInput) => Promise<QuoteResult>
 
+const QUOTE_SCOPES = ["shipping-calculate"] as const
+
 async function loadCreateQuoter(): Promise<CreateQuoter> {
   const module = (await import("../lib/server/melhor-envio.ts")) as Record<string, unknown>
   assert.equal(
@@ -55,6 +59,14 @@ function config(environment: Environment = "sandbox") {
     environment,
     userAgent: "ProxyBembem (contato@proxybembem.com.br)",
     originCep: "86730000",
+  }
+}
+
+function usableToken(accessToken: string, tokenVersion: number) {
+  return {
+    accessToken,
+    tokenVersion,
+    authorizedScopes: ["shipping-calculate"],
   }
 }
 
@@ -86,14 +98,14 @@ function successQuote() {
   )
 }
 
-test("quotes sandbox freight with a token-manager credential and trusted product payload", async (t) => {
+test("quotes sandbox freight with a quote-only token-manager credential and trusted product payload", async (t) => {
   const tokenCalls: Array<TokenOptions | undefined> = []
   const createQuoter = await loadCreateQuoter()
   const quote = createQuoter({
     getConfig: () => config("sandbox"),
     getAccessToken: async (options) => {
       tokenCalls.push(options)
-      return { accessToken: "token-v7", tokenVersion: 7 }
+      return usableToken("token-v7", 7)
     },
   })
 
@@ -141,14 +153,14 @@ test("quotes sandbox freight with a token-manager credential and trusted product
       packages: [{ price: "18.42" }],
     },
   ])
-  assert.deepEqual(tokenCalls, [undefined])
+  assert.deepEqual(tokenCalls, [{ requiredScopes: QUOTE_SCOPES }])
 })
 
 test("uses the production freight host with the token manager", async (t) => {
   const createQuoter = await loadCreateQuoter()
   const quote = createQuoter({
     getConfig: () => config("production"),
-    getAccessToken: async () => ({ accessToken: "production-token", tokenVersion: 3 }),
+    getAccessToken: async () => usableToken("production-token", 3),
   })
 
   t.mock.method(globalThis, "fetch", async (input: Parameters<typeof fetch>[0]) => {
@@ -166,7 +178,7 @@ test("filters provider errors and invalid quote entries", async (t) => {
   const createQuoter = await loadCreateQuoter()
   const quote = createQuoter({
     getConfig: () => config(),
-    getAccessToken: async () => ({ accessToken: "token-v7", tokenVersion: 7 }),
+    getAccessToken: async () => usableToken("token-v7", 7),
   })
 
   t.mock.method(globalThis, "fetch", async () =>
@@ -212,7 +224,7 @@ test("filters provider errors and invalid quote entries", async (t) => {
   ])
 })
 
-test("401 forces exactly one refresh that rejects the failed token version", async (t) => {
+test("401 forces exactly one refresh that rejects the failed token version and keeps the quote scope", async (t) => {
   const tokenCalls: Array<TokenOptions | undefined> = []
   const createQuoter = await loadCreateQuoter()
   const quote = createQuoter({
@@ -220,8 +232,8 @@ test("401 forces exactly one refresh that rejects the failed token version", asy
     getAccessToken: async (options) => {
       tokenCalls.push(options)
       return tokenCalls.length === 1
-        ? { accessToken: "token-v7", tokenVersion: 7 }
-        : { accessToken: "token-v8", tokenVersion: 8 }
+        ? usableToken("token-v7", 7)
+        : usableToken("token-v8", 8)
     },
   })
 
@@ -245,8 +257,12 @@ test("401 forces exactly one refresh that rejects the failed token version", asy
   assert.equal(result[0]?.priceCents, 1842)
   assert.equal(providerCalls, 2)
   assert.deepEqual(tokenCalls, [
-    undefined,
-    { forceRefresh: true, rejectedTokenVersion: 7 },
+    { requiredScopes: QUOTE_SCOPES },
+    {
+      forceRefresh: true,
+      rejectedTokenVersion: 7,
+      requiredScopes: QUOTE_SCOPES,
+    },
   ])
 })
 
@@ -258,8 +274,8 @@ test("the documented Unauthenticated message can recover once even when status i
     getAccessToken: async (options) => {
       tokenCalls.push(options)
       return tokenCalls.length === 1
-        ? { accessToken: "token-v7", tokenVersion: 7 }
-        : { accessToken: "token-v8", tokenVersion: 8 }
+        ? usableToken("token-v7", 7)
+        : usableToken("token-v8", 8)
     },
   })
 
@@ -276,6 +292,7 @@ test("the documented Unauthenticated message can recover once even when status i
   assert.deepEqual(tokenCalls[1], {
     forceRefresh: true,
     rejectedTokenVersion: 7,
+    requiredScopes: QUOTE_SCOPES,
   })
 })
 
@@ -287,8 +304,8 @@ test("two authentication failures stop after one forced refresh with no retry lo
     getAccessToken: async (options) => {
       tokenCalls.push(options)
       return tokenCalls.length === 1
-        ? { accessToken: "token-v7-secret", tokenVersion: 7 }
-        : { accessToken: "token-v8-secret", tokenVersion: 8 }
+        ? usableToken("token-v7-secret", 7)
+        : usableToken("token-v8-secret", 8)
     },
   })
 
@@ -312,8 +329,12 @@ test("two authentication failures stop after one forced refresh with no retry lo
   )
   assert.equal(providerCalls, 2)
   assert.deepEqual(tokenCalls, [
-    undefined,
-    { forceRefresh: true, rejectedTokenVersion: 7 },
+    { requiredScopes: QUOTE_SCOPES },
+    {
+      forceRefresh: true,
+      rejectedTokenVersion: 7,
+      requiredScopes: QUOTE_SCOPES,
+    },
   ])
 })
 
@@ -329,7 +350,7 @@ test("permission and ordinary provider failures never trigger token refresh", as
       getConfig: () => config(),
       getAccessToken: async (options) => {
         tokenCalls.push(options)
-        return { accessToken: "token-secret", tokenVersion: 7 }
+        return usableToken("token-secret", 7)
       },
     })
 
@@ -344,7 +365,7 @@ test("permission and ordinary provider failures never trigger token refresh", as
       /Melhor Envio request failed/,
     )
     assert.equal(providerCalls, 1)
-    assert.deepEqual(tokenCalls, [undefined])
+    assert.deepEqual(tokenCalls, [{ requiredScopes: QUOTE_SCOPES }])
     t.mock.restoreAll()
   }
 })
@@ -356,7 +377,7 @@ test("network failures are sanitized and never force a refresh", async (t) => {
     getConfig: () => config(),
     getAccessToken: async (options) => {
       tokenCalls.push(options)
-      return { accessToken: "network-token-secret", tokenVersion: 9 }
+      return usableToken("network-token-secret", 9)
     },
   })
 
@@ -373,5 +394,5 @@ test("network failures are sanitized and never force a refresh", async (t) => {
       return true
     },
   )
-  assert.deepEqual(tokenCalls, [undefined])
+  assert.deepEqual(tokenCalls, [{ requiredScopes: QUOTE_SCOPES }])
 })
