@@ -76,6 +76,7 @@ function detail(id: string, orderNumber: string, customerEmail: string) {
     address_city: "Maringá",
     address_state: "PR",
     timeline: [{ kind: "payment_approved", created_at: CREATED_AT }],
+    shipment: null,
   }
 }
 
@@ -168,7 +169,7 @@ test("ordinary customer session cannot satisfy the independent admin boundary", 
     authorizeSession: async () => {
       authorizeCalls += 1
       return "active" as const
-    },
+n    },
     activateSession: async () => null,
     revokeSession: async () => false,
   }
