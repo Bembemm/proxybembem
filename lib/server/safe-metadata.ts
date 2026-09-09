@@ -9,6 +9,14 @@ const FORBIDDEN_KEY_FRAGMENTS = [
   "cookie",
   "fingerprint",
   "checkouturl",
+  "cpf",
+  "cnpj",
+  "taxid",
+  "providershipmentid",
+  "providercartid",
+  "providerorderid",
+  "printurl",
+  "daceurl",
 ] as const
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
