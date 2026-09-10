@@ -1,4 +1,5 @@
 import type { AdminOrderDetail } from "./admin-orders.ts"
+import { hasValidCpfChecksum } from "./shipping-sender.ts"
 
 export type ShipmentSnapshotErrorCode =
   | "order_not_ready"
@@ -49,6 +50,7 @@ export interface ShipmentPreparationSnapshot {
     name: string
     email: string
     phone: string
+    document: string
     postalCode: string
     street: string
     number: string
@@ -134,6 +136,8 @@ function validateRecipient(order: AdminOrderDetail): ShipmentPreparationSnapshot
     !boundedTrimmedString(order.customer_name, 120) ||
     !boundedTrimmedString(order.customer_email, 254) ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.customer_email) ||
+    typeof order.customer_cpf !== "string" ||
+    !hasValidCpfChecksum(order.customer_cpf) ||
     !/^\d{10,15}$/.test(order.whatsapp) ||
     !/^\d{8}$/.test(order.cep) ||
     !boundedTrimmedString(order.address_street, 120) ||
@@ -154,6 +158,7 @@ function validateRecipient(order: AdminOrderDetail): ShipmentPreparationSnapshot
     name: order.customer_name,
     email: order.customer_email,
     phone: order.whatsapp,
+    document: order.customer_cpf,
     postalCode: order.cep,
     street: order.address_street,
     number: order.address_number,
