@@ -22,6 +22,7 @@ const CUSTOMER: CheckoutData = {
   nome: "Cliente Teste",
   email: "cliente@example.com",
   whatsapp: "11999999999",
+  cpf: "52998224725",
   cep: "01001000",
   rua: "Praça da Sé",
   numero: "100",
@@ -151,6 +152,7 @@ test("reserves and forwards two products resolved from the current published cat
   const reserved = reservedInputs[0]!
   assert.equal(reserved.customerId, CUSTOMER_IDENTITY.userId)
   assert.equal(reserved.customerEmail, CUSTOMER_IDENTITY.email)
+  assert.equal(reserved.customerCpf, "52998224725")
   assert.equal(reserved.subtotalCents, 27500)
   assert.equal(reserved.shipping?.amountCents, 1842)
   assert.equal(reserved.totalCents, 29342)
