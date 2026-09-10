@@ -4,6 +4,7 @@ import {
   isFulfillmentStatus,
   type FulfillmentStatus,
 } from "./fulfillment.ts"
+import { hasValidCpfChecksum } from "./shipping-sender.ts"
 
 export interface OrderRecord {
   id: string
@@ -11,6 +12,7 @@ export interface OrderRecord {
   public_token: string
   customer_name: string
   customer_email: string | null
+  customer_cpf: string | null
   customer_id: string | null
   whatsapp: string
   cep: string
@@ -48,6 +50,7 @@ export interface CreateOrderInput {
   publicToken: string
   customerName: string
   customerEmail: string
+  customerCpf: string
   customerId?: string | null
   whatsapp: string
   cep: string
@@ -113,6 +116,7 @@ const ORDER_SELECT = [
   "public_token",
   "customer_name",
   "customer_email",
+  "customer_cpf",
   "customer_id",
   "whatsapp",
   "cep",
@@ -191,6 +195,10 @@ async function supabaseRequest(path: string, init?: RequestInit) {
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<OrderRecord> {
+  if (!hasValidCpfChecksum(input.customerCpf)) {
+    throw new Error("Invalid recipient CPF")
+  }
+
   const addressFields = input.address
     ? {
         address_street: input.address.street,
@@ -222,6 +230,7 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderRecord>
       public_token: input.publicToken,
       customer_name: input.customerName,
       customer_email: input.customerEmail,
+      customer_cpf: input.customerCpf,
       customer_id: input.customerId ?? null,
       whatsapp: input.whatsapp,
       cep: input.cep,
