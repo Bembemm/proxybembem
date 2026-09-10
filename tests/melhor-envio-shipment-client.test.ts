@@ -37,6 +37,7 @@ type Snapshot = {
     name: string
     email: string
     phone: string
+    document: string
     postalCode: string
     street: string
     number: string
@@ -183,6 +184,7 @@ const snapshot: Snapshot = {
     name: "Cliente Teste",
     email: "cliente@example.com",
     phone: "11999999999",
+    document: "52998224725",
     postalCode: "01001000",
     street: "Praça da Sé",
     number: "100",
@@ -266,6 +268,7 @@ test("cart insertion uses the trusted PF declaration payload, saved one-volume p
           name: "Cliente Teste",
           email: "cliente@example.com",
           phone: "11999999999",
+          document: "52998224725",
           address: "Praça da Sé",
           complement: "",
           number: "100",
