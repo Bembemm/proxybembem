@@ -81,6 +81,7 @@ test("login handoff preserves checkout details and chosen freight only for the c
     nome: "Breno Teste",
     email: "breno@example.com",
     whatsapp: "(44) 99999-9999",
+    cpf: "52998224725",
     cep: "86730-000",
     rua: "Rua Teste",
     numero: "123",
