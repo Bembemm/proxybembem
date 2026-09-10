@@ -31,6 +31,7 @@ const orderInput = {
   publicToken: "a".repeat(64),
   customerName: "Breno Bembem",
   customerEmail: "cliente@example.com",
+  customerCpf: "52998224725",
   customerId: CUSTOMER_ID,
   whatsapp: "44991250332",
   cep: "86730000",
@@ -78,6 +79,7 @@ test("persists complete address, shipping, total, checkout identity and owned cu
           public_token: orderInput.publicToken,
           customer_name: orderInput.customerName,
           customer_email: "cliente@example.com",
+          customer_cpf: "52998224725",
           customer_id: CUSTOMER_ID,
           whatsapp: orderInput.whatsapp,
           cep: orderInput.cep,
@@ -132,6 +134,7 @@ test("persists trusted authenticated customer ownership when supplied by server 
       async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
         const body = JSON.parse(String(init?.body)) as Record<string, unknown>
         assert.equal(body.customer_email, "conta@example.com")
+        assert.equal(body.customer_cpf, "52998224725")
         assert.equal(body.customer_id, customerId)
         return new Response(
           JSON.stringify([
