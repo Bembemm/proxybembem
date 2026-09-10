@@ -28,15 +28,33 @@ const FEEDBACK_MESSAGES = {
   "payment-required": "Pagamento aprovado é necessário para iniciar a produção.",
 } as const
 
+const SHIPMENT_FEEDBACK_MESSAGES = {
+  prepared: "Remessa preparada com sucesso e adicionada ao carrinho do Melhor Envio.",
+  "sender-missing": "Cadastre um remetente válido do Melhor Envio antes de preparar a remessa.",
+  "shipment-invalid": "Os dados da remessa estão incompletos. Verifique o CPF do destinatário, endereço, serviço de frete e dados do remetente.",
+  "shipment-busy": "Já existe uma operação de remessa em andamento. Atualize a página antes de tentar novamente.",
+  "provider-rejected": "O Melhor Envio recusou esta operação. Revise os dados da remessa antes de tentar novamente.",
+  "reauthorization-required": "A integração com o Melhor Envio precisa ser reautorizada antes de continuar.",
+  "shipment-attention": "A remessa precisa de verificação manual antes de continuar.",
+  purchased: "Compra da etiqueta confirmada pelo Melhor Envio.",
+  "price-changed": "O custo atual da etiqueta mudou. Revise o novo valor antes de confirmar a compra.",
+  "reconciled-purchased": "A reconciliação confirmou que a etiqueta foi comprada.",
+  "reconciled-not-purchased": "A reconciliação confirmou que a etiqueta não foi comprada e a remessa voltou a um estado seguro.",
+} as const
+
 const PAYMENT_REQUIRED_COPY =
   "O pagamento aprovado é necessário para iniciar a produção. Verifique o status confirmado pelo Mercado Pago antes de continuar."
 const CANCELLATION_COPY =
   "Cancelar o pedido altera apenas o estado operacional: isso não reembolsa automaticamente o Mercado Pago. Se o pedido já estiver pago, o acompanhamento financeiro continua até a reversão ser confirmada pelo provedor."
 
 type FeedbackStatus = keyof typeof FEEDBACK_MESSAGES
+type ShipmentFeedbackStatus = keyof typeof SHIPMENT_FEEDBACK_MESSAGES
 
 type PageParams = Promise<{ id: string }>
-type PageSearchParams = Promise<{ status?: string | string[] }>
+type PageSearchParams = Promise<{
+  status?: string | string[]
+  shipment?: string | string[]
+}>
 
 export const dynamic = "force-dynamic"
 
@@ -47,6 +65,11 @@ function firstParam(value: string | string[] | undefined) {
 function feedbackMessage(value: string | undefined) {
   if (!value || !(value in FEEDBACK_MESSAGES)) return null
   return FEEDBACK_MESSAGES[value as FeedbackStatus]
+}
+
+function shipmentFeedbackMessage(value: string | undefined) {
+  if (!value || !(value in SHIPMENT_FEEDBACK_MESSAGES)) return null
+  return SHIPMENT_FEEDBACK_MESSAGES[value as ShipmentFeedbackStatus]
 }
 
 function formatMoney(cents: number) {
@@ -172,7 +195,8 @@ export default async function AdminOrderDetailPage({
   ])
 
   const query = await searchParams
-  const feedback = feedbackMessage(firstParam(query.status))
+  const feedback =
+    shipmentFeedbackMessage(firstParam(query.shipment)) ?? feedbackMessage(firstParam(query.status))
   const transitions = allowedAdminFulfillmentTransitions(order.fulfillment_status)
   const paymentApproved = order.payment_status === "approved"
   const totalCents = order.total_cents ?? order.subtotal_cents
