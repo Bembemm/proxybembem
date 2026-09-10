@@ -373,6 +373,7 @@ export async function executeCheckoutFlow(
       publicToken: deps.generatePublicToken(),
       customerName: customer.nome,
       customerEmail: customerIdentity.email,
+      customerCpf: customer.cpf,
       customerId: customerIdentity.userId,
       whatsapp: customer.whatsapp,
       cep: customer.cep,
