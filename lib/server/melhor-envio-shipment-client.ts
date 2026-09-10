@@ -74,6 +74,7 @@ export interface MelhorEnvioShipmentSnapshot {
     name: string
     email: string
     phone: string
+    document: string
     postalCode: string
     street: string
     number: string
@@ -367,6 +368,9 @@ function validateCartInput(input: {
   }
 
   validatePerson(input.snapshot.recipient)
+  if (!hasValidCpfChecksum(input.snapshot.recipient.document)) {
+    throw new Error("Invalid Melhor Envio shipment recipient")
+  }
 
   if (!/^\d+$/.test(input.snapshot.service.id)) {
     throw new Error("Invalid Melhor Envio shipment service")
@@ -536,6 +540,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
           name: input.snapshot.recipient.name,
           email: input.snapshot.recipient.email,
           phone: input.snapshot.recipient.phone,
+          document: input.snapshot.recipient.document,
           address: input.snapshot.recipient.street,
           complement: input.snapshot.recipient.complement ?? "",
           number: input.snapshot.recipient.number,
