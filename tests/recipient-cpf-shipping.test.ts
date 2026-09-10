@@ -172,12 +172,12 @@ test("order persistence writes normalized customer_cpf", async (t) => {
     else process.env.SUPABASE_SECRET_KEY = previousKey
   })
 
-  let posted: Record<string, unknown> | null = null
+  const postedBodies: Array<Record<string, unknown>> = []
   t.mock.method(
     globalThis,
     "fetch",
     async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-      posted = JSON.parse(String(init?.body)) as Record<string, unknown>
+      postedBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
       return Response.json([{ id: "11111111-1111-4111-8111-111111111111" }], {
         status: 201,
       })
@@ -196,7 +196,7 @@ test("order persistence writes normalized customer_cpf", async (t) => {
     subtotalCents: 11990,
   } as unknown as Parameters<typeof createOrder>[0])
 
-  assert.equal(posted?.customer_cpf, VALID_CPF)
+  assert.equal(postedBodies[0]?.customer_cpf, VALID_CPF)
 })
 
 test("shipment snapshot requires a checksum-valid recipient CPF and keeps it internal", async () => {
@@ -253,12 +253,12 @@ test("Melhor Envio cart payload sends the recipient CPF as to.document", async (
     }),
   })
 
-  let body: Record<string, unknown> | null = null
+  const requestBodies: Array<Record<string, unknown>> = []
   t.mock.method(
     globalThis,
     "fetch",
     async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-      body = JSON.parse(String(init?.body)) as Record<string, unknown>
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
       return Response.json(
         { id: "6e1c864a-fe48-4ae7-baaa-d6e4888bafd1", price: "18.42" },
         { status: 201 },
@@ -315,7 +315,7 @@ test("Melhor Envio cart payload sends the recipient CPF as to.document", async (
     documentMode: "declaration_content",
   })
 
-  const to = body?.to as Record<string, unknown> | undefined
+  const to = requestBodies[0]?.to as Record<string, unknown> | undefined
   assert.equal(to?.document, VALID_CPF)
 })
 
