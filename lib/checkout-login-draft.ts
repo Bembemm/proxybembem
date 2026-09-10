@@ -25,6 +25,7 @@ const CHECKOUT_FIELDS: Array<keyof CheckoutData> = [
   "nome",
   "email",
   "whatsapp",
+  "cpf",
   "cep",
   "rua",
   "numero",
