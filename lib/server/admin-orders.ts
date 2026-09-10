@@ -4,6 +4,7 @@ import {
   isFulfillmentStatus,
   type FulfillmentStatus,
 } from "./fulfillment.ts"
+import { hasValidCpfChecksum } from "./shipping-sender.ts"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -36,6 +37,7 @@ export interface AdminOrderDetail {
   order_number: string
   customer_name: string
   customer_email: string | null
+  customer_cpf: string | null
   whatsapp: string
   cep: string
   address_street: string | null
@@ -88,6 +90,7 @@ const ADMIN_ORDER_DETAIL_SELECT = [
   "order_number",
   "customer_name",
   "customer_email",
+  "customer_cpf",
   "whatsapp",
   "cep",
   "address_street",
@@ -122,6 +125,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string"
+}
+
+function isNullableValidCpf(value: unknown): value is string | null {
+  return value === null || (typeof value === "string" && hasValidCpfChecksum(value))
 }
 
 function isNonEmptyBoundedString(value: unknown, max: number): value is string {
@@ -231,6 +238,7 @@ function parseDetailRow(value: unknown): AdminOrderDetail {
     !isNonEmptyBoundedString(value.order_number, 100) ||
     !isNonEmptyBoundedString(value.customer_name, 500) ||
     !isNullableString(value.customer_email) ||
+    !isNullableValidCpf(value.customer_cpf) ||
     !isNonEmptyBoundedString(value.whatsapp, 100) ||
     !isNonEmptyBoundedString(value.cep, 20) ||
     !isNullableString(value.address_street) ||
