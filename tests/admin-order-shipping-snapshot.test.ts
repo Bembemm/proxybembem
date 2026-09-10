@@ -27,6 +27,7 @@ function detailRow() {
     order_number: "PB-A1B2C3D4E5F6",
     customer_name: "Cliente Teste",
     customer_email: "cliente@example.com",
+    customer_cpf: null,
     whatsapp: "5511999999999",
     cep: "01310100",
     address_street: "Avenida Paulista",
@@ -76,6 +77,7 @@ test("admin order detail retrieves raw shipping_snapshot only for server-side sh
         const url = new URL(String(input))
         const select = (url.searchParams.get("select") ?? "").split(",")
         assert.ok(select.includes("shipping_snapshot"))
+        assert.ok(select.includes("customer_cpf"))
         for (const forbidden of ["public_token", "checkout_url", "checkout_fingerprint"]) {
           assert.ok(!select.includes(forbidden), `must not load ${forbidden}`)
         }
