@@ -39,6 +39,7 @@ function parseCustomer(value: unknown): CheckoutData | null {
     "nome",
     "email",
     "whatsapp",
+    "cpf",
     "cep",
     "rua",
     "numero",
