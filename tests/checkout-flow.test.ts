@@ -44,6 +44,7 @@ const CUSTOMER: CheckoutData = {
   nome: "Breno Bembem",
   email: "breno@example.com",
   whatsapp: "44991250332",
+  cpf: "52998224725",
   cep: "01001000",
   rua: "Praça da Sé",
   numero: "100",
@@ -277,6 +278,7 @@ test("new checkout reserves trusted ownership and returns Mercado Pago to privat
   assert.ok(preferenceInput)
   assert.equal(result.kind, "created")
   assert.equal(reserved.customerEmail, CUSTOMER_IDENTITY.email)
+  assert.equal(reserved.customerCpf, "52998224725")
   assert.equal(reserved.customerId, CUSTOMER_IDENTITY.userId)
   assert.equal(reserved.subtotalCents, 11990)
   assert.equal(reserved.shipping?.amountCents, 1842)
