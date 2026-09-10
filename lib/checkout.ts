@@ -4,7 +4,7 @@ export interface CheckoutData {
   nome: string
   email: string
   whatsapp: string
-  cpf: string
+  cpf?: string
   cep: string
   rua: string
   numero: string
@@ -50,16 +50,16 @@ export function isValidCpf(value: string) {
   const cpf = digitsOnly(value)
   if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false
 
-  const digit = (factor: number) => {
-    let total = 0
-    for (let index = 0; index < factor - 1; index += 1) {
-      total += Number(cpf[index]) * (factor - index)
+  const checkDigit = (length: 9 | 10) => {
+    let sum = 0
+    for (let index = 0; index < length; index += 1) {
+      sum += Number(cpf[index]) * (length + 1 - index)
     }
-    const remainder = (total * 10) % 11
+    const remainder = (sum * 10) % 11
     return remainder === 10 ? 0 : remainder
   }
 
-  return digit(10) === Number(cpf[9]) && digit(11) === Number(cpf[10])
+  return checkDigit(9) === Number(cpf[9]) && checkDigit(10) === Number(cpf[10])
 }
 
 export function formatCpf(value: string) {
@@ -103,12 +103,12 @@ export function formatPrice(value: number) {
   })
 }
 
-export function normalizeCheckoutData(data: CheckoutData): CheckoutData {
+export function normalizeCheckoutData(data: CheckoutData): CheckoutData & { cpf: string } {
   return {
     nome: normalizeText(data.nome),
     email: normalizeCheckoutEmail(data.email),
     whatsapp: digitsOnly(data.whatsapp),
-    cpf: digitsOnly(data.cpf),
+    cpf: digitsOnly(data.cpf ?? ""),
     cep: digitsOnly(data.cep),
     rua: normalizeText(data.rua),
     numero: normalizeText(data.numero),
