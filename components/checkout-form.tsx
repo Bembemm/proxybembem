@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   formatCep,
+  formatCpf,
   formatWhatsapp,
   type CheckoutData,
   type CheckoutErrors,
@@ -105,6 +106,32 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
         ) : (
           <p id="checkout-whatsapp-help" className="text-slate-500 text-sm mt-1">
             Usaremos este número caso seja necessário falar sobre o pedido ou a entrega.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="checkout-cpf" className="text-slate-400 text-sm font-medium">
+          CPF do destinatário *
+        </Label>
+        <Input
+          id="checkout-cpf"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={14}
+          required
+          value={data.cpf}
+          onChange={(event) => onChange("cpf", formatCpf(event.target.value))}
+          placeholder="000.000.000-00"
+          aria-invalid={Boolean(errors.cpf)}
+          aria-describedby={errors.cpf ? "checkout-cpf-error" : "checkout-cpf-help"}
+          className={`${inputClass} ${errors.cpf ? "border-red-400/70 focus:border-red-400" : ""}`}
+        />
+        {errors.cpf ? (
+          errorText("checkout-cpf-error", errors.cpf)
+        ) : (
+          <p id="checkout-cpf-help" className="text-slate-500 text-sm mt-1">
+            Usado somente para preparar a entrega com a transportadora.
           </p>
         )}
       </div>
