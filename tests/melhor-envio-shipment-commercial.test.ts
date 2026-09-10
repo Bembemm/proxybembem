@@ -36,6 +36,7 @@ type Client = {
         name: string
         email: string
         phone: string
+        document: string
         postalCode: string
         street: string
         number: string
@@ -78,6 +79,7 @@ const snapshot = {
     name: "Cliente Teste",
     email: "cliente@example.com",
     phone: "11999999999",
+    document: "52998224725",
     postalCode: "01001000",
     street: "Praça da Sé",
     number: "100",
@@ -136,7 +138,7 @@ function deps(): Dependencies {
   }
 }
 
-test("commercial cart insertion uses PJ/CNPJ plus NF-e key and never sends CPF/DC-e fields", async (t) => {
+test("commercial cart insertion uses PJ/CNPJ plus NF-e key and keeps recipient CPF separate from sender tax fields", async (t) => {
   const module = (await import("../lib/server/melhor-envio-shipment-client.ts")) as unknown as Module
   const client = module.createMelhorEnvioShipmentClient(deps())
 
@@ -146,11 +148,13 @@ test("commercial cart insertion uses PJ/CNPJ plus NF-e key and never sends CPF/D
     async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
       const body = JSON.parse(String(init?.body)) as {
         from: Record<string, unknown>
+        to: Record<string, unknown>
         options: Record<string, unknown>
       }
       assert.equal(body.from.company_document, CNPJ)
       assert.equal(body.from.state_register, "123456789")
       assert.equal("document" in body.from, false)
+      assert.equal(body.to.document, "52998224725")
       assert.deepEqual(body.options.invoice, { key: NF_E_KEY })
       assert.equal("dce" in body.options, false)
       return Response.json({ id: SHIPMENT_ID, price: "18.42" }, { status: 201 })
