@@ -54,6 +54,7 @@ function detailRow() {
     order_number: LEGACY_ORDER_NUMBER,
     customer_name: "Cliente Teste",
     customer_email: null,
+    customer_cpf: null,
     whatsapp: "5511999999999",
     cep: "01310100",
     address_street: "Avenida Paulista",
