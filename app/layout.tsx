@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next"
 import { Crimson_Text, MedievalSharp } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { SiteShell } from "@/components/site-shell"
 import "./globals.css"
 
@@ -24,8 +23,8 @@ export const metadata: Metadata = {
   description:
     "Decks completos, cartas avulsas e proxies de alta qualidade para Commander, Modern e outros formatos. Envio para todo o Brasil.",
   icons: {
-    icon: "/brand/pb.png",
-    apple: "/brand/pb.png",
+    icon: "/brand/pb",
+    apple: "/brand/pb",
   },
 }
 
@@ -40,7 +39,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="pt-BR" className={`${medievalSharp.variable} ${crimsonText.variable} bg-slate-50`}>
       <body className="font-serif antialiased bg-slate-50 min-h-screen overflow-x-hidden">
         <SiteShell>{children}</SiteShell>
-        {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
     </html>
   )

@@ -1,4 +1,5 @@
-import { products } from "../../data/products.ts"
+import type { CatalogProduct } from "../products/product.ts"
+import { getPublishedProductsByIds } from "./product-catalog.ts"
 
 export interface CheckoutOrderItem {
   productId: number
@@ -17,6 +18,8 @@ export interface CheckoutOrder {
   items: CheckoutOrderItem[]
   subtotalCents: number
 }
+
+export type ResolveCheckoutProducts = (ids: number[]) => Promise<CatalogProduct[]>
 
 function assertLineItem(value: unknown): asserts value is { productId: number; quantity: number } {
   if (!value || typeof value !== "object") {
@@ -49,7 +52,10 @@ function assertValidShipping(value: {
   }
 }
 
-export function buildCheckoutOrder(value: unknown): CheckoutOrder {
+export async function buildCheckoutOrder(
+  value: unknown,
+  resolveProducts: ResolveCheckoutProducts = getPublishedProductsByIds,
+): Promise<CheckoutOrder> {
   if (!Array.isArray(value) || value.length < 1 || value.length > 50) {
     throw new Error("Invalid cart")
   }
@@ -65,10 +71,28 @@ export function buildCheckoutOrder(value: unknown): CheckoutOrder {
     quantities.set(candidate.productId, quantity)
   }
 
+  const productIds = [...quantities.keys()]
+  const resolvedProducts = await resolveProducts(productIds)
+  if (!Array.isArray(resolvedProducts)) {
+    throw new Error("Invalid catalog response")
+  }
+
+  const productsById = new Map<number, CatalogProduct>()
+  for (const product of resolvedProducts) {
+    if (
+      product.status !== "published" ||
+      !quantities.has(product.id) ||
+      productsById.has(product.id)
+    ) {
+      throw new Error("Invalid catalog response")
+    }
+    productsById.set(product.id, product)
+  }
+
   const items: CheckoutOrderItem[] = []
 
   for (const [productId, quantity] of quantities) {
-    const product = products.find((candidate) => candidate.id === productId)
+    const product = productsById.get(productId)
     if (!product) {
       throw new Error("Unknown product")
     }

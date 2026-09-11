@@ -9,6 +9,7 @@ import type { ShippingQuoteClaims } from "../lib/server/shipping-quote-token.ts"
 
 const customer: CheckoutData = {
   nome: "Breno Bembem",
+  email: "breno@example.com",
   whatsapp: "44991250332",
   cep: "86730000",
   rua: "Rua das Cartas",

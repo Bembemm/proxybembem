@@ -12,11 +12,48 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+
+      - name: Set up exact KingHost runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.1.0
+          cache: pnpm
+      - name: Verify exact KingHost Node version
+        run: |
+          node - <<'NODE'
+          if (process.version !== "v22.1.0") {
+            throw new Error(`Expected v22.1.0, got ${process.version}`)
+          }
+          NODE
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build:kinghost
+      - name: Verify private order route contract
+        run: |
+          node - <<'NODE'
+          const manifest = require("./.next/server/app-paths-manifest.json")
+          if (Object.keys(manifest).some((route) => route.startsWith("/pedido/"))) {
+            throw new Error("Public /pedido route is still present in the production build")
+          }
+          if (!manifest["/minha-conta/pedidos/[id]/page"]) {
+            throw new Error("Private customer order detail route is missing from the production build")
+          }
+          console.log("private-order-route-contract-ok")
+          NODE
+      - name: Smoke KingHost startup adapter
+        run: |
+          node - <<'NODE'
+          const { resolveKingHostPort } = require("./app.js")
+          if (resolveKingHostPort({ PORT_APP: "21169", PORT: "3000" }) !== "21169") {
+            process.exit(1)
+          }
+          NODE
+
+      # Node 22.1.0 predates Node's built-in TypeScript type stripping.
+      # Production code is typechecked/built/smoked above on the exact KingHost runtime;
+      # Node 24 is used only to execute the raw .ts test files without another test loader.
+      - name: Set up TypeScript test runner
+        uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - run: pnpm typecheck
-      - run: pnpm build

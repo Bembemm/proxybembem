@@ -11,19 +11,22 @@ const FINAL_VARIABLES = [
   "MELHOR_ENVIO_REDIRECT_URI",
   "MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY",
   "MELHOR_ENVIO_USER_AGENT",
+  "MELHOR_ENVIO_LABEL_PURCHASE_ENABLED",
   "SHIPPING_ORIGIN_CEP",
   "SHIPPING_QUOTE_SECRET",
   "CRON_SECRET",
 ] as const
 
-test("environment example documents the final OAuth contract without obsolete token or admin-secret variables", async () => {
+test("environment example documents the final OAuth contract and fail-closed spending flag without obsolete secrets", async () => {
   const source = await readFile(new URL("../.env.example", import.meta.url), "utf8")
 
   for (const variable of FINAL_VARIABLES) {
     assert.match(source, new RegExp(`^${variable}=`, "m"), `${variable} must be documented`)
   }
+  assert.match(source, /^MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false$/m)
   assert.equal(source.includes(LEGACY_TOKEN_NAME), false)
   assert.equal(source.includes(OBSOLETE_ADMIN_SECRET), false)
+  assert.doesNotMatch(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=(?:true|1|yes|on)$/m)
 })
 
 test("shipping setup documents authorization, automatic refresh and MFA admin handling", async () => {

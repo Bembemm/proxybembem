@@ -4,7 +4,6 @@ import { getMelhorEnvioEnv, getMercadoPagoEnv } from "../lib/server/env.ts"
 
 const ENV_KEYS = [
   "NODE_ENV",
-  "VERCEL_ENV",
   "MERCADO_PAGO_ENVIRONMENT",
   "MERCADO_PAGO_ACCESS_TOKEN",
   "MERCADO_PAGO_WEBHOOK_SECRET",
@@ -50,19 +49,18 @@ function withEnv(
   }
 }
 
-test("Vercel Preview may use Sandbox providers even when NODE_ENV is production", () => {
-  withEnv({ ...baseEnv, NODE_ENV: "production", VERCEL_ENV: "preview" }, () => {
+test("non-production runtime may use sandbox providers", () => {
+  withEnv({ ...baseEnv, NODE_ENV: "development" }, () => {
     assert.equal(getMercadoPagoEnv().mercadoPagoEnvironment, "sandbox")
     assert.equal(getMelhorEnvioEnv().environment, "sandbox")
   })
 })
 
-test("Vercel Production rejects Mercado Pago Sandbox", () => {
+test("production runtime rejects Mercado Pago sandbox", () => {
   withEnv(
     {
       ...baseEnv,
       NODE_ENV: "production",
-      VERCEL_ENV: "production",
       MERCADO_PAGO_ENVIRONMENT: "sandbox",
       MELHOR_ENVIO_ENVIRONMENT: "production",
     },
@@ -72,12 +70,11 @@ test("Vercel Production rejects Mercado Pago Sandbox", () => {
   )
 })
 
-test("Vercel Production rejects Melhor Envio Sandbox", () => {
+test("production runtime rejects Melhor Envio sandbox", () => {
   withEnv(
     {
       ...baseEnv,
       NODE_ENV: "production",
-      VERCEL_ENV: "production",
       MERCADO_PAGO_ENVIRONMENT: "production",
       MELHOR_ENVIO_ENVIRONMENT: "sandbox",
     },
@@ -87,19 +84,11 @@ test("Vercel Production rejects Melhor Envio Sandbox", () => {
   )
 })
 
-test("non-Vercel production runtime also rejects Sandbox providers", () => {
-  withEnv({ ...baseEnv, NODE_ENV: "production", VERCEL_ENV: undefined }, () => {
-    assert.throws(() => getMercadoPagoEnv(), /Production.*Mercado Pago.*production/i)
-    assert.throws(() => getMelhorEnvioEnv(), /Production.*Melhor Envio.*production/i)
-  })
-})
-
-test("Production accepts both providers configured for production", () => {
+test("production runtime accepts both providers configured for production", () => {
   withEnv(
     {
       ...baseEnv,
       NODE_ENV: "production",
-      VERCEL_ENV: "production",
       MERCADO_PAGO_ENVIRONMENT: "production",
       MELHOR_ENVIO_ENVIRONMENT: "production",
     },

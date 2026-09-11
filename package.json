@@ -2,9 +2,14 @@
   "name": "proxybembem",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.1.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:kinghost": "next build --webpack && node scripts/kinghost/prepare-standalone.mjs",
+    "deploy:kinghost": "pnpm build:kinghost && node scripts/kinghost/publish-assets.mjs",
     "start": "next start",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",

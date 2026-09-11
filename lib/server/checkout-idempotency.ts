@@ -28,7 +28,9 @@ export function createCheckoutFingerprint(input: {
     cartFingerprint: input.cartFingerprint.toLowerCase(),
     customer: {
       nome: customer.nome,
+      email: customer.email,
       whatsapp: customer.whatsapp,
+      cpf: customer.cpf,
       cep: customer.cep,
       rua: customer.rua,
       numero: customer.numero,

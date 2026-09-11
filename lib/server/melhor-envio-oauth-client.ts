@@ -1,4 +1,5 @@
 import { getMelhorEnvioOAuthEnv } from "./env.ts"
+import { melhorEnvioPhase5ScopeParameter } from "./melhor-envio-oauth-scopes.ts"
 
 export interface MelhorEnvioOAuthTokens {
   tokenType: "Bearer"
@@ -117,7 +118,7 @@ export function buildMelhorEnvioAuthorizationUrl(input: { state: string }) {
   url.searchParams.set("redirect_uri", env.redirectUri)
   url.searchParams.set("response_type", "code")
   url.searchParams.set("state", input.state)
-  url.searchParams.set("scope", "shipping-calculate")
+  url.searchParams.set("scope", melhorEnvioPhase5ScopeParameter())
   return url.toString()
 }
 

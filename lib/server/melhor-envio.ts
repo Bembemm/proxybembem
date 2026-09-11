@@ -1,4 +1,5 @@
 import { getMelhorEnvioEnv, type MelhorEnvioEnvironment } from "./env.ts"
+import type { MelhorEnvioOAuthScope } from "./melhor-envio-oauth-scopes.ts"
 import {
   getMelhorEnvioAccessToken,
   type UsableMelhorEnvioAccessToken,
@@ -46,12 +47,16 @@ interface MelhorEnvioQuoteDependencies {
   getAccessToken(options?: {
     forceRefresh?: boolean
     rejectedTokenVersion?: number
+    requiredScopes?: readonly MelhorEnvioOAuthScope[]
   }): Promise<UsableMelhorEnvioAccessToken>
 }
 
 const REQUEST_TIMEOUT_MS = 10_000
 const MAX_ACCESS_TOKEN_LENGTH = 8192
 const MAX_AUTH_ERROR_BYTES = 4096
+const QUOTE_REQUIRED_SCOPES = [
+  "shipping-calculate",
+] as const satisfies readonly MelhorEnvioOAuthScope[]
 const ALLOWED_SERVICE_IDS: Record<MelhorEnvioEnvironment, readonly string[]> = {
   sandbox: ["3", "4"],
   production: ["1", "2"],
@@ -283,7 +288,9 @@ export function createMelhorEnvioQuoter(deps: MelhorEnvioQuoteDependencies) {
       serviceIds,
     })
 
-    let credential = validateAccessToken(await deps.getAccessToken())
+    let credential = validateAccessToken(
+      await deps.getAccessToken({ requiredScopes: QUOTE_REQUIRED_SCOPES }),
+    )
     let response = await requestQuoteWithToken({
       environment: config.environment,
       userAgent: config.userAgent,
@@ -301,6 +308,7 @@ export function createMelhorEnvioQuoter(deps: MelhorEnvioQuoteDependencies) {
         await deps.getAccessToken({
           forceRefresh: true,
           rejectedTokenVersion: credential.tokenVersion,
+          requiredScopes: QUOTE_REQUIRED_SCOPES,
         }),
       )
       response = await requestQuoteWithToken({

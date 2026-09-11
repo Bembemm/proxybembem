@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
+import { PasswordInput } from "../../../components/ui/password-input"
 import { createSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
 
 export function LoginForm() {
@@ -20,7 +21,7 @@ export function LoginForm() {
       const supabase = createSupabaseBrowserClient()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
-        setMessage("Não foi possível entrar. Verifique os dados e tente novamente.")
+        setMessage("E-mail ou senha incorretos.")
         return
       }
 
@@ -34,32 +35,38 @@ export function LoginForm() {
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      <label className="flex flex-col gap-2 text-sm font-medium">
-        E-mail
+      <div className="flex flex-col gap-2 text-sm font-medium">
+        <label htmlFor="admin-email">E-mail</label>
         <input
+          id="admin-email"
           type="email"
           autoComplete="username"
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
+          aria-invalid={Boolean(message)}
+          aria-describedby={message ? "admin-login-error" : undefined}
           className="rounded-md border bg-background px-3 py-2 font-normal"
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-2 text-sm font-medium">
-        Senha
-        <input
+      <div className="flex flex-col gap-2 text-sm font-medium">
+        <label htmlFor="admin-password">Senha</label>
+        <PasswordInput
+          id="admin-password"
           type="password"
           autoComplete="current-password"
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}
+          aria-invalid={Boolean(message)}
+          aria-describedby={message ? "admin-login-error" : undefined}
           className="rounded-md border bg-background px-3 py-2 font-normal"
         />
-      </label>
+      </div>
 
       {message ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p id="admin-login-error" role="alert" className="text-sm text-destructive">
           {message}
         </p>
       ) : null}

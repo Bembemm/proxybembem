@@ -8,6 +8,7 @@ export async function createSupabaseServerClient() {
 
   return createServerClient(env.url, env.publishableKey, {
     cookies: {
+      encode: "tokens-only",
       getAll() {
         return cookieStore.getAll()
       },

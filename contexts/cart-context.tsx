@@ -1,48 +1,27 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { products } from "@/data/products"
-import { parseStoredCart, serializeCart } from "@/lib/cart-storage"
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  parseStoredCart,
+  reconcileStoredCartWithCatalog,
+  serializeCart,
+  type StoredCartLine,
+} from "@/lib/cart-storage"
+import type { Product } from "@/lib/products/product"
 
-export interface ProductDetail {
-  label: string
-  value: string
-}
-
-export interface ProductSection {
-  title: string
-  paragraphs: string[]
-}
-
-export interface ProductShipping {
-  weightKg: number
-  lengthCm: number
-  widthCm: number
-  heightCm: number
-}
-
-export interface Product {
-  id: number
-  title: string
-  image: string
-  originalPrice: number
-  discountPrice: number
-  tag: string | null
-  category: string
-  colors?: string[]
-  featured?: boolean
-  notice?: string
-  highlights?: string[]
-  description: string
-  details: ProductDetail[]
-  sections: ProductSection[]
-  shipping: ProductShipping
-}
+export type {
+  Product,
+  ProductDetail,
+  ProductSection,
+  ProductShipping,
+} from "@/lib/products/product"
 
 export interface CartItem {
   product: Product
   quantity: number
 }
+
+type CatalogStatus = "loading" | "ready" | "unavailable"
 
 interface CartContextType {
   items: CartItem[]
@@ -54,42 +33,147 @@ interface CartContextType {
   totalPrice: number
   isCartOpen: boolean
   setIsCartOpen: (open: boolean) => void
+  catalogStatus: CatalogStatus
+  retryCatalog: () => void
+  cartNotice: string | null
+  dismissCartNotice: () => void
+}
+
+interface CatalogResponse {
+  products?: unknown
 }
 
 const CART_STORAGE_KEY = "proxybembem-cart-v1"
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
+function parseCatalogProducts(value: unknown): Product[] | null {
+  if (!value || typeof value !== "object") return null
+
+  const products = (value as CatalogResponse).products
+  if (!Array.isArray(products)) return null
+
+  for (const entry of products) {
+    if (!entry || typeof entry !== "object") return null
+    const candidate = entry as Partial<Product>
+    if (
+      !Number.isSafeInteger(candidate.id) ||
+      (candidate.id ?? 0) <= 0 ||
+      typeof candidate.title !== "string" ||
+      !candidate.title ||
+      typeof candidate.image !== "string" ||
+      !candidate.image ||
+      typeof candidate.category !== "string" ||
+      !candidate.category ||
+      typeof candidate.originalPrice !== "number" ||
+      !Number.isFinite(candidate.originalPrice) ||
+      candidate.originalPrice < 0 ||
+      typeof candidate.discountPrice !== "number" ||
+      !Number.isFinite(candidate.discountPrice) ||
+      candidate.discountPrice < 0
+    ) {
+      return null
+    }
+  }
+
+  return products as Product[]
+}
+
+function mergeHydratedItems(restoredItems: CartItem[], currentItems: CartItem[]): CartItem[] {
+  const itemsById = new Map<number, CartItem>()
+
+  for (const item of restoredItems) {
+    itemsById.set(item.product.id, item)
+  }
+
+  for (const item of currentItems) {
+    const restored = itemsById.get(item.product.id)
+    itemsById.set(
+      item.product.id,
+      restored
+        ? {
+            product: item.product,
+            quantity: restored.quantity + item.quantity,
+          }
+        : item,
+    )
+  }
+
+  return Array.from(itemsById.values())
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [isHydrated, setIsHydrated] = useState(false)
+  const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>("loading")
+  const [catalogRetryKey, setCatalogRetryKey] = useState(0)
+  const [cartNotice, setCartNotice] = useState<string | null>(null)
+  const storedLinesRef = useRef<StoredCartLine[] | null>(null)
+  const hasReadStoredCartRef = useRef(false)
 
   useEffect(() => {
-    try {
-      const storedCart = window.localStorage.getItem(CART_STORAGE_KEY)
-      if (storedCart) {
-        const parsedCart = parseStoredCart(JSON.parse(storedCart))
-        if (parsedCart) {
-          const restoredItems = parsedCart.flatMap((line) => {
-            const product = products.find((candidate) => candidate.id === line.productId)
-            return product ? [{ product, quantity: line.quantity }] : []
-          })
-          setItems(restoredItems)
-        } else {
+    let cancelled = false
+
+    const hydrateCart = async () => {
+      setCatalogStatus("loading")
+
+      if (!hasReadStoredCartRef.current) {
+        hasReadStoredCartRef.current = true
+
+        try {
+          const storedCart = window.localStorage.getItem(CART_STORAGE_KEY)
+          if (!storedCart) {
+            storedLinesRef.current = []
+          } else {
+            const parsedCart = parseStoredCart(JSON.parse(storedCart))
+            if (parsedCart) {
+              storedLinesRef.current = parsedCart
+            } else {
+              window.localStorage.removeItem(CART_STORAGE_KEY)
+              storedLinesRef.current = []
+            }
+          }
+        } catch {
           window.localStorage.removeItem(CART_STORAGE_KEY)
+          storedLinesRef.current = []
         }
       }
-    } catch {
-      window.localStorage.removeItem(CART_STORAGE_KEY)
-    } finally {
-      setIsHydrated(true)
+
+      const storedLines = storedLinesRef.current ?? []
+
+      try {
+        const response = await fetch("/api/catalog", { cache: "no-store" })
+        if (!response.ok) throw new Error("Catalog unavailable")
+
+        const catalog = parseCatalogProducts(await response.json().catch(() => null))
+        if (!catalog) throw new Error("Invalid catalog response")
+
+        const reconciliation = reconcileStoredCartWithCatalog(storedLines, catalog)
+        if (cancelled) return
+
+        setItems((currentItems) => mergeHydratedItems(reconciliation.items, currentItems))
+        if (reconciliation.removedCount > 0) {
+          setCartNotice("Um produto do seu carrinho não está mais disponível.")
+        }
+        setCatalogStatus("ready")
+      } catch {
+        if (!cancelled) setCatalogStatus("unavailable")
+      }
     }
-  }, [])
+
+    void hydrateCart()
+
+    return () => {
+      cancelled = true
+    }
+  }, [catalogRetryKey])
 
   useEffect(() => {
-    if (!isHydrated) return
+    if (catalogStatus !== "ready") return
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
-  }, [items, isHydrated])
+  }, [items, catalogStatus])
+
+  const retryCatalog = () => setCatalogRetryKey((current) => current + 1)
+  const dismissCartNotice = () => setCartNotice(null)
 
   const addToCart = (product: Product) => {
     setItems((previousItems) => {
@@ -142,6 +226,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         totalPrice,
         isCartOpen,
         setIsCartOpen,
+        catalogStatus,
+        retryCatalog,
+        cartNotice,
+        dismissCartNotice,
       }}
     >
       {children}

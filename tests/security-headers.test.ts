@@ -87,9 +87,39 @@ test("Melhor Envio OAuth form navigation is allowlisted only for the active envi
   assert.doesNotMatch(invalid, /form-action[^;]*https:\/\//)
 })
 
-test("HSTS is conditionally enabled only for the production deployment", async () => {
+test("HSTS is conditionally enabled only for the production runtime", async () => {
   const source = await readFile(CONFIG, "utf8")
-  assert.match(source, /VERCEL_ENV/)
+  assert.doesNotMatch(source, /VERCEL_ENV/)
+  assert.match(source, /NODE_ENV/)
   assert.match(source, /production/)
   assert.match(source, /max-age=31536000; includeSubDomains/)
+})
+
+test("apex host redirects permanently to the canonical www host", async () => {
+  const configUrl = new URL(CONFIG)
+  configUrl.searchParams.set("test-case", "canonical-host")
+  const loaded = (await import(configUrl.href)) as {
+    default: {
+      redirects?: () => Promise<
+        Array<{
+          source: string
+          destination: string
+          permanent: boolean
+          has?: Array<{ type: string; value: string }>
+        }>
+      >
+    }
+  }
+
+  assert.equal(typeof loaded.default.redirects, "function")
+  const redirects = await loaded.default.redirects!()
+
+  assert.deepEqual(redirects, [
+    {
+      source: "/:path*",
+      has: [{ type: "host", value: "proxybembem.com.br" }],
+      destination: "https://www.proxybembem.com.br/:path*",
+      permanent: true,
+    },
+  ])
 })

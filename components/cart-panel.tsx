@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { ArrowLeft, ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CartItems } from "@/components/cart-items"
@@ -17,6 +18,11 @@ import {
   type CheckoutErrors,
 } from "@/lib/checkout"
 import {
+  clearCheckoutLoginDraft,
+  readCheckoutLoginDraft,
+  saveCheckoutLoginDraft,
+} from "@/lib/checkout-login-draft"
+import {
   applyShippingChanged,
   invalidateCheckoutSelection,
   selectShippingOption,
@@ -27,6 +33,7 @@ import type { PublicShippingOption } from "@/lib/server/shipping-quote"
 
 const EMPTY_CHECKOUT: CheckoutData = {
   nome: "",
+  email: "",
   whatsapp: "",
   cep: "",
   rua: "",
@@ -88,6 +95,7 @@ function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
 }
 
 export function CartPanel() {
+  const pathname = usePathname()
   const {
     items,
     removeFromCart,
@@ -95,6 +103,10 @@ export function CartPanel() {
     totalPrice,
     isCartOpen,
     setIsCartOpen,
+    catalogStatus,
+    retryCatalog,
+    cartNotice,
+    dismissCartNotice,
   } = useCart()
 
   const [checkout, setCheckout] = useState<CheckoutData>(EMPTY_CHECKOUT)
@@ -103,6 +115,7 @@ export function CartPanel() {
   const [isQuoting, setIsQuoting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const restoredShippingServiceIdRef = useRef<string | null>(null)
 
   const destinationCep = digitsOnly(checkout.cep)
   const hasValidCep = /^\d{8}$/.test(destinationCep)
@@ -114,6 +127,17 @@ export function CartPanel() {
         .join("|"),
     [items],
   )
+
+  useEffect(() => {
+    if (pathname !== "/produtos") return
+
+    const draft = readCheckoutLoginDraft(window.sessionStorage)
+    if (!draft) return
+
+    restoredShippingServiceIdRef.current = draft.shippingServiceId
+    setCheckout(draft.checkout)
+    setIsCartOpen(true)
+  }, [pathname, setIsCartOpen])
 
   useEffect(() => {
     if (!isCartOpen) return
@@ -177,10 +201,16 @@ export function CartPanel() {
           throw new Error("Nenhuma opção de frete disponível para este CEP.")
         }
 
+        const restoredShippingServiceId = restoredShippingServiceIdRef.current
+        const restoredShipping = restoredShippingServiceId
+          ? options.find((option) => option.serviceId === restoredShippingServiceId) ?? null
+          : null
+        restoredShippingServiceIdRef.current = null
+
         setShipping((current) => ({
           ...current,
           shippingOptions: options,
-          selectedShipping: null,
+          selectedShipping: restoredShipping,
           shippingError: null,
           checkoutAttemptId: null,
         }))
@@ -212,6 +242,8 @@ export function CartPanel() {
     setErrors((current) => ({ ...current, [field]: undefined }))
     setCheckoutError(null)
 
+    if (field === "cep") restoredShippingServiceIdRef.current = null
+
     setShipping((current) =>
       field === "cep"
         ? invalidateCheckoutSelection(current)
@@ -220,6 +252,7 @@ export function CartPanel() {
   }
 
   const handleShippingSelect = (option: PublicShippingOption) => {
+    restoredShippingServiceIdRef.current = null
     setShipping((current) => selectShippingOption(current, option))
     setCheckoutError(null)
   }
@@ -262,6 +295,17 @@ export function CartPanel() {
       const result = (await response.json().catch(() => null)) as CheckoutResponse | null
 
       if (!response.ok) {
+        if (result?.code === "authentication_required") {
+          saveCheckoutLoginDraft(
+            window.sessionStorage,
+            checkout,
+            shipping.selectedShipping.serviceId,
+          )
+          setIsCartOpen(false)
+          window.location.assign("/entrar?next=%2Fprodutos")
+          return
+        }
+
         if (result?.fieldErrors) setErrors(result.fieldErrors)
 
         if (result?.code === "shipping_changed") {
@@ -290,6 +334,7 @@ export function CartPanel() {
         throw new Error("Unsafe checkout URL")
       }
 
+      clearCheckoutLoginDraft(window.sessionStorage)
       window.location.assign(result.checkoutUrl)
     } catch {
       setCheckoutError(
@@ -323,7 +368,7 @@ export function CartPanel() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-panel-title"
-        aria-busy={isSubmitting || isQuoting}
+        aria-busy={isSubmitting || isQuoting || catalogStatus === "loading"}
       >
         <div className="flex items-center justify-between p-4 border-b border-[#8B5CF6]/20 bg-slate-900 sticky top-0 z-10">
           <div className="flex items-center gap-3">
@@ -356,7 +401,46 @@ export function CartPanel() {
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          {items.length === 0 ? (
+          {cartNotice && catalogStatus === "ready" && (
+            <div className="m-4 mb-0 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100" role="status">
+              <div className="flex items-start justify-between gap-3">
+                <p>{cartNotice}</p>
+                <button
+                  type="button"
+                  onClick={dismissCartNotice}
+                  className="shrink-0 text-amber-100/70 hover:text-amber-100"
+                  aria-label="Dispensar aviso do carrinho"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {catalogStatus === "loading" ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6" role="status">
+              <ShoppingBag className="w-20 h-20 text-slate-600 mb-4" />
+              <p className="text-slate-300 text-xl">Atualizando seu carrinho...</p>
+              <p className="text-slate-500 text-base mt-2">
+                Conferindo os produtos e preços atuais.
+              </p>
+            </div>
+          ) : catalogStatus === "unavailable" ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-6" role="alert">
+              <ShoppingBag className="w-20 h-20 text-slate-600 mb-4" />
+              <p className="text-slate-300 text-xl">Não foi possível atualizar seu carrinho.</p>
+              <p className="text-slate-500 text-base mt-2 max-w-sm">
+                Seus itens salvos foram preservados. Tente novamente para conferir disponibilidade e preços atuais.
+              </p>
+              <Button
+                onClick={retryCatalog}
+                className="mt-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white px-8 py-3 text-base"
+                type="button"
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-6">
               <ShoppingBag className="w-20 h-20 text-slate-600 mb-4" />
               <p className="text-slate-400 text-xl">Seu carrinho está vazio</p>

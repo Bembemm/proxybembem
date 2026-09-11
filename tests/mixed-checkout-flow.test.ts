@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import type { CheckoutData } from "../lib/checkout.ts"
+import type { CatalogProduct } from "../lib/products/product.ts"
 import {
   executeCheckoutFlow,
   type CheckoutFlowDependencies,
@@ -16,9 +17,12 @@ const ITEMS = [
   { productId: 2, quantity: 2 },
 ]
 const CART_FINGERPRINT = createCartFingerprint(ITEMS)
+const ORDER_ID = "550e8400-e29b-41d4-a716-446655440777"
 const CUSTOMER: CheckoutData = {
   nome: "Cliente Teste",
+  email: "cliente@example.com",
   whatsapp: "11999999999",
+  cpf: "52998224725",
   cep: "01001000",
   rua: "Praça da Sé",
   numero: "100",
@@ -27,10 +31,44 @@ const CUSTOMER: CheckoutData = {
   cidade: "São Paulo",
   uf: "SP",
 }
+const CUSTOMER_IDENTITY = {
+  userId: "550e8400-e29b-41d4-a716-446655440123",
+  email: "cliente@example.com",
+  emailVerified: true as const,
+}
 
-test("reserves and forwards two trusted catalog products in one checkout", async () => {
+function resolvedProduct(input: {
+  id: number
+  title: string
+  discountPrice: number
+}): CatalogProduct {
+  return {
+    id: input.id,
+    status: "published",
+    title: input.title,
+    image: "/products/deck-commander.png",
+    imagePath: "/products/deck-commander.png",
+    originalPrice: input.discountPrice + 30,
+    discountPrice: input.discountPrice,
+    tag: null,
+    category: "Decks",
+    colors: [],
+    featured: true,
+    highlights: [],
+    description: "Produto de teste",
+    details: [],
+    sections: [],
+    shipping: { weightKg: 0.5, lengthCm: 25, widthCm: 19, heightCm: 4 },
+    displayOrder: input.id,
+    createdAt: "2026-09-07T12:00:00.000Z",
+    updatedAt: "2026-09-07T12:00:00.000Z",
+  }
+}
+
+test("reserves and forwards two products resolved from the current published catalog", async () => {
   const reservedInputs: Array<Parameters<CheckoutFlowDependencies["reserveOrder"]>[0]> = []
   const preferenceInputs: Array<Parameters<CheckoutFlowDependencies["createPreference"]>[0]> = []
+  const resolverCalls: number[][] = []
   const quoteToken = createShippingQuoteToken(
     {
       serviceId: "1",
@@ -42,9 +80,16 @@ test("reserves and forwards two trusted catalog products in one checkout", async
     1_000,
   )
 
-  const dependencies: CheckoutFlowDependencies = {
+  const dependencies = {
     quoteSecret: SECRET,
     nowMs: () => 2_000,
+    resolveProducts: async (ids: number[]) => {
+      resolverCalls.push(ids)
+      return [
+        resolvedProduct({ id: 1, title: "Commander atual", discountPrice: 125 }),
+        resolvedProduct({ id: 2, title: "Deck 60 atual", discountPrice: 75 }),
+      ]
+    },
     buildQuote: async () => ({
       cartFingerprint: CART_FINGERPRINT,
       options: [
@@ -60,17 +105,19 @@ test("reserves and forwards two trusted catalog products in one checkout", async
       ],
     }),
     findOrderByAttempt: async () => null,
-    reserveOrder: async (input) => {
+    reserveOrder: async (input: Parameters<CheckoutFlowDependencies["reserveOrder"]>[0]) => {
       reservedInputs.push(input)
       return {
+        id: ORDER_ID,
         orderNumber: input.orderNumber,
+        customerId: CUSTOMER_IDENTITY.userId,
         publicToken: input.publicToken,
         checkoutFingerprint: input.checkoutFingerprint ?? null,
         checkoutUrl: null,
-      }
+      } as unknown as Awaited<ReturnType<CheckoutFlowDependencies["reserveOrder"]>>
     },
     updateOrder: async () => undefined,
-    createPreference: async (input) => {
+    createPreference: async (input: Parameters<CheckoutFlowDependencies["createPreference"]>[0]) => {
       preferenceInputs.push(input)
       return {
         id: "pref-mixed",
@@ -78,15 +125,16 @@ test("reserves and forwards two trusted catalog products in one checkout", async
         sandboxInitPoint: null,
       }
     },
-    selectCheckoutUrl: (preference) => preference.initPoint,
+    selectCheckoutUrl: (preference: { initPoint: string }) => preference.initPoint,
     generateOrderNumber: () => "PB-MIXED123456",
     generatePublicToken: () => "a".repeat(64),
-  }
+  } as unknown as CheckoutFlowDependencies
 
   const result = await executeCheckoutFlow(
     {
       items: ITEMS,
       customer: CUSTOMER,
+      customerIdentity: CUSTOMER_IDENTITY,
       selectedQuoteToken: quoteToken,
       checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440099",
       siteUrl: "https://preview.example.com",
@@ -97,13 +145,17 @@ test("reserves and forwards two trusted catalog products in one checkout", async
   )
 
   assert.equal(result.kind, "created")
+  assert.deepEqual(resolverCalls, [[1, 2]])
   assert.equal(reservedInputs.length, 1)
   assert.equal(preferenceInputs.length, 1)
 
   const reserved = reservedInputs[0]!
-  assert.equal(reserved.subtotalCents, 25988)
+  assert.equal(reserved.customerId, CUSTOMER_IDENTITY.userId)
+  assert.equal(reserved.customerEmail, CUSTOMER_IDENTITY.email)
+  assert.equal(reserved.customerCpf, "52998224725")
+  assert.equal(reserved.subtotalCents, 27500)
   assert.equal(reserved.shipping?.amountCents, 1842)
-  assert.equal(reserved.totalCents, 27830)
+  assert.equal(reserved.totalCents, 29342)
   assert.deepEqual(
     reserved.items.map((item) => ({
       productId: item.productId,
@@ -114,14 +166,14 @@ test("reserves and forwards two trusted catalog products in one checkout", async
     [
       {
         productId: 1,
-        title: "Deck Commander Proxy 100 Cartas",
-        unitPriceCents: 11990,
+        title: "Commander atual",
+        unitPriceCents: 12500,
         quantity: 1,
       },
       {
         productId: 2,
-        title: "Deck Proxy 60 Cartas",
-        unitPriceCents: 6999,
+        title: "Deck 60 atual",
+        unitPriceCents: 7500,
         quantity: 2,
       },
     ],
@@ -133,8 +185,12 @@ test("reserves and forwards two trusted catalog products in one checkout", async
       quantity: item.quantity,
     })),
     [
-      { productId: 1, unitPriceCents: 11990, quantity: 1 },
-      { productId: 2, unitPriceCents: 6999, quantity: 2 },
+      { productId: 1, unitPriceCents: 12500, quantity: 1 },
+      { productId: 2, unitPriceCents: 7500, quantity: 2 },
     ],
+  )
+  assert.equal(
+    preferenceInputs[0]!.returnUrl,
+    `https://preview.example.com/minha-conta/pedidos/${ORDER_ID}`,
   )
 })

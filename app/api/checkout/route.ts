@@ -6,6 +6,7 @@ import {
   executeCheckoutFlow,
 } from "@/lib/server/checkout-flow"
 import { isAllowedMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
+import { getOptionalCustomerIdentity } from "@/lib/server/customer-auth"
 import {
   getServerEnv,
   isAllowedCheckoutOrigin,
@@ -36,7 +37,9 @@ function parseCustomer(value: unknown): CheckoutData | null {
   const candidate = value as Partial<Record<keyof CheckoutData, unknown>>
   const fields: Array<keyof CheckoutData> = [
     "nome",
+    "email",
     "whatsapp",
+    "cpf",
     "cep",
     "rua",
     "numero",
@@ -128,15 +131,26 @@ export async function POST(request: NextRequest) {
         configuredSiteUrl: siteUrl,
         requestOrigin,
         nodeEnv: process.env.NODE_ENV,
-        vercelEnv: process.env.VERCEL_ENV,
       })
     ) {
       return jsonResponse({ error: "Origem de checkout inválida." }, 403)
     }
 
+    const customerIdentity = await getOptionalCustomerIdentity()
+    if (!customerIdentity) {
+      return jsonResponse(
+        {
+          error: "Entre na sua conta para continuar o pagamento.",
+          code: "authentication_required",
+        },
+        401,
+      )
+    }
+
     const result = await executeCheckoutFlow({
       items: payload.items,
       customer,
+      customerIdentity,
       selectedQuoteToken: payload.selectedQuoteToken,
       checkoutAttemptId: payload.checkoutAttemptId,
       siteUrl,
@@ -180,6 +194,22 @@ export async function POST(request: NextRequest) {
       result.kind === "created" ? 201 : 200,
     )
   } catch (error) {
+    if (
+      error instanceof CheckoutFlowValidationError &&
+      error.message === "Authenticated email mismatch"
+    ) {
+      return jsonResponse(
+        {
+          error: "Use o mesmo e-mail da sua conta para continuar.",
+          code: "account_email_mismatch",
+          fieldErrors: {
+            email: "Use o mesmo e-mail da sua conta.",
+          },
+        },
+        400,
+      )
+    }
+
     if (error instanceof CheckoutFlowValidationError) {
       return jsonResponse(
         { error: "O frete ou os dados do pedido não são mais válidos. Calcule o frete novamente." },

@@ -1,5 +1,9 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import {
+  MELHOR_ENVIO_PHASE5_SCOPES,
+  type MelhorEnvioOAuthScope,
+} from "../lib/server/melhor-envio-oauth-scopes.ts"
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const NOW = Date.parse("2026-08-29T21:00:00.000Z")
@@ -10,6 +14,7 @@ type Credential = {
   accessTokenEnvelope: string
   refreshTokenEnvelope: string
   accessTokenExpiresAt: string
+  authorizedScopes: MelhorEnvioOAuthScope[]
   tokenVersion: number
   status: "active" | "reauthorization_required"
   refreshLeaseOwner: string | null
@@ -71,7 +76,12 @@ type ManagerModule = {
   createMelhorEnvioTokenManager(deps: Dependencies): (options?: {
     forceRefresh?: boolean
     rejectedTokenVersion?: number
-  }) => Promise<{ accessToken: string; tokenVersion: number }>
+    requiredScopes?: readonly MelhorEnvioOAuthScope[]
+  }) => Promise<{
+    accessToken: string
+    tokenVersion: number
+    authorizedScopes: MelhorEnvioOAuthScope[]
+  }>
   MelhorEnvioTokenManagerError: new (...args: never[]) => Error & {
     code: "reauthorization_required" | "temporary_unavailable" | "invalid_credential"
   }
@@ -87,6 +97,7 @@ function credential(overrides: Partial<Credential> = {}): Credential {
     accessTokenEnvelope: "enc:access:old-access",
     refreshTokenEnvelope: "enc:refresh:old-refresh",
     accessTokenExpiresAt: new Date(NOW + 20 * DAY_MS).toISOString(),
+    authorizedScopes: ["shipping-calculate"],
     tokenVersion: 4,
     status: "active",
     refreshLeaseOwner: null,
@@ -170,12 +181,16 @@ function makeDeps(overrides: Partial<Dependencies> = {}) {
   }
 }
 
-test("returns a decrypted access token without refreshing when more than seven days remain", async () => {
+test("returns a decrypted quote-only access token with its persisted scope evidence", async () => {
   const module = await loadManagerModule()
   const { deps, calls } = makeDeps()
   const getToken = module.createMelhorEnvioTokenManager(deps)
 
-  assert.deepEqual(await getToken(), { accessToken: "old-access", tokenVersion: 4 })
+  assert.deepEqual(await getToken(), {
+    accessToken: "old-access",
+    tokenVersion: 4,
+    authorizedScopes: ["shipping-calculate"],
+  })
   assert.equal(calls.claims.length, 0)
   assert.equal(calls.refreshTokens.length, 0)
   assert.deepEqual(calls.decrypts, [
@@ -188,13 +203,61 @@ test("returns a decrypted access token without refreshing when more than seven d
   ])
 })
 
-test("proactively refreshes at seven days, rotates both encrypted tokens and commits exact expiry", async () => {
+test("rejects a shipment operation when required scopes are absent before decrypt or refresh work", async () => {
   const module = await loadManagerModule()
-  const { deps, calls, setRow } = makeDeps()
-  setRow(credential({ accessTokenExpiresAt: new Date(NOW + 7 * DAY_MS).toISOString() }))
+  const { deps, calls } = makeDeps()
   const getToken = module.createMelhorEnvioTokenManager(deps)
 
-  assert.deepEqual(await getToken(), { accessToken: "new-access", tokenVersion: 5 })
+  await assert.rejects(
+    () => getToken({ requiredScopes: ["shipping-checkout"] }),
+    (error: unknown) => {
+      assert.ok(error instanceof module.MelhorEnvioTokenManagerError)
+      assert.equal(error.code, "reauthorization_required")
+      return true
+    },
+  )
+  assert.equal(calls.decrypts.length, 0)
+  assert.equal(calls.claims.length, 0)
+  assert.equal(calls.refreshTokens.length, 0)
+})
+
+test("accepts required shipment scopes only when the persisted grant contains them", async () => {
+  const module = await loadManagerModule()
+  const { deps, calls, setRow } = makeDeps()
+  setRow(credential({ authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES] }))
+  const getToken = module.createMelhorEnvioTokenManager(deps)
+
+  assert.deepEqual(
+    await getToken({ requiredScopes: ["cart-write", "shipping-checkout"] }),
+    {
+      accessToken: "old-access",
+      tokenVersion: 4,
+      authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES],
+    },
+  )
+  assert.equal(calls.claims.length, 0)
+  assert.equal(calls.refreshTokens.length, 0)
+})
+
+test("proactively refreshes at seven days, rotates both encrypted tokens and preserves authorized scopes", async () => {
+  const module = await loadManagerModule()
+  const { deps, calls, setRow } = makeDeps()
+  setRow(
+    credential({
+      accessTokenExpiresAt: new Date(NOW + 7 * DAY_MS).toISOString(),
+      authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES],
+    }),
+  )
+  const getToken = module.createMelhorEnvioTokenManager(deps)
+
+  assert.deepEqual(
+    await getToken({ requiredScopes: ["shipping-generate"] }),
+    {
+      accessToken: "new-access",
+      tokenVersion: 5,
+      authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES],
+    },
+  )
   assert.deepEqual(calls.refreshTokens, ["old-refresh"])
   assert.deepEqual(calls.claims, [
     {
@@ -236,7 +299,11 @@ test("a proactive lease loser may use the still-valid current token without refr
   setRow(credential({ accessTokenExpiresAt: new Date(NOW + DAY_MS).toISOString() }))
   const getToken = module.createMelhorEnvioTokenManager(deps)
 
-  assert.deepEqual(await getToken(), { accessToken: "old-access", tokenVersion: 4 })
+  assert.deepEqual(await getToken(), {
+    accessToken: "old-access",
+    tokenVersion: 4,
+    authorizedScopes: ["shipping-calculate"],
+  })
   assert.equal(calls.refreshTokens.length, 0)
 })
 
@@ -261,7 +328,11 @@ test("forced refresh never reuses the rejected version and waits for a newer com
 
   assert.deepEqual(
     await getToken({ forceRefresh: true, rejectedTokenVersion: 4 }),
-    { accessToken: "winner-access", tokenVersion: 5 },
+    {
+      accessToken: "winner-access",
+      tokenVersion: 5,
+      authorizedScopes: ["shipping-calculate"],
+    },
   )
   assert.equal(calls.refreshTokens.length, 0)
   assert.ok(calls.sleeps.length >= 1)
@@ -308,6 +379,7 @@ test("a stale refresh commit cannot overwrite a newer version and returns the wi
   assert.deepEqual(await getToken(), {
     accessToken: "other-winner-access",
     tokenVersion: 5,
+    authorizedScopes: ["shipping-calculate"],
   })
   assert.equal(calls.commits.length, 1)
 })

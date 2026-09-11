@@ -1,8 +1,9 @@
-import { MapPin, MessageCircle, User } from "lucide-react"
+import { Mail, MapPin, MessageCircle, User } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   formatCep,
+  formatCpf,
   formatWhatsapp,
   type CheckoutData,
   type CheckoutErrors,
@@ -53,6 +54,35 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
       </div>
 
       <div>
+        <Label htmlFor="checkout-email" className="text-slate-400 text-sm font-medium">
+          E-mail *
+        </Label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <Input
+            id="checkout-email"
+            type="email"
+            autoComplete="email"
+            maxLength={254}
+            required
+            value={data.email}
+            onChange={(event) => onChange("email", event.target.value)}
+            placeholder="voce@exemplo.com"
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "checkout-email-error" : "checkout-email-help"}
+            className={`${inputClass} pl-10 ${errors.email ? "border-red-400/70 focus:border-red-400" : ""}`}
+          />
+        </div>
+        {errors.email ? (
+          errorText("checkout-email-error", errors.email)
+        ) : (
+          <p id="checkout-email-help" className="text-slate-500 text-sm mt-1">
+            Usaremos este e-mail para identificar seu pedido e sua conta, caso você crie uma.
+          </p>
+        )}
+      </div>
+
+      <div>
         <Label htmlFor="checkout-whatsapp" className="text-slate-400 text-sm font-medium">
           WhatsApp com DDD *
         </Label>
@@ -76,6 +106,32 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
         ) : (
           <p id="checkout-whatsapp-help" className="text-slate-500 text-sm mt-1">
             Usaremos este número caso seja necessário falar sobre o pedido ou a entrega.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="checkout-cpf" className="text-slate-400 text-sm font-medium">
+          CPF do destinatário *
+        </Label>
+        <Input
+          id="checkout-cpf"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={14}
+          required
+          value={data.cpf}
+          onChange={(event) => onChange("cpf", formatCpf(event.target.value))}
+          placeholder="000.000.000-00"
+          aria-invalid={Boolean(errors.cpf)}
+          aria-describedby={errors.cpf ? "checkout-cpf-error" : "checkout-cpf-help"}
+          className={`${inputClass} ${errors.cpf ? "border-red-400/70 focus:border-red-400" : ""}`}
+        />
+        {errors.cpf ? (
+          errorText("checkout-cpf-error", errors.cpf)
+        ) : (
+          <p id="checkout-cpf-help" className="text-slate-500 text-sm mt-1">
+            Usado somente para preparar a entrega com a transportadora.
           </p>
         )}
       </div>

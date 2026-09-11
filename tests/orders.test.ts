@@ -7,6 +7,7 @@ import {
 } from "../lib/server/orders.ts"
 
 const ENV_KEYS = ["SUPABASE_URL", "SUPABASE_SECRET_KEY"] as const
+const CUSTOMER_ID = "550e8400-e29b-41d4-a716-446655440123"
 
 async function withSupabaseEnv(run: () => Promise<void>) {
   const previous = new Map<string, string | undefined>()
@@ -29,6 +30,9 @@ const orderInput = {
   orderNumber: "PB-A1B2C3D4E5F6",
   publicToken: "a".repeat(64),
   customerName: "Breno Bembem",
+  customerEmail: "cliente@example.com",
+  customerCpf: "52998224725",
+  customerId: CUSTOMER_ID,
   whatsapp: "44991250332",
   cep: "86730000",
   address: {
@@ -63,7 +67,7 @@ const orderInput = {
   checkoutFingerprint: "b".repeat(64),
 }
 
-test("persists complete address, shipping, total and checkout identity", async (t) => {
+test("persists complete address, shipping, total, checkout identity and owned customer snapshot", async (t) => {
   await withSupabaseEnv(async () => {
     t.mock.method(
       globalThis,
@@ -74,6 +78,9 @@ test("persists complete address, shipping, total and checkout identity", async (
           order_number: orderInput.orderNumber,
           public_token: orderInput.publicToken,
           customer_name: orderInput.customerName,
+          customer_email: "cliente@example.com",
+          customer_cpf: "52998224725",
+          customer_id: CUSTOMER_ID,
           whatsapp: orderInput.whatsapp,
           cep: orderInput.cep,
           address_street: "Rua das Cartas",
@@ -97,14 +104,57 @@ test("persists complete address, shipping, total and checkout identity", async (
           payment_provider: "mercadopago",
           payment_status: "pending",
         })
-        return new Response(JSON.stringify([{ ...body, id: "order-id" }]), {
-          status: 201,
-          headers: { "Content-Type": "application/json" },
-        })
+        return new Response(
+          JSON.stringify([
+            {
+              ...body,
+              id: "order-id",
+              fulfillment_status: "awaiting_payment",
+            },
+          ]),
+          {
+            status: 201,
+            headers: { "Content-Type": "application/json" },
+          },
+        )
       },
     )
 
     await createOrder(orderInput)
+  })
+})
+
+test("persists trusted authenticated customer ownership when supplied by server flow", async (t) => {
+  await withSupabaseEnv(async () => {
+    const customerId = "550e8400-e29b-41d4-a716-446655440999"
+
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>
+        assert.equal(body.customer_email, "conta@example.com")
+        assert.equal(body.customer_cpf, "52998224725")
+        assert.equal(body.customer_id, customerId)
+        return new Response(
+          JSON.stringify([
+            {
+              ...body,
+              id: "order-id-auth",
+              fulfillment_status: "awaiting_payment",
+            },
+          ]),
+          { status: 201, headers: { "Content-Type": "application/json" } },
+        )
+      },
+    )
+
+    await createOrder({
+      ...orderInput,
+      customerEmail: "conta@example.com",
+      customerId,
+      checkoutAttemptId: "550e8400-e29b-41d4-a716-446655440001",
+    })
   })
 })
 

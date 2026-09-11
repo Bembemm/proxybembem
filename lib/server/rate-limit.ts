@@ -5,11 +5,27 @@ export type RateLimitScope =
   | "shipping-quote"
   | "checkout"
   | "melhor-envio-oauth-start"
+  | "admin-shipping-config"
+  | "admin-shipping-mutation"
+  | "admin-shipping-spend"
+  | "account-signup"
+  | "account-login"
+  | "account-password-reset"
+  | "account-password-recovery"
+  | "account-profile"
 
 const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   "shipping-quote": { limit: 60, windowSeconds: 600 },
   checkout: { limit: 10, windowSeconds: 600 },
   "melhor-envio-oauth-start": { limit: 5, windowSeconds: 900 },
+  "admin-shipping-config": { limit: 10, windowSeconds: 600 },
+  "admin-shipping-mutation": { limit: 20, windowSeconds: 300 },
+  "admin-shipping-spend": { limit: 5, windowSeconds: 300 },
+  "account-signup": { limit: 5, windowSeconds: 900 },
+  "account-login": { limit: 10, windowSeconds: 600 },
+  "account-password-reset": { limit: 5, windowSeconds: 900 },
+  "account-password-recovery": { limit: 5, windowSeconds: 900 },
+  "account-profile": { limit: 20, windowSeconds: 600 },
 }
 
 function firstUsableForwardedValue(value: string | null): string | null {
@@ -20,11 +36,7 @@ function firstUsableForwardedValue(value: string | null): string | null {
 }
 
 function getClientIp(request: Request): string {
-  const headers = [
-    "x-vercel-forwarded-for",
-    "x-forwarded-for",
-    "x-real-ip",
-  ] as const
+  const headers = ["x-forwarded-for", "x-real-ip"] as const
 
   for (const name of headers) {
     const candidate = firstUsableForwardedValue(request.headers.get(name))

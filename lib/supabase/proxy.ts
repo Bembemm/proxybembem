@@ -8,6 +8,10 @@ const AUTH_FLOW_PATHS = new Set([
   "/admin/setup-mfa",
 ])
 const REDIRECT_CACHE_HEADERS = ["cache-control", "expires", "pragma"] as const
+const PRIVATE_ACCOUNT_CACHE_CONTROL =
+  "private, no-cache, no-store, max-age=0, must-revalidate"
+const PRIVATE_ADMIN_CACHE_CONTROL =
+  "private, no-cache, no-store, max-age=0, must-revalidate"
 
 function copySupabaseState(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) {
@@ -24,12 +28,36 @@ function copySupabaseState(source: NextResponse, target: NextResponse) {
   return target
 }
 
+function disablePrivateBrowserCache(
+  response: NextResponse,
+  pathname: string,
+) {
+  const isPrivateAccount =
+    pathname === "/minha-conta" || pathname.startsWith("/minha-conta/")
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/")
+
+  if (isPrivateAccount) {
+    response.headers.set("Cache-Control", PRIVATE_ACCOUNT_CACHE_CONTROL)
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+  }
+
+  if (isAdmin) {
+    response.headers.set("Cache-Control", PRIVATE_ADMIN_CACHE_CONTROL)
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+  }
+
+  return response
+}
+
 export async function updateSupabaseSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
   const env = getSupabaseBrowserConfig()
 
   const supabase = createServerClient(env.url, env.publishableKey, {
     cookies: {
+      encode: "tokens-only",
       getAll() {
         return request.cookies.getAll()
       },
@@ -49,8 +77,13 @@ export async function updateSupabaseSession(request: NextRequest) {
     },
   })
 
-  const { data } = await supabase.auth.getClaims()
-  const claims = data?.claims
+  let claims: unknown
+  try {
+    const { data } = await supabase.auth.getClaims()
+    claims = data?.claims
+  } catch {
+    claims = undefined
+  }
   const pathname = request.nextUrl.pathname
 
   if (
@@ -61,11 +94,14 @@ export async function updateSupabaseSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = "/admin/login"
     url.search = ""
-    return copySupabaseState(
-      supabaseResponse,
-      NextResponse.redirect(url, { status: 303 }),
+    return disablePrivateBrowserCache(
+      copySupabaseState(
+        supabaseResponse,
+        NextResponse.redirect(url, { status: 303 }),
+      ),
+      pathname,
     )
   }
 
-  return supabaseResponse
+  return disablePrivateBrowserCache(supabaseResponse, pathname)
 }

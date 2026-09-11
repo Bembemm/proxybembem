@@ -35,6 +35,10 @@ export interface MelhorEnvioOAuthEnv {
   quoteSecret: string
 }
 
+export interface MelhorEnvioShipmentEnv extends MelhorEnvioOAuthEnv {
+  labelPurchaseEnabled: boolean
+}
+
 export interface RateLimitEnv extends SupabaseEnv {
   rateLimitSecret: string
 }
@@ -57,11 +61,17 @@ function requireStrongSecret(name: string) {
   return value
 }
 
-function isProductionRuntime(
-  nodeEnv: string | undefined,
-  vercelEnv: string | undefined,
-) {
-  if (vercelEnv) return vercelEnv === "production"
+function optionalExactBoolean(name: string) {
+  const raw = process.env[name]
+  if (raw === undefined || raw.trim() === "") return false
+
+  const value = raw.trim()
+  if (value === "true") return true
+  if (value === "false") return false
+  throw new Error(`${name} must be true or false`)
+}
+
+function isProductionRuntime(nodeEnv: string | undefined) {
   return nodeEnv === "production"
 }
 
@@ -69,10 +79,7 @@ function requireProductionProviderEnvironment<T extends "sandbox" | "production"
   providerName: string,
   environment: T,
 ): T {
-  if (
-    isProductionRuntime(process.env.NODE_ENV, process.env.VERCEL_ENV) &&
-    environment !== "production"
-  ) {
+  if (isProductionRuntime(process.env.NODE_ENV) && environment !== "production") {
     throw new Error(
       `Production runtime requires ${providerName} environment to be production`,
     )
@@ -176,6 +183,13 @@ export function getMelhorEnvioOAuthEnv(): MelhorEnvioOAuthEnv {
   }
 }
 
+export function getMelhorEnvioShipmentEnv(): MelhorEnvioShipmentEnv {
+  return {
+    ...getMelhorEnvioOAuthEnv(),
+    labelPurchaseEnabled: optionalExactBoolean("MELHOR_ENVIO_LABEL_PURCHASE_ENABLED"),
+  }
+}
+
 export function getCronSecret() {
   return requireStrongSecret("CRON_SECRET")
 }
@@ -210,7 +224,7 @@ export function getServerEnv(): ServerEnv {
 
 export function resolvePublicSiteUrl(requestOrigin: string) {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim()
-  const production = isProductionRuntime(process.env.NODE_ENV, process.env.VERCEL_ENV)
+  const production = isProductionRuntime(process.env.NODE_ENV)
 
   if (production && !configured) {
     throw new Error("Production checkout requires NEXT_PUBLIC_SITE_URL")
@@ -229,7 +243,6 @@ export function isAllowedCheckoutOrigin(input: {
   configuredSiteUrl: string
   requestOrigin: string
   nodeEnv: string | undefined
-  vercelEnv: string | undefined
 }) {
   if (!input.originHeader) return false
 
@@ -237,7 +250,7 @@ export function isAllowedCheckoutOrigin(input: {
     const origin = new URL(input.originHeader).origin
     const configuredOrigin = new URL(input.configuredSiteUrl).origin
     const requestOrigin = new URL(input.requestOrigin).origin
-    const production = isProductionRuntime(input.nodeEnv, input.vercelEnv)
+    const production = isProductionRuntime(input.nodeEnv)
 
     if (production) {
       return (

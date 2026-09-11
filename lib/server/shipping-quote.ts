@@ -1,4 +1,7 @@
-import { buildCheckoutOrder } from "./checkout-order.ts"
+import {
+  buildCheckoutOrder,
+  type ResolveCheckoutProducts,
+} from "./checkout-order.ts"
 import { getMelhorEnvioEnv } from "./env.ts"
 import {
   MelhorEnvioProviderError,
@@ -6,6 +9,7 @@ import {
   type ShippingProductInput,
   type ShippingQuoteOption,
 } from "./melhor-envio.ts"
+import { getPublishedProductsByIds } from "./product-catalog.ts"
 import {
   createCartFingerprint,
   createShippingQuoteToken,
@@ -39,10 +43,7 @@ export class ShippingUnavailableError extends Error {
 const GENERIC_SHIPPING_MESSAGE =
   "Não foi possível calcular o frete agora. Confira o CEP e tente novamente."
 
-export function formatShippingUnavailableMessage(
-  _error: ShippingUnavailableError,
-  _vercelEnv: string | undefined,
-) {
+export function formatShippingUnavailableMessage(_error: ShippingUnavailableError) {
   return GENERIC_SHIPPING_MESSAGE
 }
 
@@ -91,6 +92,7 @@ type ShippingQuoteProvider = (input: {
 export function createShippingQuoteBuilder(deps: {
   quoteProvider: ShippingQuoteProvider
   getQuoteSecret: () => string
+  resolveProducts: ResolveCheckoutProducts
 }) {
   return async function build(input: {
     items: unknown
@@ -101,7 +103,7 @@ export function createShippingQuoteBuilder(deps: {
     }
 
     const destinationCep = normalizeDestinationCep(input.destinationCep)
-    const checkoutOrder = buildCheckoutOrder(input.items)
+    const checkoutOrder = await buildCheckoutOrder(input.items, deps.resolveProducts)
     const cartFingerprint = createCartFingerprint(
       checkoutOrder.items.map((item) => ({
         productId: item.productId,
@@ -165,6 +167,7 @@ export function createShippingQuoteBuilder(deps: {
 export const buildShippingQuoteResult = createShippingQuoteBuilder({
   quoteProvider: quoteMelhorEnvio,
   getQuoteSecret: () => getMelhorEnvioEnv().quoteSecret,
+  resolveProducts: getPublishedProductsByIds,
 })
 
 export function toPublicShippingOptions(

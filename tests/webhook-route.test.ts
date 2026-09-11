@@ -156,6 +156,8 @@ test("valid payment fetches Mercado Pago once and applies one atomic Supabase RP
               payment_id: PAYMENT_ID,
               expected_cents: 13832,
               received_cents: 13832,
+              fulfillment_status: "awaiting_production",
+              fulfillment_transitioned: true,
             }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           )

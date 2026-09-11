@@ -1,20 +1,50 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const navItems = [
-  { label: "Início", href: "/" },
-  { label: "Produtos", href: "/produtos" },
-  { label: "Contato", href: "/contato" },
+  { label: "Início", href: "/", freshDocument: true },
+  { label: "Produtos", href: "/produtos", freshDocument: true },
+  { label: "Contato", href: "/contato", freshDocument: false },
 ] as const
+
+type AccountState = "loading" | "guest" | "authenticated"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [accountState, setAccountState] = useState<AccountState>("loading")
   const pathname = usePathname()
+
+  useEffect(() => {
+    let cancelled = false
+    const supabase = createSupabaseBrowserClient()
+
+    setAccountState("loading")
+    void supabase.auth.getUser().then(({ data, error }) => {
+      if (cancelled) return
+      if (error) {
+        setAccountState("guest")
+        return
+      }
+      setAccountState(data.user ? "authenticated" : "guest")
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [pathname])
+
+  const accountItem =
+    accountState === "loading"
+      ? null
+      : accountState === "authenticated"
+        ? { label: "Meu perfil", href: "/minha-conta/perfil" }
+        : { label: "Entrar", href: "/entrar" }
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
@@ -23,7 +53,7 @@ export function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
       <nav className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between" aria-label="Navegação principal">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          <img src="/brand/pb.png" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
+          <img src="/brand/pb" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
           <span className="text-xl sm:text-2xl font-[family-name:var(--font-display)] text-black tracking-wide">
             ProxyBembem
           </span>
@@ -42,20 +72,48 @@ export function Navbar() {
         </Button>
 
         <div className="hidden md:flex items-center gap-6 lg:gap-8">
-          {navItems.map((item) => (
+          {navItems.map((item) =>
+            item.freshDocument ? (
+              <a
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className={`text-base tracking-wide uppercase transition-colors ${
+                  isActive(item.href)
+                    ? "text-[#8B5CF6] font-semibold"
+                    : "text-slate-600 hover:text-[#8B5CF6]"
+                }`}
+              >
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isActive(item.href) ? "page" : undefined}
+                className={`text-base tracking-wide uppercase transition-colors ${
+                  isActive(item.href)
+                    ? "text-[#8B5CF6] font-semibold"
+                    : "text-slate-600 hover:text-[#8B5CF6]"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
+          {accountItem ? (
             <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive(item.href) ? "page" : undefined}
+              href={accountItem.href}
+              aria-current={isActive(accountItem.href) ? "page" : undefined}
               className={`text-base tracking-wide uppercase transition-colors ${
-                isActive(item.href)
+                isActive(accountItem.href)
                   ? "text-[#8B5CF6] font-semibold"
                   : "text-slate-600 hover:text-[#8B5CF6]"
               }`}
             >
-              {item.label}
+              {accountItem.label}
             </Link>
-          ))}
+          ) : null}
         </div>
       </nav>
 
@@ -65,21 +123,51 @@ export function Navbar() {
           className="md:hidden bg-white/95 backdrop-blur-xl border-b border-slate-200/50 animate-in slide-in-from-top-2"
         >
           <div className="container mx-auto px-3 sm:px-4 py-3 flex flex-col gap-1">
-            {navItems.map((item) => (
+            {navItems.map((item) =>
+              item.freshDocument ? (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  aria-current={isActive(item.href) ? "page" : undefined}
+                  className={`py-3 px-2 text-base tracking-wide uppercase text-left transition-colors rounded-lg ${
+                    isActive(item.href)
+                      ? "text-[#8B5CF6] font-semibold bg-[#8B5CF6]/10"
+                      : "text-slate-600 hover:text-[#8B5CF6] hover:bg-slate-100"
+                  }`}
+                >
+                  {item.label}
+                </a>
+              ) : (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  aria-current={isActive(item.href) ? "page" : undefined}
+                  className={`py-3 px-2 text-base tracking-wide uppercase text-left transition-colors rounded-lg ${
+                    isActive(item.href)
+                      ? "text-[#8B5CF6] font-semibold bg-[#8B5CF6]/10"
+                      : "text-slate-600 hover:text-[#8B5CF6] hover:bg-slate-100"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ),
+            )}
+            {accountItem ? (
               <Link
-                key={item.href}
-                href={item.href}
+                href={accountItem.href}
                 onClick={() => setIsOpen(false)}
-                aria-current={isActive(item.href) ? "page" : undefined}
+                aria-current={isActive(accountItem.href) ? "page" : undefined}
                 className={`py-3 px-2 text-base tracking-wide uppercase text-left transition-colors rounded-lg ${
-                  isActive(item.href)
+                  isActive(accountItem.href)
                     ? "text-[#8B5CF6] font-semibold bg-[#8B5CF6]/10"
                     : "text-slate-600 hover:text-[#8B5CF6] hover:bg-slate-100"
                 }`}
               >
-                {item.label}
+                {accountItem.label}
               </Link>
-            ))}
+            ) : null}
           </div>
         </div>
       )}

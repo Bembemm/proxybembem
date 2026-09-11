@@ -5,5 +5,9 @@ import { getSupabaseBrowserConfig } from "./config.ts"
 
 export function createSupabaseBrowserClient() {
   const env = getSupabaseBrowserConfig()
-  return createBrowserClient(env.url, env.publishableKey)
+  return createBrowserClient(env.url, env.publishableKey, {
+    cookies: {
+      encode: "tokens-only",
+    },
+  })
 }

@@ -103,13 +103,15 @@ export function MfaForm({
             required
             value={code}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            aria-invalid={Boolean(message)}
+            aria-describedby={message ? "admin-mfa-error" : undefined}
             className="rounded-md border bg-background px-3 py-2 font-normal tracking-widest"
           />
         </label>
       )}
 
       {message ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p id="admin-mfa-error" role="alert" className="text-sm text-destructive">
           {message}
         </p>
       ) : null}

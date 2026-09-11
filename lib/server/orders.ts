@@ -1,11 +1,19 @@
 import type { CheckoutOrderItem } from "./checkout-order.ts"
 import { getSupabaseEnv } from "./env.ts"
+import {
+  isFulfillmentStatus,
+  type FulfillmentStatus,
+} from "./fulfillment.ts"
+import { hasValidCpfChecksum } from "./shipping-sender.ts"
 
 export interface OrderRecord {
   id: string
   order_number: string
   public_token: string
   customer_name: string
+  customer_email: string | null
+  customer_cpf: string | null
+  customer_id: string | null
   whatsapp: string
   cep: string
   address_street: string | null
@@ -32,6 +40,7 @@ export interface OrderRecord {
   payment_id: string | null
   payment_status: string
   payment_status_detail: string | null
+  fulfillment_status: FulfillmentStatus
   created_at: string
   updated_at: string
 }
@@ -40,6 +49,9 @@ export interface CreateOrderInput {
   orderNumber: string
   publicToken: string
   customerName: string
+  customerEmail: string
+  customerCpf: string
+  customerId?: string | null
   whatsapp: string
   cep: string
   items: CheckoutOrderItem[]
@@ -73,6 +85,8 @@ export interface PaymentEventResult {
   payment_id: string | null
   expected_cents: number | null
   received_cents: number
+  fulfillment_status: FulfillmentStatus | null
+  fulfillment_transitioned: boolean
 }
 
 export class OrderConflictError extends Error {
@@ -101,6 +115,9 @@ const ORDER_SELECT = [
   "order_number",
   "public_token",
   "customer_name",
+  "customer_email",
+  "customer_cpf",
+  "customer_id",
   "whatsapp",
   "cep",
   "address_street",
@@ -127,6 +144,7 @@ const ORDER_SELECT = [
   "payment_id",
   "payment_status",
   "payment_status_detail",
+  "fulfillment_status",
   "created_at",
   "updated_at",
 ].join(",")
@@ -177,6 +195,10 @@ async function supabaseRequest(path: string, init?: RequestInit) {
 }
 
 export async function createOrder(input: CreateOrderInput): Promise<OrderRecord> {
+  if (!hasValidCpfChecksum(input.customerCpf)) {
+    throw new Error("Invalid recipient CPF")
+  }
+
   const addressFields = input.address
     ? {
         address_street: input.address.street,
@@ -207,6 +229,9 @@ export async function createOrder(input: CreateOrderInput): Promise<OrderRecord>
       order_number: input.orderNumber,
       public_token: input.publicToken,
       customer_name: input.customerName,
+      customer_email: input.customerEmail,
+      customer_cpf: input.customerCpf,
+      customer_id: input.customerId ?? null,
       whatsapp: input.whatsapp,
       cep: input.cep,
       ...addressFields,
@@ -275,19 +300,6 @@ export async function getOrderByCheckoutAttemptId(
   return rows[0] ?? null
 }
 
-export async function getOrderByPublicToken(publicToken: string): Promise<OrderRecord | null> {
-  if (!/^[a-f0-9]{64}$/i.test(publicToken)) return null
-
-  const params = new URLSearchParams({
-    public_token: `eq.${publicToken}`,
-    select: ORDER_SELECT,
-    limit: "1",
-  })
-  const response = await supabaseRequest(`orders?${params.toString()}`)
-  const rows = (await response.json()) as OrderRecord[]
-  return rows[0] ?? null
-}
-
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string"
 }
@@ -335,6 +347,7 @@ export async function applyMercadoPagoPaymentEvent(input: {
   }
 
   const result = payload as Partial<PaymentEventResult>
+  const fulfillmentStatus = result.fulfillment_status
   if (
     !["updated", "ignored", "manual_review", "not_found"].includes(
       String(result.outcome),
@@ -344,7 +357,9 @@ export async function applyMercadoPagoPaymentEvent(input: {
     !isNullableString(result.payment_id) ||
     !isNullableSafeInteger(result.expected_cents) ||
     typeof result.received_cents !== "number" ||
-    !Number.isSafeInteger(result.received_cents)
+    !Number.isSafeInteger(result.received_cents) ||
+    (fulfillmentStatus !== null && !isFulfillmentStatus(fulfillmentStatus)) ||
+    typeof result.fulfillment_transitioned !== "boolean"
   ) {
     throw new Error("Payment event RPC returned an invalid response")
   }
