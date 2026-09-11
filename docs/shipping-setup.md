@@ -185,7 +185,7 @@ Rota interna protegida:
 /api/internal/melhor-envio/tracking
 ```
 
-O rastreamento roda em cadência **horária** e usa somente a capacidade `shipping-tracking`; ele não pode comprar, gerar ou cancelar etiquetas. A sincronização é monotônica e deduplicada.
+O rastreamento roda **a cada hora** (cadência horária) e usa somente a capacidade `shipping-tracking`; ele não pode comprar, gerar ou cancelar etiquetas. A sincronização é monotônica e deduplicada.
 
 O cliente autenticado vê apenas a projeção sanitizada em:
 
