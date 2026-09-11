@@ -63,7 +63,7 @@ test("shipping setup documents the live Phase 5 PF/DC-e flow and staged spending
   assert.doesNotMatch(source, /compra, gera[cç][aã]o e impress[aã]o de etiqueta continuam manuais/i)
 })
 
-test("operational status preserves non-spending evidence and records owner acceptance of Task 18", async () => {
+test("operational status preserves Phase 5 acceptance evidence and closes Task 20", async () => {
   const [status, master] = await Promise.all([
     read("../docs/superpowers/CURRENT_STATUS.md"),
     read("../docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md"),
@@ -78,9 +78,12 @@ test("operational status preserves non-spending evidence and records owner accep
     assert.match(source, /owner[- ]reported|declarad[ao][^\n]*propriet[aá]ri|informad[ao][^\n]*propriet[aá]ri/i)
     assert.match(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false/)
     assert.match(source, /Task 19[^\n]*(?:complete|conclu[ií]d)|(?:complete|conclu[ií]d)[^\n]*Task 19/i)
-    assert.match(source, /Task 20[^\n]*(?:final|verification|verifica[cç][aã]o|handoff)/i)
+    assert.match(source, /Task 20[^\n]*(?:complete|conclu[ií]d|owner accepted|aceit[ao])/i)
+    assert.match(source, /Phase 5[^\n]*(?:complete|conclu[ií]d|accepted|aceit)/i)
     assert.doesNotMatch(source, /Task 18\s+(?:pending|pendente)\b/i)
     assert.doesNotMatch(source, /(?:pending|pendente)\s+Task 18\b/i)
+    assert.doesNotMatch(source, /Task 20\s+(?:pending|pendente)\b/i)
+    assert.doesNotMatch(source, /(?:pending|pendente)\s+Task 20\b/i)
     assert.doesNotMatch(source, /finish Task 19|finalizar[^\n]*Task 19|finish[^\n]*Task 19/i)
   }
 
