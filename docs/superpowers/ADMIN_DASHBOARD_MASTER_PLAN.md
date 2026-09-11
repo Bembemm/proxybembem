@@ -104,7 +104,7 @@ The old full Stage 3 browser smoke was deferred by the owner on 2026-09-08. Phas
 
 # PHASE 5 — Melhor Envio Shipments + Labels + Tracking
 
-**State: IMPLEMENTATION COMPLETE / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING PATH VALIDATED / TASK 18 OWNER ACCEPTED / FINAL TASK 20 HANDOFF PENDING.**
+**State: COMPLETE / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING PATH VALIDATED / TASK 18 OWNER ACCEPTED / TASK 20 OWNER ACCEPTED.**
 
 Phase 5 provides a production-capable server-authoritative shipment subsystem while preserving the no-auto-spend rule.
 
@@ -204,9 +204,15 @@ When a purchase window is intentionally opened, current paid/ready state, recipi
 
 Direct Production staging remains the accepted rollout strategy; Sandbox is not a prerequisite for the accepted live flow.
 
-## Task 20 — final verification / handoff — PENDING
+## Task 20 — final verification / handoff — OWNER ACCEPTED
 
-Task 20 is the remaining Phase 5 checkpoint. It must verify the latest exact branch SHA after the order-number regression hotfix and Task 18 acceptance documentation, then record the final automated handoff evidence. Later provider/runtime incidents are operational fixes and do not automatically reopen Task 18.
+**Task 20 owner accepted on 2026-09-11.** The owner deployed runtime candidate `fa3ce232ad2e5e5b8ad669a348492555cb068295`, restarted the KingHost application, completed the requested Production smoke and reported **“tudo certo”**. This is **owner-reported manual Production acceptance**, not independently captured browser evidence.
+
+The smoke covered admin login/TOTP, Production Melhor Envio integration visibility, a normal order-detail load, and logout/login behavior. The same exact runtime candidate had GitHub Actions run `34611501313` complete successfully with Node 22.1.0 setup, frozen install, typecheck, KingHost build, private-order route contract, startup smoke and the full automated suite green.
+
+The historical authenticated admin response-header observation was not separately captured from the owner browser in this final smoke. Automated regression coverage still enforces no-store behavior for protected admin responses. Carry the manual header observation into later hardening rather than fabricating evidence that it was observed.
+
+Phase 5 is complete at the owner-handoff level. Later provider/runtime incidents are operational fixes and do not automatically reopen Task 18 or Task 20.
 
 # PHASE 6 — Transactional Notifications
 
@@ -230,7 +236,7 @@ Reliable DB-derived metrics and attention queues; no fabricated metrics.
 
 **State: NOT STARTED.**
 
-Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full regression suite, exact rollout SHA and explicit owner rollout approval.
+Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full regression suite, exact rollout SHA and explicit owner rollout approval. The manual authenticated admin cache-header observation that was not separately captured during the Phase 5 owner smoke remains suitable for this hardening pass.
 
 ---
 
@@ -260,7 +266,7 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 **Phase 2:** complete/accepted.  
 **Phase 3:** complete/deployed/production-accepted.  
 **Phase 4:** implementation complete; automated evidence green; original broad manual Stage 3 checklist not fully re-run.  
-**Phase 5:** implementation complete; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 19 complete**; **Task 18 owner accepted by owner-reported manual acceptance**; final **Task 20 verification/handoff pending**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains the safe default outside deliberate purchase windows.  
+**Phase 5:** complete at owner-handoff level; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 19 complete**; **Task 18 owner accepted by owner-reported manual acceptance**; **Task 20 owner accepted by owner-reported Production smoke**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains the safe default outside deliberate purchase windows.  
 **Phase 6+:** not started.
 
-**NEXT EXACT ACTION:** run Task 20 final exact-SHA verification / handoff on the latest branch checkpoint, including the order-number hotfix and Task 18 owner-acceptance documentation. Keep Production label spending explicit and fail-closed; do not auto-enable it.
+**NEXT EXACT ACTION:** no Phase 5 task remains open. Keep Production label spending explicit and fail-closed. The owner chooses separately whether to integrate the feature branch or begin Phase 6; do not merge/squash/rebase/delete the branch automatically.
