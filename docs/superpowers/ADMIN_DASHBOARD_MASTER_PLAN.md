@@ -104,9 +104,9 @@ The old full Stage 3 browser smoke was deferred by the owner on 2026-09-08. Phas
 
 # PHASE 5 — Melhor Envio Shipments + Labels + Tracking
 
-**State: IMPLEMENTATION COMPLETE / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING PATH VALIDATED / REAL-SPEND ACCEPTANCE PENDING.**
+**State: IMPLEMENTATION COMPLETE / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING PATH VALIDATED / TASK 18 OWNER ACCEPTED / FINAL TASK 20 HANDOFF PENDING.**
 
-Phase 5 now provides a production-capable server-authoritative shipment subsystem while preserving the no-auto-spend rule.
+Phase 5 provides a production-capable server-authoritative shipment subsystem while preserving the no-auto-spend rule.
 
 ## Implemented architecture
 
@@ -148,13 +148,13 @@ Cancellation is explicit and confirmed. Ambiguous purchase/generation/cancel res
 
 ## Production spending gate
 
-Production label checkout remains disabled unless the owner intentionally sets:
+Production label checkout is enabled only inside a deliberate owner-approved purchase window by setting:
 
 ```text
 MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=true
 ```
 
-The accepted current safe state is:
+The safe default outside deliberate purchase windows remains:
 
 ```text
 MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
@@ -179,26 +179,34 @@ Verified acceptance evidence:
 - no provider purchased-order identity;
 - current provider label cost **R$ 23,69**;
 - purchased cost still null;
-- no real label purchase/spend;
+- no real label purchase/spend in that controlled acceptance;
 - no shipped transition caused by preparation.
 
 Latest pre-documentation green implementation checkpoint: `52acb9ba1c85ef05d962504d5923e26a4cef47d4`; CI run `34545945878` passed Node 22.1.0 setup, frozen install, typecheck, KingHost build, private-order contract, startup smoke and **676/676 tests**. It is a verified branch checkpoint; do not claim it was independently recorded as the exact SHA serving the successful browser action.
 
 ## Task 19 — documentation reconciliation — COMPLETE
 
-Task 19 is complete. The canonical operational documents now match the accepted Phase 5 implementation and Production non-spending evidence while keeping the first real purchase explicitly unaccepted. The documentation preserves the fail-closed Production flag, separate preparation/purchase/generation/posting/cancellation operations, hosted migration status and KingHost operational boundary without recording secrets or pretending a real spend occurred.
+Task 19 is complete. The canonical operational documents match the accepted Phase 5 architecture, hosted migration rollout, independently observed non-spending evidence and fail-closed spending controls without fabricating provider evidence.
 
-## Task 18 pending — first explicit real purchase
+## Task 18 — first explicit real purchase — OWNER ACCEPTED
 
-**Task 18 pending:** the owner must choose a **pedido real** and explicitly authorize enabling Production label spending for that order. Until then:
+**Task 18 owner accepted on 2026-09-11.** The owner explicitly reported that the live purchase flow had been tested and instructed that Task 18 be closed. This is **owner-reported manual acceptance**; it is not an independently captured provider trace, and the operational record does not invent an unobserved order number, cost, provider order ID, label-generation artifact, posting event or tracking event.
+
+The independently recorded no-spend acceptance remains the controlled fixture above. The later owner-reported Task 18 acceptance closes the remaining real-order rollout gate at the owner-acceptance level without rewriting that historical evidence.
+
+Future label purchases remain explicit and fail-closed. Outside an intentional purchase window:
 
 ```text
 MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
 ```
 
-When a real order is selected, acceptance requires re-checking paid/ready status, recipient identity/address, sender profile and current label price; then the owner may enable the private flag, restart KingHost, click purchase once, generate separately and print. Unknown checkout result must be reconciled before any retry. Real cancellation acceptance is optional and should not destroy a valid label merely to satisfy a test checklist.
+When a purchase window is intentionally opened, current paid/ready state, recipient data, sender profile and current provider price must still be reviewed. Unknown checkout outcomes must be reconciled before any retry.
 
-Direct Production staging is the accepted rollout strategy; Sandbox is not a prerequisite for the already-completed non-spending path.
+Direct Production staging remains the accepted rollout strategy; Sandbox is not a prerequisite for the accepted live flow.
+
+## Task 20 — final verification / handoff — PENDING
+
+Task 20 is the remaining Phase 5 checkpoint. It must verify the latest exact branch SHA after the order-number regression hotfix and Task 18 acceptance documentation, then record the final automated handoff evidence. Later provider/runtime incidents are operational fixes and do not automatically reopen Task 18.
 
 # PHASE 6 — Transactional Notifications
 
@@ -237,7 +245,7 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 7. Product lifecycle is exactly `draft | published | archived`; no physical delete.
 8. Checkout always re-resolves current published product data server-side.
 9. Product image write access stays admin-authorized; service secrets never reach the browser.
-10. Phase 5 label spending is implemented but remains explicit and fail-closed behind `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED`.
+10. Phase 5 label spending is implemented, explicit and fail-closed behind `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED`; the safe default outside deliberate purchase windows is false.
 11. Preparation, purchase, generation, posting and cancellation are separate operations; no auto-spend.
 12. Customer shipment tracking stays authenticated, owner-scoped and sanitized.
 13. Hosted Supabase stays separate from KingHost; applied migrations are not reapplied.
@@ -252,7 +260,7 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 **Phase 2:** complete/accepted.  
 **Phase 3:** complete/deployed/production-accepted.  
 **Phase 4:** implementation complete; automated evidence green; original broad manual Stage 3 checklist not fully re-run.  
-**Phase 5:** implementation complete; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 19 complete**; **Task 18 pending** on an owner-chosen **pedido real**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`.  
+**Phase 5:** implementation complete; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 19 complete**; **Task 18 owner accepted by owner-reported manual acceptance**; final **Task 20 verification/handoff pending**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains the safe default outside deliberate purchase windows.  
 **Phase 6+:** not started.
 
-**NEXT EXACT ACTION:** run Task 20 exact-SHA verification on the completed Task 19 documentation checkpoint. After that, keep the branch safe and wait for an owner-selected real order before Task 18; do not enable Production spending merely to complete the checklist.
+**NEXT EXACT ACTION:** run Task 20 final exact-SHA verification / handoff on the latest branch checkpoint, including the order-number hotfix and Task 18 owner-acceptance documentation. Keep Production label spending explicit and fail-closed; do not auto-enable it.
