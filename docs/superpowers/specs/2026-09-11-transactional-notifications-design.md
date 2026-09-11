@@ -67,14 +67,18 @@ Core fields:
 - `status text not null` constrained to `queued | processing | retry_wait | sent | delivered | bounced | failed | attention`;
 - `attempt_count smallint not null default 0`, bounded to 0..3;
 - `next_attempt_at timestamptz null`;
+- `claimed_at timestamptz null` for worker lease recovery;
 - `provider_email_id text null` with a partial unique index when present;
 - `provider_idempotency_key text not null unique`;
 - `last_error_code text null` containing only bounded/safe categories, never provider payloads or secrets;
+- transient `rendered_subject`, `rendered_text` and `rendered_html` fields used only while an automatic delivery is in `processing`/`retry_wait` so every retry sends the exact same payload;
 - `sent_at`, `delivered_at`, `failed_at`, `created_at`, `updated_at` timestamps.
 
 Automatic deliveries are deduplicated by source `order_events.id`. A unique partial index ensures one automatic delivery per supported source event. Manual resend is deliberately a new delivery row referencing the previous delivery; it is therefore auditable and intentionally allowed to send again.
 
-Do not persist full e-mail HTML, full delivery address, CPF, provider payloads, auth tokens or raw webhook bodies in the outbox. Templates read trusted order/shipment data at send time. Orders are already historical purchase snapshots.
+The database does **not** retain rendered e-mail bodies as long-term audit data. The first worker claim renders a bounded message from trusted order/event/shipment data and stores the exact subject/text/HTML transiently. Retries reuse those exact stored bytes with the same provider idempotency key. After provider acceptance or any terminal `failed`/`attention` result, rendered bodies are cleared while safe metadata/history remains. This avoids payload drift across retries or deployments without creating a permanent second copy of address/item content.
+
+Never persist CPF, provider payloads, auth tokens, raw webhook bodies or provider secrets in notification tables.
 
 ### `order_notification_attempts`
 
@@ -106,7 +110,7 @@ All three tables have RLS enabled, direct `public`, `anon` and `authenticated` a
 
 ## Event-to-notification mapping
 
-The preferred enqueue boundary is an `AFTER INSERT` trigger on `order_events`. This uses the existing append-only event ledger as the integration boundary and keeps notification creation in the same database transaction as the authoritative business event that caused it.
+The enqueue boundary is an `AFTER INSERT` trigger on `order_events`. This uses the existing append-only event ledger as the integration boundary and keeps notification creation in the same database transaction as the authoritative business event that caused it.
 
 The trigger only reacts to the following exact event shapes:
 
@@ -131,7 +135,7 @@ Unsupported order events do nothing.
 
 ### Worker
 
-Add an internal route such as:
+Add an internal route:
 
 `GET /api/internal/notifications/process`
 
@@ -139,9 +143,13 @@ It reuses the existing constant-time `CRON_SECRET` authentication pattern and re
 
 The worker processes a bounded batch of due deliveries. A database claim RPC selects eligible rows with row locking / `SKIP LOCKED`, moves them to `processing`, increments the attempt count atomically and prevents two workers from sending the same delivery concurrently.
 
-The normal first attempt should happen promptly after enqueue. Source HTTP handlers may invoke a best-effort bounded processing pass after their authoritative database operation has committed, but source success never depends on that e-mail attempt. The cron worker remains the durable recovery path.
+New deliveries are due immediately (`next_attempt_at <= now()`); the durable cron worker is the only required send path. Payment/admin/shipment source requests do not call Resend directly and do not depend on notification delivery. Operationally, KingHost should invoke the worker at least every five minutes.
 
-Operationally, KingHost should call the worker at least every five minutes. Retry eligibility is recorded in `next_attempt_at`; the recommended schedule is first attempt immediately, second attempt after about five minutes, third attempt after about thirty minutes. These are three total automatic send attempts, not three retries after the first attempt.
+Retry eligibility is recorded in `next_attempt_at`; the target schedule is attempt 1 on the first worker pass, attempt 2 about five minutes after a retryable failure, and attempt 3 about thirty minutes after the second retryable failure. These are three total automatic send attempts, not three retries after the first attempt.
+
+Automatic notifications for one order preserve source-event order: a later automatic event is not claimed while an older automatic delivery for that order remains `queued`, `processing` or `retry_wait`. Once the older delivery is terminal (`sent`, `delivered`, `bounced`, `failed` or `attention`), later events may proceed. Manual resend deliveries do not block the automatic event stream.
+
+A processing lease prevents permanent stuck rows. A delivery left `processing` beyond a short bounded lease is treated as an uncertain attempt: the attempt is closed as `outcome_unknown`, and the delivery is moved to `retry_wait` with the same rendered payload/idempotency key if a safe retry remains inside the provider idempotency window. If safe retry is no longer possible, it becomes `attention` rather than triggering a blind duplicate.
 
 ### Resend request
 
@@ -154,9 +162,10 @@ Every transactional send uses:
 - both HTML and plain-text bodies;
 - a provider timeout;
 - `Idempotency-Key` set to the delivery's stable `provider_idempotency_key`;
+- the exact transiently persisted subject/text/HTML for all retries of that delivery;
 - no API key or provider response body in logs.
 
-Resend currently supports idempotency keys for `POST /emails` and retains them for 24 hours. All automatic retries for one delivery use the **same payload and the same idempotency key**, which makes network/timeout retries safe during the retry window.
+Resend currently supports idempotency keys for `POST /emails` and retains them for 24 hours. All automatic retries for one delivery therefore use the **same request payload and same idempotency key**, making network/timeout retries safe during that window.
 
 A manual resend creates a new delivery and a new provider idempotency key because the operator is explicitly asking for another e-mail.
 
@@ -165,7 +174,7 @@ A manual resend creates a new delivery and a new provider idempotency key becaus
 - successful provider response with a valid e-mail id -> `sent`;
 - validation/auth/permanent provider rejection -> `failed`, no automatic retry;
 - rate limit, provider 5xx or documented concurrent-idempotency condition -> `retry_wait` if attempts remain;
-- network/timeout after the request may have reached Resend -> `retry_wait` with the **same idempotency key** if attempts remain and still inside the provider's 24-hour idempotency window;
+- network/timeout after the request may have reached Resend -> `retry_wait` with the **same idempotency key and exact payload** if attempts remain and still inside the provider's 24-hour idempotency window;
 - if an unknown outcome cannot be safely retried inside that window, mark `attention` rather than sending a blind duplicate;
 - after attempt 3, a still-unsuccessful delivery becomes `failed` or `attention` according to whether the final outcome is definite or uncertain.
 
@@ -173,7 +182,7 @@ No notification error changes the order's payment, fulfillment or shipment state
 
 ## Resend webhook
 
-Add a public POST-only route such as:
+Add a public POST-only route:
 
 `POST /api/resend/webhook`
 
@@ -197,6 +206,8 @@ Subscribed/handled operational events:
 - `email.delivery_delayed` may be recorded as provider event but remains non-terminal; it must not cause an application resend because Resend still owns that accepted delivery attempt.
 
 Do not subscribe to or store `email.opened` or `email.clicked` for this phase.
+
+Provider events may be duplicated or arrive out of order. Database application is monotonic: duplicate/stale events are harmless; `delivery_delayed` cannot downgrade a terminal state; and a recorded `delivered` state is never downgraded by a later stale bounce/failure event. Every accepted event is still deduplicated by its webhook message id.
 
 A bounce/failure after a provider-accepted send is not an excuse for automatic duplicate sending. It is surfaced to the admin; the owner may choose manual resend after correcting the destination/problem.
 
@@ -243,9 +254,11 @@ Triggered only by authoritative transition to `shipped`.
 Include:
 
 - carrier and service when known;
-- tracking code when available;
-- current shipment status when available and customer-safe;
+- tracking code when available at first render;
+- current customer-safe shipment status when available at first render;
 - **Acompanhar meu pedido** CTA.
+
+The first render becomes the immutable retry payload for this delivery. If tracking data changes after a retryable provider failure, automatic retries keep the original payload so the Resend idempotency key remains valid. A later customer order-page view always shows current tracking.
 
 For Melhor Envio, label purchase/generation/printing never counts as shipment. Existing Phase 5 rules remain unchanged.
 
@@ -313,7 +326,7 @@ Manual resend:
 - writes an admin audit entry;
 - never deletes or rewrites previous delivery/attempt history.
 
-The UI should require an explicit confirmation before creating an intentional duplicate e-mail.
+The UI requires an explicit confirmation before creating an intentional duplicate e-mail.
 
 ## Attention center integration
 
@@ -336,6 +349,7 @@ A successful manual resend/delivery may resolve the corresponding active notific
 - Escape all dynamic HTML content; reject malformed order/recipient data rather than interpolating it unsafely.
 - Webhook verification occurs on the raw body and before parsing/mutation.
 - Admin resend is a protected mutation and must not be callable from a customer session.
+- Transient rendered e-mail content is retained only while required for a safe retry and is cleared at terminal send processing; it is never exposed through customer/browser APIs.
 
 ## Recovery e-mail compatibility
 
@@ -366,9 +380,11 @@ Automated coverage must include at minimum:
 - duplicate Mercado Pago/order/shipment events create only one automatic delivery;
 - pending/manual-review payment does not send payment-approved e-mail;
 - manual `completed` does not generate a delivered e-mail while trusted shipment completion does;
-- outbox claim concurrency and bounded batch behavior;
+- outbox claim concurrency, per-order ordering and bounded batch behavior;
+- stale processing lease recovery;
 - three-attempt maximum and retry timing/state transitions;
-- same Resend idempotency key/payload across retries;
+- exact same Resend idempotency key and exact same rendered payload across retries;
+- transient rendered payload is cleared after terminal send processing;
 - manual resend creates a new delivery/idempotency key and leaves old history intact;
 - network/timeout unknown outcome never causes blind duplicate behavior outside the safe idempotency window;
 - HTML escaping and no prohibited private fields in templates;
@@ -377,7 +393,7 @@ Automated coverage must include at minimum:
 - cancellation copy does not claim refund;
 - refunded and charged-back templates remain distinct;
 - raw-body webhook signature verification occurs before event processing;
-- duplicate webhooks are idempotent;
+- duplicate/out-of-order webhooks are idempotent/monotonic;
 - delivered/bounced/failed/suppressed mapping;
 - opened/clicked events are neither subscribed to nor used by the application;
 - direct browser roles cannot read/write notification tables;
@@ -391,10 +407,10 @@ Phase 6 is complete when:
 
 - all eight approved transactional notifications are driven by authoritative events;
 - payment-approved is the first order e-mail;
-- outbox/dedupe/retry survives provider/network failure without blocking order-state changes;
+- outbox/dedupe/retry survives provider/network/process failure without blocking order-state changes;
 - a delivery has at most three automatic provider-send attempts;
-- Resend idempotency prevents safe retries from duplicating an e-mail;
-- verified Resend webhooks update delivered/bounced/failed state;
+- Resend idempotency and stable payloads prevent safe retries from duplicating an e-mail;
+- verified Resend webhooks update delivered/bounced/failed state monotonically;
 - open/click tracking is absent;
 - admin order detail exposes notification state/history and protected manual resend;
 - financial refund/chargeback wording reflects Mercado Pago state without being inferred from cancellation;
