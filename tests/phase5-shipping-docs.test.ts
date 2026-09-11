@@ -70,7 +70,7 @@ test("operational status records Phase 5 non-spending acceptance without pretend
     assert.match(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false/)
   }
 
-  assert.doesNotMatch(master, /# PHASE 5[^#]*\*\*State: NOT STARTED\.\*\*/s)
+  assert.doesNotMatch(master, /# PHASE 5[^#]*\*\*State: NOT STARTED\.\*\*/)
   assert.doesNotMatch(status, /Do not start Phase 5 automatically|N[aã]o iniciar Phase 5/i)
 })
 
