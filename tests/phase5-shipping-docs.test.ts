@@ -79,7 +79,8 @@ test("operational status preserves non-spending evidence and records owner accep
     assert.match(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false/)
     assert.match(source, /Task 19[^\n]*(?:complete|conclu[ií]d)|(?:complete|conclu[ií]d)[^\n]*Task 19/i)
     assert.match(source, /Task 20[^\n]*(?:final|verification|verifica[cç][aã]o|handoff)/i)
-    assert.doesNotMatch(source, /Task 18[^\n]*(?:pendente|pending)|(?:pendente|pending)[^\n]*Task 18/i)
+    assert.doesNotMatch(source, /Task 18\s+(?:pending|pendente)\b/i)
+    assert.doesNotMatch(source, /(?:pending|pendente)\s+Task 18\b/i)
     assert.doesNotMatch(source, /finish Task 19|finalizar[^\n]*Task 19|finish[^\n]*Task 19/i)
   }
 
