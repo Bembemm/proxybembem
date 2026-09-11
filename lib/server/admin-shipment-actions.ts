@@ -69,7 +69,9 @@ function feedbackForResult(result: ShipmentActionResult): string | null {
     case "missing_sender":
       return "sender-missing"
     case "invalid_snapshot":
-      return "shipment-invalid"
+      return result.reason === "recipient_matches_sender"
+        ? "recipient-same-as-sender"
+        : "shipment-invalid"
     case "busy":
       return "shipment-busy"
     case "provider_rejected":
