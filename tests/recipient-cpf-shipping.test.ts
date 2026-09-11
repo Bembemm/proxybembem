@@ -28,7 +28,7 @@ function checkoutCustomer(cpf: string) {
   } as unknown as CheckoutData
 }
 
-function shipmentOrder(customerCpf: unknown = VALID_CPF) {
+function shipmentOrder(customerCpf: unknown = OTHER_VALID_CPF) {
   return {
     id: "11111111-1111-4111-8111-111111111111",
     order_number: "PB-CPFTESTE",
@@ -214,7 +214,7 @@ test("shipment snapshot requires a checksum-valid recipient CPF and keeps it int
     sender,
     expectedOriginCep: "86730000",
   }) as { recipient: Record<string, unknown> }
-  assert.equal(snapshot.recipient.document, VALID_CPF)
+  assert.equal(snapshot.recipient.document, OTHER_VALID_CPF)
 
   for (const cpf of [null, "", "11111111111"]) {
     assert.throws(
@@ -286,7 +286,7 @@ test("Melhor Envio cart payload sends the recipient CPF as to.document", async (
         name: "Cliente Teste",
         email: "cliente@example.com",
         phone: "11999999999",
-        document: VALID_CPF,
+        document: OTHER_VALID_CPF,
         postalCode: "01001000",
         street: "Praça da Sé",
         number: "100",
@@ -316,7 +316,7 @@ test("Melhor Envio cart payload sends the recipient CPF as to.document", async (
   })
 
   const to = requestBodies[0]?.to as Record<string, unknown> | undefined
-  assert.equal(to?.document, VALID_CPF)
+  assert.equal(to?.document, OTHER_VALID_CPF)
 })
 
 test("checkout UI and API require CPF while customer projection stays curated", async () => {
