@@ -22,6 +22,7 @@
 - Customer order reads are owner-scoped and private.
 - `/pedido/[token]` and guest-claim application surfaces must not return.
 - Existing Supabase project is evolved in place; already-applied migrations are never reapplied.
+- Melhor Envio label purchase is always explicit and fail-closed; no payment/fulfillment/render/cron event auto-spends.
 - No merge, squash, rebase, branch deletion or force-move without explicit owner approval.
 
 ---
@@ -62,7 +63,7 @@ Final accepted Phase 3 runtime: `2945f495ba273055d64251bdd310df3947b629f6`.
 
 # PHASE 4 — Database Catalog + Admin Products + Admin Navigation
 
-**State: IMPLEMENTATION COMPLETE / AUTOMATED GREEN / FINAL MANUAL PRODUCTION SMOKE DEFERRED BY OWNER.**
+**State: IMPLEMENTATION COMPLETE / AUTOMATED GREEN / ORIGINAL FULL MANUAL PRODUCTION SMOKE NOT FULLY RE-RUN.**
 
 ## Stage 1 — catalog authority — COMPLETE / PRODUCTION ACCEPTED
 
@@ -97,26 +98,103 @@ Stage 2 accepted runtime: `32b418383bbdfe1d8d196822025e34adfcd083a1`.
 
 Final code candidate before docs reconciliation: `2a35d04583eccf0b139815efe26fd4cc04459604`.
 
-Automated evidence: Node 22.1.0, frozen install, typecheck, KingHost build, private-order gate, startup smoke and **483/483 tests PASS**.
+Automated evidence at that checkpoint: Node 22.1.0, frozen install, typecheck, KingHost build, private-order gate, startup smoke and **483/483 tests PASS**.
 
-Final Supabase validation added/applied `20260908160333_product_catalog_service_role_least_privilege`; effective product table privileges for `service_role` are now only `SELECT/INSERT/UPDATE`, with sequence `USAGE` only. Browser roles have no direct product-table access.
-
-### Remaining Phase 4 gate
-
-The owner explicitly deferred the final manual browser smoke on 2026-09-08 and asked development to continue. This does not invalidate automated evidence, but Phase 4 must not be described as fully browser-production-accepted until that smoke is later run.
-
-Required deferred smoke: login+MFA, desktop/mobile sidebar, orders + two details, production, Melhor Envio integration, products list/create/edit/image/publish/archive/reactivate/conflict, storefront/cart/current price, checkout server re-resolution without real payment, logout/cache invalidation.
+The old full Stage 3 browser smoke was deferred by the owner on 2026-09-08. Phase 5 later exercised admin/order/integration surfaces in Production, but do not reinterpret that as proof that every old product CRUD/image/conflict/cache item was manually re-run.
 
 # PHASE 5 — Melhor Envio Shipments + Labels + Tracking
 
-**State: NOT STARTED.**
+**State: IMPLEMENTATION COMPLETE / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING PATH VALIDATED / REAL-SPEND ACCEPTANCE PENDING.**
 
-- Re-check current provider API/scopes immediately before implementation.
-- Expand OAuth only with explicit least-privilege approval.
-- Dedicated shipment model with idempotency/snapshots.
-- Flow must keep label purchase explicit; never auto-buy after payment.
-- Spending/cancel actions require explicit confirmation.
-- Sandbox acceptance before real balance spending capability.
+Phase 5 now provides a production-capable server-authoritative shipment subsystem while preserving the no-auto-spend rule.
+
+## Implemented architecture
+
+- persisted least-privilege OAuth grant for exactly:
+  - `shipping-calculate`
+  - `cart-read`
+  - `cart-write`
+  - `orders-read`
+  - `shipping-checkout`
+  - `shipping-generate`
+  - `shipping-print`
+  - `shipping-tracking`
+  - `shipping-cancel`
+- backend-only sender, shipment and shipment-event persistence;
+- one active non-canceled shipment per order;
+- immutable recipient/sender/package/declaration snapshots;
+- current PF/CPF + DC-e/DACE operational path;
+- fixed sender profile and origin-CEP equality requirement;
+- recipient CPF validation and sender/recipient CPF distinction;
+- support foundation for PJ/CNPJ + NF-e without weakening the PF flow;
+- durable operation claims and idempotent/reconcilable provider mutations;
+- exact checkout-selected service preserved; no silent carrier/service substitution;
+- V1 supports exactly one provider package/volume and one label per active order;
+- admin-safe masked sender/tax identity and cost comparison;
+- customer-owned sanitized tracking projection only under `/minha-conta/pedidos/{uuid}`;
+- no public tracking endpoint exposing shipment internals.
+
+## Explicit operation model
+
+The admin flow is intentionally segmented:
+
+```text
+Preparar remessa -> revisar custo -> Comprar etiqueta -> Gerar etiqueta -> imprimir -> Postar -> rastrear
+```
+
+Preparation may add a shipment to the Melhor Envio cart but does not purchase it. Purchase is a separate explicit confirmed operation. Generation is also separate. Generation/printing never mark the order shipped. Only explicit posting or trusted carrier acceptance may move `ready_to_ship -> shipped`; trusted delivery may move `shipped -> completed`.
+
+Cancellation is explicit and confirmed. Ambiguous purchase/generation/cancel results never cause a blind second provider mutation; reconciliation must resolve uncertain outcomes first.
+
+## Production spending gate
+
+Production label checkout remains disabled unless the owner intentionally sets:
+
+```text
+MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=true
+```
+
+The accepted current safe state is:
+
+```text
+MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
+```
+
+With the flag false, checkout/spending stops before a provider purchase call. No webhook, `ready_to_ship`, page render, tracking cron or retry path is allowed to auto-enable or bypass this gate.
+
+## Hosted Supabase rollout
+
+The Phase 5 migration series and the sender-profile FK index follow-up were applied and validated against the hosted project. Browser roles have no direct private shipment-table CRUD. Mutation RPCs remain fixed-`search_path`, `SECURITY DEFINER`, service-role-only. Customer projection access remains owner-derived from `auth.uid()` and excludes CPF, sender snapshot, provider cost/IDs and transient print resources.
+
+## Production non-spending acceptance
+
+Production OAuth was reauthorized with all nine Phase 5 scopes and a complete PF sender profile was configured. The safe path was exercised against a controlled synthetic paid + ready-to-ship fixture.
+
+Verified acceptance evidence:
+
+- successful Production cart insertion;
+- exactly one remessa for the accepted fixture;
+- shipment state `in_cart`;
+- provider cart identity present;
+- no provider purchased-order identity;
+- current provider label cost **R$ 23,69**;
+- purchased cost still null;
+- no real label purchase/spend;
+- no shipped transition caused by preparation.
+
+Latest pre-documentation green implementation checkpoint: `52acb9ba1c85ef05d962504d5923e26a4cef47d4`; CI run `34545945878` passed Node 22.1.0 setup, frozen install, typecheck, KingHost build, private-order contract, startup smoke and **676/676 tests**. It is a verified branch checkpoint; do not claim it was independently recorded as the exact SHA serving the successful browser action.
+
+## Task 18 pending — first explicit real purchase
+
+**Task 18 pending:** the owner must choose a **pedido real** and explicitly authorize enabling Production label spending for that order. Until then:
+
+```text
+MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
+```
+
+When a real order is selected, acceptance requires re-checking paid/ready status, recipient identity/address, sender profile and current label price; then the owner may enable the private flag, restart KingHost, click purchase once, generate separately and print. Unknown checkout result must be reconciled before any retry. Real cancellation acceptance is optional and should not destroy a valid label merely to satisfy a test checklist.
+
+Direct Production staging is the accepted rollout strategy; Sandbox is not a prerequisite for the already-completed non-spending path.
 
 # PHASE 6 — Transactional Notifications
 
@@ -155,11 +233,13 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 7. Product lifecycle is exactly `draft | published | archived`; no physical delete.
 8. Checkout always re-resolves current published product data server-side.
 9. Product image write access stays admin-authorized; service secrets never reach the browser.
-10. Label spending belongs to Phase 5 and remains explicit.
-11. Hosted Supabase stays separate from KingHost; applied migrations are not reapplied.
-12. KingHost Node.js 22.1.0 is the application runtime.
-13. Integration/merge is an explicit owner decision.
-14. Final Phase 4 manual production smoke is deferred, not silently assumed to have happened.
+10. Phase 5 label spending is implemented but remains explicit and fail-closed behind `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED`.
+11. Preparation, purchase, generation, posting and cancellation are separate operations; no auto-spend.
+12. Customer shipment tracking stays authenticated, owner-scoped and sanitized.
+13. Hosted Supabase stays separate from KingHost; applied migrations are not reapplied.
+14. KingHost Node.js 22.1.0 is the application runtime.
+15. Integration/merge is an explicit owner decision.
+16. The old full Phase 4 Stage 3 browser checklist remains partially deferred; Phase 5 Production use does not fabricate missing evidence.
 
 ## Current checkpoint
 
@@ -167,7 +247,8 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 **Phase 1:** complete/applied.  
 **Phase 2:** complete/accepted.  
 **Phase 3:** complete/deployed/production-accepted.  
-**Phase 4:** implementation complete; automated evidence green; final manual production smoke deferred.  
-**Phase 5+:** not started.
+**Phase 4:** implementation complete; automated evidence green; original broad manual Stage 3 checklist not fully re-run.  
+**Phase 5:** implementation complete; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 18 pending** on an owner-chosen **pedido real**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`.  
+**Phase 6+:** not started.
 
-**NEXT EXACT ACTION:** finish documentation reconciliation and exact-SHA CI, then stop for owner integration choice. Before final Phase 4 production sign-off, remind the owner to run the deferred browser smoke. Do not auto-start Phase 5.
+**NEXT EXACT ACTION:** finish Phase 5 documentation reconciliation and exact-SHA verification. After that, keep the branch safe and wait for an owner-selected real order before Task 18; do not enable Production spending merely to complete the checklist.
