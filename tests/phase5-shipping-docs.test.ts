@@ -14,6 +14,15 @@ const PHASE5_SCOPES = [
   "shipping-cancel",
 ] as const
 
+const PHASE5_MIGRATIONS = [
+  "202609080002_melhor_envio_oauth_scope_grants.sql",
+  "202609080003_shipments_foundation.sql",
+  "202609080004_shipment_operations.sql",
+  "202609080005_shipment_cancel_reconciliation.sql",
+  "202609080006_customer_shipment_projection.sql",
+  "20260909194848_shipments_sender_profile_fk_index.sql",
+] as const
+
 async function read(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8")
 }
@@ -68,6 +77,12 @@ test("operational status records Phase 5 non-spending acceptance without pretend
     assert.match(source, /Task 18[^\n]*(?:pendente|pending)|(?:pendente|pending)[^\n]*Task 18/i)
     assert.match(source, /pedido real|real order/i)
     assert.match(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false/)
+    assert.match(source, /Task 19[^\n]*(?:complete|conclu[ií]d)|(?:complete|conclu[ií]d)[^\n]*Task 19/i)
+    assert.doesNotMatch(source, /finish Task 19|finalizar[^\n]*Task 19|finish[^\n]*Task 19/i)
+  }
+
+  for (const migration of PHASE5_MIGRATIONS) {
+    assert.ok(status.includes(migration), `current status must record applied migration ${migration}`)
   }
 
   assert.doesNotMatch(master, /# PHASE 5[^#]*\*\*State: NOT STARTED\.\*\*/)
