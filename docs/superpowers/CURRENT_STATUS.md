@@ -14,7 +14,7 @@ Canonical continuation checkpoint. Historical plans/specs under `docs/superpower
 - Canonical deploy runbook: `docs/deployment/kinghost.md`
 - Phase 3 customer account/private orders: **COMPLETE / PRODUCTION ACCEPTED**
 - Phase 4 product catalog/admin expansion: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN / FINAL MANUAL PRODUCTION SMOKE DEFERRED BY OWNER**
-- Phase 5 Melhor Envio shipments/labels/tracking: **IMPLEMENTED / MIGRATIONS APPLIED / PRODUCTION NON-SPENDING PATH VALIDATED / TASK 18 OWNER ACCEPTED / FINAL TASK 20 HANDOFF PENDING**
+- Phase 5 Melhor Envio shipments/labels/tracking: **COMPLETE / PRODUCTION HANDOFF OWNER ACCEPTED**
 - Do not merge, squash, rebase, delete or force-move the feature branch without explicit owner choice.
 
 ## Accepted runtime invariants
@@ -95,7 +95,7 @@ During the final Stage 3 database validation, effective Postgres ACL inspection 
 
 ## Phase 5 — Melhor Envio shipments, labels, DC-e/DACE and tracking
 
-**State: IMPLEMENTED / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING ACCEPTANCE COMPLETE ON CONTROLLED FIXTURE / TASK 18 OWNER ACCEPTED / FINAL TASK 20 VERIFICATION PENDING.**
+**State: COMPLETE / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING ACCEPTANCE COMPLETE ON CONTROLLED FIXTURE / TASK 18 OWNER ACCEPTED / TASK 20 OWNER ACCEPTED.**
 
 Implemented runtime behavior:
 
@@ -174,9 +174,15 @@ MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
 
 When spending is intentionally enabled, the owner must still review the current cost and click the explicit purchase action. Unknown checkout outcomes must be reconciled before any retry.
 
-### Task 20 — final verification / handoff — PENDING
+### Task 20 — final verification / handoff — OWNER ACCEPTED
 
-Task 20 is the remaining Phase 5 checkpoint: verify the latest exact branch SHA after the order-number hotfix and Task 18 acceptance documentation, then record the final automated handoff evidence. Any production issue found later is handled as an operational fix rather than reopening Task 18 acceptance by default.
+**Task 20 owner accepted on 2026-09-11.** The owner deployed the final runtime candidate `fa3ce232ad2e5e5b8ad669a348492555cb068295`, restarted the KingHost application, ran the requested Production smoke and reported **“tudo certo”**. The smoke covered admin login/TOTP, the Production Melhor Envio integration surface, an order detail load, and logout/login behavior. This is owner-reported manual Production acceptance rather than independently captured browser evidence.
+
+The exact runtime candidate `fa3ce232ad2e5e5b8ad669a348492555cb068295` had GitHub Actions run `34611501313` complete successfully with the exact KingHost Node 22.1.0 runtime setup, frozen pnpm install, typecheck, KingHost production build, private-order route contract, startup smoke and the full automated suite green.
+
+The previously omitted authenticated admin response-header observation was not separately captured from the owner browser during this smoke. Automated regression coverage still requires admin responses to opt out of browser/reverse-proxy caching. Keep the manual header observation as a later hardening check rather than fabricating evidence that it was observed here.
+
+Phase 5 is accepted complete at the owner-handoff level. Any later provider/runtime defect is handled as an operational fix and does not automatically reopen Task 18 or Task 20.
 
 ## Supabase advisor classification
 
@@ -210,6 +216,7 @@ Therefore keep Phase 4 wording factual: automated evidence is green and multiple
 
 ## NEXT EXACT ACTION
 
-1. Run **Task 20 final exact-SHA verification / handoff** on the latest branch checkpoint, including the order-number hotfix and Task 18 owner-acceptance documentation.
+1. No Phase 5 task remains open after the owner-accepted Task 20 handoff.
 2. Keep label spending explicit and fail-closed; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains the safe default outside deliberate purchase windows.
-3. Handle any later provider/runtime issue as an operational fix without inventing missing acceptance evidence.
+3. The next project move is an explicit owner choice: integrate the feature branch or start the next phase. Do not merge/squash/rebase/delete the branch automatically.
+4. Carry the uncaptured authenticated admin cache-header browser observation into later hardening rather than claiming it was manually observed.
