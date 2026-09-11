@@ -32,6 +32,7 @@ const SHIPMENT_FEEDBACK_MESSAGES = {
   prepared: "Remessa preparada com sucesso e adicionada ao carrinho do Melhor Envio.",
   "sender-missing": "Cadastre um remetente válido do Melhor Envio antes de preparar a remessa.",
   "shipment-invalid": "Os dados da remessa estão incompletos. Verifique o CPF do destinatário, endereço, serviço de frete e dados do remetente.",
+  "recipient-same-as-sender": "O CPF do destinatário deve ser diferente do CPF do remetente para preparar a remessa.",
   "shipment-busy": "Já existe uma operação de remessa em andamento. Atualize a página antes de tentar novamente.",
   "provider-rejected": "O Melhor Envio recusou esta operação. Revise os dados da remessa antes de tentar novamente.",
   "reauthorization-required": "A integração com o Melhor Envio precisa ser reautorizada antes de continuar.",
