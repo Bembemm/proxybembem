@@ -28,6 +28,10 @@ The owner approved the following behavior on 2026-09-11:
 - track delivery/bounce/failure operational events, not opens or clicks;
 - architecture is Supabase outbox + worker in the existing app + Resend.
 
+## Non-goals
+
+Phase 6 does not add marketing campaigns, automated WhatsApp, open/click tracking, customer notification-preference management, automatic Mercado Pago refunds, automatic order cancellation, or any automatic Melhor Envio label purchase. Password recovery remains its own auth flow.
+
 ## Existing system boundaries
 
 The current application already has the pieces Phase 6 should build on:
@@ -82,7 +86,9 @@ Never persist CPF, provider payloads, auth tokens, raw webhook bodies or provide
 
 ### `order_notification_attempts`
 
-Append-only record of each Resend API attempt:
+Records each Resend API attempt. A row is created when an attempt is claimed and may be completed exactly once with its outcome; completed attempt rows are never deleted or rewritten into a different attempt.
+
+Fields include:
 
 - delivery id;
 - attempt number 1..3;
@@ -92,7 +98,7 @@ Append-only record of each Resend API attempt:
 - provider e-mail id when accepted;
 - bounded error category only.
 
-This table makes the automatic three-attempt rule and manual troubleshooting visible without logging private response bodies.
+This table makes the automatic three-attempt rule, stale-worker recovery and manual troubleshooting visible without logging private response bodies.
 
 ### `order_notification_provider_events`
 
@@ -122,12 +128,14 @@ The trigger only reacts to the following exact event shapes:
 | `fulfillment_status_changed` | `metadata.to = in_production` | `production_started` |
 | `fulfillment_status_changed` | `metadata.to = ready_to_ship` | `ready_to_ship` |
 | `fulfillment_status_changed` | `metadata.to = shipped` | `shipped` |
-| `fulfillment_status_changed` | `metadata.to = canceled` | `canceled` |
+| `fulfillment_status_changed` | `metadata.to = canceled` **and the order has a prior approved-payment event** | `canceled` |
 | `fulfillment_status_changed` | `metadata.to = completed` **and source = shipment** | `delivered` |
+
+The prior-approved-payment condition on cancellation preserves the approved decision that no order e-mail is sent before payment approval. An unpaid `awaiting_payment -> canceled` order therefore produces no customer notification. If an order was approved earlier and is later canceled, the cancellation message is eligible even if the financial status has already moved to a reversal state.
 
 `completed` from a generic admin transition does **not** generate a delivered e-mail. Customer copy may only say the order was delivered when the completion came from trusted shipment/tracking evidence.
 
-The trigger verifies that the order has a valid non-empty customer e-mail. If not, it does not invent an address or block the source event; it creates an operational attention flag for the missing notification destination.
+For an otherwise eligible event, the trigger verifies that the order has a valid non-empty customer e-mail. If not, it does not invent an address or block the source event; it creates an operational attention flag for the missing notification destination.
 
 Unsupported order events do nothing.
 
@@ -147,7 +155,7 @@ New deliveries are due immediately (`next_attempt_at <= now()`); the durable cro
 
 Retry eligibility is recorded in `next_attempt_at`; the target schedule is attempt 1 on the first worker pass, attempt 2 about five minutes after a retryable failure, and attempt 3 about thirty minutes after the second retryable failure. These are three total automatic send attempts, not three retries after the first attempt.
 
-Automatic notifications for one order preserve source-event order: a later automatic event is not claimed while an older automatic delivery for that order remains `queued`, `processing` or `retry_wait`. Once the older delivery is terminal (`sent`, `delivered`, `bounced`, `failed` or `attention`), later events may proceed. Manual resend deliveries do not block the automatic event stream.
+Automatic notifications for one order preserve source-event order: a later automatic event is not claimed while an older automatic delivery for that order remains `queued`, `processing` or `retry_wait`. Once the older delivery is terminal for application sending (`sent`, `delivered`, `bounced`, `failed` or `attention`), later events may proceed. Manual resend deliveries do not block the automatic event stream.
 
 A processing lease prevents permanent stuck rows. A delivery left `processing` beyond a short bounded lease is treated as an uncertain attempt: the attempt is closed as `outcome_unknown`, and the delivery is moved to `retry_wait` with the same rendered payload/idempotency key if a safe retry remains inside the provider idempotency window. If safe retry is no longer possible, it becomes `attention` rather than triggering a blind duplicate.
 
@@ -207,7 +215,7 @@ Subscribed/handled operational events:
 
 Do not subscribe to or store `email.opened` or `email.clicked` for this phase.
 
-Provider events may be duplicated or arrive out of order. Database application is monotonic: duplicate/stale events are harmless; `delivery_delayed` cannot downgrade a terminal state; and a recorded `delivered` state is never downgraded by a later stale bounce/failure event. Every accepted event is still deduplicated by its webhook message id.
+Provider events may be duplicated or arrive out of order. Database application is monotonic: duplicate/stale events are harmless; `delivery_delayed` cannot downgrade a terminal state; and a recorded `delivered` state is never downgraded by a later stale bounce/failure event. Every accepted event is deduplicated by its webhook message id.
 
 A bounce/failure after a provider-accepted send is not an excuse for automatic duplicate sending. It is surfaced to the admin; the owner may choose manual resend after correcting the destination/problem.
 
@@ -270,9 +278,9 @@ Tell the customer delivery was reported by the carrier and link to order history
 
 ### 6. Pedido cancelado
 
-Triggered by operational transition to `canceled`.
+Triggered by an eligible operational transition to `canceled` after the order has previously had approved payment.
 
-Explain that the order was canceled. If payment was approved, wording must not claim the money has already been returned. It should explain that financial reversal is separate and, when confirmed, another e-mail will be sent.
+Explain that the order was canceled. If the current financial state is still approved, wording must not claim the money has already been returned. It should explain that financial reversal is separate and, when confirmed, another e-mail will be sent. If a refund/reversal was already authoritatively recorded, the cancellation copy may acknowledge that state without inventing settlement timing.
 
 ### 7. Reembolso concluído
 
@@ -377,6 +385,7 @@ Automated coverage must include at minimum:
 
 - exact allowed notification kinds/statuses;
 - trigger mapping from authoritative `order_events`;
+- no customer notification for an unpaid order canceled before approval;
 - duplicate Mercado Pago/order/shipment events create only one automatic delivery;
 - pending/manual-review payment does not send payment-approved e-mail;
 - manual `completed` does not generate a delivered e-mail while trusted shipment completion does;
@@ -405,8 +414,8 @@ Automated coverage must include at minimum:
 
 Phase 6 is complete when:
 
-- all eight approved transactional notifications are driven by authoritative events;
-- payment-approved is the first order e-mail;
+- all eight approved transactional notification kinds are driven by authoritative events, while an unpaid cancellation remains silent;
+- no customer order e-mail is sent before authoritative payment approval;
 - outbox/dedupe/retry survives provider/network/process failure without blocking order-state changes;
 - a delivery has at most three automatic provider-send attempts;
 - Resend idempotency and stable payloads prevent safe retries from duplicating an e-mail;
