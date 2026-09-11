@@ -181,7 +181,7 @@ test("rejects malformed RPC responses rather than coercing them", async (t) => {
       {},
       result({ outcome: "made_up" }),
       result({ order_id: "bad-id" }),
-      result({ order_number: "ORDER-1" }),
+      result({ order_number: "" }),
       result({ payment_status: "" }),
       result({ previous_fulfillment_status: "invented" }),
       result({ fulfillment_status: "invented" }),
