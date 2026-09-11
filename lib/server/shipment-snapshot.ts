@@ -9,6 +9,7 @@ export type ShipmentSnapshotErrorCode =
   | "multiple_packages_not_supported"
   | "sender_origin_mismatch"
   | "recipient_invalid"
+  | "recipient_matches_sender"
   | "declaration_invalid"
 
 export class ShipmentSnapshotError extends Error {
@@ -356,6 +357,9 @@ export function buildShipmentPreparationSnapshot(input: {
   }
 
   const recipient = validateRecipient(order)
+  if (recipient.document === sender.cpf) {
+    fail("recipient_matches_sender")
+  }
   const { declarationItems, declarationValueCents } = buildDeclaration(order)
 
   const raw = order.shipping_snapshot
