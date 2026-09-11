@@ -6,7 +6,6 @@ import {
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-const ORDER_NUMBER_RE = /^PB-[A-F0-9]{12}$/
 
 export const ADMIN_FULFILLMENT_TARGETS = [
   "in_production",
@@ -58,7 +57,8 @@ function isNullableUuid(value: unknown): value is string | null {
 }
 
 function isNullableOrderNumber(value: unknown): value is string | null {
-  return value === null || (typeof value === "string" && ORDER_NUMBER_RE.test(value))
+  return value === null ||
+    (typeof value === "string" && value.length > 0 && value.length <= 100)
 }
 
 function isNullablePaymentStatus(value: unknown): value is string | null {
