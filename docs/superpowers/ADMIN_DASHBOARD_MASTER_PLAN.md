@@ -184,6 +184,10 @@ Verified acceptance evidence:
 
 Latest pre-documentation green implementation checkpoint: `52acb9ba1c85ef05d962504d5923e26a4cef47d4`; CI run `34545945878` passed Node 22.1.0 setup, frozen install, typecheck, KingHost build, private-order contract, startup smoke and **676/676 tests**. It is a verified branch checkpoint; do not claim it was independently recorded as the exact SHA serving the successful browser action.
 
+## Task 19 — documentation reconciliation — COMPLETE
+
+Task 19 is complete. The canonical operational documents now match the accepted Phase 5 implementation and Production non-spending evidence while keeping the first real purchase explicitly unaccepted. The documentation preserves the fail-closed Production flag, separate preparation/purchase/generation/posting/cancellation operations, hosted migration status and KingHost operational boundary without recording secrets or pretending a real spend occurred.
+
 ## Task 18 pending — first explicit real purchase
 
 **Task 18 pending:** the owner must choose a **pedido real** and explicitly authorize enabling Production label spending for that order. Until then:
@@ -248,7 +252,7 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 **Phase 2:** complete/accepted.  
 **Phase 3:** complete/deployed/production-accepted.  
 **Phase 4:** implementation complete; automated evidence green; original broad manual Stage 3 checklist not fully re-run.  
-**Phase 5:** implementation complete; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 18 pending** on an owner-chosen **pedido real**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`.  
+**Phase 5:** implementation complete; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 19 complete**; **Task 18 pending** on an owner-chosen **pedido real**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`.  
 **Phase 6+:** not started.
 
-**NEXT EXACT ACTION:** finish Phase 5 documentation reconciliation and exact-SHA verification. After that, keep the branch safe and wait for an owner-selected real order before Task 18; do not enable Production spending merely to complete the checklist.
+**NEXT EXACT ACTION:** run Task 20 exact-SHA verification on the completed Task 19 documentation checkpoint. After that, keep the branch safe and wait for an owner-selected real order before Task 18; do not enable Production spending merely to complete the checklist.
