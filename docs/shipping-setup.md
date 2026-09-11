@@ -1,12 +1,12 @@
 # Configuração de frete com Melhor Envio
 
-A integração atual usa o Melhor Envio **somente para cotação de frete no checkout**. Compra, geração e impressão de etiqueta continuam manuais no painel do Melhor Envio depois da aprovação do pagamento.
+A integração atual do Melhor Envio cobre cotação, preparação de remessa, compra explícita de etiqueta, geração separada, impressão protegida, DC-e/DACE, postagem, cancelamento e rastreamento. O fluxo atual aceito para operação individual é **PF/CPF + DC-e**, com remetente fixo cadastrado no admin e dados do destinatário vindos do snapshot imutável do pedido.
 
-Runtime: KingHost Node.js 22.1.0. Supabase permanece hospedado separadamente e mantém OAuth/token state criptografado, catálogo e RPCs.
+Runtime: KingHost Node.js 22.1.0. Supabase permanece hospedado separadamente e mantém OAuth/token state criptografado, catálogo, remetentes, remessas, eventos e RPCs.
 
 ## Arquitetura atual
 
-O backend consulta:
+A cotação continua usando:
 
 ```text
 POST /api/v2/me/shipment/calculate
@@ -19,15 +19,25 @@ Sandbox:    https://sandbox.melhorenvio.com.br
 Production: https://melhorenvio.com.br
 ```
 
-A chamada é server-side com Bearer token do token manager OAuth. O navegador nunca recebe access token, refresh token, Client Secret ou chave de criptografia.
+As chamadas ao provedor são server-side com Bearer token obtido pelo token manager OAuth. O navegador nunca recebe access token, refresh token, Client Secret, CPF completo do remetente, IDs privados do provedor ou URLs transitórias de etiqueta/DACE.
 
-Scope atual:
+## OAuth da Phase 5
+
+O grant atual solicita exatamente estes scopes:
 
 ```text
 shipping-calculate
+cart-read
+cart-write
+orders-read
+shipping-checkout
+shipping-generate
+shipping-print
+shipping-tracking
+shipping-cancel
 ```
 
-Não amplie escopo para compra/geração/impressão de etiquetas antes da Phase 5 e de uma aprovação específica de gasto/permissão.
+Credenciais antigas sem evidência desses grants permanecem quote-only até reautorização. O refresh preserva o conjunto de scopes já autorizado; ele nunca amplia permissões sozinho.
 
 ## OAuth / callback
 
@@ -36,7 +46,7 @@ Não amplie escopo para compra/geração/impressão de etiquetas antes da Phase 
 https://www.proxybembem.com.br/api/melhor-envio/oauth/callback
 ```
 
-Uma conta Melhor Envio da ProxyBembem por ambiente. O aplicativo Production deve ser separado do aplicativo Sandbox e usar credenciais próprias.
+Uma conta/aplicativo Melhor Envio por ambiente. O aplicativo Production deve ser separado do aplicativo Sandbox e usar credenciais próprias.
 
 Não reutilize Client ID, Client Secret, tokens ou chave de criptografia entre Sandbox e Production.
 
@@ -49,6 +59,7 @@ MELHOR_ENVIO_CLIENT_SECRET=
 MELHOR_ENVIO_REDIRECT_URI=https://www.proxybembem.com.br/api/melhor-envio/oauth/callback
 MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY=
 MELHOR_ENVIO_USER_AGENT=ProxyBembem (contato@proxybembem.com.br)
+MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
 SHIPPING_ORIGIN_CEP=86730000
 SHIPPING_QUOTE_SECRET=
 CRON_SECRET=
@@ -69,7 +80,7 @@ Segredos reais ficam somente no ambiente privado. **Nunca envie valores reais em
 
 ## Admin e autorização OAuth
 
-Fluxo:
+Fluxo de acesso:
 
 ```text
 /admin/login -> senha -> Authenticator (TOTP) -> /admin -> Integrações -> Melhor Envio
@@ -77,45 +88,25 @@ Fluxo:
 
 A página administrativa protegida da integração é `/admin/integrations/melhor-envio`.
 
-A página de integração está dentro do novo shell administrativo compartilhado (sidebar desktop / drawer mobile), mas a segurança permanece a mesma: owner UUID, AAL2/TOTP e sessão administrativa ativa. O redesign não cria bypass.
+A segurança permanece owner UUID, senha, TOTP/AAL2 e sessão administrativa ativa. A sessão administrativa server-side expira após **30 minutos** de inatividade. Se o proprietário perder o Authenticator, a recuperação administrativa é manual pelo Supabase; não existe bypass por SMS, trusted-device ou somente senha.
 
-A sessão administrativa server-side expira após 30 minutos de inatividade. Se o proprietário perder o Authenticator, a recuperação administrativa é manual pelo Supabase; não existe bypass por SMS, trusted-device ou somente senha.
+Conectar/reconectar valida origem, rate limit, proprietário, AAL2 e sessão. O `state` OAuth é aleatório, hasheado, temporário e one-shot. Tokens são criptografados antes de persistir e a UI recebe apenas status sanitizado. Reauthorization é obrigatória quando o grant persistido não contém o scope necessário.
 
-Conectar/reconectar continua validando origem, rate limit, proprietário, AAL2 e sessão; `state` é aleatório, hasheado, temporário e one-shot. Tokens são criptografados antes de persistir e a UI recebe apenas status sanitizado.
+## Remetente fixo
 
-## Renovação automática
+O remetente é cadastrado em `/admin/integrations/melhor-envio` e armazenado somente no backend. No fluxo atual PF/CPF:
 
-Tokens usam AES-256-GCM, versionamento e lease atômica. O token manager refresca preventivamente e, após falha de autenticação reconhecida, faz no máximo um retry com versão nova. Refresh definitivamente rejeitado marca `reauthorization_required`.
+- CPF precisa ser válido;
+- nome, e-mail, telefone e endereço precisam estar completos;
+- o CEP do remetente precisa ser exatamente `SHIPPING_ORIGIN_CEP`;
+- a UI mostra o CPF apenas mascarado;
+- o CPF do destinatário precisa ser válido e diferente do CPF do remetente.
 
-Fluxo conceitual de renovação:
+A aplicação também possui fundação para PJ/CNPJ + NF-e, mas o fluxo operacional aceito atualmente é PF/CPF + DC-e.
 
-```text
-claim lease -> decrypt refresh_token -> refresh no provedor ->
-criptografar novos tokens -> commit compare-and-set
-```
+## Cotação e checkout
 
-## Refresh de manutenção KingHost
-
-```text
-GET /api/internal/melhor-envio/refresh
-```
-
-Aceita `CRON_SECRET` via `X-CRON-AUTH` (Cron KingHost) ou `Authorization: Bearer` para diagnóstico controlado. Cadência operacional atual: diária às **03:17**. A resposta é sanitizada e nunca contém tokens.
-
-## Produto e catálogo usados na cotação
-
-`public.products` é a única autoridade runtime. Para cada produto publicado o backend resolve pelo ID:
-
-- preço/valor segurado;
-- peso kg;
-- comprimento/largura/altura cm;
-- quantidade.
-
-O navegador envia IDs/quantidades, mas **não** é autoridade desses valores. Produtos draft/archived não podem ser usados para um checkout novo.
-
-Os dois produtos originais usam provisoriamente 0,50 kg e 25 x 19 x 4 cm. Produtos criados/editados pelo admin armazenam suas próprias dimensões/peso no Supabase. Atualize esses valores quando houver medidas físicas confiáveis e repita smoke de cotação.
-
-## Cotação / proteção contra alteração
+`public.products` continua sendo a autoridade runtime. O navegador envia IDs/quantidades e CEP, mas o servidor reconstrói preço, peso, dimensões e valor segurado antes de cotar.
 
 Endpoint público:
 
@@ -123,55 +114,135 @@ Endpoint público:
 POST /api/shipping/quote
 ```
 
-Fluxo:
+Production aceita somente Correios IDs **1 (PAC)** e **2 (SEDEX)**. Mudança de carrinho, CEP, serviço ou preço invalida a confirmação anterior. O checkout re-resolve catálogo e frete antes de criar pedido/preferência do Mercado Pago.
 
-1. browser envia IDs/quantidades + CEP;
-2. servidor reconstrói catálogo/metadados físicos atuais;
-3. token manager obtém credencial utilizável;
-4. Melhor Envio é consultado;
-5. opções válidas recebem token HMAC temporário;
-6. checkout recota o mesmo carrinho/CEP;
-7. mudança de serviço/preço retorna `shipping_changed` e exige nova confirmação;
-8. só depois pedido/preferência é criada.
+O pedido persiste o serviço escolhido e o `shipping_snapshot`. Uma remessa histórica é montada desse snapshot; o sistema não usa o catálogo atual para alterar dimensões, preço ou itens de um pedido já pago.
 
-Production aceita somente Correios IDs **1 (PAC)** e **2 (SEDEX)**; outras modalidades são descartadas de forma controlada.
+## Fluxo de remessa no admin
 
-## Login do cliente
+Para um pedido pago e `ready_to_ship`, o fluxo é deliberadamente separado:
 
-Frete pode ser cotado sem login. Se o cliente precisar entrar antes do pagamento, o rascunho é preservado somente na mesma aba e o frete é **cotado novamente** após login; quote token antigo nunca é reutilizado.
+```text
+Preparar remessa
+  -> revisar serviço e custo
+  -> Comprar etiqueta
+  -> Gerar etiqueta
+  -> imprimir etiqueta e DACE
+  -> confirmar postagem
+  -> rastreamento
+```
 
-## Depois do pagamento
+**Preparar remessa** valida destinatário, CPF, endereço, serviço, pacote, itens da declaração e remetente; depois insere a remessa no carrinho do Melhor Envio. Preparar não compra e não gasta saldo.
 
-Etiqueta não é automática nesta fase. Após pagamento aprovado:
+A compra é explícita e a geração é separada: **Comprar etiqueta** nunca é acionado automaticamente por pagamento aprovado, `ready_to_ship`, renderização de página, cron ou rastreamento. Antes do checkout do provedor, o backend relê o custo atual e exige confirmação do valor. Se o custo mudou, a confirmação antiga não é aceita.
 
-1. confira endereço/serviço/valor no pedido;
-2. entre manualmente no Melhor Envio;
-3. compre o envio/etiqueta;
-4. gere/imprima;
-5. poste o pacote.
+**Gerar etiqueta** é outra ação explícita após compra confirmada. Gerar ou imprimir documentos não muda o pedido para `shipped`.
 
-O runtime atual não compra etiqueta, não gera impressão e não rastreia automaticamente.
+O V1 aceita **um pacote/volume e uma etiqueta por pedido** ativo. Snapshot sem pacote utilizável, com múltiplos pacotes ou inconsistente falha fechado em vez de inventar dimensões ou trocar o serviço silenciosamente.
+
+## Gate de gasto em Production
+
+Por padrão e durante aceitação sem gasto:
+
+```text
+MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
+```
+
+Com `false`, o serviço de compra falha fechado antes de qualquer checkout/gasto no provedor. Preparação, cotação, OAuth, configuração do remetente e rastreamento continuam disponíveis.
+
+A capacidade de compra só deve ser habilitada intencionalmente para um pedido real escolhido pelo proprietário:
+
+```text
+MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=true
+```
+
+Depois da alteração privada no ambiente Production, reinicie a aplicação pelo painel KingHost. Nunca commite esse valor de Production como política permanente nem habilite a flag para contornar erro de validação.
+
+Se uma tentativa de compra tiver resultado desconhecido/timeout, **não clique novamente**. Use a reconciliação de compra para descobrir se o provedor comprou ou não e evitar gasto duplicado.
+
+## DC-e e DACE
+
+No modo PF/CPF, a remessa usa declaração de conteúdo/DC-e. Os itens da declaração vêm dos itens imutáveis do pedido: descrição, quantidade e valor unitário. O browser não pode alterar esses valores para a remessa.
+
+Após compra e geração confirmadas, a etiqueta e o **DACE** são acessados por rotas administrativas protegidas. URLs transitórias do provedor não são persistidas nem expostas ao cliente. O DACE acompanha a remessa conforme o fluxo de DC-e do provedor.
+
+## Postagem e status do pedido
+
+Compra, geração e impressão não significam postagem. O pedido só pode avançar de `ready_to_ship` para `shipped` por:
+
+- ação administrativa explícita de confirmar postagem; ou
+- evidência confiável do rastreamento de que a transportadora aceitou a remessa.
+
+Entrega confiável pode avançar `shipped -> completed`. Rastreamento antigo ou regressivo nunca move o estado para trás.
+
+## Rastreamento
+
+Rota interna protegida:
+
+```text
+/api/internal/melhor-envio/tracking
+```
+
+O rastreamento roda em cadência **horária** e usa somente a capacidade `shipping-tracking`; ele não pode comprar, gerar ou cancelar etiquetas. A sincronização é monotônica e deduplicada.
+
+O cliente autenticado vê apenas a projeção sanitizada em:
+
+```text
+/minha-conta/pedidos/{uuid}
+```
+
+Não existe endpoint público de rastreamento expondo dados privados do remetente ou IDs internos do provedor.
+
+## Renovação automática
+
+Tokens usam AES-256-GCM, versionamento e lease atômica. O token manager refresca preventivamente e, após falha de autenticação reconhecida, faz no máximo um retry com versão nova. Refresh definitivamente rejeitado marca `reauthorization_required`.
+
+Rota de manutenção:
+
+```text
+/api/internal/melhor-envio/refresh
+```
+
+Aceita `CRON_SECRET` via `X-CRON-AUTH` (Cron KingHost) ou `Authorization: Bearer` para diagnóstico controlado. A cadência operacional do refresh continua diária às **03:17**. A resposta é sanitizada e nunca contém tokens.
+
+## Cancelamento
+
+Cancelamento de remessa é uma ação administrativa separada e exige **confirmação explícita**. Não é disparado por cancelamento do pedido nem realiza reembolso do Mercado Pago.
+
+Uma operação de cancelamento com resultado ambíguo entra em reconciliação/atenção; ela não envia uma segunda chamada cega ao provedor. Consequências de cancelamento e eventual estorno do frete devem ser revisadas antes de cancelar uma etiqueta real.
+
+## Segurança e isolamento
+
+- `shipping_sender_profiles`, `shipments` e `shipment_events` são backend-only;
+- browser não possui CRUD direto nessas tabelas;
+- mutações passam por RPCs restritas e `SECURITY DEFINER` com `search_path` fixo;
+- CPF completo, token OAuth, Authorization header, provider IDs e URLs de impressão não entram na projeção do cliente;
+- cliente A não pode obter a remessa do cliente B;
+- renderização, webhook de pagamento e `ready_to_ship` não podem alcançar o checkout da etiqueta;
+- compra usa rate limit separado das demais mutações administrativas.
 
 ## Checklist Production
 
 - `MELHOR_ENVIO_ENVIRONMENT=production`;
-- aplicativo Production separado;
+- aplicativo Production separado do Sandbox;
 - callback produtivo exato;
-- scope somente `shipping-calculate`;
-- admin exige senha + Authenticator/TOTP/AAL2;
-- sessão admin expira após 30 minutos de inatividade;
-- tokens criptografados;
-- PAC/SEDEX IDs 1/2 apenas;
-- mudança de carrinho/CEP invalida seleção antiga;
-- mudança de preço exige reconfirmação;
-- OAuth state não pode ser reutilizado;
-- Cron usa segredo e resposta sanitizada;
-- produto/preço/peso/dimensões vêm do catálogo Supabase atual;
-- Mercado Pago recebe produtos + frete reconstruídos no servidor;
-- nenhum segredo aparece em logs/respostas.
-
-O smoke final da Stage 3/admin foi adiado pelo proprietário em 2026-09-08. Antes do sign-off final da Phase 4, lembrar de testar também a página `Integrações > Melhor Envio` dentro da sidebar desktop e drawer mobile, além de uma cotação válida; não é necessário gastar saldo/comprar etiqueta.
+- todos os nove scopes Phase 5 autorizados;
+- remetente fixo cadastrado e CEP igual a `SHIPPING_ORIGIN_CEP`;
+- destinatário com nome, e-mail, telefone, CPF e endereço válidos;
+- CPF do destinatário diferente do CPF do remetente;
+- PAC/SEDEX IDs 1/2 preservados do checkout;
+- exatamente um pacote reconhecido no V1;
+- preparação não compra etiqueta;
+- `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` até aprovação explícita para pedido real;
+- compra e geração são ações separadas;
+- nenhuma compra automática;
+- geração/impressão não marca `shipped`;
+- cancelamento exige confirmação;
+- rastreamento horário usa somente leitura do provedor;
+- refresh OAuth diário às 03:17;
+- customer tracking somente em `/minha-conta/pedidos/{uuid}`;
+- nenhum segredo ou CPF completo aparece em logs/respostas para browser.
 
 ## Deploy / manutenção
 
-Use somente `docs/deployment/kinghost.md`. Supabase não deve ser migrado para KingHost e migrations registradas não devem ser reaplicadas. Consulte `docs/superpowers/CURRENT_STATUS.md` antes de mudanças de OAuth, banco, runtime ou rollout.
+Use somente `docs/deployment/kinghost.md`. Supabase não deve ser migrado para KingHost e migrations já aplicadas não devem ser reaplicadas. Consulte `docs/superpowers/CURRENT_STATUS.md` antes de mudanças de OAuth, banco, runtime ou rollout.
