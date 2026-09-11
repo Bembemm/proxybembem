@@ -121,7 +121,16 @@ Implemented runtime behavior:
 
 ### Hosted database rollout
 
-Phase 5 migrations were applied to hosted Supabase without rewriting migration history. The applied runtime includes OAuth scope grants, shipment foundation, shipment operations, cancellation reconciliation, customer shipment projection and the sender-profile FK index follow-up. Live ACL/RLS checks confirmed browser roles cannot directly read/write private shipment tables, mutation RPCs remain service-role-only, and customer shipment reads remain ownership-scoped.
+Phase 5 migrations were applied to hosted Supabase without rewriting migration history. The exact applied Phase 5 files are:
+
+- `202609080002_melhor_envio_oauth_scope_grants.sql`
+- `202609080003_shipments_foundation.sql`
+- `202609080004_shipment_operations.sql`
+- `202609080005_shipment_cancel_reconciliation.sql`
+- `202609080006_customer_shipment_projection.sql`
+- `20260909194848_shipments_sender_profile_fk_index.sql`
+
+Live ACL/RLS checks confirmed browser roles cannot directly read/write private shipment tables, mutation RPCs remain service-role-only, and customer shipment reads remain ownership-scoped.
 
 Advisor follow-up added `shipments_sender_profile_id_idx`; the new unindexed-FK warning disappeared. Intentional RLS-without-policy warnings remain for backend-only tables, and pre-existing unrelated Auth/performance findings remain tracked separately.
 
@@ -146,6 +155,10 @@ Accepted evidence:
 - customer-paid freight versus current provider cost was shown in the admin UI.
 
 The latest pre-documentation implementation checkpoint is SHA `52acb9ba1c85ef05d962504d5923e26a4cef47d4`, GitHub Actions run `34545945878`, with Node 22.1.0 install/typecheck/KingHost build/private-route/startup checks green and **676/676 tests passing**. This SHA is verified as a branch implementation checkpoint; the exact KingHost SHA serving the successful browser preparation was not independently recorded, so do not describe `52acb9...` as a separately proven deployed SHA.
+
+### Task 19 — documentation reconciliation — COMPLETE
+
+Task 19 is complete: the operational shipping setup, current status and master plan now describe the accepted Phase 5 architecture, hosted migration rollout, Production non-spending acceptance, fail-closed spending gate and the still-pending first real purchase without fabricating real-spend evidence.
 
 ### Task 18 pending — first real label purchase
 
@@ -189,6 +202,6 @@ Therefore keep Phase 4 wording factual: automated evidence is green and multiple
 
 ## NEXT EXACT ACTION
 
-1. Finish Task 19 documentation reconciliation and run the exact-SHA verification required by Task 20.
+1. Run Task 20 exact-SHA verification on the completed Task 19 documentation checkpoint.
 2. Keep **Task 18 pending** until the owner selects a **pedido real** and explicitly approves the real-spend gate.
 3. Until that approval, keep `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`; do not spend merely to complete acceptance.
