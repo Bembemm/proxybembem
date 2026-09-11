@@ -19,7 +19,7 @@ Sandbox:    https://sandbox.melhorenvio.com.br
 Production: https://melhorenvio.com.br
 ```
 
-As chamadas ao provedor são server-side com Bearer token obtido pelo token manager OAuth. O navegador nunca recebe access token, refresh token, Client Secret, CPF completo do remetente, IDs privados do provedor ou URLs transitórias de etiqueta/DACE.
+As chamadas ao provedor são server-side com Bearer token obtido pelo token manager OAuth. O navegador nunca recebe access token, `refresh_token` (refresh token), Client Secret, CPF completo do remetente, IDs privados do provedor ou URLs transitórias de etiqueta/DACE.
 
 ## OAuth da Phase 5
 
@@ -135,6 +135,8 @@ Preparar remessa
 **Preparar remessa** valida destinatário, CPF, endereço, serviço, pacote, itens da declaração e remetente; depois insere a remessa no carrinho do Melhor Envio. Preparar não compra e não gasta saldo.
 
 A compra é explícita e a geração é separada: **Comprar etiqueta** nunca é acionado automaticamente por pagamento aprovado, `ready_to_ship`, renderização de página, cron ou rastreamento. Antes do checkout do provedor, o backend relê o custo atual e exige confirmação do valor. Se o custo mudou, a confirmação antiga não é aceita.
+
+**Não existe compra automática de etiqueta.**
 
 **Gerar etiqueta** é outra ação explícita após compra confirmada. Gerar ou imprimir documentos não muda o pedido para `shipped`.
 
