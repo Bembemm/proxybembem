@@ -63,24 +63,23 @@ function decodeSigningSecret(secret: string) {
   }
 }
 
-function candidateSignatures(header: string) {
-  return header
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => {
-      const separator = part.indexOf(",")
-      if (separator < 1) return null
-      const version = part.slice(0, separator)
-      const encoded = part.slice(separator + 1)
-      if (version !== "v1" || !encoded) return null
-      try {
-        return Buffer.from(encoded, "base64")
-      } catch {
-        return null
-      }
-    })
-    .filter((value): value is Buffer => value !== null)
+function candidateSignatures(header: string): Uint8Array[] {
+  const candidates: Uint8Array[] = []
+  for (const part of header.split(/\s+/)) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+    const separator = trimmed.indexOf(",")
+    if (separator < 1) continue
+    const version = trimmed.slice(0, separator)
+    const encoded = trimmed.slice(separator + 1)
+    if (version !== "v1" || !encoded) continue
+    try {
+      candidates.push(Buffer.from(encoded, "base64"))
+    } catch {
+      // Ignore malformed signature candidates and continue checking the header.
+    }
+  }
+  return candidates
 }
 
 export function verifyResendWebhook(input: {
@@ -114,7 +113,7 @@ export function verifyResendWebhook(input: {
     .digest()
 
   for (const candidate of candidateSignatures(input.signature)) {
-    if (candidate.length === expected.length && timingSafeEqual(candidate, expected)) {
+    if (candidate.byteLength === expected.byteLength && timingSafeEqual(candidate, expected)) {
       return true
     }
   }
