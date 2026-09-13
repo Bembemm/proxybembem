@@ -83,8 +83,10 @@ test("account forms validate fields explicitly and expose invalid state for red 
 test("password reset checks generated-link and Resend delivery errors instead of reporting a false success", async () => {
   const route = await source("../app/api/account/password-reset/route.ts")
   const emailSender = await source("../lib/server/recovery-email.ts")
+  const resendClient = await source("../lib/server/resend-client.ts")
   requireSource(route, "password reset route")
   requireSource(emailSender, "recovery email sender")
+  requireSource(resendClient, "shared Resend client")
 
   assert.match(
     route,
@@ -95,6 +97,9 @@ test("password reset checks generated-link and Resend delivery errors instead of
   assert.match(route, /sendPasswordRecoveryEmail\s*\(/)
   assert.match(route, /Muitas tentativas de envio/)
   assert.match(route, /RESET_MESSAGE/)
-  assert.match(emailSender, /if\s*\(\s*!response\.ok\s*\)/)
+  assert.match(emailSender, /result\.outcome\s*!==\s*["']accepted["']/)
   assert.match(emailSender, /throw new Error\(["']Recovery email provider request failed["']\)/)
+  assert.match(resendClient, /if\s*\(\s*response\.ok\s*\)/)
+  assert.match(resendClient, /response\.status\s*===\s*429/)
+  assert.match(resendClient, /response\.status\s*>=\s*500/)
 })
