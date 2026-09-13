@@ -67,14 +67,10 @@ test("worker sends each claimed row once with its stored idempotency key and rec
   })
 
   assert.equal(sends.length, 1)
-  assert.deepEqual(sends[0], {
-    to: "cliente@example.com",
-    subject: "Seu pedido entrou em produção — PB-A1B2C3D4E5F6",
-    text: assert.stringContaining ? sends[0] : sends[0],
-    html: assert.stringContaining ? sends[0] : sends[0],
-    idempotencyKey: "stable-provider-key",
-  })
   const send = sends[0] as Record<string, unknown>
+  assert.equal(send.to, "cliente@example.com")
+  assert.equal(send.subject, "Seu pedido entrou em produção — PB-A1B2C3D4E5F6")
+  assert.equal(send.idempotencyKey, "stable-provider-key")
   assert.match(String(send.text), /Produção iniciada/)
   assert.match(String(send.html), /Produção iniciada/)
   assert.deepEqual(completions, [{
