@@ -126,9 +126,58 @@ Uma chamada autorizada retorna somente:
 
 Falhas de autenticação retornam `401`; falhas de renovação retornam resposta sanitizada sem token ou detalhe do provedor.
 
+## Cron dos e-mails transacionais
+
+A fila de e-mails da Phase 6 é processada por:
+
+```text
+POST /api/internal/notifications/process
+```
+
+O endpoint aceita o mesmo segredo de manutenção existente:
+
+- `Authorization: Bearer <CRON_SECRET>` para diagnóstico manual controlado;
+- `X-CRON-AUTH: <CRON_SECRET>` para o Cronjob da KingHost.
+
+No painel de Cronjob da KingHost, configure:
+
+```text
+https://proxybembem.com.br/api/internal/notifications/process
+```
+
+Cadência: **a cada 5 minutos**. Cada chamada processa no máximo 25 notificações vencidas e retorna apenas contadores sanitizados; o corpo de e-mail, destinatário e IDs do provedor não são devolvidos pela rota.
+
+A aplicação faz no máximo 3 tentativas por notificação. Erros temporários voltam para a fila com retry após aproximadamente 5 minutos e depois 30 minutos. O mesmo `CRON_SECRET` deve permanecer apenas no ambiente da aplicação e no header protegido do Cronjob.
+
+## Webhook do Resend
+
+Cadastre no Resend o endpoint HTTPS:
+
+```text
+https://proxybembem.com.br/api/webhooks/resend
+```
+
+Copie o signing secret do webhook para a variável server-only:
+
+```text
+RESEND_WEBHOOK_SECRET=whsec_...
+```
+
+O endpoint verifica o corpo bruto com os headers Svix antes de aceitar qualquer evento. Assine somente os eventos operacionais usados pela Phase 6:
+
+- `email.sent`
+- `email.delivered`
+- `email.bounced`
+- `email.failed`
+- `email.suppressed`
+
+**Não** assine `email.opened` e **não** assine `email.clicked`; a aplicação não faz rastreamento de abertura nem clique.
+
+O matching de entrega/falha é feito exclusivamente pelo `email_id` devolvido pelo Resend e já persistido no envio. O endereço do destinatário recebido no webhook nunca é usado para escolher qual pedido/notificação atualizar.
+
 ## Arquivos de ambiente
 
-Segredos ficam fora do Git. O `.env.production` no servidor continua privado e deve manter permissões restritas. Não faça `source .env.production` no shell; valores dotenv podem conter espaços e caracteres que não são sintaxe shell. O Next/runtime lê o arquivo pelo mecanismo de ambiente da aplicação.
+Segredos ficam fora do Git. O `.env.production` no servidor continua privado e deve manter permissões restritas. Para a Phase 6, produção precisa de `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` e do `CRON_SECRET` já existente. Não faça `source .env.production` no shell; valores dotenv podem conter espaços e caracteres que não são sintaxe shell. O Next/runtime lê o arquivo pelo mecanismo de ambiente da aplicação.
 
 ## Build de CI vs deploy de servidor
 
