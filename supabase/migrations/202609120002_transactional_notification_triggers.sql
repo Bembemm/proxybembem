@@ -176,6 +176,14 @@ begin
       v_notification_type := 'ready_to_ship';
     elsif new.metadata ->> 'to' = 'canceled' then
       v_notification_type := 'canceled';
+    elsif new.metadata ->> 'to' = 'shipped'
+          and exists (
+            select 1
+              from public.orders o
+             where o.id = new.order_id
+               and o.shipping_provider is distinct from 'melhor_envio'
+          ) then
+      v_notification_type := 'shipped';
     end if;
   end if;
 
