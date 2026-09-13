@@ -173,7 +173,11 @@ O endpoint verifica o corpo bruto com os headers Svix antes de aceitar qualquer 
 
 **Não** assine `email.opened` e **não** assine `email.clicked`; a aplicação não faz rastreamento de abertura nem clique.
 
-O matching de entrega/falha é feito exclusivamente pelo `email_id` devolvido pelo Resend e já persistido no envio. O endereço do destinatário recebido no webhook nunca é usado para escolher qual pedido/notificação atualizar.
+Além disso, no Resend abra a configuração do domínio de envio e confirme explicitamente que **Open Tracking = OFF** e **Click Tracking = OFF**. Não basta deixar de assinar os webhooks de abertura/clique: ambos os recursos de tracking do próprio provedor devem permanecer desativados para cumprir a decisão de não rastrear engajamento.
+
+O matching de entrega/falha é feito exclusivamente pelo `email_id` devolvido pelo Resend e já persistido no envio. Se um webhook operacional chegar antes de o worker persistir esse `email_id`, a reconciliação no banco liga o evento à notificação assim que o envio aceito é finalizado; os dois caminhos usam a mesma serialização por ID do provedor para evitar perda de callback e inversão de locks.
+
+O webhook rejeita corpos acima de 64 KiB antes de consultar o signing secret ou persistir eventos, inclusive quando o `Content-Length` está ausente ou subestima o corpo real.
 
 ## Arquivos de ambiente
 
