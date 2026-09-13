@@ -21,9 +21,10 @@ test("password recovery helper keeps the application token cookie bounded", () =
   assert.equal(isValidRecoveryTokenHash("abc def"), false)
 })
 
-test("recovery request sends an application-owned scanner-safe link", async () => {
+test("recovery request sends an application-owned scanner-safe link through the shared Resend transport", async () => {
   const resetRoute = await source("../app/api/account/password-reset/route.ts")
   const emailSender = await source("../lib/server/recovery-email.ts")
+  const resendClient = await source("../lib/server/resend-client.ts")
   const envExample = await source("../.env.example")
 
   assert.match(resetRoute, /auth\.admin\.generateLink\s*\(/)
@@ -38,12 +39,13 @@ test("recovery request sends an application-owned scanner-safe link", async () =
   assert.match(resetRoute, /sendPasswordRecoveryEmail/)
   assert.doesNotMatch(resetRoute, /resetPasswordForEmail/)
 
-  assert.match(emailSender, /https:\/\/api\.resend\.com\/emails/)
-  assert.match(emailSender, /Authorization/)
-  assert.match(emailSender, /Bearer/)
-  assert.match(emailSender, /RESEND_API_KEY/)
-  assert.match(emailSender, /noreply@proxybembem\.com\.br/)
+  assert.match(emailSender, /sendResendEmail/)
   assert.match(emailSender, /recoveryUrl/)
+  assert.match(resendClient, /https:\/\/api\.resend\.com\/emails/)
+  assert.match(resendClient, /Authorization/)
+  assert.match(resendClient, /Bearer/)
+  assert.match(resendClient, /RESEND_API_KEY/)
+  assert.match(resendClient, /noreply@proxybembem\.com\.br/)
   assert.match(envExample, /RESEND_API_KEY=/)
 })
 
