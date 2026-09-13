@@ -24,6 +24,18 @@ test("serializes and reconciles Resend webhooks that race provider_message_id pe
   )
   assert.equal(advisoryLocks?.length, 2, "both completion and webhook persistence must take the same transaction lock")
 
+  const completionStart = text.indexOf("function public.complete_notification_attempt")
+  const webhookStart = text.indexOf("function public.record_notification_webhook")
+  const completion = text.slice(completionStart, webhookStart)
+  const completionAdvisory = completion.indexOf("pg_catalog.pg_advisory_xact_lock")
+  const completionRowLock = completion.indexOf("from public.notification_outbox")
+  assert.ok(completionAdvisory >= 0, "completion advisory lock missing")
+  assert.ok(completionRowLock >= 0, "completion row lock missing")
+  assert.ok(
+    completionAdvisory < completionRowLock,
+    "completion must acquire the provider advisory lock before the outbox row lock to avoid lock-order deadlocks",
+  )
+
   assert.match(
     text,
     /update\s+public\.notification_webhook_events[\s\S]*set\s+notification_id\s*=\s*v_row\.id[\s\S]*provider_message_id\s*=\s*p_provider_message_id[\s\S]*notification_id\s+is\s+null/,
