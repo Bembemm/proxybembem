@@ -11,12 +11,18 @@ async function sql() {
   return (await readFile(MIGRATION, "utf8").catch(() => "")).toLowerCase()
 }
 
-test("reconciles Resend webhooks that arrive before provider_message_id is persisted", async () => {
+test("serializes and reconciles Resend webhooks that race provider_message_id persistence", async () => {
   const text = await sql()
 
   assert.match(text, /create\s+or\s+replace\s+function\s+public\.complete_notification_attempt/)
+  assert.match(text, /create\s+or\s+replace\s+function\s+public\.record_notification_webhook/)
   assert.match(text, /p_outcome\s*=\s*'accepted'/)
   assert.match(text, /provider_message_id\s*=\s*p_provider_message_id/)
+
+  const advisoryLocks = text.match(
+    /pg_catalog\.pg_advisory_xact_lock\s*\(\s*pg_catalog\.hashtextextended\s*\(\s*p_provider_message_id\s*,\s*0\s*\)\s*\)/g,
+  )
+  assert.equal(advisoryLocks?.length, 2, "both completion and webhook persistence must take the same transaction lock")
 
   assert.match(
     text,
@@ -48,5 +54,13 @@ test("reconciles Resend webhooks that arrive before provider_message_id is persi
   assert.match(
     text,
     /grant\s+execute\s+on\s+function\s+public\.complete_notification_attempt\(uuid,\s*uuid,\s*text,\s*text,\s*text\)[\s\S]*to\s+service_role/,
+  )
+  assert.match(
+    text,
+    /revoke\s+all\s+on\s+function\s+public\.record_notification_webhook\(text,\s*text,\s*text\)[\s\S]*from\s+public\s*,\s*anon\s*,\s*authenticated/,
+  )
+  assert.match(
+    text,
+    /grant\s+execute\s+on\s+function\s+public\.record_notification_webhook\(text,\s*text,\s*text\)[\s\S]*to\s+service_role/,
   )
 })
