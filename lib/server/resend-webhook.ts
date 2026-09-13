@@ -1,0 +1,256 @@
+import { createHmac, timingSafeEqual } from "node:crypto"
+import { getSupabaseEnv } from "./env.ts"
+
+const WEBHOOK_TOLERANCE_SECONDS = 300
+const OPERATIONAL_EVENT_TYPES = [
+  "email.sent",
+  "email.delivered",
+  "email.bounced",
+  "email.failed",
+  "email.suppressed",
+] as const
+const OUTBOX_STATUSES = [
+  "pending",
+  "processing",
+  "sent",
+  "delivered",
+  "retry_scheduled",
+  "failed",
+  "bounced",
+] as const
+
+type OperationalEventType = (typeof OPERATIONAL_EVENT_TYPES)[number]
+type OutboxStatus = (typeof OUTBOX_STATUSES)[number]
+
+export interface ResendWebhookRecordResult {
+  outcome: "recorded" | "duplicate"
+  matched: boolean
+  status: OutboxStatus | null
+}
+
+export interface ResendWebhookRecordInput {
+  svixId: string
+  eventType: OperationalEventType
+  providerMessageId: string
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
+}
+
+function isOperationalEventType(value: unknown): value is OperationalEventType {
+  return typeof value === "string" && (OPERATIONAL_EVENT_TYPES as readonly string[]).includes(value)
+}
+
+function boundedText(value: unknown, maxLength: number): value is string {
+  return (
+    typeof value === "string" &&
+    value.length >= 1 &&
+    value.length <= maxLength &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+  )
+}
+
+function decodeSigningSecret(secret: string) {
+  if (!secret.startsWith("whsec_")) return null
+  const encoded = secret.slice("whsec_".length)
+  if (!encoded) return null
+  try {
+    const decoded = Buffer.from(encoded, "base64")
+    return decoded.length >= 16 ? decoded : null
+  } catch {
+    return null
+  }
+}
+
+function candidateSignatures(header: string) {
+  return header
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const separator = part.indexOf(",")
+      if (separator < 1) return null
+      const version = part.slice(0, separator)
+      const encoded = part.slice(separator + 1)
+      if (version !== "v1" || !encoded) return null
+      try {
+        return Buffer.from(encoded, "base64")
+      } catch {
+        return null
+      }
+    })
+    .filter((value): value is Buffer => value !== null)
+}
+
+export function verifyResendWebhook(input: {
+  rawBody: string
+  id: string | null
+  timestamp: string | null
+  signature: string | null
+  secret: string
+  now?: number
+}) {
+  if (
+    !boundedText(input.id, 128) ||
+    !boundedText(input.timestamp, 32) ||
+    !boundedText(input.signature, 4096)
+  ) {
+    return false
+  }
+
+  const timestamp = Number(input.timestamp)
+  if (!Number.isSafeInteger(timestamp) || timestamp <= 0) return false
+  const now = input.now ?? Math.floor(Date.now() / 1000)
+  if (!Number.isFinite(now) || Math.abs(now - timestamp) > WEBHOOK_TOLERANCE_SECONDS) {
+    return false
+  }
+
+  const key = decodeSigningSecret(input.secret)
+  if (!key) return false
+
+  const expected = createHmac("sha256", key)
+    .update(`${input.id}.${input.timestamp}.${input.rawBody}`)
+    .digest()
+
+  for (const candidate of candidateSignatures(input.signature)) {
+    if (candidate.length === expected.length && timingSafeEqual(candidate, expected)) {
+      return true
+    }
+  }
+  return false
+}
+
+function parseRecordResult(value: unknown): ResendWebhookRecordResult {
+  if (!isRecord(value) || (value.outcome !== "recorded" && value.outcome !== "duplicate")) {
+    throw new Error("Notification webhook persistence failed")
+  }
+  if (typeof value.matched !== "boolean") {
+    throw new Error("Notification webhook persistence failed")
+  }
+  if (
+    value.status !== null &&
+    !(typeof value.status === "string" && (OUTBOX_STATUSES as readonly string[]).includes(value.status))
+  ) {
+    throw new Error("Notification webhook persistence failed")
+  }
+  return {
+    outcome: value.outcome,
+    matched: value.matched,
+    status: value.status as OutboxStatus | null,
+  }
+}
+
+export async function recordResendWebhookEvent(
+  input: ResendWebhookRecordInput,
+): Promise<ResendWebhookRecordResult> {
+  if (
+    !boundedText(input.svixId, 128) ||
+    !isOperationalEventType(input.eventType) ||
+    !boundedText(input.providerMessageId, 128)
+  ) {
+    throw new Error("Invalid notification webhook input")
+  }
+
+  const { supabaseUrl, supabaseSecretKey } = getSupabaseEnv()
+  let response: Response
+  try {
+    response = await fetch(`${supabaseUrl}/rest/v1/rpc/record_notification_webhook`, {
+      method: "POST",
+      headers: {
+        apikey: supabaseSecretKey,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        p_svix_id: input.svixId,
+        p_event_type: input.eventType,
+        p_provider_message_id: input.providerMessageId,
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    console.error("Notification webhook persistence failed", { status: "network" })
+    throw new Error("Notification webhook persistence failed")
+  }
+
+  if (!response.ok) {
+    console.error("Notification webhook persistence failed", { status: response.status })
+    throw new Error("Notification webhook persistence failed")
+  }
+
+  try {
+    return parseRecordResult(await response.json())
+  } catch (error) {
+    if (error instanceof Error && error.message === "Notification webhook persistence failed") {
+      throw error
+    }
+    throw new Error("Notification webhook persistence failed")
+  }
+}
+
+function json(body: Record<string, unknown>, status: number) {
+  return Response.json(body, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  })
+}
+
+export function createResendWebhookHandler(deps: {
+  getSecret(): string
+  record(input: ResendWebhookRecordInput): Promise<ResendWebhookRecordResult>
+  now?: () => number
+}) {
+  return async function handleResendWebhook(request: Request) {
+    const rawBody = await request.text()
+    let secret: string
+    try {
+      secret = deps.getSecret()
+    } catch {
+      return json({ ok: false }, 401)
+    }
+
+    const svixId = request.headers.get("svix-id")
+    const svixTimestamp = request.headers.get("svix-timestamp")
+    const svixSignature = request.headers.get("svix-signature")
+    if (!verifyResendWebhook({
+      rawBody,
+      id: svixId,
+      timestamp: svixTimestamp,
+      signature: svixSignature,
+      secret,
+      now: deps.now?.(),
+    })) {
+      return json({ ok: false }, 401)
+    }
+
+    let body: unknown
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      return json({ ok: false }, 400)
+    }
+    if (!isRecord(body) || typeof body.type !== "string") {
+      return json({ ok: false }, 400)
+    }
+
+    if (!isOperationalEventType(body.type)) {
+      return json({ ok: true }, 200)
+    }
+    if (!isRecord(body.data) || !boundedText(body.data.email_id, 128) || !boundedText(svixId, 128)) {
+      return json({ ok: false }, 400)
+    }
+
+    try {
+      await deps.record({
+        svixId,
+        eventType: body.type,
+        providerMessageId: body.data.email_id,
+      })
+      return json({ ok: true }, 200)
+    } catch {
+      return json({ ok: false }, 503)
+    }
+  }
+}
