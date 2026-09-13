@@ -26,7 +26,7 @@ test("order-event trigger maps only approved transactional order events", async 
   assert.match(text, /new\.metadata ->> 'to' = 'canceled'/i)
   assert.match(text, /new\.metadata ->> 'to' = 'shipped'/i)
   assert.match(text, /shipping_provider is distinct from 'melhor_envio'/i)
-  assert.doesNotMatch(text, /new\.metadata ->> 'to' = 'completed'.+delivered/is)
+  assert.doesNotMatch(text, /new\.metadata ->> 'to' = 'completed'[\s\S]+delivered/i)
 })
 
 test("shipment trigger uses posted and trusted delivered evidence, not label lifecycle events", async () => {
@@ -36,9 +36,9 @@ test("shipment trigger uses posted and trusted delivered evidence, not label lif
   assert.match(text, /new\.event_type = 'shipment_tracking_updated'/i)
   assert.match(text, /new\.source = 'melhor_envio'/i)
   assert.match(text, /new\.metadata ->> 'to' = 'delivered'/i)
-  assert.doesNotMatch(text, /shipment_added_to_cart[^;]+notification_outbox/is)
-  assert.doesNotMatch(text, /shipment_purchased[^;]+notification_outbox/is)
-  assert.doesNotMatch(text, /shipment_generated[^;]+notification_outbox/is)
+  assert.doesNotMatch(text, /shipment_added_to_cart[^;]+notification_outbox/i)
+  assert.doesNotMatch(text, /shipment_purchased[^;]+notification_outbox/i)
+  assert.doesNotMatch(text, /shipment_generated[^;]+notification_outbox/i)
 })
 
 test("trigger payload is an explicit customer-safe immutable projection", async () => {
