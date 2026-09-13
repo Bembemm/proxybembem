@@ -204,6 +204,40 @@ test("handler rejects oversized webhook bodies before signature verification or 
   assert.equal(recordCalls, 0)
 })
 
+test("handler enforces the webhook body limit even when Content-Length understates the stream", async () => {
+  const module = await loadWebhook()
+  let secretCalls = 0
+  let recordCalls = 0
+  const handler = module.createResendWebhookHandler({
+    getSecret: () => {
+      secretCalls += 1
+      return WEBHOOK_SECRET
+    },
+    now: () => NOW_SECONDS,
+    record: async () => {
+      recordCalls += 1
+      return { outcome: "recorded" as const, matched: false, status: null }
+    },
+  })
+  const rawBody = "x".repeat(65_537)
+  const request = new Request("https://www.proxybembem.com.br/api/webhooks/resend", {
+    method: "POST",
+    headers: {
+      "content-length": "1",
+      "svix-id": MESSAGE_ID,
+      "svix-timestamp": String(NOW_SECONDS),
+      "svix-signature": "v1,ignored",
+    },
+    body: rawBody,
+  })
+
+  const response = await handler(request)
+  assert.equal(response.status, 413)
+  assert.deepEqual(await response.json(), { ok: false })
+  assert.equal(secretCalls, 0)
+  assert.equal(recordCalls, 0)
+})
+
 test("duplicate/replayed svix-id is accepted idempotently and does not expose provider details", async () => {
   const module = await loadWebhook()
   const rawBody = JSON.stringify({ type: "email.delivered", data: { email_id: EMAIL_ID } })
