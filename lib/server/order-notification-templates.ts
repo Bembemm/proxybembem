@@ -421,7 +421,7 @@ export function renderOrderNotification(value: unknown) {
   const text = [
     "ProxyBembem",
     "",
-    `Olá, ${payload.customerName}.",
+    `Olá, ${payload.customerName}.`,
     copy.title,
     copy.message,
     ...(detailsText ? ["", detailsText] : []),
