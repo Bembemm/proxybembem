@@ -26,6 +26,16 @@ begin
     raise exception 'invalid notification completion input';
   end if;
 
+  if p_outcome = 'accepted' then
+    if p_provider_message_id is null then
+      raise exception 'accepted notification requires provider message id';
+    end if;
+
+    perform pg_catalog.pg_advisory_xact_lock(
+      pg_catalog.hashtextextended(p_provider_message_id, 0)
+    );
+  end if;
+
   select *
     into v_row
     from public.notification_outbox
@@ -62,14 +72,6 @@ begin
   end;
 
   if p_outcome = 'accepted' then
-    if p_provider_message_id is null then
-      raise exception 'accepted notification requires provider message id';
-    end if;
-
-    perform pg_catalog.pg_advisory_xact_lock(
-      pg_catalog.hashtextextended(p_provider_message_id, 0)
-    );
-
     update public.notification_outbox
        set status = 'sent',
            attempt_count = v_next_attempt,
