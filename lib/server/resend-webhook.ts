@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto"
 import { getSupabaseEnv } from "./env.ts"
 
 const WEBHOOK_TOLERANCE_SECONDS = 300
+const WEBHOOK_MAX_BYTES = 65_536
 const OPERATIONAL_EVENT_TYPES = [
   "email.sent",
   "email.delivered",
@@ -21,6 +22,13 @@ const OUTBOX_STATUSES = [
 
 type OperationalEventType = (typeof OPERATIONAL_EVENT_TYPES)[number]
 type OutboxStatus = (typeof OUTBOX_STATUSES)[number]
+
+class WebhookBodyTooLargeError extends Error {
+  constructor() {
+    super("Webhook body too large")
+    this.name = "WebhookBodyTooLargeError"
+  }
+}
 
 export interface ResendWebhookRecordResult {
   outcome: "recorded" | "duplicate"
@@ -49,6 +57,39 @@ function boundedText(value: unknown, maxLength: number): value is string {
     value.length <= maxLength &&
     !/[\u0000-\u001f\u007f]/.test(value)
   )
+}
+
+async function readBoundedRawBody(request: Request) {
+  const contentLengthHeader = request.headers.get("content-length")
+  if (contentLengthHeader) {
+    const contentLength = Number(contentLengthHeader)
+    if (Number.isFinite(contentLength) && contentLength > WEBHOOK_MAX_BYTES) {
+      throw new WebhookBodyTooLargeError()
+    }
+  }
+
+  if (!request.body) return ""
+
+  const reader = request.body.getReader()
+  const chunks: Buffer[] = []
+  let total = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > WEBHOOK_MAX_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        throw new WebhookBodyTooLargeError()
+      }
+      chunks.push(Buffer.from(value))
+    }
+  } catch (error) {
+    if (error instanceof WebhookBodyTooLargeError) throw error
+    throw new Error("Invalid webhook body")
+  }
+
+  return Buffer.concat(chunks, total).toString("utf8")
 }
 
 function decodeSigningSecret(secret: string) {
@@ -202,7 +243,16 @@ export function createResendWebhookHandler(deps: {
   now?: () => number
 }) {
   return async function handleResendWebhook(request: Request) {
-    const rawBody = await request.text()
+    let rawBody: string
+    try {
+      rawBody = await readBoundedRawBody(request)
+    } catch (error) {
+      if (error instanceof WebhookBodyTooLargeError) {
+        return json({ ok: false }, 413)
+      }
+      return json({ ok: false }, 400)
+    }
+
     let secret: string
     try {
       secret = deps.getSecret()
