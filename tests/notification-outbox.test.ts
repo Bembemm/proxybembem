@@ -24,7 +24,7 @@ test("claimDueNotifications uses service-role RPC with bounded no-store request 
   await withSupabaseEnv(async () => {
     const module = await import("../lib/server/notification-outbox.ts")
     let calls = 0
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
       calls += 1
       assert.equal(String(input), "https://example.supabase.co/rest/v1/rpc/claim_due_notification_outbox")
       assert.equal(init?.method, "POST")
@@ -109,7 +109,7 @@ test("completeNotificationAttempt maps accepted and retryable outcomes to the co
   await withSupabaseEnv(async () => {
     const module = await import("../lib/server/notification-outbox.ts")
     const bodies: unknown[] = []
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
       assert.equal(String(input), "https://example.supabase.co/rest/v1/rpc/complete_notification_attempt")
       bodies.push(JSON.parse(String(init?.body)))
       return Response.json({
