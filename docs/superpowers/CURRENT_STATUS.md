@@ -197,19 +197,21 @@ Implemented behavior:
 - Resend client shared with password recovery, fixed sender `ProxyBembem <noreply@proxybembem.com.br>` and stable provider idempotency key;
 - automatic worker capped at 25 rows, at most three attempts, with retry schedule around +5 min and +30 min;
 - signed Svix/Resend webhook ingestion for `sent`, `delivered`, bounce/failure/suppression only;
-- no open/click tracking;
+- no open/click tracking; production rollout must also keep Resend domain **Open Tracking = OFF** and **Click Tracking = OFF**;
 - payment/refund/chargeback truth remains Mercado Pago and shipment truth remains the Phase 5 authoritative event flow;
 - trusted carrier delivery, not generic admin completion, creates the delivered notification;
 - protected admin history shows sanitized status/attempt information and supports explicit audited manual resend;
-- notification failure never mutates payment, fulfillment or shipment state.
+- notification failure never mutates payment, fulfillment or shipment state;
+- webhook request bodies are capped at 64 KiB before signing-secret access/persistence, including when `Content-Length` understates the stream;
+- provider callbacks arriving before `provider_message_id` persistence are reconciled durably after send completion instead of being lost.
 
 ### Hosted database rollout and verification
 
-The Phase 6 foundation and trigger migrations are present in hosted Supabase migration history. Live checks confirmed:
+The Phase 6 foundation, trigger and hardening migrations are present in hosted Supabase migration history. Live checks confirmed:
 
 - `notification_outbox` and `notification_webhook_events` exist with RLS enabled;
-- browser `anon` / ordinary `authenticated` roles have no direct CRUD on the outbox;
-- notification worker RPC execution is service-role-only;
+- browser `anon` / ordinary `authenticated` roles have no direct CRUD on either notification table;
+- notification worker/webhook mutation RPC execution is service-role-only;
 - authoritative `order_events` and `shipment_events` enqueue triggers are installed.
 
 The initial performance advisor identified one Phase 6 foreign-key coverage issue on `notification_webhook_events.notification_id`. This was fixed additively rather than rewriting the already-applied foundation migration:
@@ -221,9 +223,22 @@ The initial performance advisor identified one Phase 6 foreign-key coverage issu
 - live catalog check confirms `notification_webhook_events_notification_id_idx` exists;
 - post-fix performance advisor no longer reports an unindexed foreign key.
 
-Automated verification for `d0d5c2ddd15accae5f934dc8af794caf97ddd70b`:
+A later final reliability review found a real callback race: Resend can acknowledge/send and deliver a webhook before the worker persists `provider_message_id`. The first reconciliation implementation also exposed a possible inverse lock-order deadlock. Both were covered before rollout:
 
-- GitHub Actions CI run `34730799913` / run #1482: PASS;
+- RED callback/body-limit evidence: CI #1492 showed the new oversized-body contract failing with the old `401` behavior and the early-webhook migration contract absent;
+- RED lock-order evidence: commit `c45be142c70c6785eb2c841d0aca3793955506f7`, CI #1498 — **734/735** tests passed and the only failure required the provider advisory lock before the outbox row lock;
+- final GREEN implementation commit: `49a1152a396f8803e97e694e4100955baa3cdb6e`;
+- Git migration: `supabase/migrations/202609120004_transactional_notification_webhook_reconciliation.sql`;
+- hosted migration history: `20260913022001 transactional_notification_webhook_reconciliation`;
+- both completion and webhook paths now serialize on the same provider-message advisory lock, with completion taking that lock before `FOR UPDATE`;
+- early webhook rows are linked after provider-id persistence and terminal delivery/bounce/failure state is reconciled deterministically;
+- live rollback-only smoke proved an early `email.delivered` becomes `delivered` after completion and leaves no persisted fixture/event;
+- current live notification webhook-event count remained zero after rollback smoke;
+- post-DDL security/performance advisors show no new Phase 6 grant exposure and no unindexed-FK regression.
+
+Automated verification for `49a1152a396f8803e97e694e4100955baa3cdb6e`:
+
+- GitHub Actions CI run `34732647275` / run #1500: PASS;
 - exact Node **22.1.0** runtime gate: PASS;
 - frozen install: PASS;
 - typecheck: PASS;
@@ -237,8 +252,9 @@ Remaining Phase 6 acceptance boundary is operational rather than implementation/
 1. deploy the accepted branch candidate to KingHost and restart through the panel;
 2. ensure production has `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` and the existing `CRON_SECRET`;
 3. register `https://proxybembem.com.br/api/webhooks/resend` in Resend for only `email.sent`, `email.delivered`, `email.bounced`, `email.failed`, `email.suppressed`;
-4. configure KingHost cron `POST /api/internal/notifications/process` every 5 minutes with `X-CRON-AUTH` matching `CRON_SECRET`;
-5. perform a safe live transactional e-mail acceptance and verify provider callback status plus admin history/manual resend without fabricating payment/refund/chargeback events.
+4. confirm the Resend sending-domain configuration keeps **Open Tracking = OFF** and **Click Tracking = OFF**;
+5. configure KingHost cron `POST /api/internal/notifications/process` every 5 minutes with `X-CRON-AUTH` matching `CRON_SECRET`;
+6. perform a safe live transactional e-mail acceptance and verify provider callback status plus admin history/manual resend without fabricating payment/refund/chargeback events.
 
 Do not mark Phase 6 production-accepted until those provider/KingHost checks are actually observed or owner-confirmed.
 
@@ -276,6 +292,6 @@ Therefore keep Phase 4 wording factual: automated evidence is green and multiple
 ## NEXT EXACT ACTION
 
 1. Deploy the current Phase 6 candidate to KingHost and restart it through the panel.
-2. Configure/verify the Resend signing secret + operational webhook subscriptions and the 5-minute KingHost notification cron described in `docs/deployment/kinghost.md`.
+2. Configure/verify the Resend signing secret + operational webhook subscriptions, confirm Open/Click Tracking remain OFF, and configure the 5-minute KingHost notification cron described in `docs/deployment/kinghost.md`.
 3. Run a safe live transactional e-mail acceptance, verify the admin delivery history/manual resend, and record owner/provider evidence before marking Phase 6 production-accepted.
 4. Do not merge/squash/rebase/delete the feature branch automatically.
