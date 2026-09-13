@@ -44,7 +44,8 @@ Phase 6 does not:
 - send marketing campaigns, newsletters, abandoned-cart mail, or automated WhatsApp;
 - expose full CPF, payment provider identifiers, Melhor Envio provider internals, raw webhook payloads, API keys, or internal audit metadata to the customer;
 - replace Supabase Auth confirmation/recovery e-mails;
-- add a second application/runtime solely for notifications.
+- add a second application/runtime solely for notifications;
+- add a separate admin attention flag for notification failure in this phase; the notification history itself is the operational surface.
 
 ## Architecture
 
@@ -128,7 +129,7 @@ Trigger when trusted shipment reconciliation records delivery and the accepted o
 
 Customer meaning: **Seu pedido foi entregue**.
 
-The trigger must prefer the same trusted carrier evidence already used by Phase 5. A generic admin-only state change must not fabricate carrier delivery evidence.
+The trigger must use the same trusted carrier evidence already used by Phase 5. A generic admin-only state change must not fabricate carrier delivery evidence.
 
 ### `canceled`
 
@@ -136,7 +137,7 @@ Trigger when the order is authoritatively canceled operationally.
 
 Customer meaning: **Seu pedido foi cancelado**.
 
-Copy must not claim the payment has already been refunded unless a separate trusted financial reversal exists. When money was captured, the e-mail may state that financial processing is separate and the customer will receive a separate message when the refund is confirmed.
+Copy must not claim the payment has already been refunded unless a separate trusted financial reversal exists. When money was captured, the e-mail states that financial processing is separate and that a separate message will be sent if/when a refund is confirmed.
 
 ### `refunded`
 
@@ -164,22 +165,23 @@ Each row represents one intended customer e-mail delivery and contains at minimu
 - `order_id` FK;
 - allowlisted notification type;
 - recipient e-mail snapshot;
-- immutable rendered-input snapshot or bounded customer-safe template payload;
+- immutable bounded customer-safe template payload;
 - deterministic dedupe key;
 - provider idempotency key;
 - provider message ID when known;
 - status;
 - attempt count;
 - `next_attempt_at`;
+- processing claim/lease metadata;
 - last bounded error class/code suitable for admin display;
 - timestamps for created, last attempted, sent, delivered, bounced/failed, and terminal failure as applicable;
-- manual resend lineage (`resend_of_id` or equivalent) when a human explicitly creates a new send.
+- manual resend lineage (`resend_of_id`) when a human explicitly creates a new send.
 
 The table must not store provider API keys, webhook secrets, full raw provider payloads, CPF, or raw internal order event metadata.
 
 ### Status model
 
-Use a bounded state machine conceptually equivalent to:
+Use a bounded state machine equivalent to:
 
 ```text
 pending
@@ -193,15 +195,15 @@ bounced
 
 `sent` means Resend accepted the message, not that the recipient received it. `delivered` requires a trusted provider webhook. A bounce/provider failure can transition an accepted message to `bounced`/`failed` as appropriate.
 
-Admin-facing Portuguese labels may include:
+Admin-facing Portuguese labels:
 
-- Pendente
-- Enviando
-- Enviado
-- Entregue
-- Aguardando nova tentativa
-- Falhou
-- Rejeitado/Bounce
+- `pending` → Pendente
+- `processing` → Enviando
+- `sent` → Enviado
+- `delivered` → Entregue
+- `retry_scheduled` → Aguardando nova tentativa
+- `failed` → Falhou
+- `bounced` → Rejeitado/Bounce
 
 ## Deduplication and idempotency
 
@@ -216,7 +218,7 @@ The Resend idempotency key must be stable for all automatic retries of one outbo
 
 Because Resend retains idempotency keys for a limited provider window, the database uniqueness constraint remains the long-term duplicate-prevention authority.
 
-A manual admin resend is intentionally a **new** delivery. It creates a new outbox row with a new provider idempotency key and links back to the original failed/bounced/sent message for auditability. It never mutates historical delivery truth to pretend the original succeeded.
+A manual admin resend is intentionally a **new** delivery. It creates a new outbox row with a new provider idempotency key, links back to the original row through `resend_of_id`, and reuses the original immutable customer-safe template payload. It never overwrites the historical row and never silently changes the message meaning based on newer order state.
 
 ## Retry behavior
 
@@ -229,11 +231,11 @@ Retry schedule:
 - attempt 3: no earlier than 30 minutes after a retryable attempt-2 failure;
 - after attempt 3 fails retryably, mark terminal `failed`.
 
-Definite non-retryable provider rejection must fail immediately and not consume blind retries that cannot succeed without changing data/configuration.
+Definite non-retryable provider rejection fails immediately and is not blindly retried.
 
 Network timeouts, provider 5xx, and other outcome-uncertain failures must reuse the same Resend idempotency key and exact payload. This avoids duplicate messages when the original request may have reached the provider.
 
-A worker crash/lease expiry must make the row safely reclaimable without sending a different payload under the same key.
+A worker crash/lease expiry must make the row safely reclaimable without changing the payload or provider idempotency key.
 
 ## Worker and scheduling
 
@@ -244,13 +246,14 @@ Requirements:
 - authenticate with the existing high-entropy `CRON_SECRET` timing-safe boundary;
 - service-role/database access only;
 - claim rows atomically so concurrent invocations cannot process the same row simultaneously;
-- bounded batch size, initially max 25 rows per invocation;
+- processing claims use a finite lease so crashed work can be reclaimed;
+- bounded batch size: max 25 rows per invocation;
 - process only rows whose `next_attempt_at <= now()` and whose state is eligible;
 - no recipient addresses, message bodies, provider IDs, or PII in the route response;
 - response contains only bounded counts/booleans suitable for cron observability;
 - no logs containing e-mail bodies, customer address, API key, webhook secret, or raw provider payload.
 
-Target KingHost cadence: every **5 minutes**.
+KingHost cadence: every **5 minutes**.
 
 The feature remains correct if a cron run is missed: rows stay durable and become eligible on the next invocation.
 
@@ -264,7 +267,7 @@ Provider send requirements:
 - use existing `RESEND_API_KEY`;
 - sender remains `ProxyBembem <noreply@proxybembem.com.br>` unless later changed by an explicit store-setting phase;
 - send both HTML and text versions;
-- `Idempotency-Key` header on every transactional order send;
+- include `Idempotency-Key` on every transactional order send;
 - timeout remains bounded;
 - return/record only the provider message identifier and a bounded result classification;
 - never expose raw Resend responses to browsers/admin UI.
@@ -276,21 +279,21 @@ Add a public POST webhook endpoint dedicated to Resend delivery events.
 Security requirements:
 
 - read the raw request body before parsing;
-- verify the official Resend/Svix signature with a dedicated environment secret such as `RESEND_WEBHOOK_SECRET`;
-- reject unsigned/invalid/replayed events according to the provider's official verification mechanism;
-- use provider event identity for idempotent ingestion;
+- verify the official Resend/Svix signature using the provider's `svix-id`, `svix-timestamp`, and `svix-signature` headers plus a dedicated `RESEND_WEBHOOK_SECRET` environment value;
+- reject invalid signatures;
+- persist/uniquely consume `svix-id` so replayed/duplicate webhook deliveries are idempotent;
 - match customer messages by trusted Resend `email_id`/stored provider message ID, never by recipient address alone;
 - return quickly and never perform unrelated order mutations.
 
-Subscribe only to operational events needed by this phase, including provider events equivalent to:
+Subscribe only to these operational Resend event classes for Phase 6:
 
-- sent/accepted when useful for reconciliation;
-- delivered;
-- bounced;
-- failed;
-- suppressed when it represents a non-delivery condition.
+- `email.sent`;
+- `email.delivered`;
+- `email.bounced`;
+- `email.failed`;
+- `email.suppressed` when supported by the configured webhook event selection.
 
-Do **not** subscribe the application logic to opened/clicked events for Phase 6.
+Do not subscribe application behavior to `email.opened` or `email.clicked`.
 
 Webhook delivery state changes do not alter order/payment/fulfillment/shipment state.
 
@@ -335,20 +338,20 @@ Requirements:
 - POST-only mutation;
 - explicit human action; no automatic mass resend;
 - creates a new linked outbox row rather than overwriting history;
-- uses the current trusted order snapshot only if the template semantics require current operational fields; otherwise preserve the original customer-safe message context so a historical message cannot silently change meaning;
+- reuses the original immutable customer-safe template payload;
 - new provider idempotency key;
-- audit event/record of who initiated the resend according to existing admin audit conventions;
-- rate/bounds to prevent accidental resend loops.
+- audit record of who initiated the resend according to existing admin audit conventions;
+- one active manual resend request per original notification at a time; repeated concurrent clicks dedupe at the database mutation boundary.
 
 Manual resend does not reset automatic retry counters on the original row.
 
 ## Enqueue integration points
 
-Prefer enqueueing at the same trusted server/database transition boundary that records each authoritative event, rather than from page renders or client requests after the fact.
+Enqueue at the same trusted server/database transition boundary that records each authoritative event, not from page renders or client reads.
 
-Desired property: if the authoritative transition is committed, exactly one corresponding automatic notification intent is durably recorded, even if Resend is unavailable.
+Required property: if the authoritative transition is committed, exactly one corresponding automatic notification intent is durably recorded, even if Resend is unavailable.
 
-Where practical, use database-level/RPC transactional insertion alongside the existing authoritative transition/event write. Where the current flow cannot be safely extended transactionally without changing a provider boundary, use a deterministic event-derived dedupe key and a reconciliation-safe enqueue step.
+Use database-level/RPC transactional insertion alongside the existing authoritative transition/event write wherever that transition already occurs in an RPC/database transaction. For provider reconciliation flows where the trusted external result is first normalized in application code, use a deterministic event-derived dedupe key and a single backend enqueue operation immediately after the authoritative state mutation; reconciliation retries must be safe because the dedupe key is deterministic.
 
 Never enqueue from:
 
@@ -358,11 +361,9 @@ Never enqueue from:
 - label generation/printing alone;
 - a browser-provided payment/status value.
 
-## Failure and attention behavior
+## Failure behavior
 
-A terminal automatic notification failure must be visible in the order's admin notification section.
-
-Phase 6 may also open/reuse a bounded admin attention signal for persistent notification failure if this integrates cleanly with the existing attention system; the notification row itself remains the source of delivery truth.
+A terminal automatic notification failure is visible in the order's admin notification section. Phase 6 does not create a second attention-flag source for these failures.
 
 The feature must not spam the customer while recovering from errors. Automatic retries are capped at three and use the same provider idempotency key/payload.
 
@@ -375,7 +376,7 @@ Notification outbox/provider delivery records are private operational data.
 - service-role/backend owns enqueue/claim/send/webhook mutation paths;
 - admin reads go through existing protected server-side admin access patterns;
 - SQL functions used for mutation are fixed-`search_path`, narrowly granted, and service-role/admin-server only as appropriate;
-- add indexes required for due-job claiming, order-history display, provider-message lookup, and dedupe uniqueness.
+- add indexes required for due-job claiming, order-history display, provider-message lookup, webhook-event dedupe, and notification dedupe uniqueness.
 
 ## Recovery e-mail compatibility
 
@@ -401,7 +402,7 @@ Required automated coverage includes:
 
 - allowlisted notification types only;
 - unique automatic dedupe behavior;
-- manual resend creates distinct linked row;
+- manual resend creates distinct linked row and reuses immutable original payload;
 - exactly three automatic attempts maximum;
 - retry timestamps follow the chosen schedule;
 - terminal/non-retryable classification;
@@ -440,10 +441,10 @@ Required automated coverage includes:
 
 - invalid signature rejected;
 - valid operational event accepted;
-- duplicate webhook delivery idempotent;
+- duplicate/replayed `svix-id` idempotent;
 - event cannot update a row by recipient address alone;
 - delivered/bounced/failed state transitions bounded;
-- opened/clicked ignored/not subscribed by application behavior;
+- opened/clicked absent from subscribed application behavior;
 - webhook never mutates order/payment/fulfillment/shipment state.
 
 ### Admin
@@ -451,6 +452,7 @@ Required automated coverage includes:
 - AAL2/owner/session/same-origin boundary on resend mutation;
 - notification history sanitized;
 - manual resend requires explicit POST action;
+- concurrent repeated manual resend request dedupes;
 - failure status/attempt counts visible;
 - no-store on protected admin responses.
 
@@ -463,7 +465,7 @@ Exact KingHost Node 22.1.0, frozen install, typecheck, `build:kinghost`, private
 1. Land schema/RLS/RPC foundation with no live sending trigger enabled until automated tests are green.
 2. Apply hosted Supabase migration once and verify ACL/RLS/index/function ownership.
 3. Deploy worker/provider/template code with automatic trigger integration controlled so historical orders are not backfilled accidentally.
-4. Configure `RESEND_WEBHOOK_SECRET` and register the Production webhook endpoint with only Phase 6 operational events.
+4. Configure `RESEND_WEBHOOK_SECRET` and register the Production webhook endpoint for only the approved Phase 6 operational events.
 5. Configure KingHost notification worker cron every 5 minutes using the existing `CRON_SECRET` boundary.
 6. Run a controlled Production acceptance using an owner-selected safe order/event path; do not manufacture a real payment/refund/chargeback solely for testing without explicit authorization.
 7. Verify admin status, provider acceptance/delivery callback, and manual resend on a safe controlled notification.
