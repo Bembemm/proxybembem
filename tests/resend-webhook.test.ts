@@ -150,15 +150,16 @@ test("handler rejects invalid or missing signatures before parsing/recording", a
     },
   })
   const rawBody = "not-even-json"
-
-  for (const headers of [
+  const headerVariants: HeadersInit[] = [
     {},
     {
       "svix-id": MESSAGE_ID,
       "svix-timestamp": String(NOW_SECONDS),
       "svix-signature": "v1,wrong",
     },
-  ]) {
+  ]
+
+  for (const headers of headerVariants) {
     const response = await handler(new Request("https://www.proxybembem.com.br/api/webhooks/resend", {
       method: "POST",
       headers,
