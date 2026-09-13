@@ -21,7 +21,7 @@ test("KingHost docs define five-minute notification cron with the existing maint
   assert.match(text, /https:\/\/proxybembem\.com\.br\/api\/internal\/notifications\/process/)
 })
 
-test("KingHost docs define signed Resend webhook and explicitly exclude open/click tracking", async () => {
+test("KingHost docs define signed Resend webhook and explicitly disable open/click tracking", async () => {
   const text = await source("docs/deployment/kinghost.md")
   assert.match(text, /RESEND_WEBHOOK_SECRET/)
   assert.match(text, /https:\/\/proxybembem\.com\.br\/api\/webhooks\/resend/)
@@ -32,4 +32,6 @@ test("KingHost docs define signed Resend webhook and explicitly exclude open/cli
   assert.match(text, /email\.suppressed/)
   assert.match(text, /não.*email\.opened/i)
   assert.match(text, /não.*email\.clicked/i)
+  assert.match(text, /Open Tracking.*(?:OFF|desativad[oa])/i)
+  assert.match(text, /Click Tracking.*(?:OFF|desativad[oa])/i)
 })
