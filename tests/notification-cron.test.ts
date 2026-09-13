@@ -60,7 +60,7 @@ test("notification cron accepts Bearer and KingHost X-CRON-AUTH and returns only
   await withEnv(async () => {
     const { POST } = await import("../app/api/internal/notifications/process/route.ts")
     const bodies: Record<string, unknown>[] = []
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(String(input))
       assert.equal(url.pathname, "/rest/v1/rpc/claim_due_notification_outbox")
       const body = JSON.parse(String(init?.body)) as Record<string, unknown>
@@ -71,10 +71,11 @@ test("notification cron accepts Bearer and KingHost X-CRON-AUTH and returns only
       return Response.json([])
     })
 
-    for (const headers of [
+    const acceptedHeaders: HeadersInit[] = [
       { authorization: `Bearer ${CRON_VALUE}` },
       { "x-cron-auth": CRON_VALUE },
-    ]) {
+    ]
+    for (const headers of acceptedHeaders) {
       const response = await POST(request(headers))
       assert.equal(response.status, 200)
       assert.equal(response.headers.get("cache-control"), "no-store")
