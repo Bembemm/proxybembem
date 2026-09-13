@@ -22,7 +22,7 @@ async function withSupabaseEnv<T>(fn: () => Promise<T>) {
 test("listAdminOrderNotifications returns a strict sanitized chronological projection", async (t) => {
   await withSupabaseEnv(async () => {
     const module = await import("../lib/server/admin-order-notifications.ts")
-    t.mock.method(globalThis, "fetch", async (input, init) => {
+    t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
       assert.equal(String(input), "https://example.supabase.co/rest/v1/rpc/admin_list_order_notifications")
       assert.equal(init?.method, "POST")
       assert.equal(init?.cache, "no-store")
