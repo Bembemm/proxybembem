@@ -24,6 +24,8 @@ test("order-event trigger maps only approved transactional order events", async 
   assert.match(text, /new\.metadata ->> 'to' = 'in_production'/i)
   assert.match(text, /new\.metadata ->> 'to' = 'ready_to_ship'/i)
   assert.match(text, /new\.metadata ->> 'to' = 'canceled'/i)
+  assert.match(text, /new\.metadata ->> 'to' = 'shipped'/i)
+  assert.match(text, /shipping_provider is distinct from 'melhor_envio'/i)
   assert.doesNotMatch(text, /new\.metadata ->> 'to' = 'completed'.+delivered/is)
 })
 
