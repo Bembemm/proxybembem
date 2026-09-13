@@ -1,13 +1,21 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-type AdminResult =
-  | { ok: true; principal: { userId: string } }
-  | { ok: false; reason: "unauthenticated" | "not_admin" | "unavailable" }
-
 const ORDER_ID = "11111111-1111-4111-8111-111111111111"
 const NOTIFICATION_ID = "22222222-2222-4222-8222-222222222222"
 const ADMIN_ID = "33333333-3333-4333-8333-333333333333"
+const AUTH_SESSION_ID = "44444444-4444-4444-8444-444444444444"
+
+function adminSuccess() {
+  return {
+    ok: true as const,
+    principal: {
+      userId: ADMIN_ID,
+      authSessionId: AUTH_SESSION_ID,
+      aal: "aal2" as const,
+    },
+  }
+}
 
 async function loadAction() {
   return import("../lib/server/admin-order-notification-actions.ts")
@@ -31,7 +39,7 @@ test("resend action rejects cross-site requests before auth and mutation", async
   const handler = module.createAdminOrderNotificationResendHandler({
     authorizeAdmin: async () => {
       authCalls += 1
-      return { ok: true, principal: { userId: ADMIN_ID } } as AdminResult
+      return adminSuccess()
     },
     resend: async () => {
       resendCalls += 1
@@ -88,7 +96,7 @@ test("resend action validates both UUIDs before calling the RPC", async () => {
   process.env.NEXT_PUBLIC_SITE_URL = "https://www.proxybembem.com.br"
   try {
     const handler = module.createAdminOrderNotificationResendHandler({
-      authorizeAdmin: async () => ({ ok: true, principal: { userId: ADMIN_ID } }),
+      authorizeAdmin: async () => adminSuccess(),
       resend: async () => {
         calls += 1
         return { outcome: "created" as const, notificationId: NOTIFICATION_ID }
@@ -115,7 +123,7 @@ test("resend action passes authenticated admin id and redirects with bounded fee
       ["not_ready", "resend-not-ready"],
     ] as const) {
       const handler = module.createAdminOrderNotificationResendHandler({
-        authorizeAdmin: async () => ({ ok: true, principal: { userId: ADMIN_ID } }),
+        authorizeAdmin: async () => adminSuccess(),
         resend: async (input) => {
           seen.push(input)
           return { outcome, notificationId: NOTIFICATION_ID }
@@ -146,13 +154,13 @@ test("not-found and storage errors stay sanitized", async () => {
   process.env.NEXT_PUBLIC_SITE_URL = "https://www.proxybembem.com.br"
   try {
     const notFoundHandler = module.createAdminOrderNotificationResendHandler({
-      authorizeAdmin: async () => ({ ok: true, principal: { userId: ADMIN_ID } }),
+      authorizeAdmin: async () => adminSuccess(),
       resend: async () => ({ outcome: "not_found" as const, notificationId: null }),
     })
     assert.equal((await notFoundHandler(request(), context())).status, 404)
 
     const failureHandler = module.createAdminOrderNotificationResendHandler({
-      authorizeAdmin: async () => ({ ok: true, principal: { userId: ADMIN_ID } }),
+      authorizeAdmin: async () => adminSuccess(),
       resend: async () => {
         throw new Error("sensitive-provider-body")
       },
