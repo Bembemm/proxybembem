@@ -152,7 +152,10 @@ test("account overview and order pages read only own curated repositories", asyn
   assert.match(list, /\/minha-conta\/pedidos\//)
   assert.match(detail, /getOwnOrderById/)
   assert.match(detail, /notFound/)
+  assert.match(detail, /getPublicStoreSettings/)
   assert.match(detail, /buildWhatsAppOrderUrl/)
+  assert.match(detail, /contactWhatsappE164/)
+  assert.match(detail, /supportUrl\s*\?\s*\(/)
   assert.match(detail, /Olá, gostaria de falar sobre o pedido/)
   assert.match(detail, /order\.orderNumber/)
   assert.match(detail, /order\.items/)
@@ -160,6 +163,7 @@ test("account overview and order pages read only own curated repositories", asyn
   assert.match(detail, /order\.paymentStatus/)
   assert.match(detail, /order\.fulfillmentStatus/)
   assert.match(detail, /order\.address/)
+  assert.doesNotMatch(detail, /5544991250332/)
 })
 
 test("profile save is an explicit same-origin POST using only own validated profile fields", async () => {
