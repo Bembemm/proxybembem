@@ -42,7 +42,7 @@ export function SiteShell({ children, storeSettings }: Readonly<SiteShellProps>)
           contactWhatsappE164={storeSettings.contactWhatsappE164}
         />
         <CartFloatingButton />
-        <CartPanel />
+        <CartPanel contactWhatsappE164={storeSettings.contactWhatsappE164} />
       </main>
     </CartProvider>
   )
