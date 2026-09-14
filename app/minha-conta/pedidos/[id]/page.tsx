@@ -8,6 +8,7 @@ import {
   type CustomerShipmentProjection,
   type CustomerShipmentTimelineEntry,
 } from "@/lib/server/customer-orders"
+import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
 export const metadata: Metadata = {
   title: "Detalhes do pedido",
@@ -61,7 +62,9 @@ export default async function OrderDetailPage({
   }
   if (!order) notFound()
 
+  const storeSettings = await getPublicStoreSettings()
   const supportUrl = buildWhatsAppOrderUrl(
+    storeSettings.contactWhatsappE164,
     `Olá, gostaria de falar sobre o pedido ${order.orderNumber}`,
   )
   const address = order.address
@@ -80,14 +83,16 @@ export default async function OrderDetailPage({
               Criado em {new Date(order.createdAt).toLocaleDateString("pt-BR")}
             </p>
           </div>
-          <a
-            href={supportUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex rounded-lg border border-violet-200 px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-50"
-          >
-            Falar sobre este pedido
-          </a>
+          {supportUrl ? (
+            <a
+              href={supportUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex rounded-lg border border-violet-200 px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-50"
+            >
+              Falar sobre este pedido
+            </a>
+          ) : null}
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
