@@ -57,12 +57,16 @@ Depois do comando terminar, reinicie a aplicação **pelo painel da KingHost**, 
 
 Não use `pm2 start`, Express, `next dev` ou uma porta hard-coded como procedimento de produção.
 
+**Permissões do shell:** execute build/deploy com o umask normal da sessão (`022`). Não deixe `umask 077` ativo durante o build: em 2026-09-14 isso fez assets recém-gerados de `/_next/static` nascerem em modo `600`, e o nginx respondeu `403` para CSS/JS. O `.env.production` deve continuar privado com permissão restrita própria; não afrouxe o arquivo de segredos para corrigir assets.
+
 ## Smoke após deploy
+
+O host canônico direto é `www`; o apex pode redirecionar para ele.
 
 ### Página principal
 
 ```bash
-curl -sSI https://proxybembem.com.br/ | head -n 6
+curl -sSI https://www.proxybembem.com.br/ | head -n 6
 ```
 
 Esperado: `HTTP/2 200`.
@@ -70,7 +74,7 @@ Esperado: `HTTP/2 200`.
 ### Arquivo de `public/`
 
 ```bash
-curl -sSI https://proxybembem.com.br/placeholder-logo.png | head -n 6
+curl -sSI https://www.proxybembem.com.br/placeholder-logo.png | head -n 6
 ```
 
 Esperado: `HTTP/2 200` e MIME de imagem.
@@ -78,9 +82,9 @@ Esperado: `HTTP/2 200` e MIME de imagem.
 ### CSS do build atual
 
 ```bash
-CSS=$(curl -fsS https://proxybembem.com.br/ | grep -oE '/_next/static/css/[^" ]+\.css' | head -n 1)
+CSS=$(curl -fsS https://www.proxybembem.com.br/ | grep -oE '/_next/static/css/[^" ]+\.css' | head -n 1)
 echo "$CSS"
-curl -sSI "https://proxybembem.com.br$CSS" | head -n 8
+curl -sSI "https://www.proxybembem.com.br$CSS" | head -n 8
 ```
 
 Esperado: `HTTP/2 200` e `content-type: text/css`.
@@ -88,9 +92,9 @@ Esperado: `HTTP/2 200` e `content-type: text/css`.
 ### JavaScript do build atual
 
 ```bash
-JS=$(curl -fsS https://proxybembem.com.br/ | grep -oE '/_next/static/[^" ]+\.js' | head -n 1)
+JS=$(curl -fsS https://www.proxybembem.com.br/ | grep -oE '/_next/static/[^" ]+\.js' | head -n 1)
 echo "$JS"
-curl -sSI "https://proxybembem.com.br$JS" | head -n 8
+curl -sSI "https://www.proxybembem.com.br$JS" | head -n 8
 ```
 
 Esperado: `HTTP/2 200` e MIME de JavaScript.
@@ -108,10 +112,10 @@ O endpoint aceita duas formas do mesmo segredo de manutenção:
 - `Authorization: Bearer <CRON_SECRET>` para diagnóstico manual controlado;
 - `X-CRON-AUTH: <CRON_SECRET>` para o Cronjob da KingHost.
 
-No painel de Cronjob da KingHost, configure a URL HTTPS:
+No painel de Cronjob da KingHost, use diretamente o host canônico `www`:
 
 ```text
-https://proxybembem.com.br/api/internal/melhor-envio/refresh
+https://www.proxybembem.com.br/api/internal/melhor-envio/refresh
 ```
 
 Cadência mantida do deployment anterior: todos os dias às **03:17**.
