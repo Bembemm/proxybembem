@@ -69,9 +69,11 @@ test("store notice is plain text, conditional, and rendered directly below navba
   assert.doesNotMatch(notice, /dangerouslySetInnerHTML/)
   assert.doesNotMatch(notice, /innerHTML/)
   assert.match(shell, /<Navbar\s*\/?>[\s\S]*<StoreNotice/)
+  const navbar = shell.indexOf("<Navbar")
+  const storeNotice = shell.indexOf("<StoreNotice")
+  const pageContent = shell.indexOf("{children}", storeNotice)
   assert.ok(
-    shell.indexOf("<Navbar") < shell.indexOf("<StoreNotice") &&
-      shell.indexOf("<StoreNotice") < shell.indexOf("{children}"),
+    navbar < storeNotice && storeNotice < pageContent,
     "store notice must sit directly below navbar before page content",
   )
 })
