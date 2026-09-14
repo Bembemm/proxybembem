@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Crimson_Text, MedievalSharp } from "next/font/google"
 import { SiteShell } from "@/components/site-shell"
+import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 import "./globals.css"
 
 const medievalSharp = MedievalSharp({
@@ -34,11 +35,13 @@ export const viewport: Viewport = {
   themeColor: "#8B5CF6",
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const storeSettings = await getPublicStoreSettings()
+
   return (
     <html lang="pt-BR" className={`${medievalSharp.variable} ${crimsonText.variable} bg-slate-50`}>
       <body className="font-serif antialiased bg-slate-50 min-h-screen overflow-x-hidden">
-        <SiteShell>{children}</SiteShell>
+        <SiteShell storeSettings={storeSettings}>{children}</SiteShell>
       </body>
     </html>
   )
