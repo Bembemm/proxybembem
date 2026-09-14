@@ -3,7 +3,7 @@
 **Date:** 2026-09-14  
 **Branch:** `feat/phase-7-store-settings`  
 **Base:** `main` @ `4d9f5a4524dc7ebabd24bcb4a453aa24e783fc66`  
-**Status:** approved in chat; awaiting final written-spec review before implementation planning.
+**Status:** approved by owner; implementation plan created; implementation not started.
 
 ## 1. Goal
 
@@ -101,7 +101,7 @@ The admin settings page loads the authoritative current row and renders three se
 
 The save request includes `expectedUpdatedAt`.
 
-The backend validates the complete proposed value. The database mutation must compare the expected revision before update. If the row changed since the page loaded, the action returns a conflict and the UI instructs the owner to reload rather than overwriting newer changes.
+The backend validates the complete proposed value. The database mutation compares the expected revision before update. If the row changed since the page loaded, the action returns a conflict and the UI instructs the owner to reload rather than overwriting newer changes.
 
 The mutation and its audit record are atomic. A backend-only database RPC updates the singleton row and writes one corresponding `admin_audit_log` record in the same transaction.
 
@@ -127,7 +127,7 @@ A server-only settings repository returns a typed, sanitized projection containi
 - notice enabled flag;
 - optional notice text.
 
-On transient read failure, the public site must remain available with safe defaults:
+On transient read failure, the public site remains available with safe defaults:
 
 - production lead time: `5` business days;
 - notice: disabled;
@@ -144,13 +144,13 @@ The root server layout is the natural boundary for loading the public settings p
 
 The implementation uses bounded server-side caching supported by the current Next.js 16 runtime and explicit invalidation/revalidation after a successful admin update so changes become visible promptly without adding an uncached database roundtrip to every public render.
 
-The exact cache primitive is an implementation detail chosen in the plan against the current Next.js API, but the contract is fixed: public reads may be cached, successful writes invalidate them, and admin reads remain uncached/no-store.
+The implementation plan fixes the cache contract: public reads may be cached, successful writes invalidate them immediately, and admin reads remain uncached/no-store.
 
 ## 10. Storefront consumers
 
 ### Production lead time
 
-The shared FAQ currently hardcodes “5 dias úteis”. It must instead render from `production_lead_time_business_days`, preserving singular/plural wording if necessary.
+The shared FAQ currently hardcodes “5 dias úteis”. It must instead render from `production_lead_time_business_days`, preserving singular/plural wording.
 
 The global setting does **not** silently rewrite existing product descriptions/sections that contain their own editorial text such as “5 dias úteis”. Existing product rows remain historical/editorial content until explicitly edited through product management.
 
@@ -209,7 +209,7 @@ Phase 7 must not weaken any accepted invariant from Phases 0–6:
 - backend dependency unavailable -> `503`;
 - all protected responses remain no-store.
 
-The UI must keep the last authoritative loaded values visible on validation error where feasible and must not claim success until the database update and audit record both succeed.
+The UI keeps the last authoritative loaded values visible on validation error where feasible and does not claim success until the database update and audit record both succeed.
 
 ### Public site
 
@@ -222,7 +222,7 @@ The UI must keep the last authoritative loaded values visible on validation erro
 
 Implementation follows TDD.
 
-Coverage must include:
+Coverage includes:
 
 - migration/schema contract for singleton, constraints, RLS and grants;
 - public projection validation and safe fallback behavior;
@@ -240,18 +240,18 @@ Coverage must include:
 - no secret/provider settings introduced into V1;
 - existing checkout/payment/shipping/notification tests remain green.
 
-The old test that asserts literal five-day production copy must be rewritten to assert dynamic settings behavior while preserving `5` as the safe default.
+The old test that asserts literal five-day production copy is rewritten to assert dynamic settings behavior while preserving `5` as the safe default.
 
 ## 14. Rollout
 
 1. Implement and verify locally/CI on `feat/phase-7-store-settings`.
-2. Apply only the new additive Phase 7 migration(s) to the hosted Supabase project after the migration contract is green.
+2. Apply only the new additive Phase 7 migration(s) to the hosted Supabase project after the migration contract and branch CI are green.
 3. Re-run security/performance advisors and confirm no unintended browser grants or policy regressions.
 4. Deploy the application candidate to KingHost using the existing deployment runbook.
 5. Smoke `/admin/configuracoes` with real admin auth/TOTP.
 6. Change a harmless setting and verify persistence, conflict/audit behavior and public propagation.
 7. Verify FAQ/contact/banner behavior and verify checkout/payment/shipping flows remain unchanged.
-8. Record observed evidence in `CURRENT_STATUS.md`, master plan and `docs/superpowers/phase-7/CONTINUIDADE.md`.
+8. Record observed evidence in `CURRENT_STATUS.md`, master plan, project overview and `docs/superpowers/phase-7/CONTINUIDADE.md`.
 
 Phase 7 is not marked complete until hosted migration, application deployment and targeted Production smoke are accepted.
 
