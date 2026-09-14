@@ -1,5 +1,8 @@
-import { isAllowedAccountRequestOrigin } from "./account-origin.ts"
 import type { AdminAccessResult } from "./admin-auth.ts"
+import {
+  isAllowedCheckoutOrigin,
+  resolvePublicSiteUrl,
+} from "./env.ts"
 import {
   InvalidJsonBodyError,
   RequestBodyTooLargeError,
@@ -56,11 +59,30 @@ function isValidExpectedUpdatedAt(value: unknown): value is string {
   )
 }
 
+function isAllowedMutationOrigin(request: Request) {
+  let requestOrigin: string
+  let siteUrl: string
+
+  try {
+    requestOrigin = new URL(request.url).origin
+    siteUrl = resolvePublicSiteUrl(requestOrigin)
+  } catch {
+    return false
+  }
+
+  return isAllowedCheckoutOrigin({
+    originHeader: request.headers.get("origin"),
+    configuredSiteUrl: siteUrl,
+    requestOrigin,
+    nodeEnv: process.env.NODE_ENV,
+  })
+}
+
 export function createAdminStoreSettingsRouteHandler(
   deps: AdminStoreSettingsRouteDependencies,
 ) {
   return async function PATCH(request: Request) {
-    if (!isAllowedAccountRequestOrigin(request)) {
+    if (!isAllowedMutationOrigin(request)) {
       return response({ error: "admin_access_denied" }, 403)
     }
 
