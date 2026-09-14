@@ -19,7 +19,7 @@ V1 contains exactly these settings:
 - `contact_email` — optional public contact e-mail;
 - `contact_whatsapp_e164` — optional public WhatsApp number stored canonically in E.164 format;
 - `notice_enabled` — boolean, default `false`;
-- `notice_text` — optional plain-text storefront notice, bounded in length.
+- `notice_text` — optional plain-text storefront notice, maximum 400 characters.
 
 The administrative UI lives at `/admin/configuracoes` and is exposed in the protected admin navigation as `Configurações`.
 
@@ -53,25 +53,26 @@ The row is updated optimistically using `updated_at` so two open admin tabs cann
 
 The intended columns are:
 
-- `id` — singleton identifier constrained to one canonical value;
+- `id text primary key` constrained to the single canonical value `default`;
 - `production_lead_time_business_days integer not null default 5`;
 - `contact_email text null`;
 - `contact_whatsapp_e164 text null`;
 - `notice_enabled boolean not null default false`;
 - `notice_text text null`;
-- `updated_at timestamptz not null`;
-- `updated_by uuid null` referencing the administrative actor where appropriate to the existing schema conventions.
+- `updated_at timestamptz not null`.
+
+The migration inserts exactly one initial row with `id = 'default'`.
 
 Database checks must enforce at minimum:
 
+- `id = 'default'`;
 - production lead time between 1 and 15 inclusive;
-- bounded e-mail/WhatsApp/text lengths;
-- control characters rejected from public strings;
-- WhatsApp canonical format accepted only when present;
-- `notice_enabled = true` requires a non-empty valid `notice_text`;
-- singleton identity cannot fan out into multiple live rows.
+- `contact_email` is null or trimmed, contains no control characters and is at most 254 characters;
+- `contact_whatsapp_e164` is null or matches canonical E.164 shape `+` followed by 8–15 digits, with the first digit non-zero;
+- `notice_text` is null or trimmed, contains no control characters and is at most 400 characters;
+- `notice_enabled = true` requires a non-empty valid `notice_text`.
 
-The exact maximum notice length should be modest (recommended 300–500 characters) and must be mirrored by application validation.
+Application validation must be at least as strict as the database checks. E-mail syntax validation is performed in the application; the database provides boundedness/safety checks rather than attempting full RFC e-mail parsing.
 
 ## 6. Security model
 
@@ -83,7 +84,7 @@ Requirements:
 - no direct `INSERT`, `UPDATE` or `DELETE` for `anon` or ordinary `authenticated` roles;
 - no unrestricted browser `SELECT` dependency;
 - administrative mutation only through a backend-only RPC/service path protected by the existing admin authorization model;
-- `SECURITY DEFINER` functions, if used, must use a fixed safe `search_path` and narrow grants consistent with existing backend-only functions;
+- `SECURITY DEFINER` functions use the existing fixed empty `search_path` convention and narrow backend-only grants;
 - admin page/action responses remain `private, no-store`;
 - mutation requires the same-origin check and active admin authorization used by existing protected actions;
 - request bodies remain bounded and server-validated.
@@ -92,7 +93,7 @@ No secret or private provider value is ever returned through the public projecti
 
 ## 7. Administrative update flow
 
-The admin settings page loads the authoritative current row and renders the four setting groups in one form:
+The admin settings page loads the authoritative current row and renders three setting groups in one form:
 
 1. **Operação** — production lead time;
 2. **Contato** — e-mail and WhatsApp;
@@ -102,13 +103,13 @@ The save request includes `expectedUpdatedAt`.
 
 The backend validates the complete proposed value. The database mutation must compare the expected revision before update. If the row changed since the page loaded, the action returns a conflict and the UI instructs the owner to reload rather than overwriting newer changes.
 
-The mutation and its audit record should be atomic. Preferred design: a backend-only database RPC updates the singleton row and writes one corresponding `admin_audit_log` record in the same transaction.
+The mutation and its audit record are atomic. A backend-only database RPC updates the singleton row and writes one corresponding `admin_audit_log` record in the same transaction.
 
 Audit shape:
 
 - `entity_type`: `store_settings`;
-- stable singleton `entity_id`;
-- action such as `update_store_settings`;
+- `entity_id`: `default`;
+- action: `update_store_settings`;
 - previous allowlisted values;
 - new allowlisted values;
 - admin user id;
@@ -141,9 +142,9 @@ The settings lookup stays on the server. No Supabase service credential or direc
 
 The root server layout is the natural boundary for loading the public settings projection and passing it into the existing client `SiteShell`. `SiteShell` can then pass only the required values to client components such as FAQ, footer, cart and storefront notice.
 
-The implementation should use bounded server-side caching appropriate to the current Next.js version and explicitly invalidate/revalidate the public settings cache after a successful admin update so changes become visible promptly without adding an uncached database roundtrip to every public render.
+The implementation uses bounded server-side caching supported by the current Next.js 16 runtime and explicit invalidation/revalidation after a successful admin update so changes become visible promptly without adding an uncached database roundtrip to every public render.
 
-Admin reads remain uncached/no-store.
+The exact cache primitive is an implementation detail chosen in the plan against the current Next.js API, but the contract is fixed: public reads may be cached, successful writes invalidate them, and admin reads remain uncached/no-store.
 
 ## 10. Storefront consumers
 
@@ -162,9 +163,9 @@ The current public/support WhatsApp number is hardcoded in multiple locations. P
 - customer order support link;
 - cart/order WhatsApp fallback helpers.
 
-The URL/message helper should accept or receive the sanitized WhatsApp destination rather than embedding a global number internally.
+The URL/message helper accepts the sanitized WhatsApp destination rather than embedding a global number internally.
 
-If no public WhatsApp is available because the setting is empty or a settings read failed, the UI must not emit a malformed `wa.me` link. Contact affordances should be omitted or gracefully disabled instead.
+If no public WhatsApp is available because the setting is empty or a settings read failed, the UI must not emit a malformed `wa.me` link. Contact affordances are omitted or gracefully disabled instead.
 
 ### Contact e-mail
 
