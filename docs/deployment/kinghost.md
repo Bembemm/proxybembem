@@ -126,9 +126,64 @@ Uma chamada autorizada retorna somente:
 
 Falhas de autenticação retornam `401`; falhas de renovação retornam resposta sanitizada sem token ou detalhe do provedor.
 
+## Cron dos e-mails transacionais
+
+A fila de e-mails da Phase 6 é processada pela KingHost usando:
+
+```text
+GET /api/internal/notifications/process
+```
+
+A rota também aceita POST para diagnóstico manual controlado; GET existe porque o Cronjob HTTP da KingHost chama a URL dessa forma.
+
+O endpoint aceita o mesmo segredo de manutenção existente:
+
+- `Authorization: Bearer <CRON_SECRET>` para diagnóstico manual controlado;
+- `X-CRON-AUTH: <CRON_SECRET>` para o Cronjob da KingHost.
+
+No painel de Cronjob da KingHost, use diretamente o host canônico `www`:
+
+```text
+https://www.proxybembem.com.br/api/internal/notifications/process
+```
+
+Cadência: **a cada 5 minutos**. Cada chamada processa no máximo 25 notificações vencidas e retorna apenas contadores sanitizados; o corpo de e-mail, destinatário e IDs do provedor não são devolvidos pela rota.
+
+A aplicação faz no máximo 3 tentativas por notificação. Erros temporários voltam para a fila com retry após aproximadamente 5 minutos e depois 30 minutos. O mesmo `CRON_SECRET` deve permanecer apenas no ambiente da aplicação e no header protegido do Cronjob.
+
+## Webhook do Resend
+
+O webhook de produção usa diretamente o host canônico `www`:
+
+```text
+https://www.proxybembem.com.br/api/webhooks/resend
+```
+
+Copie o signing secret do webhook para a variável server-only:
+
+```text
+RESEND_WEBHOOK_SECRET=whsec_...
+```
+
+O endpoint verifica o corpo bruto com os headers Svix antes de aceitar qualquer evento. Assine somente os eventos operacionais usados pela Phase 6:
+
+- `email.sent`
+- `email.delivered`
+- `email.bounced`
+- `email.failed`
+- `email.suppressed`
+
+**Não** assine `email.opened` e **não** assine `email.clicked`; a aplicação não faz rastreamento de abertura nem clique.
+
+Além disso, no Resend abra a configuração do domínio de envio e confirme explicitamente que **Open Tracking = OFF** e **Click Tracking = OFF**. Não basta deixar de assinar os webhooks de abertura/clique: ambos os recursos de tracking do próprio provedor devem permanecer desativados para cumprir a decisão de não rastrear engajamento.
+
+O matching de entrega/falha é feito exclusivamente pelo `email_id` devolvido pelo Resend e já persistido no envio. Se um webhook operacional chegar antes de o worker persistir esse `email_id`, a reconciliação no banco liga o evento à notificação assim que o envio aceito é finalizado; os dois caminhos usam a mesma serialização por ID do provedor para evitar perda de callback e inversão de locks. Webhooks operacionais atrasados também são vinculados ao histórico mesmo quando o estado terminal já é mais forte e não deve ser rebaixado.
+
+O webhook rejeita corpos acima de 64 KiB antes de consultar o signing secret ou persistir eventos, inclusive quando o `Content-Length` está ausente ou subestima o corpo real.
+
 ## Arquivos de ambiente
 
-Segredos ficam fora do Git. O `.env.production` no servidor continua privado e deve manter permissões restritas. Não faça `source .env.production` no shell; valores dotenv podem conter espaços e caracteres que não são sintaxe shell. O Next/runtime lê o arquivo pelo mecanismo de ambiente da aplicação.
+Segredos ficam fora do Git. O `.env.production` no servidor continua privado e deve manter permissões restritas. Para a Phase 6, produção precisa de `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` e do `CRON_SECRET` já existente. Não faça `source .env.production` no shell; valores dotenv podem conter espaços e caracteres que não são sintaxe shell. O Next/runtime lê o arquivo pelo mecanismo de ambiente da aplicação.
 
 ## Build de CI vs deploy de servidor
 

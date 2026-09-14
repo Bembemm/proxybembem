@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeft, ExternalLink } from "lucide-react"
 import { notFound } from "next/navigation"
 import { AdminShell } from "../../../../components/admin/admin-shell.tsx"
 import { DangerConfirmForm } from "../../../../components/admin/danger-confirm-form.tsx"
+import { OrderNotificationHistory } from "../../../../components/admin/order-notification-history.tsx"
 import { ShipmentPanel } from "../../../../components/admin/shipment-panel.tsx"
 import {
   FulfillmentStatusBadge,
@@ -9,6 +10,7 @@ import {
 } from "../../../../components/admin/status-badge.tsx"
 import { listAdminAuditForEntity } from "../../../../lib/server/admin-audit.ts"
 import { requireAdminPageAccess } from "../../../../lib/server/admin-auth.ts"
+import { listAdminOrderNotifications } from "../../../../lib/server/admin-order-notifications.ts"
 import { getAdminOrderById } from "../../../../lib/server/admin-orders.ts"
 import {
   allowedAdminFulfillmentTransitions,
@@ -43,6 +45,12 @@ const SHIPMENT_FEEDBACK_MESSAGES = {
   "reconciled-not-purchased": "A reconciliação confirmou que a etiqueta não foi comprada e a remessa voltou a um estado seguro.",
 } as const
 
+const NOTIFICATION_FEEDBACK_MESSAGES = {
+  resent: "Reenvio de e-mail adicionado à fila.",
+  "resend-conflict": "Já existe um reenvio desse e-mail aguardando processamento.",
+  "resend-not-ready": "Esse e-mail ainda está em processamento ou aguardando nova tentativa.",
+} as const
+
 const PAYMENT_REQUIRED_COPY =
   "O pagamento aprovado é necessário para iniciar a produção. Verifique o status confirmado pelo Mercado Pago antes de continuar."
 const CANCELLATION_COPY =
@@ -50,11 +58,13 @@ const CANCELLATION_COPY =
 
 type FeedbackStatus = keyof typeof FEEDBACK_MESSAGES
 type ShipmentFeedbackStatus = keyof typeof SHIPMENT_FEEDBACK_MESSAGES
+type NotificationFeedbackStatus = keyof typeof NOTIFICATION_FEEDBACK_MESSAGES
 
 type PageParams = Promise<{ id: string }>
 type PageSearchParams = Promise<{
   status?: string | string[]
   shipment?: string | string[]
+  notification?: string | string[]
 }>
 
 export const dynamic = "force-dynamic"
@@ -71,6 +81,11 @@ function feedbackMessage(value: string | undefined) {
 function shipmentFeedbackMessage(value: string | undefined) {
   if (!value || !(value in SHIPMENT_FEEDBACK_MESSAGES)) return null
   return SHIPMENT_FEEDBACK_MESSAGES[value as ShipmentFeedbackStatus]
+}
+
+function notificationFeedbackMessage(value: string | undefined) {
+  if (!value || !(value in NOTIFICATION_FEEDBACK_MESSAGES)) return null
+  return NOTIFICATION_FEEDBACK_MESSAGES[value as NotificationFeedbackStatus]
 }
 
 function formatMoney(cents: number) {
@@ -188,16 +203,19 @@ export default async function AdminOrderDetailPage({
   const order = await getAdminOrderById(id)
   if (!order) notFound()
 
-  const [events, attention, audit, shipment] = await Promise.all([
+  const [events, attention, audit, shipment, notifications] = await Promise.all([
     listOrderEvents(id),
     listOpenOrderAttention(id),
     listAdminAuditForEntity({ entityType: "order", entityId: id }),
     getAdminShipmentProjectionForOrder(id),
+    listAdminOrderNotifications(id),
   ])
 
   const query = await searchParams
   const feedback =
-    shipmentFeedbackMessage(firstParam(query.shipment)) ?? feedbackMessage(firstParam(query.status))
+    notificationFeedbackMessage(firstParam(query.notification)) ??
+    shipmentFeedbackMessage(firstParam(query.shipment)) ??
+    feedbackMessage(firstParam(query.status))
   const transitions = allowedAdminFulfillmentTransitions(order.fulfillment_status)
   const paymentApproved = order.payment_status === "approved"
   const totalCents = order.total_cents ?? order.subtotal_cents
@@ -450,6 +468,13 @@ export default async function AdminOrderDetailPage({
             </dl>
           </Section>
         </div>
+
+        <Section
+          title="E-mails transacionais"
+          description="Histórico de envio, entrega e falhas. Reenvios são novas tentativas auditáveis e não alteram o registro original."
+        >
+          <OrderNotificationHistory orderId={order.id} notifications={notifications} />
+        </Section>
 
         <Section title="Linha do tempo" description="Eventos operacionais registrados para este pedido.">
           {events.length > 0 ? (

@@ -1,13 +1,13 @@
 # ProxyBembem — Current Status
 
-**Updated:** 2026-09-11
+**Updated:** 2026-09-14
 
 Canonical continuation checkpoint. Historical plans/specs under `docs/superpowers/plans/` and `docs/superpowers/specs/` remain implementation history; when they conflict with this file or `ADMIN_DASHBOARD_MASTER_PLAN.md`, these operational docs control.
 
 ## Active project
 
 - Project: Admin Dashboard + Customer Account Expansion
-- Active branch: `feat/admin-dashboard-expansion`
+- Active branch: `feat/transactional-notifications`
 - Base branch: `main`
 - Production runtime: KingHost Node.js **22.1.0**
 - Backend/Auth: hosted Supabase project `ProxyBembem` (`kicgoocozxzkuoqajqif`)
@@ -15,6 +15,7 @@ Canonical continuation checkpoint. Historical plans/specs under `docs/superpower
 - Phase 3 customer account/private orders: **COMPLETE / PRODUCTION ACCEPTED**
 - Phase 4 product catalog/admin expansion: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN / FINAL MANUAL PRODUCTION SMOKE DEFERRED BY OWNER**
 - Phase 5 Melhor Envio shipments/labels/tracking: **COMPLETE / PRODUCTION HANDOFF OWNER ACCEPTED**
+- Phase 6 transactional notifications: **COMPLETE / HOSTED HARDENING APPLIED / PRODUCTION ACCEPTED**
 - Do not merge, squash, rebase, delete or force-move the feature branch without explicit owner choice.
 
 ## Accepted runtime invariants
@@ -184,9 +185,89 @@ The previously omitted authenticated admin response-header observation was not s
 
 Phase 5 is accepted complete at the owner-handoff level. Any later provider/runtime defect is handled as an operational fix and does not automatically reopen Task 18 or Task 20.
 
+## Phase 6 — Transactional notifications
+
+**State: COMPLETE / HOSTED MIGRATIONS + FINAL HARDENING APPLIED / AUTOMATED GREEN / PRODUCTION ACCEPTED.**
+
+Implemented behavior:
+
+- durable Supabase notification outbox with immutable customer-safe payloads;
+- exactly eight transactional types: `payment_approved`, `production_started`, `ready_to_ship`, `shipped`, `delivered`, `canceled`, `refunded`, `charged_back`;
+- no order e-mail before authoritative payment approval; an admin cancellation of an order that never had an approved Mercado Pago event stays silent;
+- Resend client shared with password recovery, fixed sender `ProxyBembem <noreply@proxybembem.com.br>` and stable provider idempotency key;
+- automatic worker capped at 25 rows, at most three attempts, with retry schedule around +5 min and +30 min;
+- signed Svix/Resend webhook ingestion for `sent`, `delivered`, bounce/failure/suppression only;
+- no open/click tracking; Production Resend has **Open Tracking = OFF** and **Click Tracking = OFF**;
+- payment/refund/chargeback truth remains Mercado Pago and shipment truth remains the Phase 5 authoritative event flow;
+- trusted carrier delivery, not generic admin completion, creates the delivered notification;
+- protected admin history shows sanitized status/attempt information and supports explicit audited manual resend;
+- notification failure never mutates payment, fulfillment or shipment state;
+- webhook request bodies are capped at 64 KiB before signing-secret access/persistence, including when `Content-Length` understates the stream;
+- provider callbacks arriving before `provider_message_id` persistence are reconciled durably after send completion;
+- late operational callbacks are linked to the matching notification by trusted provider message ID even when monotonic state rules correctly prevent a downgrade.
+
+### Hosted database rollout and verification
+
+All Phase 6 migrations are present in hosted Supabase migration history, including the final additive hardening:
+
+- `20260913011820 transactional_notifications_foundation`;
+- `20260913011838 transactional_notification_triggers`;
+- `20260913013454 transactional_notification_advisor_indexes`;
+- `20260913022001 transactional_notification_webhook_reconciliation`;
+- `20260914180352 transactional_notification_final_hardening`;
+- `20260914181035 transactional_notification_webhook_backfill`.
+
+Live checks confirm:
+
+- `notification_outbox` and `notification_webhook_events` remain RLS-enabled backend-only operational tables;
+- browser `anon` / ordinary `authenticated` roles have no direct CRUD on either notification table;
+- notification worker/webhook mutation RPC execution remains service-role-only;
+- authoritative `order_events` and `shipment_events` enqueue triggers are installed;
+- the final hardening functions remain `SECURITY DEFINER`, fixed empty `search_path`, and executable only by `service_role`/database owner;
+- post-DDL security/performance advisors show no new Phase 6 grant exposure or unindexed-FK regression.
+
+The earlier callback-race/deadlock hardening remains in force: completion and webhook paths serialize on the same provider-message advisory lock, completion takes that lock before the outbox row lock, early callback rows are reconciled after provider-ID persistence, and terminal state precedence remains monotonic.
+
+### Production acceptance — COMPLETE
+
+Production provider/runtime acceptance was completed on 2026-09-14 using the already-deployed KingHost runtime `c8c2bb20f1c265729c4d4aee7fe65a91e2e1cc4c`:
+
+- KingHost notification cron uses direct `https://www.proxybembem.com.br/api/internal/notifications/process` every 5 minutes; the route accepts KingHost GET and controlled POST diagnostics;
+- Resend sending domain is verified in `sa-east-1`, sending enabled, Open Tracking OFF and Click Tracking OFF;
+- signed webhook is enabled at `https://www.proxybembem.com.br/api/webhooks/resend` for exactly `email.sent`, `email.delivered`, `email.bounced`, `email.failed`, `email.suppressed`;
+- a controlled `production_started` notification was accepted by Resend and reached `delivered` through the signed webhook path;
+- protected admin notification history rendered the result;
+- explicit manual resend created a distinct linked outbox row and that resend also reached `delivered`.
+
+The production acceptance exposed one audit edge: a late `email.sent` arriving after `email.delivered` was correctly prevented from downgrading the notification but originally remained unlinked in `notification_webhook_events`. Final hardening now resolves the matching notification independently of whether the state needs mutation. The one historical known orphan was backfilled by trusted `provider_message_id`; live count moved from **1 to 0**.
+
+Rollback-only hosted smoke after the final hardening proved both cancellation and callback behavior without leaving fixtures:
+
+- pending/unpaid order + admin cancellation -> **0** transactional notifications;
+- order with authoritative Mercado Pago approved event + admin cancellation -> `payment_approved` and `canceled` intents both exist;
+- late synthetic `email.sent` for an already delivered message -> webhook event links to the correct notification while outbox status remains `delivered`.
+
+No KingHost application redeploy was required for these final two behavior fixes because both are database-function changes applied directly through additive hosted migrations. The production app runtime already contained the required notification routes, worker, templates and GET cron compatibility.
+
+### Automated verification
+
+The final implementation/backfill checkpoint before status-document reconciliation is commit `caf1090cd3963d576d324e8ada6be70b83481027` with GitHub Actions run `34878962739` / run #1523: **PASS**.
+
+Verified in that run:
+
+- exact KingHost Node **22.1.0** runtime gate: PASS;
+- frozen pnpm install: PASS;
+- typecheck: PASS;
+- KingHost production build: PASS;
+- private-order route contract: PASS;
+- KingHost startup smoke: PASS;
+- full automated test suite: PASS.
+
+Phase 6 is production-accepted. Later operational defects are handled as normal fixes and do not automatically reopen the phase.
+
 ## Supabase advisor classification
 
-Post-DDL advisors showed no security regression requiring broader grants. Existing/intentional findings remain tracked separately:
+Post-DDL advisors show no Phase 6 security regression requiring broader grants. Existing/intentional findings remain tracked separately:
 
 - backend-only tables with RLS enabled and no browser policy are intentional where direct browser access is revoked;
 - `customer_get_order` / `customer_list_orders` are intentionally authenticated-callable `SECURITY DEFINER` ownership RPCs deriving identity from `auth.uid()`;
@@ -212,11 +293,12 @@ Therefore keep Phase 4 wording factual: automated evidence is green and multiple
 - Keep `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` as the safe default outside deliberate owner-approved purchase windows; never auto-enable it.
 - Never infer a successful label purchase from an HTTP timeout; reconcile first.
 - Purchase/generation/printing do not mark a customer order shipped.
+- Phase 6 notification failures never change payment, fulfillment or shipment truth.
 - Broader test-data/account cleanup and legacy schema removal remain separate explicit operations.
 
 ## NEXT EXACT ACTION
 
-1. No Phase 5 task remains open after the owner-accepted Task 20 handoff.
-2. Keep label spending explicit and fail-closed; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains the safe default outside deliberate purchase windows.
-3. The next project move is an explicit owner choice: integrate the feature branch or start the next phase. Do not merge/squash/rebase/delete the branch automatically.
-4. Carry the uncaptured authenticated admin cache-header browser observation into later hardening rather than claiming it was manually observed.
+1. No Phase 6 implementation, provider-configuration or acceptance task remains open.
+2. Keep the current production notification configuration and Phase 5 spending safeguards unchanged.
+3. The owner chooses separately whether to integrate PR #4 or begin Phase 7 — Store Settings.
+4. Do not merge/squash/rebase/delete the feature branch automatically.

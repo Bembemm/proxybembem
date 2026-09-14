@@ -194,6 +194,10 @@ export function getCronSecret() {
   return requireStrongSecret("CRON_SECRET")
 }
 
+export function getResendWebhookSecret() {
+  return requireStrongSecret("RESEND_WEBHOOK_SECRET")
+}
+
 export function getMelhorEnvioEnv(): MelhorEnvioEnv {
   return {
     environment: melhorEnvioEnvironment(),
