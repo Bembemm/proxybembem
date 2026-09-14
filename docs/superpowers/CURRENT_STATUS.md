@@ -4,6 +4,15 @@
 
 Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto, inclusive reconciliação de branches, arquitetura, histórico e backlog conhecido, está em `docs/PROJECT_MASTER_OVERVIEW.md` e deve ser lida primeiro.
 
+## Trabalho ativo nesta branch
+
+- Branch: `feat/phase-7-store-settings`.
+- Base inicial: `main` @ `4d9f5a4524dc7ebabd24bcb4a453aa24e783fc66`.
+- Handoff obrigatório da branch: `docs/superpowers/phase-7/CONTINUIDADE.md`.
+- Qualquer chat novo trabalhando nesta branch deve ler `CONTINUIDADE.md` inteiro antes de continuar.
+- A Phase 7 ainda não teve design nem implementação iniciados; não assumir schema, telas ou settings sem aprovação.
+- Ao terminar uma sessão com trabalho relevante nesta branch, atualizar `CONTINUIDADE.md` com estado e próximo passo exato.
+
 ## Baseline atual
 
 - Branch canônica: `main`.
@@ -102,7 +111,7 @@ Em 2026-09-14 um shell com `umask 077` fez assets de build nascerem `600`, causa
 
 ## Próxima ação
 
-1. Usar `docs/PROJECT_MASTER_OVERVIEW.md` como ponto de partida.
-2. Concluir a limpeza das branches históricas já classificadas como superadas.
-3. Criar qualquer trabalho novo a partir da `main` atual.
-4. Próxima fase prevista: **Phase 7 — Store Settings**, salvo se o proprietário preferir executar primeiro uma rodada de revisão/hardening das pendências conhecidas.
+1. Ler `docs/superpowers/phase-7/CONTINUIDADE.md` antes de qualquer trabalho novo nesta branch.
+2. Manter `docs/PROJECT_MASTER_OVERVIEW.md` como visão consolidada do projeto.
+3. Iniciar o design da **Phase 7 — Store Settings** somente quando solicitado pelo proprietário.
+4. Não começar Phase 8 ou Phase 9 automaticamente.
