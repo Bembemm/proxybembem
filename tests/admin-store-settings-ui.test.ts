@@ -77,7 +77,7 @@ test("settings form renders validation and conflict feedback without blind reloa
   assert.match(form, /fieldErrors/)
   assert.match(form, /response\.status\s*===\s*409/)
   assert.match(form, /store_settings_conflict/)
-  assert.match(form, /alterad[oa] em outra sessão[^"']*recarregue/i)
+  assert.match(form, /alterad[oa]s? em outra sessão[^"']*recarregue/i)
   assert.doesNotMatch(form, /window\.location\.reload/)
 })
 
