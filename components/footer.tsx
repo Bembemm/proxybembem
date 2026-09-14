@@ -3,6 +3,11 @@
 import Link from "next/link"
 import { Instagram, Lock, Mail } from "lucide-react"
 
+interface FooterProps {
+  contactEmail: string | null
+  contactWhatsappE164: string | null
+}
+
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -31,7 +36,11 @@ function TikTokIcon({ className }: { className?: string }) {
   )
 }
 
-export function Footer() {
+export function Footer({ contactEmail, contactWhatsappE164 }: FooterProps) {
+  const whatsappHref = contactWhatsappE164
+    ? `https://wa.me/${contactWhatsappE164.replace(/^\+/, "")}`
+    : null
+
   return (
     <footer className="relative bg-white/60 backdrop-blur-md border-t border-slate-200/50 shadow-sm">
       <div className="container mx-auto px-3 sm:px-4 py-8 sm:py-12">
@@ -77,26 +86,33 @@ export function Footer() {
             </h3>
             <div className="w-10 sm:w-12 h-px bg-[#8B5CF6]/40 mb-3 sm:mb-4 md:ml-auto" />
             <ul className="space-y-2 sm:space-y-3">
-              <li>
-                <a
-                  href="mailto:contato@proxybembem.com.br"
-                  className="flex items-center gap-2 text-base sm:text-lg text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
-                >
-                  <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6] shrink-0" />
-                  <span className="break-all">contato@proxybembem.com.br</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://wa.me/5544991250332"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-base sm:text-lg text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
-                >
-                  <WhatsAppIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6] shrink-0" />
-                  (44) 99125-0332
-                </a>
-              </li>
+              {contactEmail ? (
+                <li>
+                  <a
+                    href={`mailto:${contactEmail}`}
+                    className="flex items-center gap-2 text-base sm:text-lg text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
+                  >
+                    <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6] shrink-0" />
+                    <span className="break-all">{contactEmail}</span>
+                  </a>
+                </li>
+              ) : null}
+              {contactWhatsappE164 ? (
+                <li>
+                  <a
+                    href={whatsappHref ?? undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-base sm:text-lg text-slate-700 hover:text-purple-500 transition-colors md:justify-end"
+                  >
+                    <WhatsAppIcon className="w-4 h-4 sm:w-5 sm:h-5 text-[#8B5CF6] shrink-0" />
+                    {contactWhatsappE164}
+                  </a>
+                </li>
+              ) : null}
+              {!contactEmail && !contactWhatsappE164 ? (
+                <li className="text-base sm:text-lg text-slate-500">Contato indisponível no momento.</li>
+              ) : null}
             </ul>
           </div>
         </div>
