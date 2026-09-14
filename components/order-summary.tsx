@@ -9,7 +9,7 @@ interface OrderSummaryProps {
   isQuoting: boolean
   isSubmitting: boolean
   checkoutError: string | null
-  whatsappFallbackUrl: string
+  whatsappFallbackUrl: string | null
   onCheckout: () => void
 }
 
@@ -91,16 +91,18 @@ export function OrderSummary({
         </div>
       )}
 
-      <Button
-        asChild
-        variant="outline"
-        className="w-full border-slate-600 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white h-11"
-      >
-        <a href={whatsappFallbackUrl} target="_blank" rel="noopener noreferrer">
-          <MessageCircle className="w-4 h-4 mr-2" />
-          Prefiro continuar pelo WhatsApp
-        </a>
-      </Button>
+      {whatsappFallbackUrl ? (
+        <Button
+          asChild
+          variant="outline"
+          className="w-full border-slate-600 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white h-11"
+        >
+          <a href={whatsappFallbackUrl} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Prefiro continuar pelo WhatsApp
+          </a>
+        </Button>
+      ) : null}
 
       <div className="flex items-start justify-center gap-2 text-slate-500/90">
         <Lock className="w-4 h-4 text-[#8B5CF6]/60 shrink-0 mt-0.5" />
