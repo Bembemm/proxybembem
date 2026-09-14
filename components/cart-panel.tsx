@@ -64,6 +64,10 @@ interface ShippingQuoteResponse {
   error?: unknown
 }
 
+interface CartPanelProps {
+  contactWhatsappE164: string | null
+}
+
 function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
   if (!Array.isArray(value)) return null
 
@@ -94,7 +98,7 @@ function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
   return options
 }
 
-export function CartPanel() {
+export function CartPanel({ contactWhatsappE164 }: CartPanelProps) {
   const pathname = usePathname()
   const {
     items,
@@ -350,6 +354,7 @@ export function CartPanel() {
   }
 
   const whatsappFallbackUrl = buildWhatsAppOrderUrl(
+    contactWhatsappE164,
     buildWhatsAppOrderMessage(items, totalPrice, checkout, shipping.selectedShipping),
   )
 
