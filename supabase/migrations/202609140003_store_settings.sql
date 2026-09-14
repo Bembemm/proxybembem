@@ -108,10 +108,10 @@ begin
     );
   end if;
 
-  v_updated_at := pg_catalog.greatest(
-    pg_catalog.clock_timestamp(),
-    v_previous.updated_at + interval '1 microsecond'
-  );
+  v_updated_at := pg_catalog.clock_timestamp();
+  if v_updated_at <= v_previous.updated_at then
+    v_updated_at := v_previous.updated_at + interval '1 microsecond';
+  end if;
 
   update public.store_settings
      set production_lead_time_business_days = p_production_lead_time_business_days,
