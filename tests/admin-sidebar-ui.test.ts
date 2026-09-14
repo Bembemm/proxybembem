@@ -31,12 +31,14 @@ test("desktop admin navigation keeps the approved destinations and violet active
     ["Pedidos", "/admin/pedidos"],
     ["Produção", "/admin/producao"],
     ["Produtos", "/admin/produtos"],
+    ["Configurações", "/admin/configuracoes"],
     ["Integrações", "/admin/integrations/melhor-envio"],
   ] as const) {
     assert.match(nav, new RegExp(label))
     assert.match(nav, new RegExp(`href:\\s*["']${href.replaceAll("/", "\\/")}["']`))
   }
 
+  assert.match(nav, /["']settings["']/)
   assert.match(nav, /aria-current=\{active\s*\?\s*["']page["']/)
   assert.match(nav, /bg-violet-600/)
   assert.match(nav, /grid/)
