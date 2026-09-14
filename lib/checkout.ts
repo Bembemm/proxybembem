@@ -210,6 +210,11 @@ CEP: ${formatCep(normalized.cep)}
 -------------------`
 }
 
-export function buildWhatsAppOrderUrl(message: string) {
-  return `https://wa.me/5544991250332?text=${encodeURIComponent(message)}`
+export function buildWhatsAppOrderUrl(
+  destinationE164: string | null | undefined,
+  message: string,
+): string | null {
+  if (!destinationE164 || !/^\+[1-9][0-9]{7,14}$/.test(destinationE164)) return null
+
+  return `https://wa.me/${destinationE164.slice(1)}?text=${encodeURIComponent(message)}`
 }
