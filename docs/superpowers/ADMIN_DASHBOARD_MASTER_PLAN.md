@@ -216,15 +216,15 @@ Phase 5 is complete at the owner-handoff level. Later provider/runtime incidents
 
 # PHASE 6 — Transactional Notifications
 
-**State: IMPLEMENTATION COMPLETE / HOSTED SCHEMA APPLIED / AUTOMATED GREEN / PRODUCTION PROVIDER + CRON ACCEPTANCE PENDING.**
+**State: COMPLETE / HOSTED HARDENING APPLIED / AUTOMATED GREEN / PRODUCTION ACCEPTED.**
 
-Phase 6 adds production-capable transactional e-mail without coupling provider failures to payment, fulfillment or shipment truth.
+Phase 6 provides production-capable transactional e-mail without coupling provider failures to payment, fulfillment or shipment truth.
 
 ## Implemented architecture
 
 - durable backend-only Supabase outbox with immutable customer-safe template payloads;
 - exactly eight notification types: `payment_approved`, `production_started`, `ready_to_ship`, `shipped`, `delivered`, `canceled`, `refunded`, `charged_back`;
-- no notification on unpaid order creation;
+- no order e-mail before authoritative payment approval, including no cancellation message for an order that never had an approved Mercado Pago event;
 - deterministic database dedupe plus stable Resend `Idempotency-Key` across automatic retries;
 - shared server-side Resend transport with fixed sender `ProxyBembem <noreply@proxybembem.com.br>`;
 - worker protected by the existing `CRON_SECRET`, max batch 25, max three automatic attempts, retry around +5 minutes and +30 minutes;
@@ -235,29 +235,56 @@ Phase 6 adds production-capable transactional e-mail without coupling provider f
 - delivered e-mail requires trusted carrier delivery evidence, not generic admin completion;
 - protected admin order detail exposes sanitized e-mail history plus explicit audited manual resend;
 - manual resend creates a distinct linked delivery and never rewrites the historical result;
-- notification failure never mutates payment, fulfillment or shipment state.
+- notification failure never mutates payment, fulfillment or shipment state;
+- late provider events are linked by trusted provider message ID even when monotonic terminal-state rules correctly prevent a status downgrade.
 
 ## Hosted Supabase rollout
 
-The Phase 6 foundation and authoritative-trigger migrations are applied in hosted Supabase. Live validation confirmed:
+The complete Phase 6 migration series is applied in hosted Supabase:
 
-- `notification_outbox` and `notification_webhook_events` exist with RLS enabled;
+- `20260913011820 transactional_notifications_foundation`;
+- `20260913011838 transactional_notification_triggers`;
+- `20260913013454 transactional_notification_advisor_indexes`;
+- `20260913022001 transactional_notification_webhook_reconciliation`;
+- `20260914180352 transactional_notification_final_hardening`;
+- `20260914181035 transactional_notification_webhook_backfill`.
+
+Live validation confirms:
+
+- `notification_outbox` and `notification_webhook_events` have RLS enabled;
 - `anon` and ordinary `authenticated` have no direct outbox CRUD;
-- worker/mutation RPCs remain service-role-only;
-- `order_events` and `shipment_events` enqueue triggers are installed.
+- worker/mutation RPCs remain service-role-only with fixed empty `search_path`;
+- `order_events` and `shipment_events` enqueue triggers are installed;
+- callback completion/webhook paths retain consistent provider-message advisory lock ordering;
+- previously early callbacks reconcile after provider-ID persistence;
+- late/stale callbacks cannot downgrade a stronger terminal state but remain audit-linked;
+- post-DDL advisors show no new Phase 6 grant exposure or unindexed-FK regression.
 
-The first post-DDL performance advisor found one Phase 6 unindexed FK (`notification_webhook_events.notification_id`). It was fixed additively instead of rewriting applied migration history:
+Final rollback-only hosted validation after the last hardening proved:
 
-- RED test commit: `8ef11ed16d410486bd3680fe9f42d34224984e4f`;
-- GREEN implementation commit: `d0d5c2ddd15accae5f934dc8af794caf97ddd70b`;
-- migration: `supabase/migrations/202609120003_transactional_notification_advisor_indexes.sql`;
-- hosted migration applied;
-- live catalog check confirms `notification_webhook_events_notification_id_idx` exists;
-- post-fix advisor no longer reports the unindexed FK.
+- pending/unpaid order + admin cancellation -> zero notification intents;
+- prior authoritative Mercado Pago approval + admin cancellation -> both `payment_approved` and `canceled` intents;
+- late `email.sent` for a delivered message -> provider event links to the correct notification while status stays `delivered`;
+- the one historical webhook row that already had a known provider-message match but lacked `notification_id` was backfilled, moving the live orphan count from 1 to 0.
+
+## Production acceptance
+
+Production acceptance completed on 2026-09-14 against the already-deployed KingHost runtime `c8c2bb20f1c265729c4d4aee7fe65a91e2e1cc4c`:
+
+- direct KingHost cron URL is `https://www.proxybembem.com.br/api/internal/notifications/process`, every 5 minutes; KingHost uses GET and the route also supports controlled POST diagnostics;
+- Resend domain is verified in `sa-east-1`, sending enabled, Open Tracking OFF and Click Tracking OFF;
+- webhook is enabled at `https://www.proxybembem.com.br/api/webhooks/resend` for exactly the five operational events;
+- a controlled `production_started` e-mail completed `pending -> sent -> delivered` through worker, Resend and signed webhook;
+- protected admin history showed the delivery result;
+- explicit manual resend created a new linked delivery and also reached `delivered`.
+
+The two final behavior fixes are database-function changes already applied through additive hosted migrations. They did not require a new KingHost application deploy because the deployed app runtime already contains the accepted worker, webhook, templates, admin history/resend and GET-cron compatibility.
 
 ## Automated verification
 
-Current operational documentation checkpoint is on `feat/transactional-notifications`. CI run **#1484** for the current Phase 6 documentation/runtime candidate passed:
+Final implementation/backfill checkpoint before final status-document reconciliation: `caf1090cd3963d576d324e8ada6be70b83481027`; GitHub Actions run `34878962739` / run #1523: **PASS**.
+
+That run passed:
 
 - exact KingHost Node **22.1.0** runtime gate;
 - frozen pnpm install;
@@ -267,18 +294,7 @@ Current operational documentation checkpoint is on `feat/transactional-notificat
 - KingHost startup smoke;
 - full automated test suite.
 
-## Remaining production acceptance
-
-Implementation/schema work is complete, but Phase 6 is **not yet production-accepted**. The remaining gate is operational:
-
-1. deploy the current branch candidate to KingHost and restart through the panel;
-2. ensure `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` and existing `CRON_SECRET` are set in production;
-3. register `https://proxybembem.com.br/api/webhooks/resend` for only `email.sent`, `email.delivered`, `email.bounced`, `email.failed`, `email.suppressed`;
-4. configure KingHost cron `POST /api/internal/notifications/process` every 5 minutes with `X-CRON-AUTH` equal to the application's `CRON_SECRET`;
-5. exercise one safe live transactional e-mail path, verify Resend callback status reaches the admin history, and test explicit manual resend;
-6. record the deployed runtime SHA and owner acceptance before changing this phase to production-accepted.
-
-Do not manufacture payment/refund/chargeback events solely for acceptance and do not merge the Phase 6 PR before owner acceptance.
+Phase 6 is complete and production-accepted. Do not merge PR #4 without explicit owner approval.
 
 # PHASE 7 — Store Settings
 
@@ -329,7 +345,7 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 **Phase 3:** complete/deployed/production-accepted.  
 **Phase 4:** implementation complete; automated evidence green; original broad manual Stage 3 checklist not fully re-run.  
 **Phase 5:** complete at owner-handoff level; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 19 complete**; **Task 18 owner accepted by owner-reported manual acceptance**; **Task 20 owner accepted by owner-reported Production smoke**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains the safe default outside deliberate purchase windows.  
-**Phase 6:** implementation complete; hosted schema/triggers and advisor-index follow-up applied; automated CI green; Production Resend webhook + KingHost cron + live e-mail/admin resend acceptance still pending.  
+**Phase 6:** complete; hosted schema + final hardening/backfill applied; automated CI green; Production Resend webhook + KingHost cron + live e-mail/admin resend accepted.  
 **Phase 7+:** not started.
 
-**NEXT EXACT ACTION:** deploy the current Phase 6 candidate to KingHost, configure the production Resend webhook and five-minute notification cron, run one safe live transactional e-mail + callback/admin-history/manual-resend acceptance, and record the deployed SHA/owner acceptance. Keep PR #4 draft and do not merge until that acceptance is complete.
+**NEXT EXACT ACTION:** no Phase 6 task remains open. The owner chooses separately whether to integrate PR #4 or begin Phase 7 — Store Settings. Keep PR #4 draft and do not merge/squash/rebase/delete the branch without explicit owner approval.
