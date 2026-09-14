@@ -1,57 +1,61 @@
 # ProxyBembem Engineering Continuity
 
-Always start with:
+## Leia primeiro
 
-- `docs/superpowers/CURRENT_STATUS.md`
-- `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md`
+A partir da consolidação de 2026-09-14, o ponto de entrada canônico é:
 
-`CURRENT_STATUS.md` is the canonical continuation checkpoint. Historical files under `docs/superpowers/plans/` and `docs/superpowers/specs/` preserve implementation/design history and may contain unchecked RED/GREEN steps even after work has been completed.
+1. `docs/PROJECT_MASTER_OVERVIEW.md`
+2. `docs/superpowers/CURRENT_STATUS.md` para evidências operacionais detalhadas acumuladas
+3. `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` para o roadmap histórico/arquitetural
+4. o runbook específico da área que será alterada
 
-## Current project/runtime
+A branch canônica de integração agora é `main`. As branches antigas são checkpoints/histórico e não devem ser usadas como base para trabalho novo depois da limpeza.
 
-- active feature branch: `feat/admin-dashboard-expansion`;
-- base branch: `main`;
-- production app: KingHost Node.js 22.1.0;
-- backend/Auth: hosted Supabase, separate from KingHost;
-- deploy runbook: `docs/deployment/kinghost.md`;
-- Phase 3 customer accounts/private orders: complete and production-accepted;
-- Phase 4 Supabase catalog + protected product admin + admin sidebar redesign: implementation complete and automatically verified;
-- final Phase 4 browser production smoke: explicitly deferred by the owner on 2026-09-08 and still required before full production sign-off;
-- Phase 5 must not start automatically before branch integration choice.
+## Runtime atual
 
-## Do not infer live progress from old checkboxes
+- aplicação: KingHost;
+- Node.js: **22.1.0**;
+- backend/Auth/banco: Supabase hospedado separadamente;
+- pagamentos: Mercado Pago;
+- frete/remessas: Melhor Envio;
+- e-mails transacionais: Resend;
+- deploy: `docs/deployment/kinghost.md`.
 
-When old plans/specs conflict with `CURRENT_STATUS.md` or the Master Plan, use the operational docs. Do not rewrite historical plans merely to make old checkboxes look current.
+## Estado do roadmap
 
-Important supersessions:
+- Phases 0–3: completas/aceitas;
+- Phase 4: implementação completa; antigo smoke manual amplo da Stage 3 continua parcialmente pendente;
+- Phase 5: completa/owner accepted;
+- Phase 6: completa/production accepted e integrada na `main`;
+- Phase 7: próxima fase, ainda não iniciada;
+- Phases 8–9: não iniciadas.
 
-- Vercel deployment instructions were replaced by KingHost;
-- the original guest checkout/public-token order model was replaced by authenticated payment start + private account orders;
-- old password-recovery approaches were replaced by the durable application-owned grant flow;
-- the static runtime product catalog was replaced by Supabase `public.products`;
-- the old admin top navigation was replaced by the shared desktop sidebar/mobile drawer.
+## Fonte de verdade
 
-## Resume order
+Os arquivos em `docs/superpowers/plans/` e `docs/superpowers/specs/` são **histórico**. Checkboxes, branches e próximos passos neles podem estar obsoletos.
 
-1. Read `CURRENT_STATUS.md`.
-2. Read the Master Plan checkpoint/invariants.
-3. Verify the real feature-branch HEAD and CI status.
-4. For runtime/database work, verify relevant KingHost/Supabase live state.
-5. Read only the current plan/spec needed for the next action.
-6. Do not redo completed migrations or accepted production checks unless a regression or explicit operation requires it.
-7. If Phase 4 is being signed off for Production, run the deferred browser smoke first.
+Quando houver conflito, use esta ordem:
 
-## End-of-session rule
+1. implementação/estado hospedado realmente verificado;
+2. `docs/PROJECT_MASTER_OVERVIEW.md`;
+3. `CURRENT_STATUS.md`;
+4. `ADMIN_DASHBOARD_MASTER_PLAN.md`;
+5. planos/specs históricos.
 
-After meaningful implementation, acceptance, blocker or decision, update `CURRENT_STATUS.md` with exact SHA, verification evidence, runtime/database caveats and the exact next action.
+## Invariantes essenciais
 
-## Safety / rollout constraints
+- Supabase `public.products` é a única autoridade de catálogo em runtime;
+- browser nunca decide preço, frete, total, ownership ou status financeiro;
+- pagamento exige cliente autenticado/verificado;
+- Mercado Pago permanece autoridade financeira;
+- pedidos de cliente são privados em `/minha-conta/pedidos/{uuid}`;
+- não restaurar guest checkout, `/pedido/[token]` ou guest claim;
+- admin continua owner UUID + senha + TOTP/AAL2 + sessão ativa;
+- compra de etiqueta Melhor Envio é explícita e fail-closed;
+- migrations já aplicadas não são reaplicadas/regravadas;
+- falha de e-mail nunca altera pagamento, fulfillment ou shipping;
+- segredos e dados sensíveis não entram em Git/chat/logs públicos.
 
-- Work on `feat/admin-dashboard-expansion` until the owner explicitly chooses integration handling.
-- Never merge, squash, rebase, delete or force-move the feature branch without explicit owner approval.
-- Never expose provider/Supabase secrets, passwords, recovery tokens, TOTP material or customer-private identifiers.
-- Never reapply already-applied Supabase migrations.
-- Keep Supabase as the product runtime authority; do not restore the static catalog fallback.
-- Do not restore guest checkout/payment, `/pedido/[token]` or guest-claim application surfaces.
-- Do not start Phase 5 automatically before the owner chooses whether to merge, create a PR or keep the branch.
-- The deferred manual production smoke must be remembered before declaring Phase 4 fully production-accepted.
+## Regra para continuar o projeto
+
+Comece uma nova fase a partir da `main` atual, em uma branch curta e específica. Rode CI, faça aceitação necessária, integre explicitamente e atualize `docs/PROJECT_MASTER_OVERVIEW.md` no fechamento da fase.
