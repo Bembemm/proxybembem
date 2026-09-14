@@ -33,7 +33,7 @@ test("defines a typed private singleton store settings row", async () => {
   assert.match(text, /254/)
   assert.match(text, /400/)
   assert.match(text, /\^\\\+\[1-9\]\[0-9\]\{7,14\}\$/)
-  assert.match(text, /notice_enabled[^;]+notice_text/s)
+  assert.match(text, /notice_enabled[^;]+notice_text/)
 })
 
 test("seeds the existing public contact values without introducing provider secrets", async () => {
