@@ -51,29 +51,36 @@ test("admin read uses one explicit no-store singleton query and strict parsing",
   const repository = await import(MODULE)
 
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
-      const url = new URL(String(input))
-      assert.equal(url.origin, "https://example.supabase.co")
-      assert.equal(url.pathname, "/rest/v1/store_settings")
-      assert.equal(url.searchParams.get("id"), "eq.default")
-      assert.equal(url.searchParams.get("limit"), "1")
-      const select = url.searchParams.get("select") ?? ""
-      assert.equal(select.includes("*"), false)
-      for (const field of [
-        "id",
-        "production_lead_time_business_days",
-        "contact_email",
-        "contact_whatsapp_e164",
-        "notice_enabled",
-        "notice_text",
-        "updated_at",
-      ]) {
-        assert.ok(select.split(",").includes(field), `missing explicit select field ${field}`)
-      }
-      assert.equal(init?.cache, "no-store")
-      assert.equal((init?.headers as Record<string, string>)?.apikey, "server-secret")
-      return Response.json([row()])
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (
+        input: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1],
+      ) => {
+        const url = new URL(String(input))
+        assert.equal(url.origin, "https://example.supabase.co")
+        assert.equal(url.pathname, "/rest/v1/store_settings")
+        assert.equal(url.searchParams.get("id"), "eq.default")
+        assert.equal(url.searchParams.get("limit"), "1")
+        const select = url.searchParams.get("select") ?? ""
+        assert.equal(select.includes("*"), false)
+        for (const field of [
+          "id",
+          "production_lead_time_business_days",
+          "contact_email",
+          "contact_whatsapp_e164",
+          "notice_enabled",
+          "notice_text",
+          "updated_at",
+        ]) {
+          assert.ok(select.split(",").includes(field), `missing explicit select field ${field}`)
+        }
+        assert.equal(init?.cache, "no-store")
+        assert.equal((init?.headers as Record<string, string>)?.apikey, "server-secret")
+        return Response.json([row()])
+      },
+    )
 
     assert.deepEqual(await repository.getAdminStoreSettings(), {
       id: "default",
@@ -160,33 +167,40 @@ test("admin update calls only the atomic allowlisted RPC arguments", async (t) =
   const repository = await import(MODULE)
 
   await withSupabaseEnv(async () => {
-    t.mock.method(globalThis, "fetch", async (input, init) => {
-      const url = new URL(String(input))
-      assert.equal(url.pathname, "/rest/v1/rpc/admin_update_store_settings")
-      assert.equal(init?.method, "POST")
-      assert.equal(init?.cache, "no-store")
-      assert.equal((init?.headers as Record<string, string>)?.apikey, "server-secret")
-      assert.deepEqual(JSON.parse(String(init?.body)), {
-        p_admin_user_id: ADMIN_ID,
-        p_expected_updated_at: REVISION,
-        p_production_lead_time_business_days: 7,
-        p_contact_email: "novo@proxybembem.com.br",
-        p_contact_whatsapp_e164: "+5544999999999",
-        p_notice_enabled: true,
-        p_notice_text: "Prazo especial nesta semana.",
-      })
-      return Response.json({
-        outcome: "updated",
-        settings: row({
-          production_lead_time_business_days: 7,
-          contact_email: "novo@proxybembem.com.br",
-          contact_whatsapp_e164: "+5544999999999",
-          notice_enabled: true,
-          notice_text: "Prazo especial nesta semana.",
-          updated_at: NEXT_REVISION,
-        }),
-      })
-    })
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (
+        input: Parameters<typeof fetch>[0],
+        init?: Parameters<typeof fetch>[1],
+      ) => {
+        const url = new URL(String(input))
+        assert.equal(url.pathname, "/rest/v1/rpc/admin_update_store_settings")
+        assert.equal(init?.method, "POST")
+        assert.equal(init?.cache, "no-store")
+        assert.equal((init?.headers as Record<string, string>)?.apikey, "server-secret")
+        assert.deepEqual(JSON.parse(String(init?.body)), {
+          p_admin_user_id: ADMIN_ID,
+          p_expected_updated_at: REVISION,
+          p_production_lead_time_business_days: 7,
+          p_contact_email: "novo@proxybembem.com.br",
+          p_contact_whatsapp_e164: "+5544999999999",
+          p_notice_enabled: true,
+          p_notice_text: "Prazo especial nesta semana.",
+        })
+        return Response.json({
+          outcome: "updated",
+          settings: row({
+            production_lead_time_business_days: 7,
+            contact_email: "novo@proxybembem.com.br",
+            contact_whatsapp_e164: "+5544999999999",
+            notice_enabled: true,
+            notice_text: "Prazo especial nesta semana.",
+            updated_at: NEXT_REVISION,
+          }),
+        })
+      },
+    )
 
     const result = await repository.updateAdminStoreSettings(
       ADMIN_ID,
