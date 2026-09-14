@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Package,
   Plug,
+  Settings,
   type LucideIcon,
 } from "lucide-react"
 
@@ -12,6 +13,7 @@ export type AdminSection =
   | "orders"
   | "production"
   | "products"
+  | "settings"
   | "integrations"
 
 const NAV_ITEMS: ReadonlyArray<{
@@ -24,6 +26,7 @@ const NAV_ITEMS: ReadonlyArray<{
   { section: "orders", label: "Pedidos", href: "/admin/pedidos", icon: ClipboardList },
   { section: "production", label: "Produção", href: "/admin/producao", icon: Factory },
   { section: "products", label: "Produtos", href: "/admin/produtos", icon: Package },
+  { section: "settings", label: "Configurações", href: "/admin/configuracoes", icon: Settings },
   {
     section: "integrations",
     label: "Integrações",
