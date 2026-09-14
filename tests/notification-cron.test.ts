@@ -20,9 +20,9 @@ async function withEnv<T>(fn: () => Promise<T>) {
   }
 }
 
-function request(headers?: HeadersInit) {
+function request(headers?: HeadersInit, method = "POST") {
   return new Request("https://www.proxybembem.com.br/api/internal/notifications/process", {
-    method: "POST",
+    method,
     headers,
   })
 }
@@ -90,6 +90,24 @@ test("notification cron accepts Bearer and KingHost X-CRON-AUTH and returns only
       assert.doesNotMatch(JSON.stringify(json), /@|recipient|email|provider|body|subject/i)
     }
     assert.equal(bodies.length, 2)
+  })
+})
+
+test("notification cron accepts KingHost GET with X-CRON-AUTH", async (t) => {
+  await withEnv(async () => {
+    const { GET } = await import("../app/api/internal/notifications/process/route.ts")
+    t.mock.method(globalThis, "fetch", async () => Response.json([]))
+
+    const response = await GET(request({ "x-cron-auth": CRON_VALUE }, "GET"))
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get("cache-control"), "no-store")
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      claimed: 0,
+      accepted: 0,
+      retryScheduled: 0,
+      failed: 0,
+    })
   })
 })
 
