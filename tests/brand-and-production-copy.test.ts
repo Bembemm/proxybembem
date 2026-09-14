@@ -22,8 +22,12 @@ test("shared PB brand mark uses an extensionless route with a direct PNG respons
   assert.equal(footerSource.includes("/icon.svg"), false)
 })
 
-test("customer-facing production copy consistently says up to five business days", () => {
-  assert.match(faqSource, /produção é de até 5 dias úteis/i)
+test("customer-facing production copy is driven by the public store setting", () => {
+  assert.match(faqSource, /productionLeadTimeBusinessDays/)
+  assert.match(faqSource, /productionLeadTimeBusinessDays\s*===\s*1/)
+  assert.match(faqSource, /dia útil/)
+  assert.match(faqSource, /dias úteis/)
+  assert.equal(/produção é de até 5 dias úteis/i.test(faqSource), false)
   assert.equal(/1 a 3 dias úteis/i.test(faqSource), false)
   assert.equal(/pagamento via Pix/i.test(faqSource), false)
 })
