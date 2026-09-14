@@ -27,7 +27,7 @@ function isAuthorized(request: Request, expected: string) {
   )
 }
 
-export async function POST(request: Request) {
+async function handle(request: Request) {
   let expected: string
   try {
     expected = getCronSecret()
@@ -50,3 +50,6 @@ export async function POST(request: Request) {
     return json({ ok: false }, 503)
   }
 }
+
+export const GET = handle
+export const POST = handle
