@@ -46,10 +46,24 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto,
 
 ## Phase 5 — evidência resumida
 
-- OAuth Production reautorizado com os nove scopes aceitos.
-- Caminho controlado de preparação chegou ao carrinho do Melhor Envio sem gasto; fixture observou custo R$ 23,69.
-- Task 18 (compra real) e Task 20 (smoke final) foram aceitas pelo proprietário em 2026-09-11.
+Phase 5 está **complete / accepted** no nível de handoff do proprietário.
+
+- OAuth Production foi reautorizado com os nove scopes aceitos.
+- O caminho controlado non-spending/sem gasto chegou ao carrinho real do Melhor Envio com shipment local em `in_cart`; custo observado no fixture: **R$ 23,69**; sem provider purchased-order identity e sem transição falsa para shipped.
+- `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` continua sendo o default seguro fora de uma janela deliberada de compra.
+- Task 18 owner accepted em 2026-09-11 — aceitação owner-reported/informada pelo proprietário para a primeira compra real.
+- Task 19 complete/concluída — documentação operacional da Phase 5 reconciliada com a arquitetura e a evidência aceita.
+- Task 20 owner accepted em 2026-09-11 — smoke final de Production informado pelo proprietário.
 - O antigo smoke amplo da Phase 4 não deve ser considerado retroativamente provado por esse uso de Production.
+
+Migrations Phase 5 registradas/aplicadas:
+
+- `202609080002_melhor_envio_oauth_scope_grants.sql`
+- `202609080003_shipments_foundation.sql`
+- `202609080004_shipment_operations.sql`
+- `202609080005_shipment_cancel_reconciliation.sql`
+- `202609080006_customer_shipment_projection.sql`
+- `20260909194848_shipments_sender_profile_fk_index.sql`
 
 ## Phase 6 — evidência resumida
 
