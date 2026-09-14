@@ -8,25 +8,33 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 
-const faqs = [
-  {
-    question: "Qual a qualidade do material?",
-    answer:
-      "Nossas cartas são produzidas com Impressão Direta Premium em papel fotográfico de alta gramatura e recebem um acabamento laminado especial. Esse processo garante cores extremamente vibrantes, textos perfeitamente nítidos e alta durabilidade, além de contar com um corte de precisão para um encaixe perfeito nos seus sleeves.",
-  },
-  {
-    question: "Qual o prazo de produção e envio?",
-    answer:
-      "Após a confirmação do pagamento, o prazo de produção é de até 5 dias úteis. Depois da postagem, o prazo de entrega varia conforme o serviço de frete e a sua região.",
-  },
-  {
-    question: "Como recebo o meu código de rastreio?",
-    answer:
-      "Assim que o seu pedido for despachado, você receberá o código de rastreio diretamente no WhatsApp que utilizou para fazer o pedido. Com ele, você pode acompanhar sua encomenda em tempo real pelo site dos Correios.",
-  },
-]
+interface FaqSectionProps {
+  productionLeadTimeBusinessDays: number
+}
 
-export function FaqSection() {
+export function FaqSection({ productionLeadTimeBusinessDays }: FaqSectionProps) {
+  const productionLeadTime =
+    productionLeadTimeBusinessDays === 1
+      ? "1 dia útil"
+      : `${productionLeadTimeBusinessDays} dias úteis`
+
+  const faqs = [
+    {
+      question: "Qual a qualidade do material?",
+      answer:
+        "Nossas cartas são produzidas com Impressão Direta Premium em papel fotográfico de alta gramatura e recebem um acabamento laminado especial. Esse processo garante cores extremamente vibrantes, textos perfeitamente nítidos e alta durabilidade, além de contar com um corte de precisão para um encaixe perfeito nos seus sleeves.",
+    },
+    {
+      question: "Qual o prazo de produção e envio?",
+      answer: `Após a confirmação do pagamento, o prazo de produção é de até ${productionLeadTime}. Depois da postagem, o prazo de entrega varia conforme o serviço de frete e a sua região.`,
+    },
+    {
+      question: "Como recebo o meu código de rastreio?",
+      answer:
+        "Assim que o seu pedido for despachado, você receberá o código de rastreio diretamente no WhatsApp que utilizou para fazer o pedido. Com ele, você pode acompanhar sua encomenda em tempo real pelo site dos Correios.",
+    },
+  ]
+
   return (
     <section className="relative py-12 sm:py-16 bg-gradient-to-b from-transparent to-white/30">
       <div className="container mx-auto px-4 sm:px-6">
