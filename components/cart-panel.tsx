@@ -342,7 +342,9 @@ export function CartPanel({ contactWhatsappE164 }: CartPanelProps) {
       window.location.assign(result.checkoutUrl)
     } catch {
       setCheckoutError(
-        "Não foi possível iniciar o pagamento. Tente novamente ou continue pelo WhatsApp.",
+        contactWhatsappE164
+          ? "Não foi possível iniciar o pagamento. Tente novamente ou continue pelo WhatsApp."
+          : "Não foi possível iniciar o pagamento. Tente novamente.",
       )
     } finally {
       setIsSubmitting(false)
