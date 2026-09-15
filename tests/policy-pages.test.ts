@@ -18,11 +18,13 @@ test("privacy page explains order data, providers and configured contact", () =>
     "endereço",
     "Mercado Pago",
     "Melhor Envio",
-    "Vercel Analytics",
+    "Informações técnicas",
   ]) {
     assert.match(source, new RegExp(required, "i"), required)
   }
 
+  assert.match(source, /informações técnicas e de uso/i)
+  assert.doesNotMatch(source, /Analytics/)
   assert.match(source, /getPublicStoreSettings/)
   assert.match(source, /contactEmail/)
   assert.match(source, /href=\{`mailto:\$\{contactEmail\}`\}/)
