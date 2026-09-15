@@ -45,6 +45,17 @@ test("floating WhatsApp contact receives the configured destination and checkout
   assert.doesNotMatch(summary, /href=\{whatsappFallbackUrl\}[\s\S]*Prefiro continuar pelo WhatsApp[\s\S]*<\/Button>\s*\n\s*<div/)
 })
 
+test("floating WhatsApp button uses the compact polished brand treatment", async () => {
+  const floating = await source("../components/whatsapp-button.tsx")
+
+  assert.match(floating, /bg-\[#25D366\]/)
+  assert.match(floating, /h-\[58px\]/)
+  assert.match(floating, /w-\[58px\]/)
+  assert.match(floating, /border-2\s+border-white/)
+  assert.match(floating, /hover:-translate-y-0\.5/)
+  assert.match(floating, /shadow-\[0_8px_24px_rgba\(0,0,0,0\.18\)\]/)
+})
+
 test("contact page loads cached public settings and renders only configured channels", async () => {
   const page = await source("../app/contato/page.tsx")
   const contact = await source("../components/pages/contact-page.tsx")
