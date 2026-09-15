@@ -1,7 +1,7 @@
 # ProxyBembem — Current Status
 
 **Updated:** 2026-09-15  
-**Active branch:** `main`  
+**Active branch:** `feat/phase-8-dashboard-metrics-attention`  
 **Canonical integration branch:** `main`
 
 Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto está em `docs/PROJECT_MASTER_OVERVIEW.md`; a evidência final da Phase 7 está em `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
@@ -16,10 +16,48 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto 
 - Phase 5 — Melhor Envio + Labels + Tracking: **COMPLETE / OWNER ACCEPTED**.
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 - Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 8 — Dashboard Metrics + Attention Center: **NOT STARTED**.
+- Phase 8 — Dashboard Metrics + Attention Center: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; hosted migration ainda não aplicada e Production ainda não aceita.
 - Phase 9 — Hardening + Final Rollout: **NOT STARTED**.
 
-## Phase 7 — resultado final
+## Phase 8 — checkpoint de implementação
+
+A Phase 8 transforma `/admin` em um dashboard operacional server-side sem introduzir autoridade financeira ou operacional no browser.
+
+Implementado na branch `feat/phase-8-dashboard-metrics-attention`:
+
+- migration aditiva `supabase/migrations/202609150001_dashboard_metrics_attention_center.sql`;
+- RPC `public.admin_get_dashboard_snapshot()` read-only, `SECURITY DEFINER`, `search_path=''` e executável somente por `service_role`;
+- um único `as_of` e períodos Today/Week/Month calculados em `America/Sao_Paulo`;
+- aprovado bruto e reversões derivados de `order_events` confiáveis do Mercado Pago, com dedupe determinístico do primeiro evento por pedido;
+- contagens atuais de fulfillment e risco financeiro sem inventar receita líquida;
+- Attention Center read-only por pedido, priorizado por maior severidade, com top 5 e link para o fluxo existente de pedidos;
+- ranking mensal de produtos a partir do snapshot imutável `orders.items` dos pedidos aprovados no mês;
+- repository TypeScript server-only, `cache: "no-store"`, parser estrito e falha visível sem substituir erro por zeros;
+- componentes server-side de métricas, operação, atenção e produtos;
+- `/admin` protegido continua exigindo `requireAdminPageAccess({ touch: true })` e preserva o atalho do Melhor Envio.
+
+A implementação não adiciona provider call, compra de etiqueta, cancelamento, mutation de pedido, envio de notificação ou mutation de Store Settings.
+
+### Automated evidence
+
+Checkpoint automatizado atual:
+
+`2023595cc845aca3fc482db484cea18332c36b5f` — `test: harden dashboard metric semantics`.
+
+GitHub Actions CI #1626 / run `34951178021`: **PASS**.
+
+O pipeline passou runtime Node **22.1.0**, install congelado, typecheck, `build:kinghost`, private-order route contract, startup smoke e suíte completa. Os testes novos cobrem contrato SQL, parser/repository, UI protegida e semântica de tempo/finance/attention.
+
+### Ainda NÃO concluído na Phase 8
+
+- a migration `dashboard_metrics_attention_center` ainda não foi aplicada ao Supabase hospedado neste checkpoint;
+- o snapshot hospedado ainda não foi reconciliado contra as linhas autoritativas reais;
+- a função/grants ainda não passaram o check pós-migration hospedado desta fase;
+- o candidate ainda não foi deployado/aceito na KingHost;
+- não existe `FINAL_ACCEPTANCE.md` da Phase 8 ainda;
+- a branch não foi integrada em `main`.
+
+## Phase 7 — resultado final preservado
 
 Store Settings V1 contém exatamente cinco settings allowlisted:
 
@@ -31,9 +69,9 @@ Store Settings V1 contém exatamente cinco settings allowlisted:
 
 A implementação inclui singleton `public.store_settings`, constraints/RLS, RPC atômica com audit e optimistic concurrency, domínio/repository/cache server-side, `/api/admin/settings`, `/admin/configuracoes` e projeção pública sanitizada. Nenhum provider secret virou Store Setting.
 
-Os consumidores públicos da mesma informação agora usam a configuração global como fonte de verdade: FAQ, footer, `/contato`, banner, carrinho, suporte de pedido, `/privacidade`, `/trocas-e-reembolsos` e o prazo exibido nos detalhes de produto. O save do admin também força refresh do tree server-side para evitar manter props públicas antigas na mesma sessão.
+Os consumidores públicos da mesma informação usam a configuração global como fonte de verdade: FAQ, footer, `/contato`, banner, carrinho, suporte de pedido, `/privacidade`, `/trocas-e-reembolsos` e o prazo exibido nos detalhes de produto. O save do admin força refresh do tree server-side para evitar props públicas antigas na mesma sessão.
 
-### Supabase hospedado
+### Supabase hospedado Phase 7
 
 - migration repo: `supabase/migrations/202609140003_store_settings.sql`;
 - hosted version: `20260915002740`;
@@ -42,48 +80,13 @@ Os consumidores públicos da mesma informação agora usam a configuração glob
 - rollback-only smoke validou update + avanço de revisão + stale conflict + audit allowlisted e foi revertido sem fixture persistida;
 - advisors não mostraram nova exposição causada pela Phase 7.
 
-### Integração, runtime e CI
-
-Runtime final aceito em Production:
+### Runtime Phase 7 aceito
 
 `3fd88688a6cfae343fea3b346a3d1cad1035eb86` — `fix: make store settings globally authoritative`.
 
-A `main` foi avançada por fast-forward para esse mesmo SHA, sem force update. Antes da integração, a branch da Phase 7 estava 60 commits à frente e 0 atrás da `main`, com merge-base exatamente no antigo HEAD da `main`.
-
 GitHub Actions CI #1613 / run `34923612641`: **PASS** no mesmo SHA. O pipeline concluiu com sucesso runtime Node 22.1.0, install congelado, typecheck, build KingHost, private-order route contract, startup smoke e suíte automatizada.
 
-### KingHost / smoke final
-
-- Production usa Node.js **22.1.0** e pnpm major **10**.
-- O checkout KingHost estava em detached HEAD no antigo runtime `db430829...`.
-- O remote foi ajustado para buscar `main`, criou-se branch local `main` rastreando `origin/main`, e o checkout ficou limpo no SHA `3fd88688...`.
-- Build/deploy seguiu o runbook KingHost com `npx pnpm@10 install --frozen-lockfile` e `NODE_ENV=production npx pnpm@10 deploy:kinghost`.
-- Restart foi feito pelo painel KingHost, sem `pm2 start` manual.
-- `https://www.proxybembem.com.br/` respondeu **HTTP/2 200** após o restart.
-- `next-env.d.ts` foi alterado automaticamente pelo build Next.js e restaurado depois; isso não altera o runtime já gerado.
-- Smoke funcional do proprietário confirmou que mudanças de Configurações propagam para os consumidores públicos globais relevantes, incluindo contato e prazo.
-- O stale two-tab save permanece recusando sobrescrita de revisão mais nova.
-
-Detalhes e evidências: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
-
-## Phase 5 — evidência histórica preservada
-
-Phase 5 está **complete / owner accepted** e permanece fechada no nível de handoff do proprietário.
-
-- O caminho controlado Production **non-spending / sem gasto** chegou ao carrinho real do Melhor Envio com shipment local em `in_cart`; custo observado no fixture: **R$ 23,69**; sem provider purchased-order identity e sem transição falsa para `shipped`.
-- `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` continua sendo o default seguro fora de uma janela deliberada de compra.
-- Task 18 **owner accepted** em 2026-09-11 — aceitação **owner-reported** da primeira compra real, sem fabricar provider trace não observado.
-- Task 19 **complete / concluída** — documentação operacional da Phase 5 reconciliada com a arquitetura e a evidência aceita.
-- Task 20 **owner accepted** em 2026-09-11 — smoke final de Production **owner-reported** pelo proprietário.
-
-Migrations Phase 5 registradas/aplicadas:
-
-- `202609080002_melhor_envio_oauth_scope_grants.sql`
-- `202609080003_shipments_foundation.sql`
-- `202609080004_shipment_operations.sql`
-- `202609080005_shipment_cancel_reconciliation.sql`
-- `202609080006_customer_shipment_projection.sql`
-- `20260909194848_shipments_sender_profile_fk_index.sql`
+A Phase 7 foi integrada na `main` por fast-forward. A documentação de fechamento posterior está no commit `75c78437883627e241a9708c8d07a0988dc8c8b5`.
 
 ## Baseline / invariantes ainda válidos
 
@@ -101,6 +104,7 @@ Migrations Phase 5 registradas/aplicadas:
 - Falha de e-mail nunca altera pagamento, fulfillment ou shipping.
 - Resend Production mantém Open Tracking OFF e Click Tracking OFF.
 - Store Settings não contém secrets de Mercado Pago, Melhor Envio, Supabase, Resend, cron ou KingHost.
+- Phase 8 é read-only: dashboard/attention não resolve flags nem muta verdade financeira/operacional.
 
 ## Riscos/backlog conhecidos
 
@@ -114,6 +118,8 @@ Migrations Phase 5 registradas/aplicadas:
 
 ## Próxima ação
 
-A Phase 7 está encerrada, integrada na `main` e aceita em Production. Não há trabalho pendente da Phase 7.
+Phase 8 está **implementation complete / automated green** no candidate `2023595cc845aca3fc482db484cea18332c36b5f`.
 
-Phase 8 e Phase 9 permanecem **NOT STARTED** e não devem ser iniciadas automaticamente sem instrução explícita do proprietário.
+Próximo passo: registrar este checkpoint documental, validar o novo exact-SHA CI e então aplicar **uma única vez** a migration Phase 8 no Supabase hospedado, reconciliar o snapshot real e checar grants/advisors antes do rollout KingHost.
+
+Phase 9 continua **NOT STARTED** e não deve ser iniciada automaticamente.
