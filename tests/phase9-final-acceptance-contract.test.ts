@@ -39,7 +39,7 @@ test("final Phase 9 smoke covers auth ownership settings shipping notifications 
   const doc = await source("../docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md")
 
   assert.match(doc, /Final Phase 9 Production smoke/i)
-  assert.match(doc, /PENDING OWNER SMOKE \/ WAITING FINAL CANDIDATE DEPLOY/i)
+  assert.match(doc, /PENDING OWNER SMOKE \/ FINAL CANDIDATE DEPLOYED/i)
   assert.match(doc, /customer can view only their own private order/i)
   assert.match(doc, /verified authenticated customer/i)
   assert.match(doc, /MFA\/AAL2 \+ active app-session/i)
