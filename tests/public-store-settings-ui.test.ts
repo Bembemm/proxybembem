@@ -102,3 +102,52 @@ test("admin early return prevents every storefront-only settings consumer from r
   assert.ok(cart > earlyReturn)
   assert.match(shell, /return\s+<>\{children\}<\/>/)
 })
+
+test("successful admin settings save refreshes the App Router projection", async () => {
+  const adminSettingsForm = await source("../components/admin/settings/store-settings-form.tsx")
+
+  assert.match(adminSettingsForm, /from\s+["']next\/navigation["']/)
+  assert.match(adminSettingsForm, /useRouter/)
+  assert.match(adminSettingsForm, /const\s+router\s*=\s*useRouter\(\)/)
+  assert.match(adminSettingsForm, /setDirty\(false\)[\s\S]*router\.refresh\(\)/)
+})
+
+test("public policy pages read the configured support email instead of embedding one", async () => {
+  const privacyPage = await source("../app/privacidade/page.tsx")
+  const refundsPage = await source("../app/trocas-e-reembolsos/page.tsx")
+
+  for (const page of [privacyPage, refundsPage]) {
+    assert.match(page, /getPublicStoreSettings/)
+    assert.match(page, /await\s+getPublicStoreSettings\(\)/)
+    assert.match(page, /contactEmail/)
+    assert.match(page, /mailto:\$\{contactEmail\}/)
+    assert.doesNotMatch(page, /mailto:contato@proxybembem\.com\.br/i)
+    assert.doesNotMatch(page, />\s*contato@proxybembem\.com\.br\s*</i)
+  }
+})
+
+test("product detail receives the global production lead time and overrides only PRAZO copy", async () => {
+  const homeRoute = await source("../app/page.tsx")
+  const productsRoute = await source("../app/produtos/page.tsx")
+  const homePage = await source("../components/pages/home-page.tsx")
+  const productsPage = await source("../components/pages/products-page.tsx")
+  const productModal = await source("../components/product-detail-modal.tsx")
+
+  for (const route of [homeRoute, productsRoute]) {
+    assert.match(route, /getPublicStoreSettings/)
+    assert.match(route, /productionLeadTimeBusinessDays/)
+  }
+
+  for (const page of [homePage, productsPage]) {
+    assert.match(page, /productionLeadTimeBusinessDays/)
+    assert.match(
+      page,
+      /<ProductDetailModal[\s\S]*productionLeadTimeBusinessDays=\{productionLeadTimeBusinessDays\}/,
+    )
+  }
+
+  assert.match(productModal, /productionLeadTimeBusinessDays:\s*number/)
+  assert.match(productModal, /productionLeadTimeBusinessDays\s*===\s*1/)
+  assert.match(productModal, /section\.title\.trim\(\)\.toUpperCase\(\)\s*===\s*["']PRAZO["']/)
+  assert.match(productModal, /Produção e postagem em até \$\{productionLeadTime\}\./)
+})
