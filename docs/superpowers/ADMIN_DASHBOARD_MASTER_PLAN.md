@@ -4,7 +4,7 @@
 
 **Goal:** maintain a secure operational store dashboard and private customer account area without weakening checkout, Mercado Pago, Melhor Envio, Supabase or admin authentication.  
 **Architecture:** modular monolith in the existing Next.js + Supabase application.  
-**Active completed Phase 7 branch:** `feat/phase-7-store-settings`  
+**Active Phase 8 branch:** `feat/phase-8-dashboard-metrics-attention`  
 **Canonical integration branch:** `main`  
 **Runtime:** KingHost Node.js **22.1.0** + hosted Supabase.
 
@@ -23,6 +23,7 @@
 - Melhor Envio label purchase is always explicit and fail-closed; no render/webhook/cron/fulfillment event auto-spends.
 - Notification failure never mutates financial/fulfillment/shipping truth.
 - Store Settings never stores provider/infrastructure secrets.
+- Dashboard metrics and Attention Center are read-only and never become a mutation backdoor.
 - No merge, squash, rebase, branch deletion or force-move without explicit owner approval.
 
 ---
@@ -75,8 +76,6 @@ No payment, render, cron, tracking or retry path may auto-enable/bypass spending
 
 ## Phase 5 acceptance evidence preserved
 
-Phase 5 is **complete / owner accepted** at the owner-handoff level.
-
 - The controlled Production **non-spending / sem gasto** path reached the real Melhor Envio cart with the local shipment in `in_cart`; the accepted fixture cost was **R$ 23,69**; there was no purchased-order identity and no false `shipped` transition.
 - Task 18 **owner accepted** on 2026-09-11 — the first explicit real-purchase path was **owner-reported** as accepted; the record does not invent provider evidence that was not captured independently.
 - Task 19 **complete / concluída** — Phase 5 operational documentation was reconciled with the accepted architecture and evidence.
@@ -95,7 +94,7 @@ Open/Click Tracking remain OFF. Notification failure never changes payment, fulf
 
 # PHASE 7 — Store Settings
 
-**State: COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED / NOT YET INTEGRATED INTO MAIN.**
+**State: COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN.**
 
 Detailed final evidence: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 
@@ -121,7 +120,7 @@ Out of scope: arbitrary settings, provider credentials, financial controls, auto
 - protected PATCH `/api/admin/settings` preserving owner/AAL2/admin-session/same-origin/no-store boundaries;
 - protected `/admin/configuracoes` with explicit save, field errors and stale-revision conflict protection;
 - root shell gets only sanitized public settings;
-- FAQ, footer, public notice, `/contato`, cart fallback and private-order support consume only allowlisted projections;
+- FAQ, footer, public notice, `/contato`, cart fallback, private-order support, policy contacts and product production lead time consume only allowlisted projections;
 - missing contacts are omitted instead of creating broken links;
 - provider/infrastructure secrets remain env-only.
 
@@ -134,33 +133,72 @@ Out of scope: arbitrary settings, provider credentials, financial controls, auto
 
 ## Final automated/runtime checkpoint
 
-Accepted Production runtime:
+The first accepted banner-position runtime was:
 
 `db4308296e9f2603e76ded4332394dd58c99a84c` — `fix: position store notice below fixed navbar`.
 
-GitHub Actions CI #1589 / run `34918063220`: **PASS** on that SHA.
+A later consistency audit found public contact/lead-time consumers still diverging. The final accepted Phase 7 runtime became:
 
-The final regression fixes the public notice position under the fixed navbar by matching navbar height `h-14 sm:h-16` with notice offset `top-14 sm:top-16`.
+`3fd88688a6cfae343fea3b346a3d1cad1035eb86` — `fix: make store settings globally authoritative`.
 
-## Production acceptance
+GitHub Actions CI #1613 / run `34923612641`: **PASS** on that final runtime SHA.
 
-- candidate deployed through the existing KingHost runbook on Node 22.1.0;
+## Production acceptance and integration
+
+- final candidate deployed through the existing KingHost runbook on Node 22.1.0;
 - restart done through KingHost panel;
 - homepage returned HTTP/2 200;
-- temporary notice reached Production HTML;
-- owner-provided screenshot confirmed the notice fully visible below the navbar after the final fix;
-- owner manually validated stale two-tab conflict rejection in `/admin/configuracoes`;
-- hosted state was checked after smoke and `notice_enabled=false` was confirmed.
+- owner smoke confirmed global contact/lead-time propagation on the audited surfaces;
+- stale two-tab conflict rejection remained intact;
+- Phase 7 was integrated into `main` by fast-forward;
+- docs closure commit on `main`: `75c78437883627e241a9708c8d07a0988dc8c8b5`.
 
-Phase 7 has no remaining implementation or rollout task. Integration into `main` remains an explicit owner decision.
+Phase 7 has no remaining implementation or rollout task.
 
 # PHASE 8 — Dashboard Metrics + Attention Center
 
-**State: NOT STARTED.**
+**State: IMPLEMENTATION COMPLETE / AUTOMATED GREEN. HOSTED MIGRATION + PRODUCTION ACCEPTANCE PENDING.**
 
-Planned direction: reliable DB-derived metrics and attention queues only; no fabricated counters or browser-derived financial/operational truth.
+Design/spec: `docs/superpowers/specs/2026-09-15-dashboard-metrics-attention-center-design.md`.  
+Implementation plan: `docs/superpowers/plans/2026-09-15-dashboard-metrics-attention-center.md`.
 
-Do not start automatically from Phase 7 completion.
+## Implemented scope
+
+- additive migration `supabase/migrations/202609150001_dashboard_metrics_attention_center.sql`;
+- one read-only `public.admin_get_dashboard_snapshot()` RPC, service-role-only, fixed empty `search_path`;
+- one captured `as_of` with Today/Week/Month calendar boundaries in `America/Sao_Paulo`;
+- approved gross derived from first trusted Mercado Pago approval event per order;
+- reversed value derived independently from first trusted `refunded`/`charged_back` event per order;
+- no fabricated net-revenue metric;
+- current fulfillment counts for awaiting production, in production, ready to ship and shipped;
+- current payment-risk counts for manual review, refunded and charged back;
+- read-only Attention Center grouped by distinct order/highest unresolved severity, bounded top 5;
+- current-month product quantities expanded from immutable `orders.items` snapshots of approved-month orders, bounded top 10;
+- strict server-only TypeScript repository/parser with `cache: "no-store"` and bounded failures;
+- `/admin` remains `force-dynamic`, AAL2/admin-session protected, and shows a visible unavailable state rather than synthetic zeros;
+- dashboard components contain no client authority, fetch or mutation controls;
+- `Ver todos` uses the already-supported `/admin/pedidos?attention=1` filter;
+- Melhor Envio utility access remains present.
+
+## Automated evidence
+
+Current implementation candidate before docs checkpoint:
+
+`2023595cc845aca3fc482db484cea18332c36b5f` — `test: harden dashboard metric semantics`.
+
+GitHub Actions CI #1626 / run `34951178021`: **PASS**.
+
+The exact pipeline passed Node 22.1.0, frozen install, typecheck, KingHost build, private-order route contract, startup smoke and the full automated suite.
+
+## Pending Phase 8 rollout work
+
+- apply only the new Phase 8 migration once to hosted Supabase;
+- reconcile hosted snapshot values against authoritative orders/events/attention rows;
+- verify grants/search path and security advisors after DDL;
+- deploy an exact CI-green candidate to KingHost;
+- run authenticated `/admin` acceptance against real data;
+- record `docs/superpowers/phase-8/FINAL_ACCEPTANCE.md` only after evidence exists;
+- integration into `main` remains a separate explicit owner decision.
 
 # PHASE 9 — Hardening + Final Rollout
 
@@ -191,7 +229,8 @@ Final auth/isolation/origin/rate-limit/secret review, concurrency matrix, adviso
 17. Phase 7 Store Settings V1 is exactly five allowlisted fields and no provider secrets.
 18. Public settings failures use safe server-side fallbacks; admin mutation remains fail-closed.
 19. Integration/merge is an explicit owner decision.
-20. Phase 8/9 do not start merely because Phase 7 reached Production acceptance.
+20. Phase 8 dashboard/attention is read-only and financial timing comes from trusted Mercado Pago events, not browser/order creation time.
+21. Phase 9 does not start merely because Phase 8 reaches implementation or Production acceptance.
 
 ## Current checkpoint
 
@@ -202,7 +241,8 @@ Final auth/isolation/origin/rate-limit/secret review, concurrency matrix, adviso
 **Phase 4:** implementation complete; automated green; broad historical manual smoke partially deferred.  
 **Phase 5:** complete/owner-accepted.  
 **Phase 6:** complete/production-accepted/integrated into `main`.  
-**Phase 7:** complete/hosted Supabase validated/Production accepted on runtime `db430829...`; not yet integrated into `main`.  
-**Phase 8–9:** not started.
+**Phase 7:** complete/hosted Supabase validated/Production accepted/integrated into `main`; final accepted runtime `3fd88688...`.  
+**Phase 8:** implementation complete/automated green on branch `feat/phase-8-dashboard-metrics-attention`; hosted migration and Production acceptance pending.  
+**Phase 9:** not started.
 
-**NEXT EXACT ACTION:** decide explicitly how to integrate/retain `feat/phase-7-store-settings`. Do not merge/delete the branch or begin Phase 8/9 without owner instruction.
+**NEXT EXACT ACTION:** finish the Phase 8 docs checkpoint CI, then apply `dashboard_metrics_attention_center` once to hosted Supabase and reconcile read-only results before any KingHost rollout. Do not merge/delete the Phase 8 branch without explicit owner approval.
