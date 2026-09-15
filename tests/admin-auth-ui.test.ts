@@ -139,14 +139,14 @@ test("admin routes use a dedicated protected shell instead of storefront chrome"
   const adminMobileNav = await source("../components/admin/admin-mobile-nav.tsx")
 
   assert.match(rootLayout, /SiteShell/)
-  assert.doesNotMatch(rootLayout, /FaqSection|CartFloatingButton|CartPanel|Navbar/)
+  assert.doesNotMatch(rootLayout, /FaqSection|WhatsAppFloatingButton|CartPanel|Navbar/)
 
   assert.match(siteShell, /usePathname/)
   assert.match(siteShell, /pathname\s*===\s*["']\/admin["']/)
   assert.match(siteShell, /pathname\.startsWith\(\s*["']\/admin\/["']\s*\)/)
   assert.match(siteShell, /Navbar/)
   assert.match(siteShell, /FaqSection/)
-  assert.match(siteShell, /CartFloatingButton/)
+  assert.match(siteShell, /WhatsAppFloatingButton/)
   assert.match(siteShell, /CartPanel/)
 
   assert.match(adminPage, /AdminShell/)
