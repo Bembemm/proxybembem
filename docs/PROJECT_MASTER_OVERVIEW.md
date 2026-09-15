@@ -1,7 +1,7 @@
 # ProxyBembem — Visão Geral Mestre do Projeto
 
 **Atualizado em:** 2026-09-15  
-**Estado consolidado:** Phases 0–7 concluídas; Phases 6 e 7 integradas na `main`; Phase 7 aceita em Production no runtime `3fd88688a6cfae343fea3b346a3d1cad1035eb86`; Phases 8–9 não iniciadas.
+**Estado consolidado:** Phases 0–9 concluídas; hosted Supabase validado; final runtime candidate deployado na KingHost; Phase 4 historical browser debt, Phase 8 authenticated dashboard smoke e Phase 9 final Production smoke aceitos pelo owner.
 
 Este documento é o ponto de entrada canônico para entender o projeto. A realidade hospedada e a implementação atual prevalecem sobre anotações históricas antigas. Planos/specs em `docs/superpowers/plans/` e `docs/superpowers/specs/` preservam o processo histórico de design/TDD e não devem ser lidos como pendências atuais apenas porque contêm passos RED/GREEN antigos.
 
@@ -11,26 +11,30 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 
 ### Git / CI
 
-- Branch canônica e ativa: `main`.
-- Phase 6 está integrada na `main` via merge `95ac936ca11dfd695734138e579eb97085714980`.
-- Phase 7 foi integrada na `main` por fast-forward para `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
-- Branch histórica da Phase 7: `feat/phase-7-store-settings`.
-- Runtime Phase 7 aceito em Production: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
-- CI desse runtime: GitHub Actions #1613 / run `34923612641` — **PASS** no próprio `main`.
+- Branch canônica de integração: `main`.
+- Branch final ativa: `feat/phase-9-hardening-final-rollout`.
+- Phase 6 integrada na `main` via merge `95ac936ca11dfd695734138e579eb97085714980`.
+- Phase 7 integrada na `main`; docs closure `75c78437883627e241a9708c8d07a0988dc8c8b5`.
+- Runtime Phase 7 aceito: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
+- Phase 8 rollout candidate: `773504f0e68220c1bda0ec706c4e62f8d542e433`; CI #1631 / run `34960866441` — **PASS**.
+- Phase 9 final application runtime candidate: `cdb3f863336237ab49f9b91cca20f0d876aa75c7`; CI #1648 / run `34983376962` — **PASS**.
+- A aceitação final de Production está registrada em `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`.
+- No merge/rebase/force/delete de branch sem aprovação explícita do proprietário.
 
-### Production
+### Production / hosted
 
 - Aplicação: KingHost.
 - Runtime: Node.js **22.1.0**.
 - pnpm operacional: major **10**.
 - Backend/Auth/banco: Supabase hospedado separadamente.
-- Projeto Supabase: `ProxyBembem`.
-- Runtime de aplicação comprovado em Production para a Phase 7: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
-- Checkout Git da KingHost normalizado para branch local `main` rastreando `origin/main`.
-- Homepage comprovada com **HTTP/2 200** após o deploy/restart.
+- Projeto Supabase: `ProxyBembem`, região `sa-east-1`.
 - Phase 7 hosted migration: `20260915002740 store_settings`.
-- O aviso público temporário usado no smoke foi desligado ao final da primeira aceitação.
-- Smoke funcional final confirmou que Store Settings públicos propagam para os consumidores globais auditados.
+- Phase 8 hosted migration: `20260915092352 dashboard_metrics_attention_center`.
+- Phase 9 hosted migration: `20260915145834 phase9_customer_profiles_rls_performance`.
+- Final runtime candidate Phase 9 foi deployado na KingHost e reiniciado pelo painel.
+- Public health pós-restart: `HTTP/2 200` com headers de segurança esperados.
+- Phase 8 authenticated `/admin` smoke: **PASS / OWNER-REPORTED 2026-09-15**.
+- Phase 9 final authenticated/business smoke: **PASS / OWNER-REPORTED 2026-09-15**.
 
 ### Provedores externos
 
@@ -44,29 +48,29 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 
 ## 2. Arquitetura atual
 
-ProxyBembem é um **monólito modular em Next.js + TypeScript**, com fronteiras server-side para checkout, autenticação, administração, pagamentos, frete, notificações e Store Settings.
+ProxyBembem é um **monólito modular em Next.js + TypeScript**, com fronteiras server-side para checkout, autenticação, administração, pagamentos, frete, notificações, Store Settings, dashboard administrativo e hardening de acesso/concurrency.
 
-A aplicação é dividida operacionalmente entre:
+Camadas operacionais:
 
 - **browser/UI:** catálogo, carrinho, formulários, conta do cliente e telas administrativas;
-- **Next.js server:** validação, autorização, checkout, integrações, projeções sanitizadas e cache público de settings;
-- **Supabase:** persistência, Auth, Storage, RLS, RPCs, eventos, auditoria e Store Settings;
+- **Next.js server:** validação, autorização, checkout, integrações, projeções sanitizadas, dashboard protegido e cache público de settings;
+- **Supabase:** persistência, Auth, Storage, RLS, RPCs, eventos, auditoria, attention flags e settings;
 - **Mercado Pago:** verdade financeira;
 - **Melhor Envio:** verdade operacional de remessa/rastreamento;
 - **Resend:** transporte/callbacks de e-mail;
-- **KingHost:** execução da aplicação e publicação dos assets do build.
+- **KingHost:** execução da aplicação e publicação dos assets.
 
-Não existe uma segunda implementação de backend que deva ser ressuscitada de branches históricas.
+Não existe segunda implementação de backend que deva ser ressuscitada de branches históricas.
 
 ---
 
 ## 3. Invariantes que não devem regredir
 
-1. O browser nunca é autoridade para preço, subtotal, frete, total, `customer_id`, status financeiro ou ownership.
+1. Browser nunca é autoridade para preço, subtotal, frete, total, `customer_id`, status financeiro ou ownership.
 2. `public.products` no Supabase é a única autoridade de catálogo em runtime.
-3. Produto público precisa estar `published`; lifecycle é exatamente `draft | published | archived`; sem hard delete administrativo.
+3. Produto público precisa estar `published`; lifecycle é `draft | published | archived`; sem hard delete administrativo.
 4. Iniciar pagamento exige cliente Supabase autenticado e verificado.
-5. Ownership do pedido vem de identidade Auth confiável no servidor.
+5. Ownership de pedido vem de identidade Auth confiável no servidor.
 6. Pedidos privados usam `/minha-conta/pedidos/{uuid}`; não restaurar `/pedido/[token]`, guest claim ou guest payment.
 7. Mercado Pago é a única autoridade financeira; fulfillment/admin não falsifica pagamento/reembolso.
 8. Pedido histórico preserva snapshot de compra/frete.
@@ -75,43 +79,46 @@ Não existe uma segunda implementação de backend que deva ser ressuscitada de 
 11. `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` é o default seguro fora de janela deliberada.
 12. Resultado ambíguo de mutação em provider deve ser reconciliado antes de retry.
 13. Gerar/imprimir etiqueta/DACE não marca pedido como enviado.
-14. Tracking só avança estado com evidência confiável e nunca deve regredir estado.
+14. Tracking só avança estado com evidência confiável e não regride estado.
 15. Notificação transacional nunca muda verdade financeira, fulfillment ou shipping.
 16. Resend Open Tracking e Click Tracking permanecem OFF em Production.
 17. Segredos, tokens, TOTP, service keys, CPF completo e IDs privados de provider não vão para browser/log público/docs.
 18. Migration já aplicada não é reescrita nem reaplicada; correções são aditivas.
 19. Store Settings é allowlisted e não contém credenciais/provider secrets.
 20. Falha de leitura pública de settings usa fallback seguro server-side; mutação administrativa continua fail-closed.
-21. Informações públicas representadas por Store Settings usam esses settings como fonte global; buyer data, provider identity e delivery transit time permanecem domínios separados.
+21. Dashboard/Attention Center são read-only e nunca resolvem flags nem executam mutations de pagamento/pedido/provider.
+22. Métricas financeiras usam eventos confiáveis do Mercado Pago; `orders.created_at` não substitui horário de aprovação/reversão.
+23. Falha do snapshot administrativo aparece explicitamente; nunca vira zeros sintéticos.
+24. Índice não é removido apenas para reduzir advisor INFO; remoção exige prova de redundância e ausência de risco.
+25. Reinício KingHost é pelo painel; não usar PM2 CLI.
 
 ---
 
-## 4. Fluxos principais do produto
+## 4. Fluxos principais
 
 ### 4.1 Catálogo e carrinho
 
-- Catálogo público resolve apenas produtos `published` do Supabase.
-- Carrinho pode existir antes do login.
-- Alterações de preço/publicação são reconciliadas contra o catálogo atual.
-- Checkout re-resolve IDs, quantidades, preço e dados físicos no servidor.
+- catálogo público resolve apenas produtos `published` do Supabase;
+- carrinho pode existir antes do login;
+- checkout re-resolve IDs, quantidades, preço e dados físicos no servidor;
+- alterações de preço/publicação são reconciliadas contra a autoridade atual.
 
 ### 4.2 Checkout e Mercado Pago
 
-- Catálogo/carrinho/cotação são públicos.
-- `POST /api/checkout` exige identidade verificada antes de reservar/criar pedido.
-- O pedido é persistido antes do redirect.
-- O servidor cria a preferência a partir de valores autoritativos reconstruídos.
-- Retornos voltam para `/minha-conta/pedidos/{order-id}`.
-- Webhook valida assinatura, consulta provider, valida referência/valor/moeda e aplica transição atômica.
-- Retorno do navegador nunca é prova de pagamento.
+- catálogo/carrinho/cotação são públicos;
+- `POST /api/checkout` exige identidade verificada antes de reservar/criar pedido;
+- servidor persiste pedido e cria preferência com valores autoritativos;
+- retorno do navegador nunca é prova de pagamento;
+- webhook valida assinatura/provider/referência/valor/moeda e aplica transição atômica;
+- preference creation usa lease/idempotency para evitar criação concorrente duplicada.
 
 ### 4.3 Conta do cliente
 
-- Cadastro/login Supabase.
-- E-mail verificado para iniciar pagamento.
-- Perfil privado e pedidos owner-scoped.
-- Recuperação de senha usa grant durável controlado pela aplicação.
-- Cliente recebe somente projeções sanitizadas dos próprios pedidos/remessas.
+- cadastro/login Supabase;
+- e-mail verificado para iniciar pagamento;
+- perfil privado e pedidos owner-scoped;
+- recuperação de senha usa grant durável com lease/finalização controlados pela aplicação;
+- cliente recebe somente projeções sanitizadas dos próprios pedidos/remessas.
 
 ### 4.4 Admin
 
@@ -127,7 +134,7 @@ Principais superfícies:
 - `/admin/integrations/melhor-envio`
 - `/admin/configuracoes`
 
-Autorização depende de owner UUID, senha, TOTP/AAL2 e sessão administrativa ativa.
+Autorização depende de owner UUID, senha, TOTP/AAL2 e sessão administrativa ativa. Mutations sensíveis preservam same-origin, rate-limit quando aplicável, bounded body, server authority e `no-store`.
 
 ### 4.5 Melhor Envio
 
@@ -143,13 +150,13 @@ Preparar remessa
   -> rastrear
 ```
 
-Production usa o fluxo atual PF/CPF + DC-e/DACE, com fundação para PJ/CNPJ + NF-e. V1 trabalha com um pacote/volume e uma etiqueta por pedido ativo. Nenhuma etapa anterior à compra pode auto-gastar.
+Nenhuma etapa anterior à compra pode auto-gastar. Resultado ambíguo de provider entra em attention/reconciliation antes de retry.
 
-### 4.6 E-mail transacional / Resend
+### 4.6 Notificações / Resend
 
 Arquitetura: outbox durável no Supabase + worker da aplicação + Resend + webhook Svix assinado.
 
-Tipos exatamente suportados:
+Tipos suportados:
 
 1. `payment_approved`
 2. `production_started`
@@ -160,11 +167,11 @@ Tipos exatamente suportados:
 7. `refunded`
 8. `charged_back`
 
-Nenhum e-mail de pedido é enviado antes de pagamento autoritativamente aprovado. Reenvio manual cria entrega auditável distinta. Callbacks atrasados/antecipados são reconciliados sem rebaixar estado terminal mais forte.
+Cada entrega possui dedupe/provider idempotency; reenvio manual cria operação auditável distinta. E-mail nunca altera business truth.
 
 ### 4.7 Store Settings
 
-Store Settings V1 contém exatamente:
+V1 contém exatamente:
 
 - prazo de produção em dias úteis, 1–15;
 - e-mail público opcional;
@@ -172,11 +179,34 @@ Store Settings V1 contém exatamente:
 - flag de aviso público;
 - texto simples de aviso, até 400 caracteres.
 
-Admin salva explicitamente em `/admin/configuracoes`; stale revision retorna conflito em vez de sobrescrever valor novo. Após save válido, o tree server-side é atualizado para evitar props antigas na navegação da mesma sessão.
+Stale revision retorna conflito; browser público recebe somente projeção sanitizada; secrets continuam env-only.
 
-Browser público recebe somente projeção sanitizada. FAQ, footer, `/contato`, aviso, carrinho, suporte de pedido, `/privacidade`, `/trocas-e-reembolsos` e o prazo nos detalhes de produto obedecem à configuração global correspondente. Dados do cliente, remetente transacional/provider identity e prazo de trânsito do frete não são Store Settings.
+### 4.8 Dashboard Metrics + Attention Center
 
-Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
+Contrato Phase 8:
+
+- `public.admin_get_dashboard_snapshot()` captura um único `as_of`;
+- Today/Week/Month usam `America/Sao_Paulo`;
+- aprovado bruto usa primeiro evento confiável de aprovação do Mercado Pago por pedido;
+- reversões usam primeiro `refunded`/`charged_back` confiável por pedido, separadas do aprovado bruto;
+- operações e risco financeiro são contagens atuais;
+- Attention Center usa flags não resolvidas por pedido, maior severidade e top 5 read-only;
+- ranking mensal soma quantities de `orders.items` imutáveis de pedidos aprovados no mês;
+- erro backend produz estado de indisponibilidade, sem zeros falsos.
+
+Hosted reconciliation da Phase 8 correspondeu aos dados autoritativos reais. O authenticated dashboard smoke foi concluído e aceito pelo owner em 2026-09-15.
+
+### 4.9 Hardening Phase 9
+
+A Phase 9 consolidou:
+
+- inventário de rotas sensíveis e boundaries de auth/origin/rate-limit/cache/secrets;
+- revisão de privileged RPCs, grants e `search_path`;
+- matriz de concorrência/idempotência para pagamento, checkout lease, fulfillment, produtos, Store Settings, shipments, notificações, recovery grants, attention flags e dashboard;
+- evidence gate para índices advisor;
+- migração performance-only de `customer_profiles` para `(select auth.uid())` sem alteração de ownership;
+- rollout final pinado em exact SHA;
+- smoke final completo owner-reported cobrindo Phase 4 historical debt, Phase 8 dashboard e Phase 9 Production acceptance.
 
 ---
 
@@ -188,12 +218,12 @@ Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 | 1 — Data + Audit Foundation | **COMPLETE / APPLIED** | Fulfillment, eventos, auditoria e attention flags. |
 | 2 — Admin Orders + Fulfillment | **COMPLETE / ACCEPTED** | Pedidos/admin/produção e transições protegidas. |
 | 3 — Customer Account + Private Orders | **COMPLETE / PRODUCTION ACCEPTED** | Conta verificada, pedidos privados e recuperação de senha. |
-| 4 — Catalog + Products Admin + Navigation | **IMPLEMENTATION COMPLETE** | Supabase catalog, admin de produtos e sidebar; smoke manual amplo histórico parcialmente diferido. |
+| 4 — Catalog + Products Admin + Navigation | **COMPLETE / OWNER ACCEPTED** | Supabase catalog/admin; historical broad browser smoke fechado em 2026-09-15. |
 | 5 — Melhor Envio + Labels + Tracking | **COMPLETE / OWNER ACCEPTED** | OAuth, remessas, compra explícita, geração, DACE, postagem e tracking. |
 | 6 — Transactional Notifications | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Outbox, worker, Resend, webhook, admin history e resend auditável. |
-| 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Settings allowlisted, admin protegido, projeção pública global, hosted DB, CI e smoke final aceitos. |
-| 8 — Dashboard Metrics + Attention Center | **NOT STARTED** | Métricas/filas operacionais confiáveis. |
-| 9 — Hardening + Final Rollout | **NOT STARTED** | Revisão final de auth, isolation, origins, rate limit, secrets, concorrência e smoke. |
+| 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Settings allowlisted, admin protegido, projeção pública global e hosted DB validados. |
+| 8 — Dashboard Metrics + Attention Center | **COMPLETE / HOSTED VALIDATED / PRODUCTION ACCEPTED** | Hosted reconciliation + authenticated owner smoke concluídos. |
+| 9 — Hardening + Final Rollout | **COMPLETE / PRODUCTION ACCEPTED** | Repository + hosted hardening, rollout final e owner smoke concluídos. |
 
 ---
 
@@ -201,36 +231,53 @@ Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 
 A série `supabase/migrations/` é a história aditiva do schema. Não reaplicar versões presentes na migration history hospedada.
 
-### Pedidos, pagamento e checkout
-
-Foundation de pedidos, hardening de checkout/frete, eventos financeiros atômicos, lease de preferência e dados fiscais/recipient necessários ao fluxo atual.
-
-### Admin e contas
-
-Sessões administrativas, operações/auditoria de pedidos, fulfillment, contas/pedidos privados e recuperação de senha durável.
-
-### Catálogo
-
-`product_catalog`, grants server-side e hardening de least privilege.
-
-### Melhor Envio / remessas
-
-OAuth/scopes, `shipments`, `shipment_events`, sender profiles, operações, cancelamento/reconciliação, customer projection e índices relacionados.
-
-### Notificações
-
-Migrations Phase 6 incluem foundation, triggers, advisory indexes, webhook reconciliation e hardening/backfill finais.
-
 ### Store Settings
 
 - repo: `supabase/migrations/202609140003_store_settings.sql`;
 - hosted: `20260915002740 store_settings`.
 
-Essa migration já foi aplicada/validada e não deve ser reaplicada.
+### Dashboard Metrics + Attention Center
+
+- repo: `supabase/migrations/202609150001_dashboard_metrics_attention_center.sql`;
+- hosted: `20260915092352 dashboard_metrics_attention_center`.
+
+### Phase 9 RLS performance hardening
+
+- repo: `supabase/migrations/202609150002_phase9_customer_profiles_rls_performance.sql`;
+- hosted: `20260915145834 phase9_customer_profiles_rls_performance`.
+
+A Phase 9 migration recriou somente as três policies próprias de `customer_profiles` usando `(select auth.uid()) = id`, mantendo RLS e ownership semantics. O advisor de performance deixou de reportar os 3 `auth_rls_initplan` warnings.
 
 ---
 
-## 7. Deploy e operação KingHost
+## 7. Supabase advisor baseline após Phase 9
+
+### Performance
+
+Restam 6 INFO `unused_index`:
+
+- `admin_audit_admin_created_idx`
+- `shipments_tracking_active_idx`
+- `notification_outbox_due_idx`
+- `shipment_events_order_created_idx`
+- `shipments_sender_profile_id_idx`
+- `notification_webhook_events_provider_message_idx`
+
+Todos foram mantidos porque a evidência não provou remoção segura. Não criar migration de drop apenas para silenciar advisor.
+
+### Security
+
+Baseline atual:
+
+- 16 INFO `rls_enabled_no_policy` em tabelas backend-only com browser CRUD revogado;
+- 2 WARN de authenticated `SECURITY DEFINER` para `customer_list_orders` e `customer_get_order`, intencionais e owner-scoped por `auth.uid()`;
+- leaked-password protection continua disabled.
+
+O tooling conectado não expôs Auth-config read/write nem prova do tier do projeto; portanto nenhuma ativação foi fingida/forçada. Estado final: `PLATFORM_LIMITATION / OWNER DASHBOARD CHECK`. Esse item permanece documentado como disposição de plataforma/configuração e não como finding crítica/alta desconhecida da aplicação.
+
+---
+
+## 8. Deploy e operação KingHost
 
 Runbook: `docs/deployment/kinghost.md`.
 
@@ -251,25 +298,57 @@ npx pnpm@10 install --frozen-lockfile
 NODE_ENV=production npx pnpm@10 deploy:kinghost
 ```
 
-Depois, restart pelo painel KingHost. Não iniciar PM2 manualmente.
+Para rollout de branch/candidate não integrado, usar detached exact SHA deliberadamente e não reescrever histórico. Depois, restart apenas pelo painel KingHost. Não iniciar/reiniciar PM2 via CLI.
 
 ### Incidente `umask`
 
-Em 2026-09-14 um shell com `umask 077` fez assets nascerem `600`, causando 403 do nginx em CSS/JS. Regra operacional: build/deploy com umask normal (`022`); não afrouxar `.env.production` e não alterar o deploy para mascarar um shell configurado incorretamente.
+Em 2026-09-14 um shell com `umask 077` fez assets nascerem `600`, causando 403 do nginx em CSS/JS. Regra: build/deploy com umask normal (`022`).
+
+### Final rollout Phase 9
+
+Production foi pinada no exact runtime SHA:
+
+`cdb3f863336237ab49f9b91cca20f0d876aa75c7`
+
+O owner confirmou restart via painel, `HTTP/2 200`, headers de segurança esperados e working tree limpo após restaurar apenas a alteração gerada pelo Next.js em `next-env.d.ts`.
 
 ---
 
-## 8. Verificação / CI
+## 9. Verificação / CI
 
-CI valida runtime exato Node 22.1.0, install com lockfile congelado, typecheck, KingHost build, private-order contract, startup adapter/smoke e suíte automatizada.
+CI verifica Node 22.1.0, frozen install, typecheck, `build:kinghost`, private-order contract, startup adapter smoke e full tests.
 
-Para a Phase 7, o runtime final aceito `3fd88688...` passou GitHub Actions #1613 / run `34923612641` no próprio `main`.
+Phase 9 runtime candidate:
 
-As regressões cobrem banner abaixo da navbar, optimistic concurrency e consumidores globais de Store Settings.
+`cdb3f863336237ab49f9b91cca20f0d876aa75c7` — GitHub Actions CI #1648 / run `34983376962`: **PASS**.
+
+O job `verify` passou todas as etapas relevantes. Commits posteriores do branch nesta etapa são aceitação/testes/documentação e não alteraram runtime application code após esse candidate.
 
 ---
 
-## 9. Aceitação real observada
+## 10. Evidência histórica Phase 5 preservada
+
+Phase 5 continua **complete / owner accepted**.
+
+- caminho Production **non-spending / sem gasto** chegou ao carrinho real do Melhor Envio com shipment local em `in_cart`;
+- custo observado: **R$ 23,69**;
+- `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` continua default seguro fora de janela deliberada;
+- Task 18 **owner accepted / owner-reported**;
+- Task 19 **complete / concluída**;
+- Task 20 **owner accepted / owner-reported**.
+
+Migrations Phase 5:
+
+- `202609080002_melhor_envio_oauth_scope_grants.sql`
+- `202609080003_shipments_foundation.sql`
+- `202609080004_shipment_operations.sql`
+- `202609080005_shipment_cancel_reconciliation.sql`
+- `202609080006_customer_shipment_projection.sql`
+- `20260909194848_shipments_sender_profile_fk_index.sql`
+
+---
+
+## 11. Aceitação real observada
 
 ### Phase 3
 
@@ -277,7 +356,7 @@ Conta/pedidos privados: Production accepted.
 
 ### Phase 4
 
-Stage 1/2 aceitas em Production. Stage 3 implementada/automatizada; checklist browser amplo antigo não integralmente refeito.
+Catalog + Products Admin + Navigation: implementation/automated green e historical broad browser smoke **owner accepted em 2026-09-15**.
 
 ### Phase 5
 
@@ -289,42 +368,47 @@ Resend Production, webhook assinado, cron KingHost, entrega real de fixture e re
 
 ### Phase 7
 
+Hosted migration + rollout + global settings propagation aceitos e integrados em `main`.
+
+### Phase 8
+
+- implementação concluída;
 - hosted migration aplicada/validada;
-- primeiro rollout `db430829...` validou banner, stale conflict e hosted settings;
-- auditoria final identificou consumidores de contato/prazo ainda divergentes;
-- runtime `3fd88688...` tornou Store Settings globalmente autoritativos nas superfícies públicas correspondentes;
-- Phase 7 foi integrada na `main` por fast-forward;
-- CI #1613 passou no mesmo SHA;
-- KingHost foi normalizada de detached HEAD para `main` rastreando `origin/main`;
-- homepage respondeu HTTP/2 200 após deploy/restart;
-- smoke funcional do proprietário confirmou atualização global de contato/prazo nas superfícies testadas.
+- snapshot hospedado reconciliado;
+- exact candidate CI-green deployado;
+- authenticated `/admin` owner smoke **PASS / owner-reported 2026-09-15**.
+
+Status: **PRODUCTION ACCEPTED**.
+
+### Phase 9
+
+- repository hardening: validado;
+- hosted RLS performance migration: aplicada/validada;
+- advisors/grants/reconciliation: validados;
+- final runtime candidate: CI-green;
+- KingHost final rollout: concluído;
+- final manual smoke: **PASS / owner-reported 2026-09-15**.
+
+Status: **PRODUCTION ACCEPTED**.
+
+Evidência formal: `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`.
 
 ---
 
-## 10. Pendências e riscos conhecidos
+## 12. Pendências e próxima ação
 
-Estes itens são backlog/hardening e não reabrem automaticamente as fases aceitas:
+O roadmap planejado Phases 0–9 está concluído e aceito. Não há nova etapa de implementação obrigatória neste plano.
 
-1. Antigo browser smoke amplo da Phase 4 não foi integralmente refeito.
-2. Observação manual do header no-store autenticado não foi registrada no último smoke, embora haja regressão automatizada.
-3. Supabase Auth leaked-password protection está desabilitado; avaliar na Phase 9.
-4. `customer_profiles` possui findings `auth_rls_initplan` de performance.
-5. Índices unused são informativos no volume atual; não remover sem evidência.
-6. RLS sem policy em tabelas backend-only é intencional quando browser CRUD está revogado.
-7. Não repetir deploy/build com `umask 077` ativo.
-8. Branches históricas não devem ser usadas como base de trabalho novo quando a `main` já as superou.
+Próxima decisão:
+
+1. manter Production pinada no exact runtime SHA atual até decisão do owner;
+2. integrar `feat/phase-9-hardening-final-rollout` em `main` somente com aprovação explícita do proprietário;
+3. manter as disposições de advisor/plataforma documentadas, sem remover índices nem alterar Auth config às cegas;
+4. não apagar branches nem reescrever histórico sem autorização explícita separada quando aplicável.
 
 ---
 
-## 11. Próxima ação
-
-A Phase 7 está completa, integrada na `main` e aceita em Production. Não existe pendência de merge ou rollout da fase.
-
-Phase 8 e Phase 9 permanecem **NOT STARTED**. Iniciar qualquer uma exige instrução explícita do proprietário.
-
----
-
-## 12. Documentos de referência
+## 13. Documentos de referência
 
 - `docs/PROJECT_MASTER_OVERVIEW.md` — visão geral canônica;
 - `docs/deployment/kinghost.md` — deploy/runtime KingHost;
@@ -332,6 +416,11 @@ Phase 8 e Phase 9 permanecem **NOT STARTED**. Iniciar qualquer uma exige instru�
 - `docs/shipping-setup.md` — Melhor Envio/remessas;
 - `docs/superpowers/CURRENT_STATUS.md` — checkpoint operacional curto;
 - `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` — roadmap/decisões;
-- `docs/superpowers/phase-7/CONTINUIDADE.md` — handoff Phase 7;
-- `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md` — evidência final Phase 7;
-- `docs/superpowers/plans/` e `docs/superpowers/specs/` — histórico de implementação/design.
+- `docs/superpowers/phase-8/HOSTED_VALIDATION.md` — hosted evidence Phase 8;
+- `docs/superpowers/phase-9/AUDIT_MATRIX.md` — matriz de hardening;
+- `docs/superpowers/phase-9/SUPABASE_AUDIT.md` — grants/index/advisor review;
+- `docs/superpowers/phase-9/CONCURRENCY_MATRIX.md` — concorrência/idempotência;
+- `docs/superpowers/phase-9/HOSTED_VALIDATION.md` — hosted Phase 9 evidence;
+- `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md` — owner-reported final manual smoke;
+- `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md` — aceite final Phase 9/projeto;
+- `docs/superpowers/plans/` e `docs/superpowers/specs/` — histórico de design/implementação.
