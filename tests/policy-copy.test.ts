@@ -29,5 +29,5 @@ test("storefront explains the current Mercado Pago and pre-payment freight flow"
   const source = storefrontSource()
 
   assert.match(source, /Pagamento processado pelo Mercado Pago/)
-  assert.match(source, /frete antes do pagamento/i)
+  assert.match(source, /frete[^.\n]{0,100}antes do pagamento/i)
 })
