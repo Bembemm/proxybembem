@@ -1,48 +1,20 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { usePathname } from "next/navigation"
-import { ArrowLeft, ShoppingBag, X } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Loader2, ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CartItems } from "@/components/cart-items"
-import { CheckoutForm } from "@/components/checkout-form"
-import { OrderSummary } from "@/components/order-summary"
 import { ShippingOptions } from "@/components/shipping-options"
 import { useCart } from "@/contexts/cart-context"
+import { digitsOnly, formatCep, formatPrice } from "@/lib/checkout"
 import {
-  buildWhatsAppOrderMessage,
-  buildWhatsAppOrderUrl,
-  digitsOnly,
-  validateCheckout,
-  type CheckoutData,
-  type CheckoutErrors,
-} from "@/lib/checkout"
-import {
-  clearCheckoutLoginDraft,
-  readCheckoutLoginDraft,
-  saveCheckoutLoginDraft,
-} from "@/lib/checkout-login-draft"
-import {
-  applyShippingChanged,
   invalidateCheckoutSelection,
   selectShippingOption,
   type ShippingClientState,
 } from "@/lib/shipping-client"
-import { isAllowedMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
 import type { PublicShippingOption } from "@/lib/server/shipping-quote"
 
-const EMPTY_CHECKOUT: CheckoutData = {
-  nome: "",
-  email: "",
-  whatsapp: "",
-  cep: "",
-  rua: "",
-  numero: "",
-  complemento: "",
-  bairro: "",
-  cidade: "",
-  uf: "",
-}
+const CHECKOUT_PREVIEW_KEY = "proxybembem-checkout-preview-v1"
 
 const EMPTY_SHIPPING: ShippingClientState = {
   shippingOptions: [],
@@ -51,21 +23,9 @@ const EMPTY_SHIPPING: ShippingClientState = {
   checkoutAttemptId: null,
 }
 
-interface CheckoutResponse {
-  checkoutUrl?: unknown
-  error?: unknown
-  code?: unknown
-  fieldErrors?: CheckoutErrors
-  options?: unknown
-}
-
 interface ShippingQuoteResponse {
   options?: unknown
   error?: unknown
-}
-
-interface CartPanelProps {
-  contactWhatsappE164: string | null
 }
 
 function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
@@ -91,15 +51,13 @@ function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
     ) {
       return null
     }
-
     options.push(candidate as PublicShippingOption)
   }
 
   return options
 }
 
-export function CartPanel({ contactWhatsappE164 }: CartPanelProps) {
-  const pathname = usePathname()
+export function CartPanel() {
   const {
     items,
     removeFromCart,
@@ -113,15 +71,11 @@ export function CartPanel({ contactWhatsappE164 }: CartPanelProps) {
     dismissCartNotice,
   } = useCart()
 
-  const [checkout, setCheckout] = useState<CheckoutData>(EMPTY_CHECKOUT)
-  const [errors, setErrors] = useState<CheckoutErrors>({})
+  const [cep, setCep] = useState("")
   const [shipping, setShipping] = useState<ShippingClientState>(EMPTY_SHIPPING)
   const [isQuoting, setIsQuoting] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const restoredShippingServiceIdRef = useRef<string | null>(null)
 
-  const destinationCep = digitsOnly(checkout.cep)
+  const destinationCep = digitsOnly(cep)
   const hasValidCep = /^\d{8}$/.test(destinationCep)
   const cartQuoteKey = useMemo(
     () =>
@@ -131,144 +85,103 @@ export function CartPanel({ contactWhatsappE164 }: CartPanelProps) {
         .join("|"),
     [items],
   )
-
-  useEffect(() => {
-    if (pathname !== "/produtos") return
-
-    const draft = readCheckoutLoginDraft(window.sessionStorage)
-    if (!draft) return
-
-    restoredShippingServiceIdRef.current = draft.shippingServiceId
-    setCheckout(draft.checkout)
-    setIsCartOpen(true)
-  }, [pathname, setIsCartOpen])
+  const shippingPrice = shipping.selectedShipping
+    ? shipping.selectedShipping.priceCents / 100
+    : 0
+  const finalTotal = totalPrice + shippingPrice
 
   useEffect(() => {
     if (!isCartOpen) return
 
     document.body.style.overflow = "hidden"
-
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !isSubmitting) {
-        setIsCartOpen(false)
-      }
+      if (event.key === "Escape") setIsCartOpen(false)
     }
-
     document.addEventListener("keydown", handleKeyDown)
 
     return () => {
       document.body.style.overflow = ""
       document.removeEventListener("keydown", handleKeyDown)
     }
-  }, [isCartOpen, isSubmitting, setIsCartOpen])
+  }, [isCartOpen, setIsCartOpen])
 
   useEffect(() => {
-    if (!isCartOpen) return
-
     setShipping((current) => invalidateCheckoutSelection(current))
-    setCheckoutError(null)
+  }, [cartQuoteKey])
 
-    if (!hasValidCep || items.length === 0) {
-      setIsQuoting(false)
+  const handleCepChange = (value: string) => {
+    setCep(formatCep(value))
+    setShipping((current) => invalidateCheckoutSelection(current))
+  }
+
+  const handleQuote = async () => {
+    if (items.length === 0 || isQuoting) return
+
+    if (!hasValidCep) {
+      setShipping((current) => ({
+        ...invalidateCheckoutSelection(current),
+        shippingError: "Informe um CEP válido com 8 números.",
+      }))
       return
     }
 
-    const controller = new AbortController()
-    const timer = window.setTimeout(async () => {
-      setIsQuoting(true)
+    setIsQuoting(true)
+    setShipping((current) => ({
+      ...invalidateCheckoutSelection(current),
+      shippingError: null,
+    }))
 
-      try {
-        const response = await fetch("/api/shipping/quote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: items.map((item) => ({
-              productId: item.product.id,
-              quantity: item.quantity,
-            })),
-            destinationCep,
-          }),
-          signal: controller.signal,
-        })
+    try {
+      const response = await fetch("/api/shipping/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            productId: item.product.id,
+            quantity: item.quantity,
+          })),
+          destinationCep,
+        }),
+      })
 
-        const result = (await response.json().catch(() => null)) as ShippingQuoteResponse | null
-        if (!response.ok) {
-          throw new Error(
-            typeof result?.error === "string"
-              ? result.error
-              : "Não foi possível calcular o frete. Tente novamente.",
-          )
-        }
-
-        const options = parseShippingOptions(result?.options)
-        if (!options || options.length === 0) {
-          throw new Error("Nenhuma opção de frete disponível para este CEP.")
-        }
-
-        const restoredShippingServiceId = restoredShippingServiceIdRef.current
-        const restoredShipping = restoredShippingServiceId
-          ? options.find((option) => option.serviceId === restoredShippingServiceId) ?? null
-          : null
-        restoredShippingServiceIdRef.current = null
-
-        setShipping((current) => ({
-          ...current,
-          shippingOptions: options,
-          selectedShipping: restoredShipping,
-          shippingError: null,
-          checkoutAttemptId: null,
-        }))
-      } catch (error) {
-        if (controller.signal.aborted) return
-        setShipping((current) => ({
-          ...current,
-          shippingOptions: [],
-          selectedShipping: null,
-          shippingError:
-            error instanceof Error
-              ? error.message
-              : "Não foi possível calcular o frete. Tente novamente.",
-          checkoutAttemptId: null,
-        }))
-      } finally {
-        if (!controller.signal.aborted) setIsQuoting(false)
+      const result = (await response.json().catch(() => null)) as ShippingQuoteResponse | null
+      if (!response.ok) {
+        throw new Error(
+          typeof result?.error === "string"
+            ? result.error
+            : "Não foi possível calcular o frete. Tente novamente.",
+        )
       }
-    }, 400)
 
-    return () => {
-      window.clearTimeout(timer)
-      controller.abort()
+      const options = parseShippingOptions(result?.options)
+      if (!options || options.length === 0) {
+        throw new Error("Nenhuma opção de frete disponível para este CEP.")
+      }
+
+      setShipping({
+        shippingOptions: options,
+        selectedShipping: options.length === 1 ? options[0] : null,
+        shippingError: null,
+        checkoutAttemptId: null,
+      })
+    } catch (error) {
+      setShipping((current) => ({
+        ...invalidateCheckoutSelection(current),
+        shippingError:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível calcular o frete. Tente novamente.",
+      }))
+    } finally {
+      setIsQuoting(false)
     }
-  }, [cartQuoteKey, destinationCep, hasValidCep, isCartOpen, items])
-
-  const handleCheckoutChange = (field: keyof CheckoutData, value: string) => {
-    setCheckout((current) => ({ ...current, [field]: value }))
-    setErrors((current) => ({ ...current, [field]: undefined }))
-    setCheckoutError(null)
-
-    if (field === "cep") restoredShippingServiceIdRef.current = null
-
-    setShipping((current) =>
-      field === "cep"
-        ? invalidateCheckoutSelection(current)
-        : { ...current, checkoutAttemptId: null },
-    )
   }
 
   const handleShippingSelect = (option: PublicShippingOption) => {
-    restoredShippingServiceIdRef.current = null
     setShipping((current) => selectShippingOption(current, option))
-    setCheckoutError(null)
   }
 
-  const handleCheckout = async () => {
-    if (items.length === 0 || isSubmitting || isQuoting) return
-
-    const nextErrors = validateCheckout(checkout)
-    setErrors(nextErrors)
-    setCheckoutError(null)
-
-    if (Object.keys(nextErrors).length > 0) return
+  const handleStartCheckout = () => {
     if (!shipping.selectedShipping) {
       setShipping((current) => ({
         ...current,
@@ -277,221 +190,163 @@ export function CartPanel({ contactWhatsappE164 }: CartPanelProps) {
       return
     }
 
-    const attemptId = shipping.checkoutAttemptId ?? crypto.randomUUID()
-    setShipping((current) => ({ ...current, checkoutAttemptId: attemptId }))
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            productId: item.product.id,
-            quantity: item.quantity,
-          })),
-          customer: checkout,
-          selectedQuoteToken: shipping.selectedShipping.quoteToken,
-          checkoutAttemptId: attemptId,
-        }),
-      })
-
-      const result = (await response.json().catch(() => null)) as CheckoutResponse | null
-
-      if (!response.ok) {
-        if (result?.code === "authentication_required") {
-          saveCheckoutLoginDraft(
-            window.sessionStorage,
-            checkout,
-            shipping.selectedShipping.serviceId,
-          )
-          setIsCartOpen(false)
-          window.location.assign("/entrar?next=%2Fprodutos")
-          return
-        }
-
-        if (result?.fieldErrors) setErrors(result.fieldErrors)
-
-        if (result?.code === "shipping_changed") {
-          const options = parseShippingOptions(result.options)
-          if (options) {
-            setShipping((current) => applyShippingChanged(current, options))
-          } else {
-            setShipping((current) => invalidateCheckoutSelection(current))
-          }
-        } else if (result?.code === "checkout_attempt_conflict") {
-          setShipping((current) => ({ ...current, checkoutAttemptId: null }))
-        }
-
-        setCheckoutError(
-          typeof result?.error === "string"
-            ? result.error
-            : "Não foi possível iniciar o pagamento. Tente novamente.",
-        )
-        return
-      }
-
-      if (
-        typeof result?.checkoutUrl !== "string" ||
-        !isAllowedMercadoPagoCheckoutUrl(result.checkoutUrl)
-      ) {
-        throw new Error("Unsafe checkout URL")
-      }
-
-      clearCheckoutLoginDraft(window.sessionStorage)
-      window.location.assign(result.checkoutUrl)
-    } catch {
-      setCheckoutError(
-        contactWhatsappE164
-          ? "Não foi possível iniciar o pagamento. Tente novamente ou continue pelo WhatsApp."
-          : "Não foi possível iniciar o pagamento. Tente novamente.",
-      )
-    } finally {
-      setIsSubmitting(false)
-    }
+    window.sessionStorage.setItem(
+      CHECKOUT_PREVIEW_KEY,
+      JSON.stringify({
+        cep: destinationCep,
+        shippingServiceId: shipping.selectedShipping.serviceId,
+      }),
+    )
+    setIsCartOpen(false)
+    window.location.assign("/checkout")
   }
-
-  const handleClose = () => {
-    if (!isSubmitting) setIsCartOpen(false)
-  }
-
-  const whatsappFallbackUrl = buildWhatsAppOrderUrl(
-    contactWhatsappE164,
-    buildWhatsAppOrderMessage(items, totalPrice, checkout, shipping.selectedShipping),
-  )
 
   if (!isCartOpen) return null
 
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden md:block"
-        onClick={handleClose}
-        aria-hidden="true"
+      <button
+        type="button"
+        className="fixed inset-0 z-50 hidden cursor-default bg-black/45 backdrop-blur-[1px] md:block"
+        onClick={() => setIsCartOpen(false)}
+        aria-label="Fechar carrinho"
       />
 
-      <div
-        className="fixed inset-0 md:inset-auto md:right-0 md:top-0 md:h-full md:w-[450px] bg-slate-900 md:border-l md:border-[#8B5CF6]/30 shadow-2xl z-50 flex flex-col"
+      <aside
+        className="fixed inset-0 z-50 flex flex-col bg-white shadow-2xl md:inset-auto md:right-0 md:top-0 md:h-full md:w-[470px] md:border-l md:border-slate-200"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cart-panel-title"
-        aria-busy={isSubmitting || isQuoting || catalogStatus === "loading"}
+        aria-busy={isQuoting || catalogStatus === "loading"}
       >
-        <div className="flex items-center justify-between p-4 border-b border-[#8B5CF6]/20 bg-slate-900 sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleClose}
-              disabled={isSubmitting}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors md:hidden disabled:opacity-50"
-              type="button"
-              aria-label="Voltar e fechar carrinho"
-            >
-              <ArrowLeft className="w-6 h-6 text-white" />
-            </button>
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-6 h-6 text-[#8B5CF6]" />
-              <h2 id="cart-panel-title" className="text-xl font-semibold text-white">
-                Meu Carrinho
-              </h2>
-            </div>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <ShoppingBag className="h-5 w-5 text-slate-900" />
+            <h2 id="cart-panel-title" className="text-lg font-medium text-slate-950">
+              Carrinho de compras
+            </h2>
           </div>
-
           <button
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors hidden md:block disabled:opacity-50"
             type="button"
+            onClick={() => setIsCartOpen(false)}
+            className="rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950"
             aria-label="Fechar carrinho"
           >
-            <X className="w-6 h-6 text-slate-400" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          {cartNotice && catalogStatus === "ready" && (
-            <div className="m-4 mb-0 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100" role="status">
-              <div className="flex items-start justify-between gap-3">
-                <p>{cartNotice}</p>
-                <button
-                  type="button"
-                  onClick={dismissCartNotice}
-                  className="shrink-0 text-amber-100/70 hover:text-amber-100"
-                  aria-label="Dispensar aviso do carrinho"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+          {cartNotice && catalogStatus === "ready" ? (
+            <div className="mx-5 mt-4 flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" role="status">
+              <p>{cartNotice}</p>
+              <button type="button" onClick={dismissCartNotice} aria-label="Dispensar aviso do carrinho">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          )}
+          ) : null}
 
           {catalogStatus === "loading" ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6" role="status">
-              <ShoppingBag className="w-20 h-20 text-slate-600 mb-4" />
-              <p className="text-slate-300 text-xl">Atualizando seu carrinho...</p>
-              <p className="text-slate-500 text-base mt-2">
-                Conferindo os produtos e preços atuais.
-              </p>
+            <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center" role="status">
+              <Loader2 className="mb-4 h-7 w-7 animate-spin text-[#8B5CF6]" />
+              <p className="font-medium text-slate-800">Atualizando seu carrinho...</p>
+              <p className="mt-1 text-sm text-slate-500">Conferindo produtos e preços atuais.</p>
             </div>
           ) : catalogStatus === "unavailable" ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6" role="alert">
-              <ShoppingBag className="w-20 h-20 text-slate-600 mb-4" />
-              <p className="text-slate-300 text-xl">Não foi possível atualizar seu carrinho.</p>
-              <p className="text-slate-500 text-base mt-2 max-w-sm">
-                Seus itens salvos foram preservados. Tente novamente para conferir disponibilidade e preços atuais.
-              </p>
-              <Button
-                onClick={retryCatalog}
-                className="mt-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white px-8 py-3 text-base"
-                type="button"
-              >
+            <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center" role="alert">
+              <ShoppingBag className="mb-4 h-12 w-12 text-slate-300" />
+              <p className="font-medium text-slate-800">Não foi possível atualizar seu carrinho.</p>
+              <p className="mt-1 max-w-sm text-sm text-slate-500">Seus itens foram preservados. Tente novamente para conferir disponibilidade e preços.</p>
+              <Button type="button" onClick={retryCatalog} className="mt-5 bg-slate-950 text-white hover:bg-slate-800">
                 Tentar novamente
               </Button>
             </div>
           ) : items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center p-6">
-              <ShoppingBag className="w-20 h-20 text-slate-600 mb-4" />
-              <p className="text-slate-400 text-xl">Seu carrinho está vazio</p>
-              <p className="text-slate-500 text-base mt-2">Adicione produtos para continuar</p>
-              <Button
-                onClick={handleClose}
-                className="mt-6 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white px-8 py-3 text-base"
-                type="button"
-              >
-                Continuar Comprando
+            <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center">
+              <ShoppingBag className="mb-4 h-12 w-12 text-slate-300" />
+              <p className="font-medium text-slate-800">Seu carrinho está vazio</p>
+              <p className="mt-1 text-sm text-slate-500">Adicione produtos para continuar.</p>
+              <Button type="button" onClick={() => setIsCartOpen(false)} className="mt-5 bg-slate-950 text-white hover:bg-slate-800">
+                Ver produtos
               </Button>
             </div>
           ) : (
-            <div className="p-4 space-y-5">
-              <CartItems
-                items={items}
-                onUpdateQuantity={updateQuantity}
-                onRemove={removeFromCart}
-              />
+            <>
+              <div className="p-5">
+                <CartItems items={items} onUpdateQuantity={updateQuantity} onRemove={removeFromCart} />
+              </div>
 
-              <CheckoutForm data={checkout} errors={errors} onChange={handleCheckoutChange} />
+              <div className="border-y border-slate-200 bg-slate-50 px-5 py-5">
+                <h3 className="mb-3 text-base font-medium text-slate-950">Meios de envio</h3>
+                <div className="flex overflow-hidden rounded-lg border border-slate-300 bg-white focus-within:border-[#8B5CF6] focus-within:ring-1 focus-within:ring-[#8B5CF6]/30">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    value={cep}
+                    onChange={(event) => handleCepChange(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void handleQuote()
+                    }}
+                    placeholder="Seu CEP"
+                    className="min-w-0 flex-1 bg-white px-3 py-3 text-base text-slate-950 outline-none placeholder:text-slate-400"
+                    aria-label="CEP para cálculo do frete"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleQuote()}
+                    disabled={isQuoting}
+                    className="min-w-[96px] border-l border-slate-300 px-4 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isQuoting ? "Calculando" : "Calcular"}
+                  </button>
+                </div>
 
-              <ShippingOptions
-                options={shipping.shippingOptions}
-                selected={shipping.selectedShipping}
-                isLoading={isQuoting}
-                error={shipping.shippingError}
-                hasValidCep={hasValidCep}
-                onSelect={handleShippingSelect}
-              />
+                <div className="mt-4">
+                  <ShippingOptions
+                    options={shipping.shippingOptions}
+                    selected={shipping.selectedShipping}
+                    isLoading={isQuoting}
+                    error={shipping.shippingError}
+                    hasValidCep={hasValidCep}
+                    onSelect={handleShippingSelect}
+                  />
+                </div>
+              </div>
 
-              <OrderSummary
-                totalPrice={totalPrice}
-                selectedShipping={shipping.selectedShipping}
-                isQuoting={isQuoting}
-                isSubmitting={isSubmitting}
-                checkoutError={checkoutError}
-                whatsappFallbackUrl={whatsappFallbackUrl}
-                onCheckout={handleCheckout}
-              />
-            </div>
+              <div className="space-y-2 px-5 py-5 text-base text-slate-900">
+                <div className="flex items-center justify-between gap-4">
+                  <span>Subtotal (sem frete):</span>
+                  <span>{formatPrice(totalPrice)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span>Frete:</span>
+                  <span className={shipping.selectedShipping ? "text-slate-900" : "text-slate-400"}>
+                    {shipping.selectedShipping ? formatPrice(shippingPrice) : "Calcule para ver"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4 pt-1 text-lg font-medium">
+                  <span>Total:</span>
+                  <span>{formatPrice(finalTotal)}</span>
+                </div>
+              </div>
+            </>
           )}
         </div>
-      </div>
+
+        {catalogStatus === "ready" && items.length > 0 ? (
+          <div className="border-t border-slate-200 bg-white p-5">
+            <Button
+              type="button"
+              onClick={handleStartCheckout}
+              disabled={!shipping.selectedShipping || isQuoting}
+              className="h-12 w-full rounded-lg bg-black text-base font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              Iniciar compra
+            </Button>
+          </div>
+        ) : null}
+      </aside>
     </>
   )
 }
