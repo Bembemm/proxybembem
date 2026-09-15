@@ -77,16 +77,17 @@ test("checkout fingerprint includes normalized email but ignores case and outer 
 })
 
 test("checkout UI requires an accessible email field and stores it in checkout state", async () => {
-  const [form, cartPanel] = await Promise.all([
+  const [form, checkoutPage] = await Promise.all([
     readFile(new URL("../components/checkout-form.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../components/cart-panel.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/checkout-page.tsx", import.meta.url), "utf8"),
   ])
 
   assert.match(form, /type=["']email["']/)
   assert.match(form, /autoComplete=["']email["']/)
   assert.match(form, /errors\.email/)
   assert.match(form, /email/i)
-  assert.match(cartPanel, /email:\s*["']["']/)
+  assert.match(checkoutPage, /email:\s*["']["']/)
+  assert.match(checkoutPage, /<CheckoutForm\s+data=\{checkout\}/)
 })
 
 test("checkout API parses email as a strict customer string field", async () => {
