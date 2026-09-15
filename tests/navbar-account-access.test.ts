@@ -6,19 +6,18 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
 }
 
-test("navbar exposes Entrar for guests and Meu perfil for authenticated customers without flashing the wrong state", () => {
+test("navbar exposes account access as an icon for guests and authenticated customers without flashing the wrong state", () => {
   const navbar = source("components/navbar.tsx")
 
   assert.match(navbar, /createSupabaseBrowserClient/)
   assert.match(navbar, /auth\.getUser\s*\(/)
   assert.match(navbar, /["']loading["']/)
-  assert.match(navbar, /label:\s*["']Entrar["']/)
+  assert.match(navbar, /["']Entrar["']/)
   assert.match(navbar, /href:\s*["']\/entrar["']/)
-  assert.match(navbar, /label:\s*["']Meu perfil["']/)
+  assert.match(navbar, /["']Meu perfil["']/)
   assert.match(navbar, /href:\s*["']\/minha-conta\/perfil["']/)
-
-  const accountItemRenders = navbar.match(/accountItem/g) ?? []
-  assert.ok(accountItemRenders.length >= 3, "account link should be shared by desktop and mobile navigation")
+  assert.match(navbar, /User(?:Round)?/)
+  assert.match(navbar, /aria-label=\{accountItem\.label\}/)
 })
 
 test("navbar resolves an unauthenticated getUser error to guest instead of staying in loading", () => {
@@ -30,4 +29,17 @@ test("navbar resolves an unauthenticated getUser error to guest instead of stayi
     navbar,
     /if \(error\) \{\s*setAccountState\(["']guest["']\)\s*return\s*\}/,
   )
+})
+
+test("navbar keeps only Produtos and Contato as text navigation and exposes the cart as an icon", () => {
+  const navbar = source("components/navbar.tsx")
+
+  assert.doesNotMatch(navbar, /label:\s*["']Início["']/)
+  assert.match(navbar, /label:\s*["']Produtos["']/)
+  assert.match(navbar, /label:\s*["']Contato["']/)
+  assert.match(navbar, /ShoppingCart/)
+  assert.match(navbar, /useCart/)
+  assert.match(navbar, /setIsCartOpen\(true\)/)
+  assert.match(navbar, /totalItems/)
+  assert.match(navbar, /aria-label=["']Abrir carrinho["']/)
 })
