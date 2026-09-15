@@ -61,7 +61,7 @@ The historical broad Stage 3 browser checklist was not fully re-run; later Produ
 
 # PHASE 5 — Melhor Envio Shipments + Labels + Tracking
 
-**State: COMPLETE / HOSTED MIGRATIONS APPLIED / OWNER ACCEPTED.**
+**State: COMPLETE / HOSTED MIGRATIONS APPLIED / PRODUCTION NON-SPENDING PATH VALIDATED / TASK 18 OWNER ACCEPTED / TASK 20 OWNER ACCEPTED.**
 
 Phase 5 provides server-authoritative shipments, explicit preparation/purchase/generation/posting/cancellation, owner-safe customer tracking and a fail-closed Production spending gate.
 
@@ -73,7 +73,17 @@ MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
 
 No payment, render, cron, tracking or retry path may auto-enable/bypass spending. Provider-ambiguous mutations must be reconciled before retry.
 
-Owner acceptance covers the real purchase path and final Production smoke. Historical detailed evidence remains in Phase 5 docs/current-status history.
+## Phase 5 acceptance evidence preserved
+
+Phase 5 is **complete / owner accepted** at the owner-handoff level.
+
+- The controlled Production **non-spending / sem gasto** path reached the real Melhor Envio cart with the local shipment in `in_cart`; the accepted fixture cost was **R$ 23,69**; there was no purchased-order identity and no false `shipped` transition.
+- Task 18 **owner accepted** on 2026-09-11 — the first explicit real-purchase path was **owner-reported** as accepted; the record does not invent provider evidence that was not captured independently.
+- Task 19 **complete / concluída** — Phase 5 operational documentation was reconciled with the accepted architecture and evidence.
+- Task 20 **owner accepted** on 2026-09-11 — final Production smoke was **owner-reported** by the proprietor.
+- Outside deliberate purchase windows, `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains mandatory and fail-closed.
+
+The historical broad Phase 4 smoke must not be inferred from this Phase 5 acceptance.
 
 # PHASE 6 — Transactional Notifications
 
