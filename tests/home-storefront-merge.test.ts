@@ -6,38 +6,48 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
 }
 
-test("home receives a featured-products preview instead of importing the full catalog", () => {
+test("home starts with a compact featured storefront instead of the large marketing hero", () => {
   const home = source("components/pages/home-page.tsx")
 
   assert.doesNotMatch(home, /@\/data\/products/)
   assert.match(home, /HomePage\s*\(\s*\{\s*featuredProducts/)
-  assert.doesNotMatch(home, /id=["']produtos["']/)
   assert.match(home, /featuredProducts\.map\s*\(/)
-  assert.match(home, /href=["']\/produtos["']/)
-  assert.match(home, />\s*Ver Todos os Produtos\s*</)
+  assert.match(home, />\s*Destaques\s*</)
+  assert.doesNotMatch(home, /Monte seu deck do seu jeito/)
+  assert.doesNotMatch(home, /Escolha a quantidade de cartas/)
+  assert.doesNotMatch(home, /Ver Todos os Produtos/)
 })
 
-test("Produtos navigation points to the dedicated products page", () => {
+test("navbar exposes only a dynamic Categorias storefront menu alongside account and cart icons", () => {
   const navbar = source("components/navbar.tsx")
 
-  assert.match(navbar, /label:\s*["']Produtos["']\s*,\s*href:\s*["']\/produtos["']/)
-  assert.doesNotMatch(navbar, /href:\s*["']\/#produtos["']/)
+  assert.match(navbar, /Categorias/)
+  assert.match(navbar, /fetch\(["']\/api\/catalog["']/)
+  assert.match(navbar, /product\.category/)
+  assert.match(navbar, /\/produtos\?categoria=/)
+  assert.doesNotMatch(navbar, /label:\s*["']Produtos["']/)
+  assert.doesNotMatch(navbar, /label:\s*["']Contato["']/)
+  assert.match(navbar, /UserRound/)
+  assert.match(navbar, /ShoppingCart/)
 })
 
-test("/produtos loads the published catalog and renders the dedicated ProductsPage", () => {
+test("/produtos validates the categoria query against the published catalog before passing it to ProductsPage", () => {
   const route = source("app/produtos/page.tsx")
 
-  assert.match(route, /import\s*\{\s*ProductsPage\s*\}\s*from\s*["']@\/components\/pages\/products-page["']/)
-  assert.match(route, /listPublishedProducts/)
-  assert.match(route, /<ProductsPage\s+products=/)
-  assert.doesNotMatch(route, /redirect\s*\(/)
+  assert.match(route, /searchParams/)
+  assert.match(route, /await\s+searchParams/)
+  assert.match(route, /categoria/)
+  assert.match(route, /products\.some\s*\(/)
+  assert.match(route, /initialCategory=/)
+  assert.match(route, /<ProductsPage/)
 })
 
-test("dedicated ProductsPage keeps catalog filters over the supplied product list", () => {
+test("dedicated ProductsPage applies and resynchronizes the category received from the URL", () => {
   const page = source("components/pages/products-page.tsx")
 
-  assert.match(page, /ProductsPage\s*\(\s*\{\s*products/)
-  assert.match(page, /Filtros/)
+  assert.match(page, /initialCategory/)
+  assert.match(page, /useEffect/)
+  assert.match(page, /setSelectedCategories/)
   assert.match(page, /filteredProducts\.map\s*\(/)
   assert.match(page, /ProductDetailModal/)
 })
