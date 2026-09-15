@@ -18,7 +18,7 @@ interface CheckoutFormProps {
 function errorText(id: string, message?: string) {
   if (!message) return null
   return (
-    <p id={id} className="mt-1 text-sm text-red-400/80">
+    <p id={id} className="mt-1 text-sm text-red-600">
       {message}
     </p>
   )
@@ -26,17 +26,18 @@ function errorText(id: string, message?: string) {
 
 export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
   const inputClass =
-    "mt-1.5 h-12 text-base bg-white/5 border-white/20 text-white placeholder:text-slate-500 focus:border-[#8B5CF6] rounded-lg"
+    "mt-1.5 h-12 rounded-lg border-slate-300 bg-white text-base text-slate-950 placeholder:text-slate-400 focus-visible:border-[#8B5CF6] focus-visible:ring-[#8B5CF6]/20"
+  const labelClass = "text-sm font-medium text-slate-700"
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2 text-[#8B5CF6]">
-        <User className="w-5 h-5" />
-        <h3 className="text-lg font-semibold">Dados para finalizar a compra</h3>
+      <div className="flex items-center gap-2 text-slate-950">
+        <User className="h-5 w-5" />
+        <h1 className="text-xl font-semibold">Dados de contato</h1>
       </div>
 
       <div>
-        <Label htmlFor="checkout-nome" className="text-slate-400 text-sm font-medium">
+        <Label htmlFor="checkout-nome" className={labelClass}>
           Nome *
         </Label>
         <Input
@@ -48,17 +49,17 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
           placeholder="Seu nome"
           aria-invalid={Boolean(errors.nome)}
           aria-describedby={errors.nome ? "checkout-nome-error" : undefined}
-          className={`${inputClass} ${errors.nome ? "border-red-400/70 focus:border-red-400" : ""}`}
+          className={`${inputClass} ${errors.nome ? "border-red-500 focus-visible:border-red-500" : ""}`}
         />
         {errorText("checkout-nome-error", errors.nome)}
       </div>
 
       <div>
-        <Label htmlFor="checkout-email" className="text-slate-400 text-sm font-medium">
+        <Label htmlFor="checkout-email" className={labelClass}>
           E-mail *
         </Label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             id="checkout-email"
             type="email"
@@ -70,24 +71,24 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
             placeholder="voce@exemplo.com"
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? "checkout-email-error" : "checkout-email-help"}
-            className={`${inputClass} pl-10 ${errors.email ? "border-red-400/70 focus:border-red-400" : ""}`}
+            className={`${inputClass} pl-10 ${errors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
           />
         </div>
         {errors.email ? (
           errorText("checkout-email-error", errors.email)
         ) : (
-          <p id="checkout-email-help" className="text-slate-500 text-sm mt-1">
-            Usaremos este e-mail para identificar seu pedido e sua conta, caso você crie uma.
+          <p id="checkout-email-help" className="mt-1 text-sm text-slate-500">
+            Usaremos este e-mail para identificar seu pedido e sua conta.
           </p>
         )}
       </div>
 
       <div>
-        <Label htmlFor="checkout-whatsapp" className="text-slate-400 text-sm font-medium">
+        <Label htmlFor="checkout-whatsapp" className={labelClass}>
           WhatsApp com DDD *
         </Label>
         <div className="relative">
-          <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <MessageCircle className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             id="checkout-whatsapp"
             type="tel"
@@ -98,20 +99,20 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
             placeholder="(44) 99999-9999"
             aria-invalid={Boolean(errors.whatsapp)}
             aria-describedby={errors.whatsapp ? "checkout-whatsapp-error" : "checkout-whatsapp-help"}
-            className={`${inputClass} pl-10 ${errors.whatsapp ? "border-red-400/70 focus:border-red-400" : ""}`}
+            className={`${inputClass} pl-10 ${errors.whatsapp ? "border-red-500 focus-visible:border-red-500" : ""}`}
           />
         </div>
         {errors.whatsapp ? (
           errorText("checkout-whatsapp-error", errors.whatsapp)
         ) : (
-          <p id="checkout-whatsapp-help" className="text-slate-500 text-sm mt-1">
-            Usaremos este número caso seja necessário falar sobre o pedido ou a entrega.
+          <p id="checkout-whatsapp-help" className="mt-1 text-sm text-slate-500">
+            Usaremos este número somente se for necessário falar sobre o pedido ou a entrega.
           </p>
         )}
       </div>
 
       <div>
-        <Label htmlFor="checkout-cpf" className="text-slate-400 text-sm font-medium">
+        <Label htmlFor="checkout-cpf" className={labelClass}>
           CPF do destinatário *
         </Label>
         <Input
@@ -120,30 +121,30 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
           autoComplete="off"
           maxLength={14}
           required
-          value={data.cpf}
+          value={data.cpf ?? ""}
           onChange={(event) => onChange("cpf", formatCpf(event.target.value))}
           placeholder="000.000.000-00"
           aria-invalid={Boolean(errors.cpf)}
           aria-describedby={errors.cpf ? "checkout-cpf-error" : "checkout-cpf-help"}
-          className={`${inputClass} ${errors.cpf ? "border-red-400/70 focus:border-red-400" : ""}`}
+          className={`${inputClass} ${errors.cpf ? "border-red-500 focus-visible:border-red-500" : ""}`}
         />
         {errors.cpf ? (
           errorText("checkout-cpf-error", errors.cpf)
         ) : (
-          <p id="checkout-cpf-help" className="text-slate-500 text-sm mt-1">
+          <p id="checkout-cpf-help" className="mt-1 text-sm text-slate-500">
             Usado somente para preparar a entrega com a transportadora.
           </p>
         )}
       </div>
 
-      <div className="pt-1">
-        <div className="flex items-center gap-2 text-[#8B5CF6] mb-3">
-          <MapPin className="w-5 h-5" />
-          <h3 className="text-lg font-semibold">Endereço de entrega</h3>
+      <div className="border-t border-slate-200 pt-6">
+        <div className="mb-3 flex items-center gap-2 text-slate-950">
+          <MapPin className="h-5 w-5" />
+          <h2 className="text-xl font-semibold">Entrega</h2>
         </div>
 
         <div>
-          <Label htmlFor="checkout-cep" className="text-slate-400 text-sm font-medium">
+          <Label htmlFor="checkout-cep" className={labelClass}>
             CEP *
           </Label>
           <Input
@@ -155,22 +156,20 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
             placeholder="00000-000"
             aria-invalid={Boolean(errors.cep)}
             aria-describedby={errors.cep ? "checkout-cep-error" : "checkout-cep-help"}
-            className={`${inputClass} ${errors.cep ? "border-red-400/70 focus:border-red-400" : ""}`}
+            className={`${inputClass} ${errors.cep ? "border-red-500 focus-visible:border-red-500" : ""}`}
           />
           {errors.cep ? (
             errorText("checkout-cep-error", errors.cep)
           ) : (
-            <p id="checkout-cep-help" className="text-slate-500 text-sm mt-1">
-              O CEP é usado para consultar preço e prazo do frete antes do pagamento.
+            <p id="checkout-cep-help" className="mt-1 text-sm text-slate-500">
+              O frete é recalculado e validado antes do pagamento.
             </p>
           )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_110px]">
           <div>
-            <Label htmlFor="checkout-rua" className="text-slate-400 text-sm font-medium">
-              Rua / Avenida *
-            </Label>
+            <Label htmlFor="checkout-rua" className={labelClass}>Rua / Avenida *</Label>
             <Input
               id="checkout-rua"
               autoComplete="street-address"
@@ -180,15 +179,13 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
               placeholder="Nome da rua"
               aria-invalid={Boolean(errors.rua)}
               aria-describedby={errors.rua ? "checkout-rua-error" : undefined}
-              className={`${inputClass} ${errors.rua ? "border-red-400/70 focus:border-red-400" : ""}`}
+              className={`${inputClass} ${errors.rua ? "border-red-500 focus-visible:border-red-500" : ""}`}
             />
             {errorText("checkout-rua-error", errors.rua)}
           </div>
 
           <div>
-            <Label htmlFor="checkout-numero" className="text-slate-400 text-sm font-medium">
-              Número *
-            </Label>
+            <Label htmlFor="checkout-numero" className={labelClass}>Número *</Label>
             <Input
               id="checkout-numero"
               maxLength={20}
@@ -197,16 +194,14 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
               placeholder="123"
               aria-invalid={Boolean(errors.numero)}
               aria-describedby={errors.numero ? "checkout-numero-error" : undefined}
-              className={`${inputClass} ${errors.numero ? "border-red-400/70 focus:border-red-400" : ""}`}
+              className={`${inputClass} ${errors.numero ? "border-red-500 focus-visible:border-red-500" : ""}`}
             />
             {errorText("checkout-numero-error", errors.numero)}
           </div>
         </div>
 
         <div className="mt-4">
-          <Label htmlFor="checkout-complemento" className="text-slate-400 text-sm font-medium">
-            Complemento
-          </Label>
+          <Label htmlFor="checkout-complemento" className={labelClass}>Complemento</Label>
           <Input
             id="checkout-complemento"
             autoComplete="address-line2"
@@ -216,15 +211,13 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
             placeholder="Apto, bloco, referência..."
             aria-invalid={Boolean(errors.complemento)}
             aria-describedby={errors.complemento ? "checkout-complemento-error" : undefined}
-            className={`${inputClass} ${errors.complemento ? "border-red-400/70 focus:border-red-400" : ""}`}
+            className={`${inputClass} ${errors.complemento ? "border-red-500 focus-visible:border-red-500" : ""}`}
           />
           {errorText("checkout-complemento-error", errors.complemento)}
         </div>
 
         <div className="mt-4">
-          <Label htmlFor="checkout-bairro" className="text-slate-400 text-sm font-medium">
-            Bairro *
-          </Label>
+          <Label htmlFor="checkout-bairro" className={labelClass}>Bairro *</Label>
           <Input
             id="checkout-bairro"
             autoComplete="address-level3"
@@ -234,16 +227,14 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
             placeholder="Bairro"
             aria-invalid={Boolean(errors.bairro)}
             aria-describedby={errors.bairro ? "checkout-bairro-error" : undefined}
-            className={`${inputClass} ${errors.bairro ? "border-red-400/70 focus:border-red-400" : ""}`}
+            className={`${inputClass} ${errors.bairro ? "border-red-500 focus-visible:border-red-500" : ""}`}
           />
           {errorText("checkout-bairro-error", errors.bairro)}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_90px]">
           <div>
-            <Label htmlFor="checkout-cidade" className="text-slate-400 text-sm font-medium">
-              Cidade *
-            </Label>
+            <Label htmlFor="checkout-cidade" className={labelClass}>Cidade *</Label>
             <Input
               id="checkout-cidade"
               autoComplete="address-level2"
@@ -253,15 +244,13 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
               placeholder="Cidade"
               aria-invalid={Boolean(errors.cidade)}
               aria-describedby={errors.cidade ? "checkout-cidade-error" : undefined}
-              className={`${inputClass} ${errors.cidade ? "border-red-400/70 focus:border-red-400" : ""}`}
+              className={`${inputClass} ${errors.cidade ? "border-red-500 focus-visible:border-red-500" : ""}`}
             />
             {errorText("checkout-cidade-error", errors.cidade)}
           </div>
 
           <div>
-            <Label htmlFor="checkout-uf" className="text-slate-400 text-sm font-medium">
-              UF *
-            </Label>
+            <Label htmlFor="checkout-uf" className={labelClass}>UF *</Label>
             <Input
               id="checkout-uf"
               autoComplete="address-level1"
@@ -271,7 +260,7 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
               placeholder="PR"
               aria-invalid={Boolean(errors.uf)}
               aria-describedby={errors.uf ? "checkout-uf-error" : undefined}
-              className={`${inputClass} uppercase ${errors.uf ? "border-red-400/70 focus:border-red-400" : ""}`}
+              className={`${inputClass} uppercase ${errors.uf ? "border-red-500 focus-visible:border-red-500" : ""}`}
             />
             {errorText("checkout-uf-error", errors.uf)}
           </div>
