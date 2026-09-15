@@ -21,7 +21,7 @@ test("final hardening keeps admin AAL2 and active app-session authorization", as
   assert.match(auth, /requireAal2:\s*true/)
   assert.match(auth, /authorizeSession/)
   assert.match(auth, /fresh_login_required/)
-  assert.match(auth, /ADMIN_SESSION_ACTIVATION_MAX_AGE_SECONDS\s*=\s*600/)
+  assert.match(auth, /maxAgeSeconds:\s*600/)
 })
 
 test("checkout keeps same-origin rate limiting and trusted verified customer identity", async () => {
