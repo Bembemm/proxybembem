@@ -10,14 +10,16 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto,
 - Base inicial: `main` @ `4d9f5a4524dc7ebabd24bcb4a453aa24e783fc66`.
 - Handoff obrigatório da branch: `docs/superpowers/phase-7/CONTINUIDADE.md`.
 - Qualquer chat novo trabalhando nesta branch deve ler `CONTINUIDADE.md` inteiro antes de continuar.
-- A Phase 7 ainda não teve design nem implementação iniciados; não assumir schema, telas ou settings sem aprovação.
+- Phase 7 — Store Settings teve design/spec aprovados e implementação concluída até as integrações públicas/contato da Task 7.
+- Task 8 está no checkpoint pre-rollout: revisão de escopo/segurança + documentação + CI antes de qualquer DDL hospedado.
+- Nenhuma migration Phase 7 foi aplicada ainda no Supabase hospedado e nenhum deploy Phase 7 foi feito na KingHost.
 - Ao terminar uma sessão com trabalho relevante nesta branch, atualizar `CONTINUIDADE.md` com estado e próximo passo exato.
 
 ## Baseline atual
 
 - Branch canônica: `main`.
 - Merge da Phase 6: `95ac936ca11dfd695734138e579eb97085714980`.
-- CI da `main` após o merge: run `34880603149` / #1529 — **PASS**.
+- CI final da `main` antes da abertura da Phase 7: #1534 / run `34882211417` — **PASS**.
 - Production runtime: KingHost Node.js **22.1.0**.
 - Backend/Auth: Supabase hospedado separadamente.
 - Aplicação atualmente comprovada em Production: `c8c2bb20f1c265729c4d4aee7fe65a91e2e1cc4c`.
@@ -33,9 +35,32 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto,
 - Phase 4 — Catalog + Products Admin + Navigation: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; o antigo smoke manual amplo da Stage 3 não foi integralmente refeito.
 - Phase 5 — Melhor Envio + Labels + Tracking: **COMPLETE / OWNER ACCEPTED**.
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 7 — Store Settings: **NOT STARTED**.
+- Phase 7 — Store Settings: **IMPLEMENTATION COMPLETE THROUGH TASK 7 / PRE-ROLLOUT CHECKPOINT IN PROGRESS / HOSTED ROLLOUT PENDING**.
 - Phase 8 — Dashboard Metrics + Attention Center: **NOT STARTED**.
 - Phase 9 — Hardening + Final Rollout: **NOT STARTED**.
+
+## Phase 7 — implementação atual
+
+V1 implementa exatamente cinco settings tipados/allowlisted:
+
+- prazo de produção em dias úteis, 1–15, default 5;
+- e-mail público opcional;
+- WhatsApp público opcional em E.164;
+- flag de aviso público;
+- texto simples de aviso, máximo 400 caracteres.
+
+Implementação presente na branch:
+
+- migration aditiva `supabase/migrations/202609140003_store_settings.sql` com singleton `id='default'`, constraints, RLS e RPC atômica de update + `admin_audit_log`;
+- domínio/validação TypeScript, repository admin/public, fallback público seguro e cache server-side de 5 minutos com invalidação após save;
+- rota administrativa protegida `/api/admin/settings` e página `/admin/configuracoes` no shell AAL2 existente;
+- optimistic concurrency por `expectedUpdatedAt`, conflito 409 sem overwrite;
+- FAQ, footer, banner, página de contato, fallback do carrinho e suporte do pedido consumindo apenas a projeção pública sanitizada;
+- ausência de e-mail/WhatsApp não gera links quebrados;
+- número público antigo removido dos fluxos ativos e helper de WhatsApp exige destino E.164 configurado;
+- nenhum secret/provider credential virou Store Setting.
+
+Último checkpoint automatizado de código antes do ajuste cosmético do placeholder/admin e desta documentação: branch SHA `344c1aeb5ca9d4d118ed6d72dfec8a4538f335c6`, CI #1582 / run `34909496593` — **PASS**, incluindo Node 22.1.0, frozen install, typecheck, KingHost build, private-order route contract, startup smoke e **783/783 testes**. O HEAD atual deve receber novo CI antes de qualquer rollout hospedado.
 
 ## Invariantes aceitos
 
@@ -52,6 +77,7 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto,
 - Migrations já hospedadas não são regravadas/reaplicadas.
 - Falha de e-mail nunca altera pagamento, fulfillment ou shipping.
 - Resend Production mantém Open Tracking OFF e Click Tracking OFF.
+- Store Settings não contém secrets de Mercado Pago, Melhor Envio, Supabase, Resend, cron ou KingHost.
 
 ## Phase 5 — evidência resumida
 
@@ -111,7 +137,7 @@ Em 2026-09-14 um shell com `umask 077` fez assets de build nascerem `600`, causa
 
 ## Próxima ação
 
-1. Ler `docs/superpowers/phase-7/CONTINUIDADE.md` antes de qualquer trabalho novo nesta branch.
-2. Manter `docs/PROJECT_MASTER_OVERVIEW.md` como visão consolidada do projeto.
-3. Iniciar o design da **Phase 7 — Store Settings** somente quando solicitado pelo proprietário.
-4. Não começar Phase 8 ou Phase 9 automaticamente.
+1. Finalizar Task 8 com CI verde no HEAD atual da branch.
+2. Somente após esse gate, executar Task 9: re-checar migration history no Supabase hospedado e aplicar uma única vez `202609140003_store_settings.sql`.
+3. Validar contrato hospedado, optimistic conflict/audit e advisors antes de qualquer deploy KingHost.
+4. Não marcar Phase 7 como Production accepted antes da Task 10 e não iniciar Phase 8 ou Phase 9 automaticamente.
