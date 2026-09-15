@@ -1,10 +1,10 @@
 # ProxyBembem — Current Status
 
 **Updated:** 2026-09-15  
-**Active branch:** `feat/phase-8-dashboard-metrics-attention`  
+**Active branch:** `feat/phase-9-hardening-final-rollout`  
 **Canonical integration branch:** `main`
 
-Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto está em `docs/PROJECT_MASTER_OVERVIEW.md`; a evidência final da Phase 7 está em `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
+Este arquivo é o checkpoint operacional curto. A visão consolidada está em `docs/PROJECT_MASTER_OVERVIEW.md`.
 
 ## Estado atual
 
@@ -12,93 +12,100 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto 
 - Phase 1 — Data + Audit Foundation: **COMPLETE / APPLIED**.
 - Phase 2 — Admin Orders + Fulfillment: **COMPLETE / ACCEPTED**.
 - Phase 3 — Customer Account + Private Orders: **COMPLETE / PRODUCTION ACCEPTED**.
-- Phase 4 — Catalog + Products Admin + Navigation: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; o antigo smoke manual amplo da Stage 3 não foi integralmente refeito.
+- Phase 4 — Catalog + Products Admin + Navigation: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; o browser smoke amplo histórico continua pendente.
 - Phase 5 — Melhor Envio + Labels + Tracking: **COMPLETE / OWNER ACCEPTED**.
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 8 — Dashboard Metrics + Attention Center: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; hosted migration ainda não aplicada e Production ainda não aceita.
-- Phase 9 — Hardening + Final Rollout: **NOT STARTED**.
+- Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
+- Phase 8 — Dashboard Metrics + Attention Center: **IMPLEMENTATION COMPLETE / HOSTED VALIDATED / CANDIDATE DEPLOYED**; smoke autenticado `/admin` ainda **PENDING OWNER SMOKE**, portanto não registrar como Production accepted.
+- Phase 9 — Hardening + Final Rollout: **IN PROGRESS / REPOSITORY HARDENING + HOSTED SUPABASE VALIDATED**; final candidate rollout e smoke manual ainda pendentes.
 
-## Phase 8 — checkpoint de implementação
+## Phase 9 — checkpoint atual
 
-A Phase 8 transforma `/admin` em um dashboard operacional server-side sem introduzir autoridade financeira ou operacional no browser.
+Branch ativa: `feat/phase-9-hardening-final-rollout`.
 
-Implementado na branch `feat/phase-8-dashboard-metrics-attention`:
+### Hardening concluído
 
-- migration aditiva `supabase/migrations/202609150001_dashboard_metrics_attention_center.sql`;
-- RPC `public.admin_get_dashboard_snapshot()` read-only, `SECURITY DEFINER`, `search_path=''` e executável somente por `service_role`;
-- um único `as_of` e períodos Today/Week/Month calculados em `America/Sao_Paulo`;
-- aprovado bruto e reversões derivados de `order_events` confiáveis do Mercado Pago, com dedupe determinístico do primeiro evento por pedido;
-- contagens atuais de fulfillment e risco financeiro sem inventar receita líquida;
-- Attention Center read-only por pedido, priorizado por maior severidade, com top 5 e link para o fluxo existente de pedidos;
-- ranking mensal de produtos a partir do snapshot imutável `orders.items` dos pedidos aprovados no mês;
-- repository TypeScript server-only, `cache: "no-store"`, parser estrito e falha visível sem substituir erro por zeros;
-- componentes server-side de métricas, operação, atenção e produtos;
-- `/admin` protegido continua exigindo `requireAdminPageAccess({ touch: true })` e preserva o atalho do Melhor Envio.
+- inventário de rotas/mutations sensíveis e contrato de regressão concluídos;
+- revisão de auth/admin/customer ownership/origin/rate-limit/no-store/secret boundaries sem lacuna real demonstrada;
+- matriz consolidada de concorrência/idempotência para pagamento, checkout lease, fulfillment, produtos, Store Settings, shipments, notificações, recovery grants, attention flags e dashboard;
+- revisão de `SECURITY DEFINER`, fixed `search_path`, execute grants e exposição de browser roles;
+- seis índices `unused` analisados individualmente; nenhum removido sem prova de redundância segura;
+- checklist final manual criado preservando explicitamente a dívida de smoke Phase 4 e Phase 8.
 
-A implementação não adiciona provider call, compra de etiqueta, cancelamento, mutation de pedido, envio de notificação ou mutation de Store Settings.
+### Final automated application candidate
 
-### Automated evidence
+`cdb3f863336237ab49f9b91cca20f0d876aa75c7` — `test: preserve Phase 9 manual acceptance gates`.
 
-Checkpoint automatizado atual:
+GitHub Actions CI #1648 / run `34983376962`: **PASS**.
 
-`2023595cc845aca3fc482db484cea18332c36b5f` — `test: harden dashboard metric semantics`.
+No mesmo SHA o job `verify` passou:
 
-GitHub Actions CI #1626 / run `34951178021`: **PASS**.
+- exact KingHost Node runtime setup;
+- Node version check;
+- frozen pnpm install;
+- typecheck;
+- `build:kinghost`;
+- private-order route contract;
+- KingHost startup adapter smoke;
+- full `pnpm test`.
 
-O pipeline passou runtime Node **22.1.0**, install congelado, typecheck, `build:kinghost`, private-order route contract, startup smoke e suíte completa. Os testes novos cobrem contrato SQL, parser/repository, UI protegida e semântica de tempo/finance/attention.
+Commits posteriores de Phase 9 são documentação/evidência hospedada; não alteraram o runtime de aplicação após esse candidate.
 
-### Ainda NÃO concluído na Phase 8
+### Hosted Supabase Phase 9
 
-- a migration `dashboard_metrics_attention_center` ainda não foi aplicada ao Supabase hospedado neste checkpoint;
-- o snapshot hospedado ainda não foi reconciliado contra as linhas autoritativas reais;
-- a função/grants ainda não passaram o check pós-migration hospedado desta fase;
-- o candidate ainda não foi deployado/aceito na KingHost;
-- não existe `FINAL_ACCEPTANCE.md` da Phase 8 ainda;
-- a branch não foi integrada em `main`.
+Antes da escrita, a migration history hospedada terminava em `20260915092352 dashboard_metrics_attention_center` para a Phase 8.
 
-## Phase 7 — resultado final preservado
+Foi aplicada **uma única vez e somente** a migration:
 
-Store Settings V1 contém exatamente cinco settings allowlisted:
+- repo: `supabase/migrations/202609150002_phase9_customer_profiles_rls_performance.sql`;
+- hosted version: `20260915145834`;
+- hosted name: `phase9_customer_profiles_rls_performance`.
 
-- prazo de produção em dias úteis, 1–15, default 5;
-- e-mail público opcional;
-- WhatsApp público opcional em E.164;
-- flag de aviso público;
-- texto simples de aviso, máximo 400 caracteres.
+Validação pós-DDL confirmou:
 
-A implementação inclui singleton `public.store_settings`, constraints/RLS, RPC atômica com audit e optimistic concurrency, domínio/repository/cache server-side, `/api/admin/settings`, `/admin/configuracoes` e projeção pública sanitizada. Nenhum provider secret virou Store Setting.
+- RLS de `public.customer_profiles` continua habilitado;
+- select/insert/update continuam owner-scoped para `authenticated`;
+- as três policies agora usam `(select auth.uid()) = id` sem alterar ownership;
+- grants de browser relevantes continuam `SELECT`, `INSERT`, `UPDATE` para `authenticated`;
+- os 3 antigos warnings `auth_rls_initplan` desapareceram do advisor de performance;
+- permanecem somente os 6 INFO `unused_index` já auditados e mantidos;
+- `admin_get_dashboard_snapshot()` continua service-role-only, `SECURITY DEFINER`, `search_path=''`;
+- `customer_list_orders` e `customer_get_order` continuam authenticated `SECURITY DEFINER` por desenho, owner-scoped por `auth.uid()`;
+- nenhuma nova finding de segurança Phase 9 foi introduzida.
 
-Os consumidores públicos da mesma informação usam a configuração global como fonte de verdade: FAQ, footer, `/contato`, banner, carrinho, suporte de pedido, `/privacidade`, `/trocas-e-reembolsos` e o prazo exibido nos detalhes de produto. O save do admin força refresh do tree server-side para evitar props públicas antigas na mesma sessão.
+Evidência: `docs/superpowers/phase-9/HOSTED_VALIDATION.md`.
 
-### Supabase hospedado Phase 7
+### Leaked-password protection
 
-- migration repo: `supabase/migrations/202609140003_store_settings.sql`;
-- hosted version: `20260915002740`;
-- hosted name: `store_settings`;
-- singleton/RLS/grants/RPC/constraints verificados;
-- rollback-only smoke validou update + avanço de revisão + stale conflict + audit allowlisted e foi revertido sem fixture persistida;
-- advisors não mostraram nova exposição causada pela Phase 7.
+O advisor hospedado ainda reporta **Leaked Password Protection Disabled**. A documentação atual do Supabase informa que o recurso é disponível no **Pro Plan e acima**. A integração Supabase disponível nesta sessão não expõe leitura/escrita da configuração Auth nem prova do tier atual; portanto não foi ativado às cegas e não será descrito como habilitado.
 
-### Runtime Phase 7 aceito
+Disposition: **PLATFORM_LIMITATION / OWNER DASHBOARD CHECK**.
 
-`3fd88688a6cfae343fea3b346a3d1cad1035eb86` — `fix: make store settings globally authoritative`.
+## Phase 8 — estado real preservado
 
-GitHub Actions CI #1613 / run `34923612641`: **PASS** no mesmo SHA. O pipeline concluiu com sucesso runtime Node 22.1.0, install congelado, typecheck, build KingHost, private-order route contract, startup smoke e suíte automatizada.
+A Phase 8 possui implementação, hosted migration e reconciliação validadas.
 
-A Phase 7 foi integrada na `main` por fast-forward. A documentação de fechamento posterior está no commit `75c78437883627e241a9708c8d07a0988dc8c8b5`.
+- hosted migration: `20260915092352 dashboard_metrics_attention_center`;
+- rollout candidate: `773504f0e68220c1bda0ec706c4e62f8d542e433`;
+- CI #1631 / run `34960866441`: **PASS**;
+- candidate KingHost foi deployado;
+- dashboard permanece read-only e server-side;
+- snapshot financeiro/operacional foi reconciliado contra dados hospedados reais.
+
+O que **não** deve ser inventado: o owner não concluiu o smoke autenticado de `/admin`. Portanto Phase 8 não deve ser marcada como Production accepted até esse smoke ser realmente observado.
 
 ## Phase 5 — evidência histórica preservada
 
-Phase 5 está **complete / owner accepted** e permanece fechada no nível de handoff do proprietário.
+Phase 5 permanece **complete / owner accepted**.
 
-- O caminho controlado Production **non-spending / sem gasto** chegou ao carrinho real do Melhor Envio com shipment local em `in_cart`; custo observado no fixture: **R$ 23,69**; sem provider purchased-order identity e sem transição falsa para `shipped`.
-- `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` continua sendo o default seguro fora de uma janela deliberada de compra.
-- Task 18 **owner accepted** em 2026-09-11 — aceitação **owner-reported** da primeira compra real, sem fabricar provider trace não observado.
-- Task 19 **complete / concluída** — documentação operacional da Phase 5 reconciliada com a arquitetura e a evidência aceita.
-- Task 20 **owner accepted** em 2026-09-11 — smoke final de Production **owner-reported** pelo proprietário.
+- caminho Production **non-spending / sem gasto** chegou ao carrinho real do Melhor Envio com shipment local em `in_cart`;
+- custo observado no fixture: **R$ 23,69**;
+- `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` continua default seguro fora de janela deliberada;
+- Task 18 **owner accepted / owner-reported** em 2026-09-11;
+- Task 19 **complete / concluída**;
+- Task 20 **owner accepted / owner-reported** em 2026-09-11.
 
-Migrations Phase 5 registradas/aplicadas:
+Migrations Phase 5 preservadas:
 
 - `202609080002_melhor_envio_oauth_scope_grants.sql`
 - `202609080003_shipments_foundation.sql`
@@ -117,28 +124,23 @@ Migrations Phase 5 registradas/aplicadas:
 - Não restaurar guest checkout, `/pedido/[token]` ou guest claim.
 - Admin exige owner UUID + senha + TOTP/AAL2 + sessão administrativa ativa.
 - Produto usa somente `draft | published | archived`; sem hard delete.
-- Compra de etiqueta Melhor Envio é explícita e fail-closed; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` permanece o default seguro fora de janela deliberada.
-- Compra, geração, impressão e postagem são operações distintas; gerar/imprimir não marca `shipped`.
-- Migrations já hospedadas não são regravadas/reaplicadas.
+- Compra de etiqueta Melhor Envio é explícita e fail-closed; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` permanece default seguro fora de janela deliberada.
+- Migrations hospedadas não são regravadas/reaplicadas.
 - Falha de e-mail nunca altera pagamento, fulfillment ou shipping.
-- Resend Production mantém Open Tracking OFF e Click Tracking OFF.
-- Store Settings não contém secrets de Mercado Pago, Melhor Envio, Supabase, Resend, cron ou KingHost.
-- Phase 8 é read-only: dashboard/attention não resolve flags nem muta verdade financeira/operacional.
+- Resend Open Tracking e Click Tracking permanecem OFF.
+- Store Settings não contém provider/infrastructure secrets.
+- Dashboard/Attention Center são read-only e não resolvem flags nem mutam verdade financeira/operacional.
+- Não remover índice apenas para reduzir advisor INFO.
+- Não fazer merge/rebase/force/delete de branch sem aprovação explícita do owner.
+- Não usar PM2 CLI para reiniciar a aplicação KingHost; restart somente pelo painel.
 
-## Riscos/backlog conhecidos
+## Pendências antes de fechar Phase 9
 
-- Phase 4: antigo browser smoke amplo de produto CRUD/image/conflict/cache não foi integralmente refeito.
-- Observação manual do header `no-store` autenticado não foi registrada no último smoke, embora exista regressão automatizada.
-- Supabase leaked-password protection segue desabilitado e deve ser avaliado na Phase 9.
-- `customer_profiles` ainda possui findings `auth_rls_initplan` de performance.
-- Índices marcados como unused permanecem informativos no volume atual; não remover cegamente.
-- RLS sem policy em tabelas backend-only é intencional quando browser CRUD está revogado.
-- Não repetir build/deploy KingHost com `umask 077` ativo.
+1. Reconciliar os documentos canônicos da Phase 9 e validar CI do fechamento documental.
+2. Fazer **um único rollout final** do exact runtime candidate na KingHost, mantendo `umask 022`.
+3. Reiniciar somente pelo painel KingHost.
+4. Validar public HTTP health.
+5. Executar o smoke manual final registrado em `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`, incluindo Phase 4 product-admin debt, Phase 8 authenticated `/admin`, private customer order, admin MFA/session, Store Settings, shipping safe state e notification path.
+6. Só então criar `FINAL_ACCEPTANCE.md` e marcar Phase 9 como encerrada.
 
-## Próxima ação
-
-Phase 8 está **implementation complete / automated green** no candidate `2023595cc845aca3fc482db484cea18332c36b5f`.
-
-Próximo passo: registrar este checkpoint documental, validar o novo exact-SHA CI e então aplicar **uma única vez** a migration Phase 8 no Supabase hospedado, reconciliar o snapshot real e checar grants/advisors antes do rollout KingHost.
-
-Phase 9 continua **NOT STARTED** e não deve ser iniciada automaticamente.
+A branch **não está integrada em `main`** e nenhuma integração deve ocorrer sem aprovação explícita do proprietário.
