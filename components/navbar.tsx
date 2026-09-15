@@ -68,12 +68,12 @@ export function Navbar() {
   return (
     <header className="fixed left-0 right-0 top-0 z-50 border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-xl">
       <nav className="container mx-auto flex h-14 items-center justify-between px-3 sm:h-16 sm:px-4" aria-label="Navegação principal">
-        <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
+        <a href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
           <img src="/brand/pb" alt="" aria-hidden="true" className="h-10 w-auto object-contain sm:h-12" />
           <span className="hidden text-xl tracking-wide text-black sm:inline sm:text-2xl font-[family-name:var(--font-display)]">
             ProxyBembem
           </span>
-        </Link>
+        </a>
 
         <div className="hidden items-center gap-6 md:flex lg:gap-8">
           {navItems.map((item) =>
