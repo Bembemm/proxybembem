@@ -7,7 +7,7 @@ import { FaqSection } from "@/components/faq-section"
 import { Footer } from "@/components/footer"
 import { Navbar } from "@/components/navbar"
 import { StoreNotice } from "@/components/store-notice"
-import { CartFloatingButton } from "@/components/whatsapp-button"
+import { WhatsAppFloatingButton } from "@/components/whatsapp-button"
 import { CartProvider } from "@/contexts/cart-context"
 import type { PublicStoreSettings } from "@/lib/store-settings/store-settings"
 
@@ -19,9 +19,14 @@ interface SiteShellProps {
 export function SiteShell({ children, storeSettings }: Readonly<SiteShellProps>) {
   const pathname = usePathname()
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/")
+  const isCheckoutRoute = pathname === "/checkout"
 
   if (isAdminRoute) {
     return <>{children}</>
+  }
+
+  if (isCheckoutRoute) {
+    return <CartProvider>{children}</CartProvider>
   }
 
   return (
@@ -41,8 +46,8 @@ export function SiteShell({ children, storeSettings }: Readonly<SiteShellProps>)
           contactEmail={storeSettings.contactEmail}
           contactWhatsappE164={storeSettings.contactWhatsappE164}
         />
-        <CartFloatingButton />
-        <CartPanel contactWhatsappE164={storeSettings.contactWhatsappE164} />
+        <WhatsAppFloatingButton contactWhatsappE164={storeSettings.contactWhatsappE164} />
+        <CartPanel />
       </main>
     </CartProvider>
   )
