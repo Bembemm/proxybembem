@@ -61,9 +61,11 @@ function AddToCartButton({ product }: { product: Product }) {
 export function HomePage({
   featuredProducts,
   unavailable = false,
+  productionLeadTimeBusinessDays,
 }: {
   featuredProducts: Product[]
   unavailable?: boolean
+  productionLeadTimeBusinessDays: number
 }) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -250,6 +252,7 @@ export function HomePage({
           product={selectedProduct}
           isOpen={isModalOpen}
           onClose={closeProductModal}
+          productionLeadTimeBusinessDays={productionLeadTimeBusinessDays}
         />
       )}
     </>

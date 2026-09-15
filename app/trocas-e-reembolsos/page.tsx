@@ -1,11 +1,15 @@
 import type { Metadata } from "next"
+import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
 export const metadata: Metadata = {
   title: "Trocas e reembolsos",
   description: "Saiba como solicitar suporte para problemas, cancelamentos, trocas e reembolsos.",
 }
 
-export default function TrocasReembolsosPage() {
+export default async function TrocasReembolsosPage() {
+  const storeSettings = await getPublicStoreSettings()
+  const contactEmail = storeSettings.contactEmail
+
   return (
     <section className="relative pt-20 sm:pt-24 pb-14 min-h-screen">
       <div className="container mx-auto px-4 relative z-10">
@@ -17,15 +21,24 @@ export default function TrocasReembolsosPage() {
             <section>
               <h2 className="text-xl font-semibold text-slate-900">Como pedir atendimento</h2>
               <p className="mt-2">
-                Entre em contato pelo WhatsApp publicado no site ou pelo e-mail{" "}
-                <a
-                  className="font-semibold text-[#8B5CF6] underline-offset-4 hover:underline"
-                  href="mailto:contato@proxybembem.com.br"
-                >
-                  contato@proxybembem.com.br
-                </a>
-                . Informe o número do pedido, explique o ocorrido e, quando fizer sentido, envie fotos
-                que ajudem a identificar o problema.
+                {contactEmail ? (
+                  <>
+                    Entre em contato pelo WhatsApp publicado no site ou pelo e-mail{" "}
+                    <a
+                      className="font-semibold text-[#8B5CF6] underline-offset-4 hover:underline"
+                      href={`mailto:${contactEmail}`}
+                    >
+                      {contactEmail}
+                    </a>
+                    . Informe o número do pedido, explique o ocorrido e, quando fizer sentido, envie fotos
+                    que ajudem a identificar o problema.
+                  </>
+                ) : (
+                  <>
+                    Entre em contato pelos canais publicados no site. Informe o número do pedido, explique
+                    o ocorrido e, quando fizer sentido, envie fotos que ajudem a identificar o problema.
+                  </>
+                )}
               </p>
             </section>
 

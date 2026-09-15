@@ -9,15 +9,17 @@ const modalSource = readFileSync(
 
 test("modal renders admin-managed quick highlights and a calmer information hierarchy", () => {
   assert.match(modalSource, /product\.highlights\?\.map/)
+  assert.match(modalSource, /displayHighlights\.map/)
   assert.match(modalSource, /Informações rápidas/)
   assert.equal(modalSource.includes("text-yellow-500"), false)
 })
 
-test("modal renders admin-managed details notice and sections from the current catalog product", () => {
+test("modal keeps admin-managed details notice and non-lead-time sections data-driven", () => {
   assert.match(modalSource, /product\.notice/)
   assert.match(modalSource, /product\.details\.map/)
   assert.match(modalSource, /product\.sections\.map/)
-  assert.match(modalSource, /section\.paragraphs\.map/)
+  assert.match(modalSource, /:\s*section\.paragraphs/)
+  assert.match(modalSource, /paragraphs\.map/)
 })
 
 test("modal keeps product copy data-driven instead of embedding legacy rollback catalog copy", () => {

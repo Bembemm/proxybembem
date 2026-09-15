@@ -8,7 +8,7 @@ function readRequired(path: string) {
   return readFileSync(url, "utf8")
 }
 
-test("privacy page explains order data, providers and contact", () => {
+test("privacy page explains order data, providers and configured contact", () => {
   const source = readRequired("app/privacidade/page.tsx")
 
   for (const required of [
@@ -19,10 +19,14 @@ test("privacy page explains order data, providers and contact", () => {
     "Mercado Pago",
     "Melhor Envio",
     "Vercel Analytics",
-    "contato@proxybembem.com.br",
   ]) {
     assert.match(source, new RegExp(required, "i"), required)
   }
+
+  assert.match(source, /getPublicStoreSettings/)
+  assert.match(source, /contactEmail/)
+  assert.match(source, /href=\{`mailto:\$\{contactEmail\}`\}/)
+  assert.doesNotMatch(source, /contato@proxybembem\.com\.br/i)
 })
 
 test("terms page states proxy status, payment truth and freight rules", () => {
@@ -40,7 +44,7 @@ test("terms page states proxy status, payment truth and freight rules", () => {
   }
 })
 
-test("refund page describes support cases without blanket non-refundable language", () => {
+test("refund page describes support cases with configured contact and without blanket non-refundable language", () => {
   const source = readRequired("app/trocas-e-reembolsos/page.tsx")
   const lower = source.toLocaleLowerCase("pt-BR")
 
@@ -51,11 +55,14 @@ test("refund page describes support cases without blanket non-refundable languag
     "reembolso",
     "transportadora",
     "legislação aplicável",
-    "contato@proxybembem.com.br",
   ]) {
     assert.equal(lower.includes(required), true, required)
   }
 
+  assert.match(source, /getPublicStoreSettings/)
+  assert.match(source, /contactEmail/)
+  assert.match(source, /href=\{`mailto:\$\{contactEmail\}`\}/)
+  assert.doesNotMatch(source, /contato@proxybembem\.com\.br/i)
   assert.equal(lower.includes("não reembolsável"), false)
   assert.equal(lower.includes("sem devolução"), false)
 })

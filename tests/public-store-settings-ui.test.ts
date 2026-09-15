@@ -126,7 +126,7 @@ test("public policy pages read the configured support email instead of embedding
   }
 })
 
-test("product detail receives the global production lead time and overrides only PRAZO copy", async () => {
+test("product detail receives the global production lead time and overrides every lead-time presentation", async () => {
   const homeRoute = await source("../app/page.tsx")
   const productsRoute = await source("../app/produtos/page.tsx")
   const homePage = await source("../components/pages/home-page.tsx")
@@ -148,6 +148,9 @@ test("product detail receives the global production lead time and overrides only
 
   assert.match(productModal, /productionLeadTimeBusinessDays:\s*number/)
   assert.match(productModal, /productionLeadTimeBusinessDays\s*===\s*1/)
+  assert.match(productModal, /PRODUCTION_LEAD_TIME_HIGHLIGHT/)
+  assert.match(productModal, /displayHighlights/)
+  assert.match(productModal, /Produção em até \$\{productionLeadTime\}/)
   assert.match(productModal, /section\.title\.trim\(\)\.toUpperCase\(\)\s*===\s*["']PRAZO["']/)
   assert.match(productModal, /Produção e postagem em até \$\{productionLeadTime\}\./)
 })

@@ -57,9 +57,11 @@ function AddToCartButton({ product }: { product: Product }) {
 export function ProductsPage({
   products,
   unavailable = false,
+  productionLeadTimeBusinessDays,
 }: {
   products: Product[]
   unavailable?: boolean
+  productionLeadTimeBusinessDays: number
 }) {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [showFilters, setShowFilters] = useState(false)
@@ -250,6 +252,7 @@ export function ProductsPage({
           product={selectedProduct}
           isOpen={isModalOpen}
           onClose={closeProductModal}
+          productionLeadTimeBusinessDays={productionLeadTimeBusinessDays}
         />
       )}
     </section>

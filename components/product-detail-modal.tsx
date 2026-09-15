@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { useCart, type Product } from "@/contexts/cart-context"
 
+const PRODUCTION_LEAD_TIME_HIGHLIGHT =
+  /^produção\s+em\s+até\s+\d+\s+(?:dia\s+útil|dias\s+úteis)\.?$/i
+
 function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", {
     style: "currency",
@@ -17,13 +20,28 @@ interface ProductDetailModalProps {
   product: Product
   isOpen: boolean
   onClose: () => void
+  productionLeadTimeBusinessDays: number
 }
 
-export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailModalProps) {
+export function ProductDetailModal({
+  product,
+  isOpen,
+  onClose,
+  productionLeadTimeBusinessDays,
+}: ProductDetailModalProps) {
   const { addToCart, items } = useCart()
   const [justAdded, setJustAdded] = useState(false)
 
   const itemInCart = items.find((item) => item.product.id === product.id)
+  const productionLeadTime =
+    productionLeadTimeBusinessDays === 1
+      ? "1 dia útil"
+      : `${productionLeadTimeBusinessDays} dias úteis`
+  const displayHighlights = product.highlights?.map((highlight) =>
+    PRODUCTION_LEAD_TIME_HIGHLIGHT.test(highlight.trim())
+      ? `Produção em até ${productionLeadTime}`
+      : highlight,
+  )
 
   const handleAddToCart = () => {
     addToCart(product)
@@ -73,15 +91,15 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
             </span>
           </div>
 
-          {product.highlights && product.highlights.length > 0 && (
+          {displayHighlights && displayHighlights.length > 0 && (
             <div className="mb-4" aria-label="Informações rápidas">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 mb-2">
                 Informações rápidas
               </p>
               <div className="flex flex-wrap gap-2">
-                {product.highlights?.map((highlight) => (
+                {displayHighlights.map((highlight, index) => (
                   <span
-                    key={highlight}
+                    key={`${highlight}-${index}`}
                     className="inline-flex items-center gap-1.5 rounded-full border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-2.5 py-1.5 text-xs md:text-sm text-violet-100"
                   >
                     <Check className="w-3.5 h-3.5 text-[#A78BFA]" />
@@ -119,21 +137,28 @@ export function ProductDetailModal({ product, isOpen, onClose }: ProductDetailMo
                 ))}
               </div>
 
-              {product.sections.map((section) => (
-                <section
-                  key={section.title}
-                  className="rounded-xl border border-slate-700/60 bg-slate-800/35 p-3 space-y-1"
-                >
-                  <h3 className="font-bold text-white text-sm uppercase tracking-wide">
-                    {section.title}
-                  </h3>
-                  {section.paragraphs.map((paragraph) => (
-                    <p key={paragraph} className="text-sm md:text-base text-gray-300">
-                      {paragraph}
-                    </p>
-                  ))}
-                </section>
-              ))}
+              {product.sections.map((section) => {
+                const paragraphs =
+                  section.title.trim().toUpperCase() === "PRAZO"
+                    ? [`Produção e postagem em até ${productionLeadTime}.`]
+                    : section.paragraphs
+
+                return (
+                  <section
+                    key={section.title}
+                    className="rounded-xl border border-slate-700/60 bg-slate-800/35 p-3 space-y-1"
+                  >
+                    <h3 className="font-bold text-white text-sm uppercase tracking-wide">
+                      {section.title}
+                    </h3>
+                    {paragraphs.map((paragraph) => (
+                      <p key={paragraph} className="text-sm md:text-base text-gray-300">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </section>
+                )
+              })}
             </div>
           </div>
 

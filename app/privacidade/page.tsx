@@ -1,11 +1,15 @@
 import type { Metadata } from "next"
+import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
 export const metadata: Metadata = {
   title: "Privacidade",
   description: "Saiba como a ProxyBembem usa os dados necessários para pedidos, pagamentos e entregas.",
 }
 
-export default function PrivacidadePage() {
+export default async function PrivacidadePage() {
+  const storeSettings = await getPublicStoreSettings()
+  const contactEmail = storeSettings.contactEmail
+
   return (
     <section className="relative pt-20 sm:pt-24 pb-14 min-h-screen">
       <div className="container mx-auto px-4 relative z-10">
@@ -75,14 +79,20 @@ export default function PrivacidadePage() {
             <section>
               <h2 className="text-xl font-semibold text-slate-900">Contato</h2>
               <p className="mt-2">
-                Para dúvidas sobre seu pedido ou sobre o uso dos seus dados, escreva para{" "}
-                <a
-                  className="font-semibold text-[#8B5CF6] underline-offset-4 hover:underline"
-                  href="mailto:contato@proxybembem.com.br"
-                >
-                  contato@proxybembem.com.br
-                </a>
-                .
+                {contactEmail ? (
+                  <>
+                    Para dúvidas sobre seu pedido ou sobre o uso dos seus dados, escreva para{" "}
+                    <a
+                      className="font-semibold text-[#8B5CF6] underline-offset-4 hover:underline"
+                      href={`mailto:${contactEmail}`}
+                    >
+                      {contactEmail}
+                    </a>
+                    .
+                  </>
+                ) : (
+                  <>Para dúvidas sobre seu pedido ou sobre o uso dos seus dados, utilize os canais de contato publicados no site.</>
+                )}
               </p>
             </section>
           </div>

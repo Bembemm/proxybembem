@@ -1,6 +1,7 @@
 "use client"
 
 import { Loader2, Save } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useEffect, useState, type FormEvent } from "react"
 import {
   validateStoreSettingsMutationInput,
@@ -59,6 +60,7 @@ function parseSavedSettings(value: unknown): StoreSettings | null {
 }
 
 export function StoreSettingsForm({ settings }: { settings: StoreSettings }) {
+  const router = useRouter()
   const [values, setValues] = useState<EditorValues>(() => valuesFromSettings(settings))
   const [expectedUpdatedAt, setExpectedUpdatedAt] = useState(settings.updatedAt)
   const [dirty, setDirty] = useState(false)
@@ -150,6 +152,7 @@ export function StoreSettingsForm({ settings }: { settings: StoreSettings }) {
       setValues(valuesFromSettings(saved))
       setDirty(false)
       setSuccess("Configurações salvas com sucesso.")
+      router.refresh()
     } catch {
       setFormError("Não foi possível salvar as configurações.")
     } finally {
