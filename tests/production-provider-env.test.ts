@@ -4,6 +4,7 @@ import { getMelhorEnvioEnv, getMercadoPagoEnv } from "../lib/server/env.ts"
 
 const ENV_KEYS = [
   "NODE_ENV",
+  "APP_ENVIRONMENT",
   "MERCADO_PAGO_ENVIRONMENT",
   "MERCADO_PAGO_ACCESS_TOKEN",
   "MERCADO_PAGO_WEBHOOK_SECRET",
@@ -54,6 +55,20 @@ test("non-production runtime may use sandbox providers", () => {
     assert.equal(getMercadoPagoEnv().mercadoPagoEnvironment, "sandbox")
     assert.equal(getMelhorEnvioEnv().environment, "sandbox")
   })
+})
+
+test("production runtime may use sandbox providers only in an explicit sandbox deployment", () => {
+  withEnv(
+    {
+      ...baseEnv,
+      NODE_ENV: "production",
+      APP_ENVIRONMENT: "sandbox",
+    },
+    () => {
+      assert.equal(getMercadoPagoEnv().mercadoPagoEnvironment, "sandbox")
+      assert.equal(getMelhorEnvioEnv().environment, "sandbox")
+    },
+  )
 })
 
 test("production runtime rejects Mercado Pago sandbox", () => {
