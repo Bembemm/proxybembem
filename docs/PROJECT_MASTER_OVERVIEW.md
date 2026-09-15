@@ -1,11 +1,9 @@
 # ProxyBembem — Visão Geral Mestre do Projeto
 
 **Atualizado em:** 2026-09-14  
-**Estado consolidado:** Phases 0–6 concluídas; Phase 6 integrada na `main`; Phases 7–9 ainda não iniciadas.
+**Estado consolidado:** Phases 0–7 concluídas; Phase 6 integrada na `main`; Phase 7 aceita em Production na branch `feat/phase-7-store-settings` e aguardando decisão explícita de integração; Phases 8–9 não iniciadas.
 
-Este documento é o ponto de entrada canônico para entender o projeto como ele existe hoje. Ele consolida as decisões que ficaram espalhadas entre branches, planos, specs, runbooks e documentos de aceitação. Quando uma anotação histórica de uma branch antiga divergir deste arquivo, da implementação atual ou do estado hospedado, **este arquivo e a realidade de `main`/Production prevalecem**.
-
-Os arquivos em `docs/superpowers/plans/` e `docs/superpowers/specs/` continuam no repositório como histórico de design/TDD. Eles não devem ser interpretados como checklists atuais apenas porque possuem passos RED/GREEN ou pendências que fizeram sentido durante a implementação.
+Este documento é o ponto de entrada canônico para entender o projeto. A realidade hospedada e a implementação atual prevalecem sobre anotações históricas antigas. Planos/specs em `docs/superpowers/plans/` e `docs/superpowers/specs/` preservam o processo histórico de design/TDD e não devem ser lidos como pendências atuais apenas porque contêm passos RED/GREEN antigos.
 
 ---
 
@@ -14,10 +12,11 @@ Os arquivos em `docs/superpowers/plans/` e `docs/superpowers/specs/` continuam n
 ### Git / CI
 
 - Branch canônica de integração: `main`.
-- Merge da Phase 6 na `main`: `95ac936ca11dfd695734138e579eb97085714980`.
-- GitHub Actions da `main` após o merge: run `34880603149` / #1529 — **PASS**.
-- A PR #4 (`Phase 6: transactional notifications`) foi integrada por merge normal após autorização explícita do proprietário.
-- A PR #1 (`prepare backend checkout architecture`) era uma preparação histórica e foi fechada sem merge em 2026-09-14, porque sua implementação foi superada pela arquitetura atual.
+- Phase 6 está integrada na `main` via merge `95ac936ca11dfd695734138e579eb97085714980`.
+- Branch concluída da Phase 7: `feat/phase-7-store-settings`.
+- Runtime Phase 7 aceito em Production: `db4308296e9f2603e76ded4332394dd58c99a84c`.
+- CI desse runtime: GitHub Actions #1589 / run `34918063220` — **PASS**.
+- A integração da Phase 7 em `main` ainda depende de decisão explícita do proprietário.
 
 ### Production
 
@@ -26,10 +25,10 @@ Os arquivos em `docs/superpowers/plans/` e `docs/superpowers/specs/` continuam n
 - pnpm operacional: major **10**.
 - Backend/Auth/banco: Supabase hospedado separadamente.
 - Projeto Supabase: `ProxyBembem`.
-- Runtime de aplicação atualmente comprovado em Production antes da consolidação: `c8c2bb20f1c265729c4d4aee7fe65a91e2e1cc4c`.
-- Esse runtime já contém as rotas, worker, templates, admin e compatibilidade GET do cron necessários à Phase 6.
-- As duas correções finais da Phase 6 foram funções/migrations do banco e já estão aplicadas no Supabase hospedado; por isso não exigiram novo deploy da aplicação KingHost.
-- Assim, existe uma diferença intencional e conhecida entre o SHA atual de `main` e o SHA da aplicação atualmente servida. Um deploy futuro a partir de `main` naturalmente elimina essa diferença.
+- Runtime de aplicação comprovado em Production para a Phase 7: `db4308296e9f2603e76ded4332394dd58c99a84c`.
+- Homepage comprovada com **HTTP/2 200** após o deploy.
+- Phase 7 hosted migration: `20260915002740 store_settings`.
+- O aviso público temporário usado no smoke foi desligado ao final; leitura hospedada confirmou `notice_enabled=false`.
 
 ### Provedores externos
 
@@ -43,42 +42,44 @@ Os arquivos em `docs/superpowers/plans/` e `docs/superpowers/specs/` continuam n
 
 ## 2. Arquitetura atual
 
-O ProxyBembem é um **monólito modular em Next.js + TypeScript**, com fronteiras server-side claras para checkout, autenticação, administração, pagamentos, frete e notificações.
+ProxyBembem é um **monólito modular em Next.js + TypeScript**, com fronteiras server-side para checkout, autenticação, administração, pagamentos, frete, notificações e Store Settings.
 
 A aplicação é dividida operacionalmente entre:
 
-- **browser/UI:** catálogo, carrinho, formulários, área da conta e telas administrativas;
-- **Next.js server:** validação, autorização, checkout, integração com provedores e projeções sanitizadas;
-- **Supabase:** persistência, Auth, Storage, RLS, RPCs, eventos e auditoria;
+- **browser/UI:** catálogo, carrinho, formulários, conta do cliente e telas administrativas;
+- **Next.js server:** validação, autorização, checkout, integrações, projeções sanitizadas e cache público de settings;
+- **Supabase:** persistência, Auth, Storage, RLS, RPCs, eventos, auditoria e Store Settings;
 - **Mercado Pago:** verdade financeira;
-- **Melhor Envio:** verdade de operações de remessa/rastreamento;
-- **Resend:** transporte e callbacks de e-mail;
-- **KingHost:** execução do app e publicação dos assets do build.
+- **Melhor Envio:** verdade operacional de remessa/rastreamento;
+- **Resend:** transporte/callbacks de e-mail;
+- **KingHost:** execução da aplicação e publicação dos assets do build.
 
-Não existe uma segunda implementação de backend que deva ser ressuscitada de branches antigas.
+Não existe uma segunda implementação de backend que deva ser ressuscitada de branches históricas.
 
 ---
 
 ## 3. Invariantes que não devem regredir
 
-1. O browser nunca é autoridade para preço, subtotal, frete, total, `customer_id`, status financeiro ou ownership do pedido.
-2. `public.products` no Supabase é a única autoridade de catálogo em runtime. Não restaurar `data/products.ts` como fallback de produção.
-3. Produto público precisa estar `published`; lifecycle é exatamente `draft | published | archived`; não existe hard delete administrativo.
+1. O browser nunca é autoridade para preço, subtotal, frete, total, `customer_id`, status financeiro ou ownership.
+2. `public.products` no Supabase é a única autoridade de catálogo em runtime.
+3. Produto público precisa estar `published`; lifecycle é exatamente `draft | published | archived`; sem hard delete administrativo.
 4. Iniciar pagamento exige cliente Supabase autenticado e verificado.
-5. Ownership do pedido vem do UUID/e-mail confiável da sessão Auth no servidor.
-6. Pedidos privados usam `/minha-conta/pedidos/{uuid}`. Não restaurar `/pedido/[token]`, guest claim ou guest payment.
-7. Mercado Pago é a única autoridade financeira. Fulfillment/admin nunca “marca como pago/reembolsado” localmente.
-8. Pedido histórico preserva snapshot de compra/frete; catálogo atual não reescreve pedido já criado/pago.
-9. Admin exige owner UUID + senha + TOTP/AAL2 + sessão administrativa server-side ativa; respostas administrativas permanecem no-store.
-10. Compra de etiqueta Melhor Envio é sempre explícita e fail-closed. Preparar, comprar, gerar, imprimir, postar e cancelar são operações diferentes.
-11. `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` é o default seguro fora de uma janela deliberada de compra real.
-12. Timeout/resultado ambíguo de compra não permite retry cego; primeiro reconcilia.
-13. Gerar/imprimir etiqueta ou DACE não marca o pedido como enviado.
-14. Rastreamento pode avançar estados somente com evidência confiável e nunca deve regredir estado.
-15. Notificação transacional não muda verdade financeira, fulfillment ou shipping.
-16. Não existe tracking de abertura/clique do Resend e não existe automação de marketing/WhatsApp nesta arquitetura.
-17. Segredos, tokens, TOTP, service keys, CPF completo e IDs privados de provedores não vão para Git, browser, logs públicos ou documentação.
-18. Migration já aplicada no Supabase não é reescrita nem reaplicada; correções são aditivas.
+5. Ownership do pedido vem de identidade Auth confiável no servidor.
+6. Pedidos privados usam `/minha-conta/pedidos/{uuid}`; não restaurar `/pedido/[token]`, guest claim ou guest payment.
+7. Mercado Pago é a única autoridade financeira; fulfillment/admin não falsifica pagamento/reembolso.
+8. Pedido histórico preserva snapshot de compra/frete.
+9. Admin exige owner UUID + senha + TOTP/AAL2 + sessão administrativa server-side ativa; respostas protegidas permanecem no-store.
+10. Compra de etiqueta Melhor Envio é explícita e fail-closed; preparar, comprar, gerar, imprimir, postar e cancelar são operações distintas.
+11. `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` é o default seguro fora de janela deliberada.
+12. Resultado ambíguo de mutação em provider deve ser reconciliado antes de retry.
+13. Gerar/imprimir etiqueta/DACE não marca pedido como enviado.
+14. Tracking só avança estado com evidência confiável e nunca deve regredir estado.
+15. Notificação transacional nunca muda verdade financeira, fulfillment ou shipping.
+16. Resend Open Tracking e Click Tracking permanecem OFF em Production.
+17. Segredos, tokens, TOTP, service keys, CPF completo e IDs privados de provider não vão para browser/log público/docs.
+18. Migration já aplicada não é reescrita nem reaplicada; correções são aditivas.
+19. Store Settings é allowlisted e não contém credenciais/provider secrets.
+20. Falha de leitura pública de settings usa fallback seguro server-side; mutação administrativa continua fail-closed.
 
 ---
 
@@ -89,16 +90,16 @@ Não existe uma segunda implementação de backend que deva ser ressuscitada de 
 - Catálogo público resolve apenas produtos `published` do Supabase.
 - Carrinho pode existir antes do login.
 - Alterações de preço/publicação são reconciliadas contra o catálogo atual.
-- Checkout re-resolve IDs/quantidades, preço e dados físicos server-side.
+- Checkout re-resolve IDs, quantidades, preço e dados físicos no servidor.
 
 ### 4.2 Checkout e Mercado Pago
 
 - Catálogo/carrinho/cotação são públicos.
-- `POST /api/checkout` exige identidade verificada antes de criar/reservar o pedido.
-- O pedido é persistido antes do redirecionamento para o Mercado Pago.
-- O servidor cria a preferência usando valores reconstruídos no backend.
+- `POST /api/checkout` exige identidade verificada antes de reservar/criar pedido.
+- O pedido é persistido antes do redirect.
+- O servidor cria a preferência a partir de valores autoritativos reconstruídos.
 - Retornos voltam para `/minha-conta/pedidos/{order-id}`.
-- O webhook Mercado Pago valida assinatura, consulta o pagamento no provedor, valida referência/valor/moeda e aplica transição atômica.
+- Webhook valida assinatura, consulta provider, valida referência/valor/moeda e aplica transição atômica.
 - Retorno do navegador nunca é prova de pagamento.
 
 ### 4.3 Conta do cliente
@@ -106,8 +107,8 @@ Não existe uma segunda implementação de backend que deva ser ressuscitada de 
 - Cadastro/login Supabase.
 - E-mail verificado para iniciar pagamento.
 - Perfil privado e pedidos owner-scoped.
-- Recuperação de senha usa grant durável controlado pela aplicação; abordagens antigas foram substituídas.
-- Cliente enxerga apenas projeções sanitizadas dos próprios pedidos/remessas.
+- Recuperação de senha usa grant durável controlado pela aplicação.
+- Cliente recebe somente projeções sanitizadas dos próprios pedidos/remessas.
 
 ### 4.4 Admin
 
@@ -121,26 +122,13 @@ Principais superfícies:
 - `/admin/produtos/[id]`
 - `/admin/produtos/novo`
 - `/admin/integrations/melhor-envio`
+- `/admin/configuracoes`
 
-Autorização depende de owner UUID, senha, TOTP/AAL2 e sessão administrativa ativa. A barra lateral desktop/drawer mobile é a navegação administrativa atual.
+Autorização depende de owner UUID, senha, TOTP/AAL2 e sessão administrativa ativa.
 
 ### 4.5 Melhor Envio
 
-Fluxo operacional aceito hoje: **PF/CPF + DC-e/DACE**, com fundação para PJ/CNPJ + NF-e.
-
-Scopes atuais:
-
-- `shipping-calculate`
-- `cart-read`
-- `cart-write`
-- `orders-read`
-- `shipping-checkout`
-- `shipping-generate`
-- `shipping-print`
-- `shipping-tracking`
-- `shipping-cancel`
-
-Fluxo administrativo:
+Fluxo aceito:
 
 ```text
 Preparar remessa
@@ -152,7 +140,7 @@ Preparar remessa
   -> rastrear
 ```
 
-Production aceita PAC/SEDEX atuais conforme a política implementada; V1 trabalha com um pacote/volume e uma etiqueta por pedido ativo.
+Production usa o fluxo atual PF/CPF + DC-e/DACE, com fundação para PJ/CNPJ + NF-e. V1 trabalha com um pacote/volume e uma etiqueta por pedido ativo. Nenhuma etapa anterior à compra pode auto-gastar.
 
 ### 4.6 E-mail transacional / Resend
 
@@ -169,18 +157,21 @@ Tipos exatamente suportados:
 7. `refunded`
 8. `charged_back`
 
-Regras principais:
+Nenhum e-mail de pedido é enviado antes de pagamento autoritativamente aprovado. Reenvio manual cria entrega auditável distinta. Callbacks atrasados/antecipados são reconciliados sem rebaixar estado terminal mais forte.
 
-- nenhum e-mail de pedido antes de aprovação financeira autoritativa;
-- cancelamento administrativo de pedido nunca pago fica silencioso;
-- worker processa no máximo 25 por chamada;
-- no máximo 3 tentativas automáticas, aproximadamente +5 min e +30 min;
-- manual resend cria nova linha auditável em vez de sobrescrever histórico;
-- callbacks antecipados são reconciliados quando `provider_message_id` passa a existir;
-- callbacks atrasados são ligados ao histórico sem rebaixar estado terminal mais forte;
-- `delivered` não volta para `sent`;
-- corpo de webhook é limitado a 64 KiB;
-- Open Tracking = OFF e Click Tracking = OFF em Production.
+### 4.7 Store Settings
+
+Store Settings V1 contém exatamente:
+
+- prazo de produção em dias úteis, 1–15;
+- e-mail público opcional;
+- WhatsApp público opcional em E.164;
+- flag de aviso público;
+- texto simples de aviso, até 400 caracteres.
+
+Admin salva explicitamente em `/admin/configuracoes`; stale revision retorna conflito em vez de sobrescrever valor novo. Browser público recebe somente projeção sanitizada. FAQ, footer, `/contato`, aviso, carrinho e suporte de pedido usam settings sem acesso direto à tabela.
+
+Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 
 ---
 
@@ -191,11 +182,11 @@ Regras principais:
 | 0 — Design + Planning | **COMPLETE** | Arquitetura modular, limites de segurança e estratégia operacional definidos. |
 | 1 — Data + Audit Foundation | **COMPLETE / APPLIED** | Fulfillment, eventos, auditoria e attention flags. |
 | 2 — Admin Orders + Fulfillment | **COMPLETE / ACCEPTED** | Pedidos/admin/produção e transições protegidas. |
-| 3 — Customer Account + Private Orders | **COMPLETE / PRODUCTION ACCEPTED** | Conta verificada, pedidos privados, recuperação de senha. |
-| 4 — Catalog + Products Admin + Navigation | **IMPLEMENTATION COMPLETE** | Supabase catalog, admin de produtos e sidebar; antigo smoke manual amplo da Stage 3 não foi integralmente refeito. |
+| 3 — Customer Account + Private Orders | **COMPLETE / PRODUCTION ACCEPTED** | Conta verificada, pedidos privados e recuperação de senha. |
+| 4 — Catalog + Products Admin + Navigation | **IMPLEMENTATION COMPLETE** | Supabase catalog, admin de produtos e sidebar; smoke manual amplo histórico parcialmente diferido. |
 | 5 — Melhor Envio + Labels + Tracking | **COMPLETE / OWNER ACCEPTED** | OAuth, remessas, compra explícita, geração, DACE, postagem e tracking. |
-| 6 — Transactional Notifications | **COMPLETE / PRODUCTION ACCEPTED** | Outbox, worker, Resend, webhook, admin history e resend auditável. |
-| 7 — Store Settings | **NOT STARTED** | Próxima fase prevista. |
+| 6 — Transactional Notifications | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Outbox, worker, Resend, webhook, admin history e resend auditável. |
+| 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED** | Settings allowlisted, admin protegido, projeção pública, hosted DB e smoke final aceitos. |
 | 8 — Dashboard Metrics + Attention Center | **NOT STARTED** | Métricas/filas operacionais confiáveis. |
 | 9 — Hardening + Final Rollout | **NOT STARTED** | Revisão final de auth, isolation, origins, rate limit, secrets, concorrência e smoke. |
 
@@ -203,61 +194,46 @@ Regras principais:
 
 ## 6. Banco / migrations por domínio
 
-A série de migrations em `supabase/migrations/` é a história aditiva do schema. Não reaplicar versões já presentes na migration history hospedada.
+A série `supabase/migrations/` é a história aditiva do schema. Não reaplicar versões presentes na migration history hospedada.
 
 ### Pedidos, pagamento e checkout
 
-- criação de pedidos;
-- hardening de checkout/frete;
-- eventos financeiros atômicos;
-- lease de preferência checkout;
-- CPF do destinatário adicionado posteriormente.
+Foundation de pedidos, hardening de checkout/frete, eventos financeiros atômicos, lease de preferência e dados fiscais/recipient necessários ao fluxo atual.
 
 ### Admin e contas
 
-- sessões administrativas;
-- foundation de operações/auditoria de pedidos;
-- operações de fulfillment;
-- contas/pedidos privados;
-- grants duráveis de recuperação de senha.
+Sessões administrativas, operações/auditoria de pedidos, fulfillment, contas/pedidos privados e recuperação de senha durável.
 
 ### Catálogo
 
-- `product_catalog`;
-- grants do service role;
-- correção posterior de least privilege.
+`product_catalog`, grants server-side e hardening de least privilege.
 
 ### Melhor Envio / remessas
 
-- OAuth e escopos;
-- `shipments`/`shipment_events`/sender profiles;
-- operações, cancelamento/reconciliação e projeção do cliente;
-- índice posterior de FK do sender profile.
+OAuth/scopes, `shipments`, `shipment_events`, sender profiles, operações, cancelamento/reconciliação, customer projection e índices relacionados.
 
 ### Notificações
 
-Migrations hospedadas finais da Phase 6:
+Migrations Phase 6 incluem foundation, triggers, advisory indexes, webhook reconciliation e hardening/backfill finais.
 
-- `20260913011820 transactional_notifications_foundation`
-- `20260913011838 transactional_notification_triggers`
-- `20260913013454 transactional_notification_advisor_indexes`
-- `20260913022001 transactional_notification_webhook_reconciliation`
-- `20260914180352 transactional_notification_final_hardening`
-- `20260914181035 transactional_notification_webhook_backfill`
+### Store Settings
 
-As duas últimas corrigem cancelamento sem pagamento, link de webhook atrasado e o único orphan histórico conhecido.
+- repo: `supabase/migrations/202609140003_store_settings.sql`;
+- hosted: `20260915002740 store_settings`.
+
+Essa migration já foi aplicada/validada e não deve ser reaplicada.
 
 ---
 
 ## 7. Deploy e operação KingHost
 
-Runbook detalhado: `docs/deployment/kinghost.md`.
+Runbook: `docs/deployment/kinghost.md`.
 
 Estrutura:
 
-- aplicação Node/Next em `~/apps_nodejs/proxybembem`;
-- assets públicos/Next também publicados em `~/www` para o nginx da KingHost;
-- entrypoint `proxybembem/app.js`;
+- aplicação Node/Next: `~/apps_nodejs/proxybembem`;
+- assets públicos/Next: `~/www`;
+- entrypoint: `proxybembem/app.js`;
 - porta vem do ambiente KingHost; não hard-code.
 
 Deploy normal:
@@ -270,187 +246,88 @@ npx pnpm@10 install --frozen-lockfile
 NODE_ENV=production npx pnpm@10 deploy:kinghost
 ```
 
-Depois: restart pelo painel KingHost. Não iniciar PM2 manualmente.
+Depois, restart pelo painel KingHost. Não iniciar PM2 manualmente.
 
-Crons/rotas operacionais relevantes:
+### Incidente `umask`
 
-- Melhor Envio OAuth refresh: `GET /api/internal/melhor-envio/refresh`, diariamente às 03:17.
-- Melhor Envio tracking: rota interna de tracking, operação somente leitura, cadência horária aceita.
-- Notificações: `GET https://www.proxybembem.com.br/api/internal/notifications/process`, a cada 5 minutos.
-- Webhook Resend: `https://www.proxybembem.com.br/api/webhooks/resend`.
-- Webhook Mercado Pago: `https://www.proxybembem.com.br/api/mercadopago/webhook`.
-
-### Incidente de permissões de assets em 2026-09-14
-
-Durante configuração manual de segredo, um shell ficou com `umask 077`; um build posterior criou assets `/_next/static` em modo `600`. O nginx devolveu 403 para CSS/JS e o site apareceu sem estilo.
-
-Foi corrigido restaurando `umask 022` e tornando os assets publicados legíveis. O `.env.production` continuou privado em `600`.
-
-Por decisão do proprietário, **o script de deploy não foi modificado para contornar `umask 077`**. Regra operacional: não deixar um `umask` restritivo ativo ao executar build/deploy. Não afrouxar as permissões do `.env.production`.
+Em 2026-09-14 um shell com `umask 077` fez assets nascerem `600`, causando 403 do nginx em CSS/JS. Regra operacional: build/deploy com umask normal (`022`); não afrouxar `.env.production` e não alterar o deploy para mascarar um shell configurado incorretamente.
 
 ---
 
 ## 8. Verificação / CI
 
-A CI atual valida, entre outras coisas:
+CI valida runtime exato Node 22.1.0, install com lockfile congelado, typecheck, KingHost build, private-order contract, startup adapter/smoke e suíte automatizada.
 
-- runtime exato Node 22.1.0;
-- install com lockfile congelado;
-- typecheck;
-- build KingHost;
-- contrato de rotas privadas;
-- startup adapter KingHost;
-- suíte automatizada completa.
+Para a Phase 7, o runtime final aceito `db430829...` passou GitHub Actions #1589 / run `34918063220`.
 
-O merge da Phase 6 na `main` passou na run #1529 (`34880603149`).
-
-Testes de regressão cobrem áreas que já causaram problemas reais, incluindo admin cache/no-store, order number legado, checkout, auth, Melhor Envio, shipment state, no-auto-spend, Resend, webhook races e hardening de notificações.
+A regressão final cobre explicitamente o banner público abaixo da navbar fixa.
 
 ---
 
-## 9. Aceitação real já observada
+## 9. Aceitação real observada
 
 ### Phase 3
 
-Conta/pedidos privados: produção aceita.
+Conta/pedidos privados: Production accepted.
 
 ### Phase 4
 
-Stage 1/2 aceitas em produção. Stage 3 está implementada e automatizada, mas o checklist browser amplo original não foi integralmente refeito.
+Stage 1/2 aceitas em Production. Stage 3 implementada/automatizada; checklist browser amplo antigo não integralmente refeito.
 
 ### Phase 5
 
-- OAuth Production reautorizado com os nove scopes;
-- caminho controlado de preparação sem gasto chegou ao carrinho do Melhor Envio;
-- custo observado no fixture controlado: R$ 23,69;
-- compra real foi posteriormente aceita pelo proprietário como Task 18;
-- smoke final foi aceito pelo proprietário como Task 20.
+OAuth Production, caminho de remessa, compra explícita e smoke final aceitos no nível registrado nos documentos da fase.
 
 ### Phase 6
 
-- domínio Resend verificado em `sa-east-1`;
-- envio habilitado;
-- Open/Click Tracking OFF;
-- webhook operacional assinado habilitado;
-- e-mail `production_started` real do fixture chegou a `delivered`;
-- histórico apareceu no admin;
-- reenvio manual criou linha nova ligada à original e também chegou a `delivered`;
-- fila final sem itens vencidos ativos;
-- único webhook conhecido sem vínculo foi backfilled; known orphan count = 0.
+Resend Production, webhook assinado, cron KingHost, entrega real de fixture e reenvio manual auditável aceitos.
 
-Existe uma linha `failed` antiga do primeiro fixture sintético inválido da Phase 6. Ela é histórica/auditável e não representa fila pendente.
+### Phase 7
 
----
-
-## 10. Revisão das branches antigas
-
-A consolidação verificou as branches remanescentes antes de qualquer limpeza. Branch antiga não deve ser mesclada apenas por existir: a `main` atual é a autoridade.
-
-### Contidas/superadas pela `main`
-
-Estas branches não possuem trabalho atual que precise ser integrado e podem ser removidas depois da consolidação:
-
-- `feat/admin-dashboard-expansion`
-- `feat/admin-dashboard-expansion-red-profile-cache`
-- `feat/profile-cache-regression-test-temp`
-- `feat/checkout-mercadopago`
-- `feat/password-recovery-token-hash`
-- `feat/transactional-notifications`
-- `no-op`
-- `please-ignore-this`
-- `spec/password-recovery-token-hash`
-- `tmp-ignore-password-recovery-token-hash`
-- `work/password-recovery-implicit`
-- `work/password-recovery-resend-tokenhash`
-- `work/password-recovery-token-hash`
-- `tdd/kinghost-port-variable`
-- `tdd/kinghost-task1`
-- `tdd/kinghost-task1b`
-- `tdd/kinghost-task1c`
-- `tdd/kinghost-webpack`
-- `vercel-retry-803d148`
-
-Várias dessas são aliases/checkpoints temporários que apontam para SHAs já ancestrais da `main`.
-
-### Branches divergentes revisadas manualmente
-
-#### `feat/admin-dashboard-expansion-debug-red`
-
-Possuía um commit RED adicional com `tests/admin-production-regressions.test.ts`. A `main` atual já contém uma versão mais nova/superset desse arquivo, incluindo os mesmos testes de credencial inválida, no-store do admin e order number legado. Não há código a resgatar.
-
-#### `tdd/kinghost-pm2-entrypoint`
-
-Possuía um commit de teste adicional para runtime KingHost. A `main` atual já contém cobertura mais nova para variáveis de porta, portas inválidas, bind em `0.0.0.0` e standalone output. Não há implementação a resgatar.
-
-#### `agent/prepare-backend-checkout`
-
-Branch histórica anterior à arquitetura atual. O documento `docs/backend-checkout.md` defendia corretamente que o navegador nunca fosse autoridade para preços/frete/pagamento, que segredos ficassem no servidor, que o pedido fosse persistido antes do redirect e que webhook confirmasse pagamento de forma idempotente. **Esses princípios foram preservados neste documento e na implementação atual.**
-
-O código antigo (`lib/catalog.ts`, quote inicial, catálogo estático etc.) foi superado por Supabase `public.products`, checkout autenticado, Mercado Pago real e Melhor Envio atual. Não deve ser merged.
-
-#### `work/shipping-checkout-hardening`
-
-Branch histórica com uma implementação paralela/antiga de cotação e Melhor Envio. Ela também tocava `data/products.ts`, o que conflita com a regra atual de Supabase como única autoridade de catálogo. O sistema atual possui uma implementação Phase 5 muito mais completa e aceita. Não deve ser merged.
-
-### Pull requests históricas
-
-- PR #1: fechada sem merge durante esta consolidação; arquitetura superada.
-- PR #4: Phase 6 integrada na `main` após aceitação.
+- hosted migration aplicada/validada;
+- deploy KingHost do candidate `db430829...`;
+- homepage 200;
+- aviso temporário presente no HTML quando habilitado;
+- bug de posição do banner encontrado e corrigido;
+- screenshot do proprietário confirmou banner abaixo da navbar;
+- stale two-tab save foi recusado no admin;
+- aviso temporário desligado ao final.
 
 ---
 
-## 11. Pendências e riscos conhecidos para a próxima revisão
+## 10. Pendências e riscos conhecidos
 
-Estes itens **não significam que as Phases 0–6 falharam**; são o backlog real conhecido para auditoria/hardening futuro:
+Estes itens são backlog/hardening e não reabrem automaticamente as fases aceitas:
 
-1. **Phase 4 browser smoke amplo:** o antigo checklist completo de produto CRUD/image/conflict/cache não foi integralmente refeito após Stage 3. Há cobertura automatizada e uso posterior de várias superfícies, mas não inventar evidência manual que não ocorreu.
-2. **Admin cache header manual:** no-store é coberto por testes, porém a observação manual do header autenticado não foi registrada no último smoke.
-3. **Supabase Auth leaked-password protection:** advisor indica que está desabilitado; avaliar na Phase 9.
-4. **`customer_profiles` `auth_rls_initplan`:** advisor reporta três oportunidades de performance nas policies; não é autorização quebrada, mas merece otimização futura.
-5. **Unused indexes:** advisor lista índices ainda não utilizados; tratar como informativo até existir volume/evidência suficiente, não remover cegamente.
-6. **RLS sem policy em tabelas backend-only:** é intencional onde browser CRUD está revogado. Não adicionar policies só para silenciar advisor.
-7. **Drift `main` x runtime KingHost:** conhecido e intencional após o merge/documentação/DB-only hardening. Antes do próximo rollout grande, registrar o SHA exato que será implantado.
-8. **Incidente `umask`:** não repetir build/deploy com `umask 077` ativo no shell.
-9. **Fixture Phase 6:** linha failed histórica do payload sintético inválido foi preservada por auditoria; não é retry ativo.
-10. **Branches antigas:** devem ser removidas após esta consolidação para reduzir ambiguidade. Não usar branch histórica como base de trabalho novo.
+1. Antigo browser smoke amplo da Phase 4 não foi integralmente refeito.
+2. Observação manual do header no-store autenticado não foi registrada no último smoke, embora haja regressão automatizada.
+3. Supabase Auth leaked-password protection está desabilitado; avaliar na Phase 9.
+4. `customer_profiles` possui findings `auth_rls_initplan` de performance.
+5. Índices unused são informativos no volume atual; não remover sem evidência.
+6. RLS sem policy em tabelas backend-only é intencional quando browser CRUD está revogado.
+7. Não repetir deploy/build com `umask 077` ativo.
+8. Branches históricas não devem ser usadas como base de trabalho novo quando a `main`/branch ativa já as superou.
 
 ---
 
-## 12. Checklist recomendado antes de começar Phase 7
+## 11. Próxima ação
 
-1. Confirmar `main` limpa e CI verde.
-2. Remover branches históricas já classificadas como superadas.
-3. Trabalhar a próxima fase sempre a partir da `main` atual.
-4. Antes de mudanças de banco, comparar migrations Git x hosted migration history.
-5. Não reabrir decisões já aceitas sem uma regressão concreta.
-6. Fazer uma revisão direcionada das pendências acima, especialmente segurança/Auth/advisors e smoke Phase 4, antes ou dentro da Phase 9.
-7. Para cada nova fase: branch curta, testes, PR, merge explícito e atualização deste documento no final.
+A Phase 7 está completa e Production accepted, porém **ainda não integrada na `main`**.
+
+Próximo passo: decisão explícita do proprietário sobre `feat/phase-7-store-settings` — merge, PR/revisão ou manutenção da branch.
+
+Não iniciar Phase 8 ou Phase 9 automaticamente.
 
 ---
 
-## 13. Próxima fase prevista
+## 12. Documentos de referência
 
-### Phase 7 — Store Settings
-
-Ainda não iniciada. A intenção do roadmap é criar apenas configurações operacionais/comerciais tipadas e allowlisted. Segredos de infraestrutura/provedores continuam exclusivamente em ambiente privado e **não** viram store settings.
-
-Depois:
-
-- Phase 8 — Dashboard Metrics + Attention Center;
-- Phase 9 — Hardening + Final Rollout.
-
----
-
-## 14. Documentos de referência que continuam válidos
-
-Para detalhes especializados, consultar:
-
-- `docs/PROJECT_MASTER_OVERVIEW.md` — este documento, visão geral canônica;
-- `docs/deployment/kinghost.md` — deploy e runtime;
+- `docs/PROJECT_MASTER_OVERVIEW.md` — visão geral canônica;
+- `docs/deployment/kinghost.md` — deploy/runtime KingHost;
 - `docs/payments-setup.md` — Mercado Pago/checkout;
 - `docs/shipping-setup.md` — Melhor Envio/remessas;
-- `docs/superpowers/CURRENT_STATUS.md` — evidências detalhadas acumuladas até a consolidação;
-- `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` — roadmap e decisões de design;
+- `docs/superpowers/CURRENT_STATUS.md` — checkpoint operacional curto;
+- `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` — roadmap/decisões;
+- `docs/superpowers/phase-7/CONTINUIDADE.md` — handoff Phase 7;
+- `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md` — evidência final Phase 7;
 - `docs/superpowers/plans/` e `docs/superpowers/specs/` — histórico de implementação/design.
-
-Ao continuar o projeto, comece por este arquivo e pela `main`, não por uma branch antiga.
