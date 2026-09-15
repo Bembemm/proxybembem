@@ -57,9 +57,10 @@ test("footer receives nullable configured contacts and omits unavailable links",
   assert.match(shell, /contactWhatsappE164=\{storeSettings\.contactWhatsappE164\}/)
 })
 
-test("store notice is plain text, conditional, and rendered directly below navbar", async () => {
+test("store notice is plain text, conditional, rendered directly below navbar, and clears the fixed navbar", async () => {
   const notice = await source("../components/store-notice.tsx")
   const shell = await source("../components/site-shell.tsx")
+  const navbarSource = await source("../components/navbar.tsx")
 
   assert.ok(notice.length > 0, "missing StoreNotice component")
   assert.match(notice, /noticeEnabled/)
@@ -68,6 +69,11 @@ test("store notice is plain text, conditional, and rendered directly below navba
   assert.match(notice, /return\s+null/)
   assert.doesNotMatch(notice, /dangerouslySetInnerHTML/)
   assert.doesNotMatch(notice, /innerHTML/)
+  assert.match(navbarSource, /h-14\s+sm:h-16/)
+  assert.match(
+    notice,
+    /className="[^"]*\brelative\b[^"]*\btop-14\b[^"]*\bsm:top-16\b[^"]*"/,
+  )
   assert.match(shell, /<Navbar\s*\/?>[\s\S]*<StoreNotice/)
   const navbar = shell.indexOf("<Navbar")
   const storeNotice = shell.indexOf("<StoreNotice")
