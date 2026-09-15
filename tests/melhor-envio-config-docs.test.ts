@@ -5,6 +5,7 @@ import test from "node:test"
 const LEGACY_TOKEN_NAME = ["MELHOR", "ENVIO", "ACCESS", "TOKEN"].join("_")
 const OBSOLETE_ADMIN_SECRET = ["MELHOR", "ENVIO", "OAUTH", "ADMIN", "SECRET"].join("_")
 const FINAL_VARIABLES = [
+  "APP_ENVIRONMENT",
   "MELHOR_ENVIO_ENVIRONMENT",
   "MELHOR_ENVIO_CLIENT_ID",
   "MELHOR_ENVIO_CLIENT_SECRET",
@@ -23,6 +24,7 @@ test("environment example documents the final OAuth contract and fail-closed spe
   for (const variable of FINAL_VARIABLES) {
     assert.match(source, new RegExp(`^${variable}=`, "m"), `${variable} must be documented`)
   }
+  assert.match(source, /^APP_ENVIRONMENT=sandbox$/m)
   assert.match(source, /^MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false$/m)
   assert.equal(source.includes(LEGACY_TOKEN_NAME), false)
   assert.equal(source.includes(OBSOLETE_ADMIN_SECRET), false)
@@ -67,4 +69,28 @@ test("production rollout pins the canonical callback and keeps provider credenti
   assert.match(source, /segredos?[^\n]*Production[^\n]*(pr[oó]pri|independent)|Production[^\n]*segredos?[^\n]*(pr[oó]pri|independent)/i)
   assert.match(source, /(?:IDs?|servi[cç]os?)[^\n]*1[^\n]*2[^\n]*(?:PAC|SEDEX)|(?:PAC|SEDEX)[^\n]*1[^\n]*2/i)
   assert.match(source, /n[aã]o (?:reutilize|copie)[^\n]*(?:Client ID|Client Secret|segredo|credencial)/i)
+})
+
+test("KingHost sandbox runbook isolates provider credentials and production data", async () => {
+  const source = await readFile(
+    new URL("../docs/deployment/kinghost-sandbox.md", import.meta.url),
+    "utf8",
+  )
+
+  for (const expected of [
+    "sandbox/kinghost-mercadopago-melhor-envio",
+    "APP_ENVIRONMENT=sandbox",
+    "MERCADO_PAGO_ENVIRONMENT=sandbox",
+    "MELHOR_ENVIO_ENVIRONMENT=sandbox",
+    "MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false",
+    "/api/melhor-envio/oauth/callback",
+    "/api/mercadopago/webhook",
+    "Supabase",
+  ]) {
+    assert.ok(source.includes(expected), `sandbox runbook must include ${expected}`)
+  }
+
+  assert.match(source, /n[aã]o use[^\n]*Supabase[^\n]*Production/i)
+  assert.match(source, /n[aã]o copie[^\n]*(?:credenciais|segredos)[^\n]*Production/i)
+  assert.match(source, /aplica[cç][aã]o[^\n]*KingHost[^\n]*separad/i)
 })
