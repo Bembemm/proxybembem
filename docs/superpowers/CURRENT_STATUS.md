@@ -8,22 +8,17 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto,
 
 - Branch: `feat/phase-7-store-settings`.
 - Base inicial: `main` @ `4d9f5a4524dc7ebabd24bcb4a453aa24e783fc66`.
-- Handoff obrigatório da branch: `docs/superpowers/phase-7/CONTINUIDADE.md`.
-- Qualquer chat novo trabalhando nesta branch deve ler `CONTINUIDADE.md` inteiro antes de continuar.
-- Phase 7 — Store Settings teve design/spec aprovados e implementação concluída até as integrações públicas/contato da Task 7.
-- Task 8 está no checkpoint pre-rollout: revisão de escopo/segurança + documentação + CI antes de qualquer DDL hospedado.
-- Nenhuma migration Phase 7 foi aplicada ainda no Supabase hospedado e nenhum deploy Phase 7 foi feito na KingHost.
-- Ao terminar uma sessão com trabalho relevante nesta branch, atualizar `CONTINUIDADE.md` com estado e próximo passo exato.
+- Handoff obrigatório: `docs/superpowers/phase-7/CONTINUIDADE.md`.
+- Phase 7 — Store Settings: implementação e Task 8 automatizada concluídas; migration hospedada aplicada e validada na Task 9; deploy/smoke KingHost da Task 10 ainda pendentes.
+- Ao terminar trabalho relevante nesta branch, atualizar `CONTINUIDADE.md`.
 
 ## Baseline atual
 
 - Branch canônica: `main`.
 - Merge da Phase 6: `95ac936ca11dfd695734138e579eb97085714980`.
 - CI final da `main` antes da abertura da Phase 7: #1534 / run `34882211417` — **PASS**.
-- Production runtime: KingHost Node.js **22.1.0**.
+- Production runtime atual antes do deploy Phase 7: KingHost Node.js **22.1.0**, app comprovada em `c8c2bb20f1c265729c4d4aee7fe65a91e2e1cc4c`.
 - Backend/Auth: Supabase hospedado separadamente.
-- Aplicação atualmente comprovada em Production: `c8c2bb20f1c265729c4d4aee7fe65a91e2e1cc4c`.
-- As duas correções finais da Phase 6 foram migrations/funções do Supabase e já estão hospedadas; não exigiram redeploy do app.
 - Runbook canônico: `docs/deployment/kinghost.md`.
 
 ## Roadmap
@@ -35,13 +30,13 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto,
 - Phase 4 — Catalog + Products Admin + Navigation: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; o antigo smoke manual amplo da Stage 3 não foi integralmente refeito.
 - Phase 5 — Melhor Envio + Labels + Tracking: **COMPLETE / OWNER ACCEPTED**.
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 7 — Store Settings: **IMPLEMENTATION COMPLETE THROUGH TASK 7 / PRE-ROLLOUT CHECKPOINT IN PROGRESS / HOSTED ROLLOUT PENDING**.
+- Phase 7 — Store Settings: **IMPLEMENTATION COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / KINGHOST DEPLOY + PRODUCTION SMOKE PENDING**.
 - Phase 8 — Dashboard Metrics + Attention Center: **NOT STARTED**.
 - Phase 9 — Hardening + Final Rollout: **NOT STARTED**.
 
-## Phase 7 — implementação atual
+## Phase 7 — implementação e rollout hospedado
 
-V1 implementa exatamente cinco settings tipados/allowlisted:
+V1 contém exatamente cinco settings tipados/allowlisted:
 
 - prazo de produção em dias úteis, 1–15, default 5;
 - e-mail público opcional;
@@ -49,18 +44,59 @@ V1 implementa exatamente cinco settings tipados/allowlisted:
 - flag de aviso público;
 - texto simples de aviso, máximo 400 caracteres.
 
-Implementação presente na branch:
+Implementação na branch:
 
-- migration aditiva `supabase/migrations/202609140003_store_settings.sql` com singleton `id='default'`, constraints, RLS e RPC atômica de update + `admin_audit_log`;
-- domínio/validação TypeScript, repository admin/public, fallback público seguro e cache server-side de 5 minutos com invalidação após save;
-- rota administrativa protegida `/api/admin/settings` e página `/admin/configuracoes` no shell AAL2 existente;
-- optimistic concurrency por `expectedUpdatedAt`, conflito 409 sem overwrite;
-- FAQ, footer, banner, página de contato, fallback do carrinho e suporte do pedido consumindo apenas a projeção pública sanitizada;
+- migration repo `supabase/migrations/202609140003_store_settings.sql`;
+- singleton `public.store_settings`, constraints, RLS e RPC atômica de update + audit;
+- domínio/validação TypeScript, repository admin/public, fallback seguro e cache server-side de 5 minutos;
+- `/api/admin/settings` protegido pelo boundary admin existente;
+- `/admin/configuracoes` com save explícito, 400 por campo e optimistic conflict 409;
+- FAQ, footer, banner, `/contato`, fallback do carrinho e suporte do pedido recebem somente projeção pública sanitizada;
 - ausência de e-mail/WhatsApp não gera links quebrados;
-- número público antigo removido dos fluxos ativos e helper de WhatsApp exige destino E.164 configurado;
-- nenhum secret/provider credential virou Store Setting.
+- nenhum provider secret virou Store Setting.
 
-Último checkpoint automatizado de código antes do ajuste cosmético do placeholder/admin e desta documentação: branch SHA `344c1aeb5ca9d4d118ed6d72dfec8a4538f335c6`, CI #1582 / run `34909496593` — **PASS**, incluindo Node 22.1.0, frozen install, typecheck, KingHost build, private-order route contract, startup smoke e **783/783 testes**. O HEAD atual deve receber novo CI antes de qualquer rollout hospedado.
+### Task 8 — gate pre-rollout
+
+Final HEAD do checkpoint pre-rollout: `1b0ca0dbb438a8bc582101c8a22ab28e09124ce0`.
+
+GitHub Actions CI #1586 / run `34913005979`: **PASS**:
+
+- exact Node 22.1.0;
+- frozen pnpm install;
+- typecheck;
+- KingHost build;
+- private-order route contract;
+- startup smoke;
+- **783/783 testes PASS**, 0 fail/skipped/todo.
+
+Diff/security review não encontrou alteração em payment authority, shipping spend gates, notification truth, `.env.production`, deploy asset permissions ou `umask`. O único número público antigo residual em UI era placeholder e foi trocado por exemplo E.164 genérico antes desse CI.
+
+### Task 9 — Hosted Supabase
+
+Migration aplicada uma única vez no projeto hospedado `ProxyBembem`:
+
+- versão hospedada real: `20260915002740`;
+- nome: `store_settings`.
+
+Verificação hospedada:
+
+- exatamente 1 linha `store_settings`, `id='default'`;
+- seed preservado: prazo 5, contato público atual, aviso `false`, texto null;
+- RLS habilitado;
+- `anon` e `authenticated`: nenhum SELECT/INSERT/UPDATE/DELETE direto;
+- `service_role`: SELECT direto permitido, UPDATE direto não permitido;
+- `admin_update_store_settings`: owner `postgres`, `SECURITY DEFINER`, `search_path=''`;
+- `anon`/`authenticated`: sem EXECUTE; `service_role`: EXECUTE permitido;
+- colunas são somente `id`, prazo, contatos, aviso e `updated_at`; nenhuma coluna com nome de secret/token/credential/key/password;
+- teste hospedado em subtransação rollback-only provou update válido + revisão avançada + exatamente 1 audit allowlisted, depois conflito com revisão velha; o bloco foi revertido e settings/audit permaneceram intactos;
+- leitura pós-rollback confirmou seed original e zero audit sintético persistido.
+
+Advisors após DDL:
+
+- novo finding Phase 7 apenas INFO `rls_enabled_no_policy` em `store_settings`, intencional para tabela backend-only sem browser CRUD;
+- WARNs de segurança continuam os conhecidos: duas RPCs customer `SECURITY DEFINER` owner-scoped e leaked-password protection desabilitado;
+- performance continua com os 3 `customer_profiles auth_rls_initplan` conhecidos e índices unused informativos;
+- nenhuma nova exposição de grant, unsafe definer/search-path ou missing FK/index causada pela Phase 7.
 
 ## Invariantes aceitos
 
@@ -72,7 +108,7 @@ Implementação presente na branch:
 - Não restaurar guest checkout, `/pedido/[token]` ou guest claim.
 - Admin exige owner UUID + senha + TOTP/AAL2 + sessão administrativa ativa.
 - Produto usa somente `draft | published | archived`; sem hard delete.
-- Compra de etiqueta Melhor Envio é sempre explícita e fail-closed; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` é o default seguro fora de janela deliberada de compra.
+- Compra de etiqueta Melhor Envio é sempre explícita e fail-closed; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` é o default seguro fora de janela deliberada.
 - Compra, geração, impressão e postagem são operações distintas; gerar/imprimir não marca `shipped`.
 - Migrations já hospedadas não são regravadas/reaplicadas.
 - Falha de e-mail nunca altera pagamento, fulfillment ou shipping.
@@ -133,11 +169,12 @@ Checkpoint final de implementação/backfill antes da consolidação: `caf1090cd
 
 ## Incidente operacional registrado
 
-Em 2026-09-14 um shell com `umask 077` fez assets de build nascerem `600`, causando `403` do nginx em CSS/JS. Foi corrigido restaurando `umask 022` e permissões legíveis em `/_next/static`. O deploy não foi alterado para contornar isso por decisão do proprietário; o runbook agora registra que build/deploy deve ocorrer com umask normal. `.env.production` continua privado.
+Em 2026-09-14 um shell com `umask 077` fez assets de build nascerem `600`, causando `403` do nginx em CSS/JS. Foi corrigido restaurando `umask 022` e permissões legíveis em `/_next/static`. O deploy não foi alterado para contornar isso por decisão do proprietário; o runbook registra que build/deploy deve ocorrer com umask normal. `.env.production` continua privado.
 
 ## Próxima ação
 
-1. Finalizar Task 8 com CI verde no HEAD atual da branch.
-2. Somente após esse gate, executar Task 9: re-checar migration history no Supabase hospedado e aplicar uma única vez `202609140003_store_settings.sql`.
-3. Validar contrato hospedado, optimistic conflict/audit e advisors antes de qualquer deploy KingHost.
-4. Não marcar Phase 7 como Production accepted antes da Task 10 e não iniciar Phase 8 ou Phase 9 automaticamente.
+1. Esperar CI verde no HEAD documental pós-Task 9.
+2. Iniciar Task 10 somente com esse HEAD verde: confirmar candidate SHA e deployar pela rotina KingHost existente, sem alterar permissões/`umask`.
+3. Fazer restart pelo painel e smoke focado de `/admin/configuracoes` + storefront/contatos/cart/order support.
+4. Só depois reconciliar docs finais e marcar Phase 7 `COMPLETE / PRODUCTION ACCEPTED`.
+5. Integração em `main` continua decisão explícita do proprietário; não iniciar Phase 8 ou Phase 9 automaticamente.
