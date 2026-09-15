@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import { Check, ChevronDown, Eye, Filter, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -58,17 +58,25 @@ export function ProductsPage({
   products,
   unavailable = false,
   productionLeadTimeBusinessDays,
+  initialCategory,
 }: {
   products: Product[]
   unavailable?: boolean
   productionLeadTimeBusinessDays: number
+  initialCategory?: string
 }) {
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    initialCategory ? [initialCategory] : [],
+  )
   const [showFilters, setShowFilters] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const categories = Array.from(new Set(products.map((product) => product.category)))
+
+  useEffect(() => {
+    setSelectedCategories(initialCategory ? [initialCategory] : [])
+  }, [initialCategory])
 
   const openProductModal = (product: Product) => {
     setSelectedProduct(product)
