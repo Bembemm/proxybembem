@@ -67,9 +67,9 @@ Record date, deployed SHA and concise observed result before marking Phase 8 Pro
 
 ## C. Final Phase 9 Production smoke
 
-**Status: PENDING OWNER SMOKE / WAITING FINAL CANDIDATE DEPLOY**
+**Status: PENDING OWNER SMOKE / FINAL CANDIDATE DEPLOYED**
 
-Run only after the exact final CI-green Phase 9 candidate has been deployed to KingHost and restarted through the KingHost panel.
+The exact final runtime candidate has been deployed to KingHost and restarted through the KingHost panel. The authenticated/business smoke below still requires owner observation and remains open.
 
 - [ ] Public home/catalog responds normally over HTTPS.
 - [ ] Customer sign-in works and a customer can view only their own private order surfaces.
@@ -88,23 +88,20 @@ Run only after the exact final CI-green Phase 9 candidate has been deployed to K
 
 These are operator checks, not substitutes for the authenticated browser rows above.
 
-After deploy/restart:
+**Observed 2026-09-15 from owner-provided KingHost terminal output:**
 
-```bash
-cd ~/apps_nodejs/proxybembem
-git rev-parse HEAD
-git status -sb
-curl -sSI https://www.proxybembem.com.br/ | head -n 10
-```
+- deployed runtime SHA: `cdb3f863336237ab49f9b91cca20f0d876aa75c7`;
+- restart: owner reported completion through the KingHost panel;
+- `git rev-parse HEAD`: exact candidate SHA above;
+- first post-build `git status -sb`: detached HEAD plus only `M next-env.d.ts`;
+- `git diff -- next-env.d.ts` showed only Next.js-generated type-reference changes from `.next/dev/types/routes.d.ts` to `.next/types/routes.d.ts` plus `.next/types/root-params.d.ts`;
+- after `git restore next-env.d.ts`, `git status -sb` returned only `## HEAD (no branch)` with no modified files;
+- `curl -sSI https://www.proxybembem.com.br/ | head -n 10` returned `HTTP/2 200` and the expected security headers including CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS.
 
-Required:
-- exact expected candidate SHA;
-- no unexplained local modifications;
-- public HTTPS success;
-- restart performed only through the KingHost panel, never PM2 CLI.
+The checkout remains intentionally detached at the exact accepted runtime SHA for this rollout. This terminal/public evidence proves the rollout/public-health gate only; it does not satisfy Sections A, B or the authenticated rows of C.
 
 ## Acceptance recording rule
 
 Do not edit `PENDING OWNER SMOKE` to accepted based on automated tests, database queries, screenshots not actually observed by the owner, or assumptions from a previous phase. When the owner performs the smoke, record only what was actually observed in the final acceptance evidence.
 
-Until sections A/B/C have the required owner evidence, Phase 9 may be described as **implementation/automated hardening complete** after all automated/hosted gates pass, but the project must not be described as fully Production accepted.
+Until sections A/B/C have the required owner evidence, Phase 9 may be described as **implementation/automated hardening complete / hosted validated / final candidate deployed**, but the project must not be described as fully Production accepted.
