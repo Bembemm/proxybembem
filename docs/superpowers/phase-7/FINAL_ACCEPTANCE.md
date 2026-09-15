@@ -1,10 +1,10 @@
 # ProxyBembem — Phase 7 / Final Production Acceptance
 
 **Phase:** 7 — Store Settings  
-**Branch:** `feat/phase-7-store-settings`  
+**Branch histórica:** `feat/phase-7-store-settings`  
 **Base original:** `main` @ `4d9f5a4524dc7ebabd24bcb4a453aa24e783fc66`  
-**Runtime aceito em Production:** `db4308296e9f2603e76ded4332394dd58c99a84c`  
-**Estado:** **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED**
+**Runtime final aceito em Production:** `3fd88688a6cfae343fea3b346a3d1cad1035eb86`  
+**Estado:** **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**
 
 Este documento registra a evidência final de rollout da Phase 7. O plano/spec histórico permanece em `docs/superpowers/plans/2026-09-14-store-settings-implementation.md` e `docs/superpowers/specs/2026-09-14-store-settings-design.md`.
 
@@ -28,48 +28,57 @@ A migration foi aplicada uma única vez no projeto hospedado `ProxyBembem`:
 - hosted version: `20260915002740`;
 - hosted name: `store_settings`.
 
-A validação hospedada confirmou:
+A validação hospedada confirmou singleton `public.store_settings`, RLS, grants mínimos, RPC allowlisted `SECURITY DEFINER`, optimistic concurrency, audit atômico e ausência de colunas de secrets/tokens/credentials. O smoke rollback-only comprovou update válido, avanço de revisão, stale conflict e audit allowlisted sem deixar fixture sintética persistida.
 
-- singleton `public.store_settings`, `id='default'`;
-- RLS habilitado;
-- `anon` e `authenticated` sem CRUD direto;
-- `service_role` com leitura e RPC allowlisted, sem UPDATE direto;
-- `admin_update_store_settings(...)` como `SECURITY DEFINER`, owner `postgres`, `search_path=''`;
-- optimistic concurrency por `expectedUpdatedAt`;
-- mutação e `admin_audit_log` na mesma transação;
-- audit contendo apenas os cinco valores allowlisted e actor confiável;
-- nenhuma coluna de secret/token/credential/key/password.
+## Consistência global dos settings
 
-Um smoke rollback-only hospedado comprovou update válido, avanço de revisão, stale conflict e exatamente um audit allowlisted; o bloco foi revertido e não deixou fixture sintética persistida.
+O follow-up final da Phase 7 removeu consumidores públicos divergentes e tornou Configurações a fonte de verdade para a mesma informação pública.
 
-## Verificação automatizada antes do rollout
+O commit de runtime final foi:
 
-O checkpoint pre-rollout passou CI com runtime exato Node 22.1.0, install congelado, typecheck, KingHost build, private-order route contract, startup smoke e suíte automatizada completa.
+`3fd88688a6cfae343fea3b346a3d1cad1035eb86` — `fix: make store settings globally authoritative`.
 
-Após a correção final do banner, o commit de runtime aceito foi:
+A correção cobre:
 
-- `db4308296e9f2603e76ded4332394dd58c99a84c` — `fix: position store notice below fixed navbar`;
-- GitHub Actions run #1589 — **PASS**.
+- refresh do tree server-side após save bem-sucedido em `/admin/configuracoes`, evitando props antigas na mesma sessão;
+- e-mail/WhatsApp público consumido dinamicamente por footer, `/contato`, carrinho, suporte de pedido e páginas legais relevantes;
+- prazo de produção consumido pela FAQ e pelo detalhe de produto, inclusive substituindo cópia antiga de `PRAZO`/destaque sem reescrever produto histórico no banco;
+- nenhum acoplamento de buyer/customer contact, remetente `noreply`, secrets de provider ou prazo de transportadora aos Store Settings.
 
-A correção adiciona o offset responsivo `top-14 sm:top-16` ao `StoreNotice`, correspondente à altura `h-14 sm:h-16` da navbar fixa, com regressão automatizada cobrindo esse contrato.
+## Verificação automatizada
+
+O ciclo TDD comprovou RED nos três contratos novos antes da implementação. Após a implementação e atualização dos testes antigos para o novo contrato global, o mesmo runtime passou o pipeline completo.
+
+GitHub Actions CI #1613 / run `34923612641`: **PASS** no SHA `3fd88688...`.
+
+O gate incluiu runtime Node 22.1.0, install com lockfile congelado, typecheck, KingHost build, private-order route contract, startup smoke e suíte automatizada.
+
+## Integração em `main`
+
+Antes da integração, `feat/phase-7-store-settings` estava 60 commits à frente e 0 atrás de `main`, com merge-base no antigo HEAD da `main`.
+
+Com autorização explícita do proprietário, `main` foi avançada por fast-forward para `3fd88688a6cfae343fea3b346a3d1cad1035eb86`, sem force update. O CI #1613 rodou no próprio `main` e concluiu com sucesso no mesmo SHA.
 
 ## Rollout KingHost
 
-O servidor Production estava em detached HEAD no candidate anterior `476c341cf79cf74cd500231a44722f3ced5fa853`, por isso `git pull --ff-only` não avançava o runtime. O rollout foi corrigido de forma explícita:
+O checkout Production ainda estava em detached HEAD no runtime anterior `db4308296e9f2603e76ded4332394dd58c99a84c`.
 
-1. fetch da branch `feat/phase-7-store-settings`;
-2. confirmação de `FETCH_HEAD = db4308296e9f2603e76ded4332394dd58c99a84c`;
-3. checkout detached desse SHA;
-4. `nvm use` confirmou Node.js `22.1.0`;
-5. install `pnpm@10` com lockfile congelado;
-6. `NODE_ENV=production npx pnpm@10 deploy:kinghost`;
-7. restart da aplicação pelo painel KingHost, sem `pm2 start` manual.
+Durante a normalização:
 
-Nenhuma migration foi reaplicada e nenhuma mudança de `umask`, permissões de assets ou `.env.production` fez parte deste rollout.
+1. `origin/main` foi buscada explicitamente;
+2. confirmou-se `origin/main = 3fd88688...`;
+3. um checkout inicial tentou criar tracking antes de o remote considerar `main` branch rastreável e deixou apenas o index montado com a árvore de `main`;
+4. foi comprovado que `git write-tree` e `origin/main^{tree}` eram ambos `70bd56c613c873327f809ceecb8a1f8158fa6a75`, sem diferença de working tree;
+5. o estado foi corrigido sem descartar dados: criou-se a branch local `main`, adicionou-se `main` ao fetch refspec do remote e configurou-se tracking para `origin/main`;
+6. `git status -sb` ficou `## main...origin/main` e `HEAD = 3fd88688...`;
+7. `nvm use`, install congelado e `NODE_ENV=production npx pnpm@10 deploy:kinghost` concluíram;
+8. restart foi feito pelo painel KingHost, sem PM2 manual.
+
+Nenhuma migration foi reaplicada.
 
 ## Smoke de Production
 
-O endpoint público respondeu:
+Após o restart:
 
 ```text
 HTTP/2 200
@@ -77,32 +86,14 @@ server: nginx
 content-type: text/html; charset=utf-8
 ```
 
-Com o aviso temporário habilitado, o HTML de Production continha `Teste temporário da configuração da loja`.
+O commit em Production foi confirmado como `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
 
-O primeiro smoke visual revelou que o aviso estava atrás da navbar fixa. A causa foi isolada no layout: `Navbar` é `fixed top-0` e o `StoreNotice` não tinha offset vertical. Após o fix `db430829...` e novo deploy, evidência visual fornecida pelo proprietário confirmou o aviso totalmente visível imediatamente abaixo da navbar, sem sobreposição.
+O build Next.js alterou automaticamente `next-env.d.ts` de referências dev para referências de produção; depois de verificada a diferença, o arquivo foi restaurado para manter o checkout limpo. Isso não altera o runtime já construído em `.next`.
 
-## Optimistic concurrency em Production
-
-O proprietário executou o teste manual de duas abas em `/admin/configuracoes`:
-
-- uma aba salvou uma revisão mais nova;
-- a segunda aba permaneceu stale;
-- a tentativa de salvar pela aba stale foi recusada;
-- o valor mais recente não foi sobrescrito.
-
-Isso valida o comportamento de conflito esperado no fluxo real do admin, além do rollback-only hospedado e das regressões automatizadas.
-
-## Estado final do aviso temporário
-
-Após o smoke, a leitura direta do singleton hospedado confirmou:
-
-- `notice_enabled = false`;
-- o texto temporário pode permanecer armazenado, mas não é projetado publicamente enquanto a flag estiver desligada.
-
-Nenhuma alteração adicional no admin é necessária para encerrar o teste.
+O proprietário executou o smoke funcional final e confirmou que a mudança de Configurações passou a refletir corretamente nos consumidores públicos globais testados, incluindo contato e prazo. O stale-tab conflict já havia sido validado anteriormente e continua preservado.
 
 ## Resultado final
 
-Phase 7 está **COMPLETE / PRODUCTION ACCEPTED** no nível de implementação, banco hospedado, deploy KingHost, smoke público e conflito administrativo.
+Phase 7 está **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN** no nível de implementação, banco hospedado, CI, deploy KingHost e smoke funcional.
 
-A integração em `main` **não** faz parte desta aceitação automática e continua dependendo de decisão explícita do proprietário. Phase 8 e Phase 9 permanecem **NOT STARTED** até nova instrução.
+Phase 8 e Phase 9 permanecem **NOT STARTED** até nova instrução explícita.

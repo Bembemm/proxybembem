@@ -1,7 +1,7 @@
 # ProxyBembem — Visão Geral Mestre do Projeto
 
-**Atualizado em:** 2026-09-14  
-**Estado consolidado:** Phases 0–7 concluídas; Phase 6 integrada na `main`; Phase 7 aceita em Production na branch `feat/phase-7-store-settings` e aguardando decisão explícita de integração; Phases 8–9 não iniciadas.
+**Atualizado em:** 2026-09-15  
+**Estado consolidado:** Phases 0–7 concluídas; Phases 6 e 7 integradas na `main`; Phase 7 aceita em Production no runtime `3fd88688a6cfae343fea3b346a3d1cad1035eb86`; Phases 8–9 não iniciadas.
 
 Este documento é o ponto de entrada canônico para entender o projeto. A realidade hospedada e a implementação atual prevalecem sobre anotações históricas antigas. Planos/specs em `docs/superpowers/plans/` e `docs/superpowers/specs/` preservam o processo histórico de design/TDD e não devem ser lidos como pendências atuais apenas porque contêm passos RED/GREEN antigos.
 
@@ -11,12 +11,12 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 
 ### Git / CI
 
-- Branch canônica de integração: `main`.
+- Branch canônica e ativa: `main`.
 - Phase 6 está integrada na `main` via merge `95ac936ca11dfd695734138e579eb97085714980`.
-- Branch concluída da Phase 7: `feat/phase-7-store-settings`.
-- Runtime Phase 7 aceito em Production: `db4308296e9f2603e76ded4332394dd58c99a84c`.
-- CI desse runtime: GitHub Actions #1589 / run `34918063220` — **PASS**.
-- A integração da Phase 7 em `main` ainda depende de decisão explícita do proprietário.
+- Phase 7 foi integrada na `main` por fast-forward para `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
+- Branch histórica da Phase 7: `feat/phase-7-store-settings`.
+- Runtime Phase 7 aceito em Production: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
+- CI desse runtime: GitHub Actions #1613 / run `34923612641` — **PASS** no próprio `main`.
 
 ### Production
 
@@ -25,10 +25,12 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 - pnpm operacional: major **10**.
 - Backend/Auth/banco: Supabase hospedado separadamente.
 - Projeto Supabase: `ProxyBembem`.
-- Runtime de aplicação comprovado em Production para a Phase 7: `db4308296e9f2603e76ded4332394dd58c99a84c`.
-- Homepage comprovada com **HTTP/2 200** após o deploy.
+- Runtime de aplicação comprovado em Production para a Phase 7: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
+- Checkout Git da KingHost normalizado para branch local `main` rastreando `origin/main`.
+- Homepage comprovada com **HTTP/2 200** após o deploy/restart.
 - Phase 7 hosted migration: `20260915002740 store_settings`.
-- O aviso público temporário usado no smoke foi desligado ao final; leitura hospedada confirmou `notice_enabled=false`.
+- O aviso público temporário usado no smoke foi desligado ao final da primeira aceitação.
+- Smoke funcional final confirmou que Store Settings públicos propagam para os consumidores globais auditados.
 
 ### Provedores externos
 
@@ -80,6 +82,7 @@ Não existe uma segunda implementação de backend que deva ser ressuscitada de 
 18. Migration já aplicada não é reescrita nem reaplicada; correções são aditivas.
 19. Store Settings é allowlisted e não contém credenciais/provider secrets.
 20. Falha de leitura pública de settings usa fallback seguro server-side; mutação administrativa continua fail-closed.
+21. Informações públicas representadas por Store Settings usam esses settings como fonte global; buyer data, provider identity e delivery transit time permanecem domínios separados.
 
 ---
 
@@ -169,7 +172,9 @@ Store Settings V1 contém exatamente:
 - flag de aviso público;
 - texto simples de aviso, até 400 caracteres.
 
-Admin salva explicitamente em `/admin/configuracoes`; stale revision retorna conflito em vez de sobrescrever valor novo. Browser público recebe somente projeção sanitizada. FAQ, footer, `/contato`, aviso, carrinho e suporte de pedido usam settings sem acesso direto à tabela.
+Admin salva explicitamente em `/admin/configuracoes`; stale revision retorna conflito em vez de sobrescrever valor novo. Após save válido, o tree server-side é atualizado para evitar props antigas na navegação da mesma sessão.
+
+Browser público recebe somente projeção sanitizada. FAQ, footer, `/contato`, aviso, carrinho, suporte de pedido, `/privacidade`, `/trocas-e-reembolsos` e o prazo nos detalhes de produto obedecem à configuração global correspondente. Dados do cliente, remetente transacional/provider identity e prazo de trânsito do frete não são Store Settings.
 
 Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 
@@ -186,7 +191,7 @@ Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 | 4 — Catalog + Products Admin + Navigation | **IMPLEMENTATION COMPLETE** | Supabase catalog, admin de produtos e sidebar; smoke manual amplo histórico parcialmente diferido. |
 | 5 — Melhor Envio + Labels + Tracking | **COMPLETE / OWNER ACCEPTED** | OAuth, remessas, compra explícita, geração, DACE, postagem e tracking. |
 | 6 — Transactional Notifications | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Outbox, worker, Resend, webhook, admin history e resend auditável. |
-| 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED** | Settings allowlisted, admin protegido, projeção pública, hosted DB e smoke final aceitos. |
+| 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Settings allowlisted, admin protegido, projeção pública global, hosted DB, CI e smoke final aceitos. |
 | 8 — Dashboard Metrics + Attention Center | **NOT STARTED** | Métricas/filas operacionais confiáveis. |
 | 9 — Hardening + Final Rollout | **NOT STARTED** | Revisão final de auth, isolation, origins, rate limit, secrets, concorrência e smoke. |
 
@@ -258,9 +263,9 @@ Em 2026-09-14 um shell com `umask 077` fez assets nascerem `600`, causando 403 d
 
 CI valida runtime exato Node 22.1.0, install com lockfile congelado, typecheck, KingHost build, private-order contract, startup adapter/smoke e suíte automatizada.
 
-Para a Phase 7, o runtime final aceito `db430829...` passou GitHub Actions #1589 / run `34918063220`.
+Para a Phase 7, o runtime final aceito `3fd88688...` passou GitHub Actions #1613 / run `34923612641` no próprio `main`.
 
-A regressão final cobre explicitamente o banner público abaixo da navbar fixa.
+As regressões cobrem banner abaixo da navbar, optimistic concurrency e consumidores globais de Store Settings.
 
 ---
 
@@ -285,13 +290,14 @@ Resend Production, webhook assinado, cron KingHost, entrega real de fixture e re
 ### Phase 7
 
 - hosted migration aplicada/validada;
-- deploy KingHost do candidate `db430829...`;
-- homepage 200;
-- aviso temporário presente no HTML quando habilitado;
-- bug de posição do banner encontrado e corrigido;
-- screenshot do proprietário confirmou banner abaixo da navbar;
-- stale two-tab save foi recusado no admin;
-- aviso temporário desligado ao final.
+- primeiro rollout `db430829...` validou banner, stale conflict e hosted settings;
+- auditoria final identificou consumidores de contato/prazo ainda divergentes;
+- runtime `3fd88688...` tornou Store Settings globalmente autoritativos nas superfícies públicas correspondentes;
+- Phase 7 foi integrada na `main` por fast-forward;
+- CI #1613 passou no mesmo SHA;
+- KingHost foi normalizada de detached HEAD para `main` rastreando `origin/main`;
+- homepage respondeu HTTP/2 200 após deploy/restart;
+- smoke funcional do proprietário confirmou atualização global de contato/prazo nas superfícies testadas.
 
 ---
 
@@ -306,17 +312,15 @@ Estes itens são backlog/hardening e não reabrem automaticamente as fases aceit
 5. Índices unused são informativos no volume atual; não remover sem evidência.
 6. RLS sem policy em tabelas backend-only é intencional quando browser CRUD está revogado.
 7. Não repetir deploy/build com `umask 077` ativo.
-8. Branches históricas não devem ser usadas como base de trabalho novo quando a `main`/branch ativa já as superou.
+8. Branches históricas não devem ser usadas como base de trabalho novo quando a `main` já as superou.
 
 ---
 
 ## 11. Próxima ação
 
-A Phase 7 está completa e Production accepted, porém **ainda não integrada na `main`**.
+A Phase 7 está completa, integrada na `main` e aceita em Production. Não existe pendência de merge ou rollout da fase.
 
-Próximo passo: decisão explícita do proprietário sobre `feat/phase-7-store-settings` — merge, PR/revisão ou manutenção da branch.
-
-Não iniciar Phase 8 ou Phase 9 automaticamente.
+Phase 8 e Phase 9 permanecem **NOT STARTED**. Iniciar qualquer uma exige instrução explícita do proprietário.
 
 ---
 

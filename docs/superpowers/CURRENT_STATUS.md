@@ -1,7 +1,7 @@
 # ProxyBembem — Current Status
 
-**Updated:** 2026-09-14  
-**Active branch:** `feat/phase-7-store-settings`  
+**Updated:** 2026-09-15  
+**Active branch:** `main`  
 **Canonical integration branch:** `main`
 
 Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto está em `docs/PROJECT_MASTER_OVERVIEW.md`; a evidência final da Phase 7 está em `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
@@ -15,7 +15,7 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada do projeto 
 - Phase 4 — Catalog + Products Admin + Navigation: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; o antigo smoke manual amplo da Stage 3 não foi integralmente refeito.
 - Phase 5 — Melhor Envio + Labels + Tracking: **COMPLETE / OWNER ACCEPTED**.
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED**.
+- Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 - Phase 8 — Dashboard Metrics + Attention Center: **NOT STARTED**.
 - Phase 9 — Hardening + Final Rollout: **NOT STARTED**.
 
@@ -29,7 +29,9 @@ Store Settings V1 contém exatamente cinco settings allowlisted:
 - flag de aviso público;
 - texto simples de aviso, máximo 400 caracteres.
 
-A implementação inclui singleton `public.store_settings`, constraints/RLS, RPC atômica com audit e optimistic concurrency, domínio/repository/cache server-side, `/api/admin/settings`, `/admin/configuracoes`, FAQ/footer/banner/contato/cart/order-support consumindo somente projeção pública sanitizada e fallback seguro. Nenhum provider secret virou Store Setting.
+A implementação inclui singleton `public.store_settings`, constraints/RLS, RPC atômica com audit e optimistic concurrency, domínio/repository/cache server-side, `/api/admin/settings`, `/admin/configuracoes` e projeção pública sanitizada. Nenhum provider secret virou Store Setting.
+
+Os consumidores públicos da mesma informação agora usam a configuração global como fonte de verdade: FAQ, footer, `/contato`, banner, carrinho, suporte de pedido, `/privacidade`, `/trocas-e-reembolsos` e o prazo exibido nos detalhes de produto. O save do admin também força refresh do tree server-side para evitar manter props públicas antigas na mesma sessão.
 
 ### Supabase hospedado
 
@@ -40,26 +42,27 @@ A implementação inclui singleton `public.store_settings`, constraints/RLS, RPC
 - rollback-only smoke validou update + avanço de revisão + stale conflict + audit allowlisted e foi revertido sem fixture persistida;
 - advisors não mostraram nova exposição causada pela Phase 7.
 
-### Candidate e CI
+### Integração, runtime e CI
 
-Runtime aceito em Production:
+Runtime final aceito em Production:
 
-`db4308296e9f2603e76ded4332394dd58c99a84c` — `fix: position store notice below fixed navbar`.
+`3fd88688a6cfae343fea3b346a3d1cad1035eb86` — `fix: make store settings globally authoritative`.
 
-GitHub Actions CI #1589 / run `34918063220`: **PASS** no mesmo SHA. O pipeline concluiu com sucesso o gate de runtime Node 22.1.0, install congelado, typecheck, build KingHost, contratos/smokes automatizados e suíte de testes.
+A `main` foi avançada por fast-forward para esse mesmo SHA, sem force update. Antes da integração, a branch da Phase 7 estava 60 commits à frente e 0 atrás da `main`, com merge-base exatamente no antigo HEAD da `main`.
+
+GitHub Actions CI #1613 / run `34923612641`: **PASS** no mesmo SHA. O pipeline concluiu com sucesso runtime Node 22.1.0, install congelado, typecheck, build KingHost, private-order route contract, startup smoke e suíte automatizada.
 
 ### KingHost / smoke final
 
 - Production usa Node.js **22.1.0** e pnpm major **10**.
-- O servidor estava em detached HEAD no SHA anterior; o rollout foi corrigido via fetch + checkout explícito do candidate `db430829...`.
-- Build/deploy seguiu `docs/deployment/kinghost.md`, sem alterar `umask`, permissões do `.env.production` ou estratégia PM2.
-- Restart foi feito pelo painel KingHost.
-- `https://www.proxybembem.com.br/` respondeu **HTTP/2 200**.
-- Com o aviso temporário habilitado, o texto estava presente no HTML de Production.
-- O primeiro smoke visual revelou o banner atrás da navbar fixa; a correção `top-14 sm:top-16` foi implantada.
-- Evidência visual fornecida pelo proprietário confirmou o aviso totalmente visível logo abaixo da navbar.
-- O teste manual de duas abas em `/admin/configuracoes` recusou o save da aba stale, preservando a revisão mais nova.
-- Após o smoke, leitura hospedada confirmou `notice_enabled = false`; o texto temporário armazenado não é exibido com a flag desligada.
+- O checkout KingHost estava em detached HEAD no antigo runtime `db430829...`.
+- O remote foi ajustado para buscar `main`, criou-se branch local `main` rastreando `origin/main`, e o checkout ficou limpo no SHA `3fd88688...`.
+- Build/deploy seguiu o runbook KingHost com `npx pnpm@10 install --frozen-lockfile` e `NODE_ENV=production npx pnpm@10 deploy:kinghost`.
+- Restart foi feito pelo painel KingHost, sem `pm2 start` manual.
+- `https://www.proxybembem.com.br/` respondeu **HTTP/2 200** após o restart.
+- `next-env.d.ts` foi alterado automaticamente pelo build Next.js e restaurado depois; isso não altera o runtime já gerado.
+- Smoke funcional do proprietário confirmou que mudanças de Configurações propagam para os consumidores públicos globais relevantes, incluindo contato e prazo.
+- O stale two-tab save permanece recusando sobrescrita de revisão mais nova.
 
 Detalhes e evidências: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 
@@ -111,6 +114,6 @@ Migrations Phase 5 registradas/aplicadas:
 
 ## Próxima ação
 
-Phase 7 está encerrada no nível de Production acceptance. A próxima decisão é **integração da branch em `main`**, que exige autorização explícita do proprietário.
+A Phase 7 está encerrada, integrada na `main` e aceita em Production. Não há trabalho pendente da Phase 7.
 
-Não iniciar Phase 8 ou Phase 9 automaticamente.
+Phase 8 e Phase 9 permanecem **NOT STARTED** e não devem ser iniciadas automaticamente sem instrução explícita do proprietário.

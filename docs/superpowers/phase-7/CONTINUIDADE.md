@@ -1,11 +1,12 @@
 # ProxyBembem — Phase 7 / Continuidade
 
-**Branch de trabalho:** `feat/phase-7-store-settings`  
+**Branch histórica:** `feat/phase-7-store-settings`  
 **Base inicial:** `main` @ `4d9f5a4524dc7ebabd24bcb4a453aa24e783fc66`  
-**Criado em:** 2026-09-14  
-**Estado final:** **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED**
+**Branch canônica atual:** `main`  
+**Runtime final aceito:** `3fd88688a6cfae343fea3b346a3d1cad1035eb86`  
+**Estado final:** **COMPLETE / HOSTED SUPABASE APPLIED + VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**
 
-Este arquivo é o handoff final da Phase 7. Para a evidência completa de aceitação, ler `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
+Este arquivo é o handoff final da Phase 7. Para a evidência completa, ler `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 
 ## Regra para qualquer continuação
 
@@ -14,7 +15,7 @@ Este arquivo é o handoff final da Phase 7. Para a evidência completa de aceita
 3. Ler este arquivo e `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 4. Não reabrir Phases 0–7 sem regressão concreta ou pedido explícito.
 5. Não reescrever/reaplicar migrations hospedadas; correções futuras são aditivas.
-6. Não fazer merge, squash, rebase, branch deletion ou force-move sem aprovação explícita do proprietário.
+6. Não fazer squash, rebase, branch deletion ou force-move sem aprovação explícita do proprietário.
 7. Não iniciar Phase 8 ou 9 automaticamente.
 
 ## Escopo V1 entregue
@@ -27,7 +28,7 @@ Store Settings contém somente:
 - `notice_enabled`: booleano;
 - `notice_text`: texto simples opcional, máximo 400 caracteres.
 
-Fora de escopo e ainda fora de Store Settings: pause store, preços globais, frete manual, controles financeiros, auto-compra de etiqueta, provider secrets/credentials e settings arbitrários.
+Fora de escopo: pause store, preços globais, frete manual, controles financeiros, auto-compra de etiqueta, provider secrets/credentials e settings arbitrários.
 
 ## Arquitetura final
 
@@ -49,62 +50,50 @@ Fora de escopo e ainda fora de Store Settings: pause store, preços globais, fre
 - cache público: `lib/server/store-settings-cache.ts`, TTL/tag server-side;
 - admin action: `lib/server/admin-store-settings-actions.ts`;
 - API: `/api/admin/settings`, PATCH same-origin e boundary admin existente;
-- UI: `/admin/configuracoes`, save explícito, validação por campo, conflito 409 estável e sem autosave.
+- UI: `/admin/configuracoes`, save explícito, validação por campo, conflito 409 estável e sem autosave;
+- após save bem-sucedido, `router.refresh()` renova o tree server-side para que o layout público persistente não conserve settings antigos na mesma sessão.
 
 ### Projeção pública
 
 - root shell recebe somente `PublicStoreSettings` sanitizado;
 - fallback seguro: prazo 5, aviso off e contatos ausentes quando a leitura pública falha;
 - FAQ usa prazo configurado;
-- footer e `/contato` omitem canais ausentes;
+- footer e `/contato` usam contatos configurados e omitem canais ausentes;
+- `/privacidade` e `/trocas-e-reembolsos` não mantêm e-mail público hardcoded;
 - banner usa texto simples e aparece somente quando `noticeEnabled && noticeText`;
 - carrinho recebe WhatsApp configurado e não inventa destino quando ausente;
 - suporte do pedido privado resolve ownership antes de usar settings;
+- detalhes do produto tratam a seção/destaque de prazo como projeção global do `productionLeadTimeBusinessDays`, sem reescrever registros históricos no banco;
+- buyer/customer contacts, remetente transacional `noreply`, provider identity e prazo da transportadora permanecem domínios separados;
 - nenhuma credencial de infraestrutura é projetada ao browser.
 
-## Evidência de implementação/CI
+## Evidência de CI
 
-Checkpoint pre-rollout final antes do deploy passou os gates automatizados da branch. Após o bug visual do aviso ser identificado, foi criado o commit:
+Runtime final:
 
-`db4308296e9f2603e76ded4332394dd58c99a84c` — `fix: position store notice below fixed navbar`.
+`3fd88688a6cfae343fea3b346a3d1cad1035eb86` — `fix: make store settings globally authoritative`.
 
-CI #1589 / run `34918063220`: **PASS** no mesmo SHA.
+GitHub Actions CI #1613 / run `34923612641`: **PASS** no próprio `main` e no mesmo SHA.
 
-O fix mantém o `StoreNotice` abaixo da navbar fixa por contrato responsivo:
-
-- navbar: `h-14 sm:h-16`;
-- notice: `relative top-14 sm:top-16`;
-- regressão automatizada cobre a relação.
+O pipeline cobre runtime Node 22.1.0, install congelado, typecheck, KingHost build, private-order contract, startup smoke e suíte automatizada.
 
 ## Hosted Supabase — concluído
 
 A migration foi aplicada uma única vez. Verificações hospedadas confirmaram singleton, grants, RLS, constraints, RPC e ausência de campos secretos.
 
-O teste rollback-only da RPC comprovou:
-
-1. update válido com revisão atual;
-2. avanço de `updated_at`;
-3. exatamente um audit temporário allowlisted;
-4. tentativa com revisão velha retornando conflito;
-5. rollback final sem settings/audit sintético persistido.
+O teste rollback-only da RPC comprovou update válido, avanço de `updated_at`, audit allowlisted e tentativa stale recusada; rollback final não persistiu fixture sintética.
 
 Não reaplicar `20260915002740 store_settings`.
 
-## Task 10 — KingHost / Production — concluída
+## KingHost / Production — concluído
 
-Candidate implantado: `db4308296e9f2603e76ded4332394dd58c99a84c`.
+Runtime implantado: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
 
-O checkout Production estava detached no SHA anterior e foi avançado explicitamente por fetch + checkout do candidate. `nvm use` confirmou Node.js 22.1.0; install/deploy seguiram o runbook KingHost; restart ocorreu pelo painel, sem iniciar PM2 manualmente.
+O checkout Production foi normalizado de detached HEAD para branch local `main` rastreando `origin/main`. O estado intermediário do index foi verificado por igualdade exata de tree SHA antes da correção, evitando descarte cego de arquivos.
 
-Smoke final observado:
+`nvm use`, install e deploy seguiram o runbook KingHost; restart ocorreu pelo painel, sem iniciar PM2 manualmente. Homepage respondeu `HTTP/2 200`.
 
-- homepage: `HTTP/2 200`;
-- aviso temporário presente no HTML quando habilitado;
-- após o fix, evidência visual do proprietário mostrou o banner totalmente visível logo abaixo da navbar;
-- stale-tab conflict em `/admin/configuracoes` foi testado manualmente e o save stale foi recusado;
-- depois do smoke, leitura hospedada confirmou `notice_enabled = false`.
-
-O texto temporário pode permanecer armazenado porque a flag false impede sua projeção pública.
+O smoke funcional final do proprietário confirmou propagação global dos settings públicos testados. O conflito stale-tab permanece recusando sobrescrita de revisão mais nova.
 
 ## Invariantes preservados
 
@@ -117,28 +106,26 @@ O texto temporário pode permanecer armazenado porque a flag false impede sua pr
 - Resend tracking continua OFF.
 - Nenhum provider secret virou Store Setting.
 - Nenhuma migration aplicada foi reescrita/reaplicada.
-- Nenhuma mudança de permissões/`umask` foi necessária para a Phase 7.
+- Nenhuma mudança insegura de permissões fez parte do rollout.
 
 ## Próximo passo exato
 
-A Phase 7 não possui trabalho de implementação/rollout pendente. O próximo passo é escolher explicitamente o destino da branch:
+A Phase 7 não possui trabalho de implementação, integração ou rollout pendente.
 
-- integrar em `main`;
-- abrir/manter PR para revisão;
-- ou manter a branch como está.
+A base para trabalho novo é `main`. Phase 8 e Phase 9 continuam **NOT STARTED** e exigem instrução explícita do proprietário.
 
-Até essa decisão, `feat/phase-7-store-settings` permanece a branch da Phase 7 e Phase 8/9 continuam **NOT STARTED**.
+A branch histórica `feat/phase-7-store-settings` pode ser mantida como referência; sua exclusão não é necessária para a correção e não deve ser feita sem pedido explícito.
 
 ## Registro final
 
-### 2026-09-14 — design e implementação
+### 2026-09-14 — design, implementação e hosted rollout
 
-Spec/plano aprovados; schema, domínio, repository/cache, API/admin UI e projeções públicas implementados em ciclos de regressão/CI.
+Spec/plano aprovados; schema, domínio, repository/cache, API/admin UI e projeções públicas implementados. `20260915002740 store_settings` foi aplicada uma única vez e validada com grants/RLS/RPC/concurrency/audit.
 
-### 2026-09-14 — hosted rollout
+### 2026-09-14 — primeira Production acceptance
 
-`20260915002740 store_settings` aplicada uma única vez e validada com grants/RLS/RPC/concurrency/audit/advisors.
+Runtime `db430829...` implantado; banner corrigido para ficar abaixo da navbar; conflito stale-tab validado; aviso temporário desligado ao final.
 
-### 2026-09-14 — Production acceptance
+### 2026-09-15 — consistência global, integração e aceitação final
 
-Candidate `db430829...` implantado em KingHost, CI #1589 verde, homepage 200, bug visual de banner corrigido e revalidado, conflito stale-tab recusado e aviso temporário desligado ao final do smoke.
+Consumidores públicos foram auditados e corrigidos para obedecer Store Settings globalmente; `main` avançou por fast-forward para `3fd88688...`; CI #1613 passou; KingHost foi normalizada para `main`; Production respondeu HTTP/2 200 e o smoke funcional do proprietário confirmou a propagação global esperada.
