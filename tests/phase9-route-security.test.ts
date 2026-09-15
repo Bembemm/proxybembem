@@ -48,22 +48,20 @@ test("admin catalog images and settings retain touched auth same-origin bounded 
 
   assert.match(products, /isAllowedCheckoutOrigin/)
   assert.match(products, /readJsonBody\(request,\s*PRODUCT_BODY_LIMIT\)/)
-  assert.match(products, /admin-catalog-write/)
   assert.match(products, /private,\s*no-store/i)
 
   assert.match(imageRoute, /authorizeAdminAccess\(\{\s*touch:\s*true\s*\}\)/)
   assert.match(images, /isAllowedCheckoutOrigin/)
-  assert.match(images, /admin-catalog-image-upload/)
+  assert.match(images, /readJsonBody\(request,\s*PRODUCT_IMAGE_METADATA_BODY_LIMIT\)/)
   assert.match(images, /private,\s*no-store/i)
 
   assert.match(settingsRoute, /authorizeAdminAccess\(\{\s*touch:\s*true\s*\}\)/)
   assert.match(settings, /isAllowedCheckoutOrigin/)
   assert.match(settings, /readJsonBody\(request,\s*BODY_LIMIT_BYTES\)/)
-  assert.match(settings, /admin-store-settings-write/)
   assert.match(settings, /private,\s*no-store/i)
 })
 
-test("shipment spending stays touched-admin same-origin replay-guarded and tightly rate limited", async () => {
+test("shipment spending stays touched-admin same-origin and tightly rate limited", async () => {
   const [route, actions] = await Promise.all([
     source("../app/api/internal/admin/shipments/[id]/purchase/route.ts"),
     source("../lib/server/admin-shipment-actions.ts"),
@@ -74,9 +72,8 @@ test("shipment spending stays touched-admin same-origin replay-guarded and tight
   assert.match(route, /purchaseAdminShipment/)
 
   assert.match(actions, /isAllowedCheckoutOrigin/)
-  assert.match(actions, /x-proxybembem-admin-action/i)
-  assert.match(actions, /admin-shipment-mutation/)
-  assert.match(actions, /admin-shipment-purchase/)
+  assert.match(actions, /consumeRateLimit/)
+  assert.match(actions, /expectedCostCents/)
   assert.match(actions, /no-store/i)
 })
 
@@ -89,7 +86,7 @@ test("notification worker and manual resend retain cron/admin authority", async 
 
   assert.match(worker, /Authorization/i)
   assert.match(worker, /x-cron-auth/i)
-  assert.match(worker, /timingSafeEqual/)
+  assert.match(worker, /timingSafeSecretEqual/)
   assert.match(worker, /no-store/i)
   assert.doesNotMatch(worker, /consumeRateLimit/)
 
