@@ -49,9 +49,10 @@ test("successful admin product saves and lifecycle mutations invalidate client n
 test("mutable storefront destinations bypass soft navigation that can reuse stale RSC payloads", () => {
   const source = readFileSync(NAVBAR, "utf8")
 
+  assert.doesNotMatch(source, /label:\s*["']Início["']/)
   assert.match(
     source,
-    /label:\s*["']Início["'],\s*href:\s*["']\/["'],\s*freshDocument:\s*true/,
+    /<a\s+href=["']\/["'][^>]*className=["']flex items-center gap-2["']/,
   )
   assert.match(
     source,
