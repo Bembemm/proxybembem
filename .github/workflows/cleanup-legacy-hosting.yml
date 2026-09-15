@@ -1,0 +1,53 @@
+name: Cleanup legacy hosting references
+
+on:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up exact KingHost runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.1.0
+          cache: pnpm
+
+      - name: Apply cleanup
+        run: node scripts/cleanup-legacy-hosting.mjs
+
+      - name: Verify frozen dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build KingHost package
+        run: pnpm build:kinghost
+
+      - name: Set up TypeScript test runner
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Commit verified cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: remove legacy hosting references"
+          git push origin HEAD
