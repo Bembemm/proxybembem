@@ -1,7 +1,7 @@
 # ProxyBembem — Current Status
 
 **Updated:** 2026-09-15  
-**Active branch:** `feat/phase-9-hardening-final-rollout`  
+**Active branch:** `main`  
 **Canonical integration branch:** `main`
 
 Este arquivo é o checkpoint operacional curto. A visão consolidada está em `docs/PROJECT_MASTER_OVERVIEW.md`.
@@ -16,14 +16,19 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada está em `d
 - Phase 5 — Melhor Envio + Labels + Tracking: **COMPLETE / OWNER ACCEPTED**.
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 - Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 8 — Dashboard Metrics + Attention Center: **COMPLETE / HOSTED VALIDATED / PRODUCTION ACCEPTED**.
-- Phase 9 — Hardening + Final Rollout: **COMPLETE / HOSTED VALIDATED / FINAL CANDIDATE DEPLOYED / PRODUCTION ACCEPTED**.
+- Phase 8 — Dashboard Metrics + Attention Center: **COMPLETE / HOSTED VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
+- Phase 9 — Hardening + Final Rollout: **COMPLETE / HOSTED VALIDATED / FINAL CANDIDATE DEPLOYED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 
-O projeto está **tecnicamente e manualmente aceito em Production** no escopo das Phases 0–9. A branch final ainda **não está integrada em `main`**; isso continua dependendo de aprovação explícita do proprietário.
+O projeto está **tecnicamente e manualmente aceito em Production** no escopo das Phases 0–9 e o trabalho final foi integrado em `main` pelo PR #5. A branch `feat/phase-9-hardening-final-rollout` foi preservada e não deve ser apagada sem autorização explícita separada.
 
 ## Phase 9 — fechamento
 
-Branch ativa: `feat/phase-9-hardening-final-rollout`.
+Integração final:
+
+- PR: `#5` — `Phase 9: hardening and final rollout`;
+- merge commit em `main`: `8a61fc5fe6186d492be1d8e03f4ae4f4228b4709`;
+- merge method: merge commit, preservando o histórico da branch;
+- branch `feat/phase-9-hardening-final-rollout`: preservada.
 
 ### Hardening concluído
 
@@ -95,7 +100,7 @@ Evidência terminal fornecida pelo owner em 2026-09-15:
 - o primeiro status pós-build mostrou somente `M next-env.d.ts`, e o diff continha apenas referências de tipos geradas pelo Next.js durante build;
 - após `git restore next-env.d.ts`, `git status -sb` retornou somente `## HEAD (no branch)`, sem modificações locais.
 
-O checkout detached é intencional neste rollout para manter Production pinada no exact candidate aprovado.
+O checkout detached é intencional neste rollout para manter Production pinada no exact candidate aprovado. A integração Git em `main` não altera automaticamente o runtime Production já pinado.
 
 ### Final owner smoke
 
@@ -127,7 +132,7 @@ A Phase 8 possui implementação, hosted migration, reconciliação e owner smok
 - snapshot financeiro/operacional foi reconciliado contra dados hospedados reais;
 - authenticated `/admin` smoke: **PASS / OWNER-REPORTED 2026-09-15**.
 
-Status: **PRODUCTION ACCEPTED**.
+Status: **PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 
 ## Phase 5 — evidência histórica preservada
 
@@ -166,15 +171,18 @@ Migrations Phase 5 preservadas:
 - Store Settings não contém provider/infrastructure secrets.
 - Dashboard/Attention Center são read-only e não resolvem flags nem mutam verdade financeira/operacional.
 - Não remover índice apenas para reduzir advisor INFO.
-- Não fazer merge/rebase/force/delete de branch sem aprovação explícita do owner.
+- Não fazer rebase/force/delete de branch sem aprovação explícita do owner.
 - Não usar PM2 CLI para reiniciar a aplicação KingHost; restart somente pelo painel.
 
 ## Próxima ação
 
-O desenvolvimento planejado Phases 0–9 está encerrado e aceito. Resta apenas a decisão de integração Git:
+O desenvolvimento planejado Phases 0–9 está encerrado, aceito e integrado em `main`.
 
-1. manter Production pinada no runtime SHA atual até decisão do owner;
-2. integrar `feat/phase-9-hardening-final-rollout` em `main` somente após autorização explícita;
-3. não apagar branches nem reescrever histórico sem autorização separada quando aplicável.
+Não há nova etapa obrigatória neste roadmap. Para mudanças futuras:
 
-A branch **não está integrada em `main`** neste registro.
+1. manter Production pinada no runtime SHA atual até um novo rollout deliberado;
+2. abrir trabalho novo a partir da `main`;
+3. manter as disposições de advisor/plataforma documentadas;
+4. não apagar branches nem reescrever histórico sem autorização explícita separada.
+
+A branch final foi **mantida após a integração**, conforme a regra de não exclusão sem autorização separada.
