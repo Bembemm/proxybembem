@@ -75,11 +75,26 @@ function isProductionRuntime(nodeEnv: string | undefined) {
   return nodeEnv === "production"
 }
 
+function requiredProviderEnvironmentForDeployment() {
+  const deployment = process.env.APP_ENVIRONMENT?.trim()
+  if (!deployment || deployment === "production") return "production" as const
+  if (deployment === "sandbox") return "sandbox" as const
+  throw new Error("APP_ENVIRONMENT must be sandbox or production")
+}
+
 function requireProductionProviderEnvironment<T extends "sandbox" | "production">(
   providerName: string,
   environment: T,
 ): T {
-  if (isProductionRuntime(process.env.NODE_ENV) && environment !== "production") {
+  if (!isProductionRuntime(process.env.NODE_ENV)) return environment
+
+  const requiredEnvironment = requiredProviderEnvironmentForDeployment()
+  if (environment !== requiredEnvironment) {
+    if (requiredEnvironment === "sandbox") {
+      throw new Error(
+        `Sandbox deployment requires ${providerName} environment to be sandbox`,
+      )
+    }
     throw new Error(
       `Production runtime requires ${providerName} environment to be production`,
     )
