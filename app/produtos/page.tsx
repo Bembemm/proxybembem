@@ -10,8 +10,17 @@ export const metadata: Metadata = {
   description: "Veja os decks, cartas avulsas e proxies disponíveis na ProxyBembem.",
 }
 
-export default async function ProdutosPage() {
+function firstSearchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+export default async function ProdutosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ categoria?: string | string[] }>
+}) {
   const storeSettings = await getPublicStoreSettings()
+  const params = await searchParams
   let products: Awaited<ReturnType<typeof listPublishedProducts>> = []
   let unavailable = false
 
@@ -21,11 +30,18 @@ export default async function ProdutosPage() {
     unavailable = true
   }
 
+  const requestedCategory = firstSearchParam(params.categoria)?.trim().slice(0, 100)
+  const initialCategory =
+    requestedCategory && products.some((product) => product.category === requestedCategory)
+      ? requestedCategory
+      : undefined
+
   return (
     <ProductsPage
       products={products}
       unavailable={unavailable}
       productionLeadTimeBusinessDays={storeSettings.productionLeadTimeBusinessDays}
+      initialCategory={initialCategory}
     />
   )
 }
