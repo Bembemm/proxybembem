@@ -69,7 +69,8 @@ test("store notice is plain text, conditional, rendered directly below navbar, a
   assert.match(notice, /return\s+null/)
   assert.doesNotMatch(notice, /dangerouslySetInnerHTML/)
   assert.doesNotMatch(notice, /innerHTML/)
-  assert.match(navbarSource, /h-14\s+sm:h-16/)
+  assert.match(navbarSource, /\bh-14\b/)
+  assert.match(navbarSource, /\bsm:h-16\b/)
   assert.match(
     notice,
     /className="[^"]*\brelative\b[^"]*\btop-14\b[^"]*\bsm:top-16\b[^"]*"/,
