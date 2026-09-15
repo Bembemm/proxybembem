@@ -6,8 +6,8 @@
 
 **Architecture:** modular monolith in the existing Next.js + Supabase application.
 
-**Branch:** `feat/transactional-notifications`  
-**Base:** `main`  
+**Active work branch:** `feat/phase-7-store-settings`  
+**Canonical base:** `main`  
 **Runtime:** KingHost Node.js **22.1.0** + hosted Supabase.
 
 ## Global invariants
@@ -216,7 +216,7 @@ Phase 5 is complete at the owner-handoff level. Later provider/runtime incidents
 
 # PHASE 6 — Transactional Notifications
 
-**State: COMPLETE / HOSTED HARDENING APPLIED / AUTOMATED GREEN / PRODUCTION ACCEPTED.**
+**State: COMPLETE / HOSTED HARDENING APPLIED / AUTOMATED GREEN / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN.**
 
 Phase 6 provides production-capable transactional e-mail without coupling provider failures to payment, fulfillment or shipment truth.
 
@@ -294,13 +294,43 @@ That run passed:
 - KingHost startup smoke;
 - full automated test suite.
 
-Phase 6 is complete and production-accepted. Do not merge PR #4 without explicit owner approval.
+Phase 6 is complete, production-accepted and already merged into `main` via merge commit `95ac936ca11dfd695734138e579eb97085714980`.
 
 # PHASE 7 — Store Settings
 
-**State: NOT STARTED.**
+**State: IMPLEMENTATION COMPLETE THROUGH TASK 7 / PRE-ROLLOUT CHECKPOINT IN PROGRESS / HOSTED ROLLOUT PENDING.**
 
-Typed allowlisted operational/commercial settings only. Infrastructure secrets remain env-only.
+Approved V1 is intentionally small and typed:
+
+- production lead time 1–15 business days, default 5;
+- optional public contact e-mail;
+- optional public WhatsApp E.164;
+- public notice enabled flag;
+- optional plain-text notice up to 400 characters.
+
+Implemented architecture on `feat/phase-7-store-settings`:
+
+- additive repo migration `202609140003_store_settings.sql` with singleton `public.store_settings`, typed constraints, RLS and seeded current public contacts;
+- browser roles have no direct Store Settings CRUD;
+- `admin_update_store_settings(...)` is service-role-only, `SECURITY DEFINER`, `search_path=''`, optimistic and atomically writes allowlisted audit values;
+- TypeScript domain/repository/cache with safe public fallback and five-minute tagged server cache;
+- protected PATCH `/api/admin/settings` preserving same-origin + owner/AAL2/admin-session boundary and no-store behavior;
+- protected `/admin/configuracoes` with explicit save, field errors, stale-revision 409 and no autosave;
+- root shell gets only a sanitized `PublicStoreSettings` projection;
+- FAQ, footer, public notice, `/contato`, cart fallback and private-order support consume settings without client DB access;
+- absent channels are omitted instead of creating malformed `mailto:`/`wa.me` links;
+- customer order support remains owner-scoped before settings are consumed;
+- infrastructure/provider secrets remain env-only and outside Store Settings.
+
+Automated implementation evidence before Task 8 docs checkpoint:
+
+- branch SHA `344c1aeb5ca9d4d118ed6d72dfec8a4538f335c6`;
+- CI #1582 / run `34909496593` — PASS;
+- exact Node 22.1.0 gate, frozen install, typecheck, KingHost build, private-order route contract, startup smoke and **783/783 tests** passed.
+
+Task 8 pre-rollout review found no changes to payment authority, shipment spending, notification truth, `.env.production`, deploy asset permissions or KingHost `umask` strategy. Secret-name searches matched only test/plan assertions, not secret values. The old public WhatsApp literal was removed from active behavior; one admin placeholder residue was replaced by a generic E.164 example before final pre-rollout CI.
+
+The Phase 7 migration is **not yet applied** to hosted Supabase and no Phase 7 KingHost deploy/smoke has occurred. Production acceptance must not be claimed until Tasks 9–10 are completed and verified.
 
 # PHASE 8 — Dashboard Metrics + Attention Center
 
@@ -336,6 +366,8 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 16. Phase 6 has exactly eight transactional types and no open/click tracking or automated marketing/WhatsApp scope.
 17. Integration/merge is an explicit owner decision.
 18. The old full Phase 4 Stage 3 browser checklist remains partially deferred; Phase 5 Production use does not fabricate missing evidence.
+19. Phase 7 Store Settings V1 is exactly five allowlisted public/operational fields; provider secrets and generic arbitrary settings remain out of scope.
+20. Public settings failures use safe server-side fallbacks; authoritative admin reads fail closed instead of saving invented defaults.
 
 ## Current checkpoint
 
@@ -345,7 +377,8 @@ Final auth/isolation, origin/rate-limit/secret checks, concurrency matrix, full 
 **Phase 3:** complete/deployed/production-accepted.  
 **Phase 4:** implementation complete; automated evidence green; original broad manual Stage 3 checklist not fully re-run.  
 **Phase 5:** complete at owner-handoff level; hosted DB applied; Production non-spending path validated to `in_cart` at **R$ 23,69**; **Task 19 complete**; **Task 18 owner accepted by owner-reported manual acceptance**; **Task 20 owner accepted by owner-reported Production smoke**; `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` remains the safe default outside deliberate purchase windows.  
-**Phase 6:** complete; hosted schema + final hardening/backfill applied; automated CI green; Production Resend webhook + KingHost cron + live e-mail/admin resend accepted.  
-**Phase 7+:** not started.
+**Phase 6:** complete, production-accepted and integrated into `main`; hosted schema + final hardening/backfill applied; Production Resend webhook + KingHost cron + live e-mail/admin resend accepted.  
+**Phase 7:** implementation complete through Task 7; Task 8 pre-rollout checkpoint/documentation in progress; hosted Supabase migration and KingHost deployment still pending.  
+**Phase 8–9:** not started.
 
-**NEXT EXACT ACTION:** no Phase 6 task remains open. The owner chooses separately whether to integrate PR #4 or begin Phase 7 — Store Settings. Keep PR #4 draft and do not merge/squash/rebase/delete the branch without explicit owner approval.
+**NEXT EXACT ACTION:** require CI success on the final Phase 7 Task 8 branch HEAD. Only then start Task 9 by re-checking hosted Supabase migration history before applying `202609140003_store_settings.sql` exactly once. Do not deploy KingHost or claim Phase 7 Production acceptance before hosted verification and Task 10 smoke. Integration into `main` remains an explicit owner decision.
