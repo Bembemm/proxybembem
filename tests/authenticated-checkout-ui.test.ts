@@ -6,7 +6,7 @@ async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8").catch(() => "")
 }
 
-test("customer login next sanitizer allows the products page as a local checkout continuation", async () => {
+test("customer login next sanitizer allows products and dedicated checkout as local continuations", async () => {
   const actions = await import("../lib/server/customer-account-actions.ts")
 
   assert.equal(actions.sanitizeCustomerLoginNext("/produtos"), "/produtos")
@@ -14,62 +14,59 @@ test("customer login next sanitizer allows the products page as a local checkout
     actions.sanitizeCustomerLoginNext("/produtos?categoria=decks"),
     "/produtos?categoria=decks",
   )
+  assert.equal(actions.sanitizeCustomerLoginNext("/checkout"), "/checkout")
 
   for (const unsafe of [
-    "https://evil.example/produtos",
-    "//evil.example/produtos",
+    "https://evil.example/checkout",
+    "//evil.example/checkout",
     "/admin",
-    "/checkout",
     "javascript:alert(1)",
   ]) {
     assert.equal(actions.sanitizeCustomerLoginNext(unsafe), "/minha-conta")
   }
 })
 
-test("cart redirects an anonymous payment attempt to login without clearing cart state", async () => {
-  const cart = await source("../components/cart-panel.tsx")
+test("dedicated checkout redirects an anonymous payment attempt to login without clearing cart state", async () => {
+  const checkout = await source("../components/checkout-page.tsx")
   const cartContext = await source("../contexts/cart-context.tsx")
 
-  assert.ok(cart.length > 0, "missing cart panel")
-  assert.match(cart, /result\?\.code\s*===\s*["']authentication_required["']/)
-  assert.match(cart, /window\.location\.assign\(\s*["']\/entrar\?next=%2Fprodutos["']\s*\)/)
+  assert.ok(checkout.length > 0, "missing dedicated checkout page")
+  assert.match(checkout, /result\?\.code\s*===\s*["']authentication_required["']/)
+  assert.match(checkout, /window\.location\.assign\(\s*["']\/entrar\?next=%2Fcheckout["']\s*\)/)
 
-  const responseError = cart.indexOf("if (!response.ok)")
-  const authRequired = cart.indexOf('result?.code === "authentication_required"')
-  const genericError = cart.indexOf("setCheckoutError(", authRequired)
+  const responseError = checkout.indexOf("if (!response.ok)")
+  const authRequired = checkout.indexOf('result?.code === "authentication_required"')
+  const genericError = checkout.indexOf("setCheckoutError(", authRequired)
   assert.ok(responseError >= 0 && authRequired > responseError)
   assert.ok(genericError > authRequired, "login redirect must happen before generic checkout error")
 
-  const authBranchEnd = cart.indexOf("}", authRequired)
-  const authBranch = cart.slice(authRequired, authBranchEnd + 1)
+  const authBranchEnd = checkout.indexOf("}", authRequired)
+  const authBranch = checkout.slice(authRequired, authBranchEnd + 1)
   assert.doesNotMatch(authBranch, /clearCart|removeFromCart|localStorage\.removeItem/)
 
   assert.match(cartContext, /proxybembem-cart-v1/)
   assert.match(cartContext, /localStorage/)
 })
 
-test("cart closes before sending an anonymous checkout to login", async () => {
-  const cart = await source("../components/cart-panel.tsx")
+test("checkout login handoff stays on the dedicated checkout route", async () => {
+  const checkout = await source("../components/checkout-page.tsx")
 
-  const authRequired = cart.indexOf('result?.code === "authentication_required"')
-  const redirect = cart.indexOf('window.location.assign("/entrar?next=%2Fprodutos")', authRequired)
-  const closeCart = cart.indexOf("setIsCartOpen(false)", authRequired)
+  const authRequired = checkout.indexOf('result?.code === "authentication_required"')
+  const redirect = checkout.indexOf('window.location.assign("/entrar?next=%2Fcheckout")', authRequired)
+  const saveDraft = checkout.indexOf("saveCheckoutLoginDraft(", authRequired)
 
   assert.ok(authRequired >= 0, "missing authentication-required checkout branch")
-  assert.ok(redirect > authRequired, "missing checkout login redirect")
-  assert.ok(
-    closeCart > authRequired && closeCart < redirect,
-    "cart must close before navigating to the login page",
-  )
+  assert.ok(saveDraft > authRequired && saveDraft < redirect, "checkout draft must be saved before login")
+  assert.ok(redirect > saveDraft, "missing dedicated checkout login redirect")
 })
 
-test("saved checkout draft reopens the cart only after returning to products", async () => {
-  const cart = await source("../components/cart-panel.tsx")
+test("saved checkout draft is restored by the dedicated checkout page", async () => {
+  const checkout = await source("../components/checkout-page.tsx")
 
-  assert.match(cart, /usePathname/)
-  assert.match(cart, /const\s+pathname\s*=\s*usePathname\(\)/)
-  assert.match(cart, /if\s*\(\s*pathname\s*!==\s*["']\/produtos["']\s*\)\s*return/)
-  assert.match(cart, /\[pathname,\s*setIsCartOpen\]/)
+  assert.match(checkout, /readCheckoutLoginDraft\(window\.sessionStorage\)/)
+  assert.match(checkout, /setCheckout\(loginDraft\.checkout\)/)
+  assert.match(checkout, /restoredShippingServiceIdRef\.current\s*=\s*loginDraft\.shippingServiceId/)
+  assert.doesNotMatch(checkout, /setIsCartOpen\(true\)/)
 })
 
 test("login handoff preserves checkout details and chosen freight only for the current tab", async () => {
@@ -122,10 +119,9 @@ test("login handoff preserves checkout details and chosen freight only for the c
 
   assert.doesNotMatch(draftSource, /localStorage/)
 
-  const cart = await source("../components/cart-panel.tsx")
-  assert.match(cart, /sessionStorage/)
-  assert.match(cart, /saveCheckoutLoginDraft/)
-  assert.match(cart, /readCheckoutLoginDraft/)
-  assert.match(cart, /setIsCartOpen\(true\)/)
-  assert.match(cart, /restoredShippingServiceIdRef/)
+  const checkout = await source("../components/checkout-page.tsx")
+  assert.match(checkout, /sessionStorage/)
+  assert.match(checkout, /saveCheckoutLoginDraft/)
+  assert.match(checkout, /readCheckoutLoginDraft/)
+  assert.match(checkout, /restoredShippingServiceIdRef/)
 })
