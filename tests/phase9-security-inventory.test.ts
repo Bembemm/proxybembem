@@ -72,7 +72,7 @@ test("admin product image and settings mutations retain same-origin protected bo
   assert.match(settingsRoute, /authorizeAdminAccess\(\{\s*touch:\s*true\s*\}\)/)
   assert.match(settingsActions, /isAllowedCheckoutOrigin/)
   assert.match(settingsActions, /private,\s*no-store/i)
-  assert.match(settingsActions, /readJsonBody\(request,\s*SETTINGS_BODY_LIMIT\)/)
+  assert.match(settingsActions, /readJsonBody\(request,\s*BODY_LIMIT_BYTES\)/)
 })
 
 test("shipment purchase stays explicit fail-closed and ambiguous provider outcomes require attention", async () => {
