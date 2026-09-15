@@ -1,7 +1,7 @@
 # ProxyBembem — Visão Geral Mestre do Projeto
 
 **Atualizado em:** 2026-09-15  
-**Estado consolidado:** Phases 0–9 concluídas; hosted Supabase validado; final runtime candidate deployado na KingHost; Phase 4 historical browser debt, Phase 8 authenticated dashboard smoke e Phase 9 final Production smoke aceitos pelo owner.
+**Estado consolidado:** Phases 0–9 concluídas, aceitas em Production e integradas em `main`; hosted Supabase validado; final runtime candidate permanece deployado e pinado na KingHost.
 
 Este documento é o ponto de entrada canônico para entender o projeto. A realidade hospedada e a implementação atual prevalecem sobre anotações históricas antigas. Planos/specs em `docs/superpowers/plans/` e `docs/superpowers/specs/` preservam o processo histórico de design/TDD e não devem ser lidos como pendências atuais apenas porque contêm passos RED/GREEN antigos.
 
@@ -12,14 +12,16 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 ### Git / CI
 
 - Branch canônica de integração: `main`.
-- Branch final ativa: `feat/phase-9-hardening-final-rollout`.
+- Branch final preservada: `feat/phase-9-hardening-final-rollout`.
 - Phase 6 integrada na `main` via merge `95ac936ca11dfd695734138e579eb97085714980`.
 - Phase 7 integrada na `main`; docs closure `75c78437883627e241a9708c8d07a0988dc8c8b5`.
 - Runtime Phase 7 aceito: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
 - Phase 8 rollout candidate: `773504f0e68220c1bda0ec706c4e62f8d542e433`; CI #1631 / run `34960866441` — **PASS**.
 - Phase 9 final application runtime candidate: `cdb3f863336237ab49f9b91cca20f0d876aa75c7`; CI #1648 / run `34983376962` — **PASS**.
+- Final integration PR: `#5` — `Phase 9: hardening and final rollout`.
+- Merge commit em `main`: `8a61fc5fe6186d492be1d8e03f4ae4f4228b4709`.
 - A aceitação final de Production está registrada em `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`.
-- No merge/rebase/force/delete de branch sem aprovação explícita do proprietário.
+- Não fazer rebase/force/delete de branch sem aprovação explícita do proprietário.
 
 ### Production / hosted
 
@@ -35,6 +37,7 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 - Public health pós-restart: `HTTP/2 200` com headers de segurança esperados.
 - Phase 8 authenticated `/admin` smoke: **PASS / OWNER-REPORTED 2026-09-15**.
 - Phase 9 final authenticated/business smoke: **PASS / OWNER-REPORTED 2026-09-15**.
+- A integração Git em `main` não altera automaticamente o runtime Production já pinado no exact runtime candidate aceito.
 
 ### Provedores externos
 
@@ -206,7 +209,8 @@ A Phase 9 consolidou:
 - evidence gate para índices advisor;
 - migração performance-only de `customer_profiles` para `(select auth.uid())` sem alteração de ownership;
 - rollout final pinado em exact SHA;
-- smoke final completo owner-reported cobrindo Phase 4 historical debt, Phase 8 dashboard e Phase 9 Production acceptance.
+- smoke final completo owner-reported cobrindo Phase 4 historical debt, Phase 8 dashboard e Phase 9 Production acceptance;
+- integração final em `main` pelo PR #5, preservando a branch de trabalho.
 
 ---
 
@@ -222,8 +226,8 @@ A Phase 9 consolidou:
 | 5 — Melhor Envio + Labels + Tracking | **COMPLETE / OWNER ACCEPTED** | OAuth, remessas, compra explícita, geração, DACE, postagem e tracking. |
 | 6 — Transactional Notifications | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Outbox, worker, Resend, webhook, admin history e resend auditável. |
 | 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Settings allowlisted, admin protegido, projeção pública global e hosted DB validados. |
-| 8 — Dashboard Metrics + Attention Center | **COMPLETE / HOSTED VALIDATED / PRODUCTION ACCEPTED** | Hosted reconciliation + authenticated owner smoke concluídos. |
-| 9 — Hardening + Final Rollout | **COMPLETE / PRODUCTION ACCEPTED** | Repository + hosted hardening, rollout final e owner smoke concluídos. |
+| 8 — Dashboard Metrics + Attention Center | **COMPLETE / HOSTED VALIDATED / PRODUCTION ACCEPTED / IN MAIN** | Hosted reconciliation + authenticated owner smoke concluídos. |
+| 9 — Hardening + Final Rollout | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Repository + hosted hardening, rollout final, owner smoke e integração concluídos. |
 
 ---
 
@@ -376,9 +380,10 @@ Hosted migration + rollout + global settings propagation aceitos e integrados em
 - hosted migration aplicada/validada;
 - snapshot hospedado reconciliado;
 - exact candidate CI-green deployado;
-- authenticated `/admin` owner smoke **PASS / owner-reported 2026-09-15**.
+- authenticated `/admin` owner smoke **PASS / owner-reported 2026-09-15**;
+- integrada em `main` como parte do PR #5.
 
-Status: **PRODUCTION ACCEPTED**.
+Status: **PRODUCTION ACCEPTED / IN MAIN**.
 
 ### Phase 9
 
@@ -387,24 +392,26 @@ Status: **PRODUCTION ACCEPTED**.
 - advisors/grants/reconciliation: validados;
 - final runtime candidate: CI-green;
 - KingHost final rollout: concluído;
-- final manual smoke: **PASS / owner-reported 2026-09-15**.
+- final manual smoke: **PASS / owner-reported 2026-09-15**;
+- integração Git: PR #5 merged em `main`.
 
-Status: **PRODUCTION ACCEPTED**.
+Status: **PRODUCTION ACCEPTED / IN MAIN**.
 
 Evidência formal: `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`.
 
 ---
 
-## 12. Pendências e próxima ação
+## 12. Estado pós-integração
 
-O roadmap planejado Phases 0–9 está concluído e aceito. Não há nova etapa de implementação obrigatória neste plano.
+O roadmap planejado Phases 0–9 está concluído, aceito e integrado. Não há nova etapa de implementação obrigatória neste plano.
 
-Próxima decisão:
+Estado operacional:
 
-1. manter Production pinada no exact runtime SHA atual até decisão do owner;
-2. integrar `feat/phase-9-hardening-final-rollout` em `main` somente com aprovação explícita do proprietário;
-3. manter as disposições de advisor/plataforma documentadas, sem remover índices nem alterar Auth config às cegas;
-4. não apagar branches nem reescrever histórico sem autorização explícita separada quando aplicável.
+1. Production permanece pinada no exact runtime SHA aceito até um novo rollout deliberado;
+2. `main` contém o trabalho final das Phases 8–9;
+3. `feat/phase-9-hardening-final-rollout` permanece preservada após o merge;
+4. as disposições de advisor/plataforma continuam documentadas, sem remoção mecânica de índices nem alteração de Auth config às cegas;
+5. branches não devem ser apagadas e histórico não deve ser reescrito sem autorização explícita separada.
 
 ---
 
