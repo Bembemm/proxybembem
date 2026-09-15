@@ -27,18 +27,18 @@ test("WhatsApp URL helper requires a canonical configured E.164 destination", as
   }
 })
 
-test("cart fallback receives the configured destination and disappears when unavailable", async () => {
+test("floating WhatsApp contact receives the configured destination and checkout fallback remains optional", async () => {
   const shell = await source("../components/site-shell.tsx")
-  const cart = await source("../components/cart-panel.tsx")
+  const floating = await source("../components/whatsapp-button.tsx")
   const summary = await source("../components/order-summary.tsx")
 
   assert.match(
     shell,
-    /<CartPanel\s+contactWhatsappE164=\{storeSettings\.contactWhatsappE164\}\s*\/>/,
+    /<WhatsAppFloatingButton\s+contactWhatsappE164=\{storeSettings\.contactWhatsappE164\}\s*\/>/,
   )
-  assert.match(cart, /contactWhatsappE164/)
-  assert.match(cart, /buildWhatsAppOrderUrl\(\s*contactWhatsappE164\s*,/)
-  assert.doesNotMatch(cart, /5544991250332/)
+  assert.match(floating, /contactWhatsappE164/)
+  assert.match(floating, /https:\/\/wa\.me\//)
+  assert.doesNotMatch(floating, /5544991250332/)
 
   assert.match(summary, /whatsappFallbackUrl:\s*string\s*\|\s*null/)
   assert.match(summary, /whatsappFallbackUrl\s*\?\s*\(/)
