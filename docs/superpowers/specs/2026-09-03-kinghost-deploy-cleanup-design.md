@@ -61,15 +61,15 @@ The publisher must validate both source directories before writing anything. It 
 
 Publication is merge/copy-only. Existing unrelated files in `~/www` are preserved, and previous hashed `/_next/static` assets are allowed to remain. Keeping previous immutable hashes avoids a deployment window where the currently running Next process references assets that have already been deleted before the panel restart.
 
-## Vercel retirement
+## previous hosting provider retirement
 
-KingHost is now the selected runtime. Remove active Vercel-specific runtime/config behavior:
+KingHost is now the selected runtime. Remove active provider-specific runtime/config behavior:
 
-- delete `vercel.json`;
-- production HSTS derives only from `NODE_ENV=production`, not `VERCEL_ENV`;
-- current operational docs no longer instruct waiting for or falling back to Vercel.
+- delete `legacy hosting configuration`;
+- production HSTS derives only from `NODE_ENV=production`, not `HOSTING_ENV`;
+- current operational docs no longer instruct waiting for or falling back to previous hosting provider.
 
-Historical planning documents may retain Vercel references as historical context. The already-unused `@vercel/analytics` package entry is dependency-only and has no runtime integration; lockfile/package removal is deferred unless it can be regenerated and verified atomically with `pnpm install --frozen-lockfile` preserved.
+Historical planning documents may retain previous hosting provider references as historical context. The already-unused `legacy analytics package` package entry is dependency-only and has no runtime integration; lockfile/package removal is deferred unless it can be regenerated and verified atomically with `pnpm install --frozen-lockfile` preserved.
 
 ## CI
 
@@ -83,7 +83,7 @@ The cleanup is accepted when:
 - existing tests/typecheck/build pass on Node `22.1.0`;
 - `build:kinghost` still creates the standalone package;
 - `deploy:kinghost` is documented as the only manual server deploy command before panel restart;
-- Vercel active configuration is removed;
+- previous hosting provider active configuration is removed;
 - after pulling the candidate on KingHost, one deployment keeps `/`, one `public/` asset, one CSS asset and one JS asset publicly healthy.
 
 ## Non-goals

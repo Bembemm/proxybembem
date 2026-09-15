@@ -60,9 +60,9 @@ export default async function PrivacidadePage() {
             <section>
               <h2 className="text-xl font-semibold text-slate-900">Informações técnicas</h2>
               <p className="mt-2">
-                O site pode usar Vercel Analytics para receber informações técnicas e de uso, como métricas
-                gerais de acesso e desempenho. Nome, WhatsApp e endereço do pedido não são intencionalmente
-                enviados como eventos de analytics pela ProxyBembem.
+                O site pode registrar informações técnicas e de uso necessárias para segurança, diagnóstico
+                e desempenho. Nome, WhatsApp e endereço do pedido não são intencionalmente enviados como
+                eventos técnicos pela ProxyBembem.
               </p>
             </section>
 

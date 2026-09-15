@@ -82,7 +82,7 @@ for the service logic, while the Next route stays deliberately thin.
 
 `lib/server/rate-limit.ts` extracts the candidate IP in this order:
 
-1. `x-vercel-forwarded-for`
+1. `x-legacy-provider-forwarded-for`
 2. `x-forwarded-for`
 3. `x-real-ip`
 4. literal `unknown` when none is usable

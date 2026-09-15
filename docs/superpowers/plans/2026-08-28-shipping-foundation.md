@@ -4,9 +4,9 @@
 
 **Goal:** Add a server-authoritative Melhor Envio quotation layer that supports multiple products/quantities, signs quote choices, and exposes only safe freight options to the browser.
 
-**Architecture:** Product shipping metadata lives in the trusted catalog. The server rebuilds cart lines from IDs/quantities, calls Melhor Envio's product quotation endpoint, normalizes `custom_price`/`custom_delivery_time`, and signs each returned option with an HMAC quote token. The first store-only version uses a server-side bearer token configured in Vercel; it does not buy labels and does not expose provider credentials to the browser.
+**Architecture:** Product shipping metadata lives in the trusted catalog. The server rebuilds cart lines from IDs/quantities, calls Melhor Envio's product quotation endpoint, normalizes `custom_price`/`custom_delivery_time`, and signs each returned option with an HMAC quote token. The first store-only version uses a server-side bearer token configured in previous hosting provider; it does not buy labels and does not expose provider credentials to the browser.
 
-**Tech Stack:** Next.js 16 App Router, TypeScript, Node `node:test`, Node `crypto`, Melhor Envio API v2, Vercel environment variables.
+**Tech Stack:** Next.js 16 App Router, TypeScript, Node `node:test`, Node `crypto`, Melhor Envio API v2, previous hosting provider environment variables.
 
 **Spec:** `docs/superpowers/specs/2026-08-28-shipping-checkout-security-design.md`
 

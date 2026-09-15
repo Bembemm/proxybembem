@@ -215,7 +215,7 @@ git commit -m "feat: connect storefront to secure checkout"
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
-- Setup guide covers Supabase SQL, Mercado Pago test app credentials, webhook URL/secret, Vercel env vars, simulator, and production switch.
+- Setup guide covers Supabase SQL, Mercado Pago test app credentials, webhook URL/secret, previous hosting provider env vars, simulator, and production switch.
 - CI runs dependency install from the existing lockfile, TypeScript checks and Next production build.
 
 - [ ] **Step 1: Write operator setup guide**

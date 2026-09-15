@@ -231,9 +231,9 @@ The idempotency mechanism must be server-enforced and scoped so a genuine new ch
 
 Protect checkout creation and other provider-costly endpoints from abuse.
 
-The implementation should prefer infrastructure already available to the project (Vercel/Supabase) rather than introducing a new paid dependency unless necessary.
+The implementation should prefer infrastructure already available to the project (previous hosting provider/Supabase) rather than introducing a new paid dependency unless necessary.
 
-The final implementation plan must choose a concrete rate-limit mechanism after checking what is available in the project's current Vercel/Supabase setup.
+The final implementation plan must choose a concrete rate-limit mechanism after checking what is available in the project's current previous hosting provider/Supabase setup.
 
 Rate limiting is additive to normal validation; it is not a substitute for server-side price verification.
 
@@ -294,7 +294,7 @@ Add production-appropriate HTTP security headers through Next.js configuration/m
 - a tested Content Security Policy;
 - anti-framing protection through CSP `frame-ancestors` and/or compatible headers.
 
-The CSP must be tested with the actual Next.js app and Vercel Analytics rather than copied from a generic template.
+The CSP must be tested with the actual Next.js app and legacy analytics integration rather than copied from a generic template.
 
 No security header should be added in a way that breaks checkout, fonts, images, analytics, or necessary provider navigation.
 
@@ -462,7 +462,7 @@ Do not merge to `main` during implementation.
 
 Use:
 
-- Vercel Preview;
+- preview environment;
 - Melhor Envio Sandbox;
 - Mercado Pago test-seller/test-buyer flow already used by the project;
 - Supabase test rows in the current project unless a separate environment is introduced during planning.

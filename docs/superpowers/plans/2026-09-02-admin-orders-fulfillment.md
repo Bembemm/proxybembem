@@ -22,7 +22,7 @@
 
 **Phase 1 privilege evidence:** `service_role` has SELECT/INSERT but no UPDATE/DELETE on `admin_audit_log`; `order_events` likewise has no service-role UPDATE/DELETE. Keep that append-only boundary intact.
 
-**Known environment blocker:** Vercel Preview currently lacks `NEXT_PUBLIC_SUPABASE_URL`. Protected Preview routes cannot be accepted until the Preview admin-auth environment contract is configured. This is a configuration blocker, not a Phase 1/2 code defect.
+**Known environment blocker:** preview environment currently lacks `NEXT_PUBLIC_SUPABASE_URL`. Protected Preview routes cannot be accepted until the Preview admin-auth environment contract is configured. This is a configuration blocker, not a Phase 1/2 code defect.
 
 ---
 
@@ -984,7 +984,7 @@ Re-run Supabase security/performance advisors. Classify intentional backend-only
 
 # Task 13 — Preview acceptance
 
-Phase 2 cannot be Preview-approved while the known Vercel Preview admin-auth environment problem exists.
+Phase 2 cannot be Preview-approved while the known preview environment admin-auth environment problem exists.
 
 ## 13.1 Required Preview admin-auth contract
 
@@ -1000,7 +1000,7 @@ SUPABASE_SECRET_KEY
 
 Existing integration routes may additionally require their already documented provider/rate-limit variables.
 
-The currently connected Vercel management tool cannot edit env vars. If still true at execution time, configure them through Vercel settings or another authorized management path; never commit values.
+The currently connected previous hosting provider management tool cannot edit env vars. If still true at execution time, configure them through previous hosting provider settings or another authorized management path; never commit values.
 
 ## 13.2 Preview smoke matrix
 

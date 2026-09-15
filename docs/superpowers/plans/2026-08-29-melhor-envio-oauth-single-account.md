@@ -4,9 +4,9 @@
 
 **Goal:** Replace the static Melhor Envio Bearer token with a single-account OAuth 2.0 lifecycle that encrypts tokens, refreshes them automatically and safely, and keeps freight quotation functional without exposing credentials.
 
-**Architecture:** The storefront remains quote-only and server-authoritative. A dedicated OAuth client exchanges/refreshes credentials; a token manager reads encrypted token state from Supabase, coordinates refresh with database leases and token versions, and hands a current Bearer token to the existing freight client. Owner authorization is a protected one-account bootstrap flow, while a daily Vercel Cron invokes the same token manager so low traffic cannot let refresh state go stale.
+**Architecture:** The storefront remains quote-only and server-authoritative. A dedicated OAuth client exchanges/refreshes credentials; a token manager reads encrypted token state from Supabase, coordinates refresh with database leases and token versions, and hands a current Bearer token to the existing freight client. Owner authorization is a protected one-account bootstrap flow, while a daily previous hosting provider Cron invokes the same token manager so low traffic cannot let refresh state go stale.
 
-**Tech Stack:** Next.js 16.3.3 App Router, TypeScript 5.7.3, Node.js `node:crypto`, Supabase/PostgreSQL REST + RPC, Melhor Envio OAuth 2.0/API v2, Vercel Cron, Node built-in test runner.
+**Tech Stack:** Next.js 16.3.3 App Router, TypeScript 5.7.3, Node.js `node:crypto`, Supabase/PostgreSQL REST + RPC, Melhor Envio OAuth 2.0/API v2, previous hosting provider Cron, Node built-in test runner.
 
 **Spec:** `docs/superpowers/specs/2026-08-29-melhor-envio-oauth-single-account-design.md`
 
@@ -23,7 +23,7 @@
 - Provider authentication failure gets at most one retry after a successful coordinated refresh.
 - RLS remains enabled with no `anon`/`authenticated` policies on OAuth tables; privileged RPC execution is denied to `PUBLIC`, `anon`, and `authenticated`.
 - Production callback must be an exact configured HTTPS URL, never inferred from request `Host`/`Origin`.
-- A daily Vercel Cron uses `CRON_SECRET` and the same token-manager refresh path; it does not implement a second refresh algorithm.
+- A daily previous hosting provider Cron uses `CRON_SECRET` and the same token-manager refresh path; it does not implement a second refresh algorithm.
 - Follow RED → GREEN TDD for every business/security behavior and run fresh full verification before completion claims.
 
 ---
@@ -40,9 +40,9 @@
 - `app/admin/integrations/melhor-envio/page.tsx` — narrow owner bootstrap/status page.
 - `app/api/internal/melhor-envio/oauth/start/route.ts` — protected OAuth start route.
 - `app/api/melhor-envio/oauth/callback/route.ts` — one-shot OAuth callback.
-- `app/api/internal/melhor-envio/refresh/route.ts` — Vercel Cron maintenance route.
+- `app/api/internal/melhor-envio/refresh/route.ts` — previous hosting provider Cron maintenance route.
 - `supabase/migrations/202608290002_melhor_envio_oauth.sql` — OAuth tables, RLS/grants and atomic RPCs.
-- `vercel.json` — daily Production cron registration.
+- `legacy hosting configuration` — daily Production cron registration.
 - `tests/secret-compare.test.ts`
 - `tests/melhor-envio-token-crypto.test.ts`
 - `tests/melhor-envio-oauth-migration.test.ts`
@@ -674,11 +674,11 @@ git commit -m "feat: refresh Melhor Envio auth during quotes"
 **Files:**
 - Create: `app/api/internal/melhor-envio/refresh/route.ts`
 - Create: `tests/melhor-envio-cron.test.ts`
-- Create: `vercel.json`
+- Create: `legacy hosting configuration`
 
 **Interfaces:**
 - `GET /api/internal/melhor-envio/refresh`
-- Vercel sends `Authorization: Bearer $CRON_SECRET`.
+- previous hosting provider sends `Authorization: Bearer $CRON_SECRET`.
 - Schedule: once daily, `17 3 * * *` UTC.
 
 - [ ] **Step 1: Write RED cron-auth tests**
@@ -695,13 +695,13 @@ node --experimental-strip-types --test tests/melhor-envio-cron.test.ts
 
 Parse the `Bearer ` prefix, compare only the secret value with `timingSafeSecretEqual`, then invoke the same token manager. Do not add a separate refresh implementation.
 
-- [ ] **Step 4: Register one daily Vercel Cron**
+- [ ] **Step 4: Register one daily previous hosting provider Cron**
 
 Create:
 
 ```json
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "$schema": "https://openapi.previous hosting provider.sh/legacy hosting configuration",
   "crons": [
     {
       "path": "/api/internal/melhor-envio/refresh",
@@ -711,7 +711,7 @@ Create:
 }
 ```
 
-The route is Production-only in scheduled operation because Vercel Cron runs against Production deployments; Sandbox/Preview exercises it manually during Task 3.1 verification.
+The route is Production-only in scheduled operation because previous hosting provider Cron runs against Production deployments; Sandbox/Preview exercises it manually during Task 3.1 verification.
 
 - [ ] **Step 5: Run cron tests, typecheck and build**
 
@@ -726,7 +726,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add app/api/internal/melhor-envio/refresh/route.ts tests/melhor-envio-cron.test.ts vercel.json
+git add app/api/internal/melhor-envio/refresh/route.ts tests/melhor-envio-cron.test.ts legacy hosting configuration
 git commit -m "feat: schedule Melhor Envio token maintenance"
 ```
 
@@ -846,9 +846,9 @@ A consumed callback state cannot be reused. Simulated invalid/revoked credential
 
 Call with missing/wrong auth → `401`; call with correct Preview `CRON_SECRET` → sanitized success and no token output. Production schedule itself remains inactive until a Production deployment later.
 
-- [ ] **Step 11: Push final head and require exact-head CI + Vercel Preview success**
+- [ ] **Step 11: Push final head and require exact-head CI + preview environment success**
 
-Wait for GitHub Actions and Vercel status on the exact same SHA. If either fails, Task 3.1 remains incomplete.
+Wait for GitHub Actions and previous hosting provider status on the exact same SHA. If either fails, Task 3.1 remains incomplete.
 
 - [ ] **Step 12: Update spec status only after all gates pass**
 
@@ -856,7 +856,7 @@ Change the spec status to reflect implemented/Sandbox-verified state and commit 
 
 - [ ] **Step 13: Declare Task 3.1 complete and start Task 3.2**
 
-Only after fresh evidence for tests, typecheck, build, exact-head CI, Vercel Preview, live Sandbox OAuth+quote, and Supabase advisor. Then announce:
+Only after fresh evidence for tests, typecheck, build, exact-head CI, preview environment, live Sandbox OAuth+quote, and Supabase advisor. Then announce:
 
 `Tarefa 3.1 — Melhor Envio OAuth seguro + renovação automática — CONCLUÍDA ✅`
 

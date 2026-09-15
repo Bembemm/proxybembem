@@ -7,13 +7,12 @@ import { createAdminOrderActionHandler } from "../lib/server/admin-order-actions
 const ORDER_ID = "11111111-1111-4111-8111-111111111111"
 const ADMIN_ID = "22222222-2222-4222-8222-222222222222"
 const AUTH_SESSION_ID = "33333333-3333-4333-8333-333333333333"
-const ENV_KEYS = ["NEXT_PUBLIC_SITE_URL", "VERCEL_ENV"] as const
+const ENV_KEYS = ["NEXT_PUBLIC_SITE_URL"] as const
 
 async function withPreviewEnv(run: () => Promise<void>) {
   const previous = new Map<string, string | undefined>()
   for (const key of ENV_KEYS) previous.set(key, process.env[key])
   process.env.NEXT_PUBLIC_SITE_URL = "https://preview.example"
-  process.env.VERCEL_ENV = "preview"
 
   try {
     await run()

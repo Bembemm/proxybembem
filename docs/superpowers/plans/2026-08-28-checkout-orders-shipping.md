@@ -307,7 +307,7 @@ checkout: 10 requests / 10 minutes / IP
 
 - [ ] **Step 1: Write failing tests**
 
-Test trusted IP extraction order from Vercel headers, HMAC hashing, no raw IP in Supabase request body, scope isolation, and false when RPC returns `false`.
+Test trusted IP extraction order from previous hosting provider headers, HMAC hashing, no raw IP in Supabase request body, scope isolation, and false when RPC returns `false`.
 
 Use `RATE_LIMIT_SECRET` with minimum 32 characters.
 
@@ -333,7 +333,7 @@ POST /rest/v1/rpc/consume_api_rate_limit
 
 with the hashed key, exact limit, and 600-second window. Use the same service-role server credential path already used by `orders.ts`. Never log client IP or the secret.
 
-If no usable Vercel forwarding IP exists, hash the literal `unknown` plus scope; do not trust arbitrary client body fields as IP.
+If no usable previous hosting provider forwarding IP exists, hash the literal `unknown` plus scope; do not trust arbitrary client body fields as IP.
 
 - [ ] **Step 4: Add endpoint usage**
 

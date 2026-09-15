@@ -111,7 +111,7 @@ Persist no provider token in plaintext.
 
 Use AES-256-GCM with:
 
-- an independent 256-bit key stored only in Vercel server environment;
+- an independent 256-bit key stored only in previous hosting provider server environment;
 - a fresh random nonce/IV for every encryption;
 - authentication-tag verification;
 - a versioned envelope format;
@@ -223,11 +223,11 @@ The customer sees only a generic temporary freight-unavailable message. The owne
 
 Request-driven refresh alone is insufficient for a low-traffic store: a refresh token can age out while no customer is requesting quotes.
 
-Production therefore includes a server-side scheduled health/refresh check, preferably Vercel Cron, in addition to request-driven refresh.
+Production therefore includes a server-side scheduled health/refresh check, preferably previous hosting provider Cron, in addition to request-driven refresh.
 
 A route such as `/api/internal/melhor-envio/refresh`:
 
-- accepts only Vercel's configured cron Bearer secret;
+- accepts only previous hosting provider's configured cron Bearer secret;
 - compares authorization safely;
 - returns no token/provider secrets;
 - calls the same token manager/lease mechanism, never a separate refresh implementation;
@@ -311,7 +311,7 @@ Verify initial authorization, quote, encrypted persistence, proactive/forced ref
 
 ### Phase D — consolidated Production configuration
 
-Only after Task 3.1 Sandbox verification do we create/finalize the complete Production Vercel variable set in one pass, authorize the Production Melhor Envio account, then continue Mercado Pago Production/webhook and final Production validation.
+Only after Task 3.1 Sandbox verification do we create/finalize the complete Production previous hosting provider variable set in one pass, authorize the Production Melhor Envio account, then continue Mercado Pago Production/webhook and final Production validation.
 
 ## 18. Testing requirements
 
@@ -342,7 +342,7 @@ Implementation follows TDD for critical behavior. At minimum cover:
 - privileged RPC `EXECUTE` denied to `PUBLIC`, `anon`, `authenticated`;
 - Supabase security advisor reviewed after migration.
 
-Before Task 3.1 is declared complete, gather fresh evidence from unit/integration tests, TypeScript typecheck, production build, exact-head GitHub Actions CI, Vercel Preview, live Sandbox OAuth + freight quote, and Supabase security advisor.
+Before Task 3.1 is declared complete, gather fresh evidence from unit/integration tests, TypeScript typecheck, production build, exact-head GitHub Actions CI, preview environment, live Sandbox OAuth + freight quote, and Supabase security advisor.
 
 ## 19. Non-goals
 

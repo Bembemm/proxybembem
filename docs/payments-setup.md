@@ -105,7 +105,7 @@ Use exclusivamente:
 docs/deployment/kinghost.md
 ```
 
-O fluxo usa `pnpm deploy:kinghost` e restart do app `proxybembem` pelo painel KingHost. Não use procedimento Vercel ou PM2 manual como runbook atual.
+O fluxo usa `pnpm deploy:kinghost` e restart do app `proxybembem` pelo painel KingHost. Siga somente esse runbook e não use procedimentos antigos ou PM2 manual.
 
 ## Segurança operacional
 

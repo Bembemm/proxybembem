@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move the existing ProxyBembem Next.js runtime from Vercel to KingHost Node.js III without changing the hosted Supabase backend or losing the current Phase 3 Task 14 checkpoint.
+**Goal:** Move the existing ProxyBembem Next.js runtime from previous hosting provider to KingHost Node.js III without changing the hosted Supabase backend or losing the current Phase 3 Task 14 checkpoint.
 
-**Architecture:** Keep `feat/admin-dashboard-expansion` as the migration branch. Build Next.js with `output: "standalone"`, package the standalone static/public assets, and use a small root `app.js` adapter that maps KingHost's `PORT_APP` to Next's `PORT` before loading `.next/standalone/server.js`. Preserve Vercel as rollback until KingHost passes acceptance; production security must work both on Vercel and on non-Vercel `NODE_ENV=production` runtimes during the transition.
+**Architecture:** Keep `feat/admin-dashboard-expansion` as the migration branch. Build Next.js with `output: "standalone"`, package the standalone static/public assets, and use a small root `app.js` adapter that maps KingHost's `PORT_APP` to Next's `PORT` before loading `.next/standalone/server.js`. Preserve previous hosting provider as rollback until KingHost passes acceptance; production security must work both on previous hosting provider and on non-previous hosting provider `NODE_ENV=production` runtimes during the transition.
 
 **Tech Stack:** Next.js 16.3.3, React 19, Node.js 20.18.0 on KingHost, pnpm 10, GitHub Actions, Supabase hosted project, Mercado Pago, Melhor Envio.
 
@@ -18,7 +18,7 @@
 - Existing Supabase `ProxyBembem` project remains the production database/Auth backend.
 - Supabase migration `20260902220354_customer_accounts_orders` is already applied; never reapply it for this migration.
 - Preserve Phase 3 Tasks 1–13 and resume from Task 14; do not start Phase 4.
-- Vercel remains rollback until explicit owner approval after KingHost acceptance.
+- previous hosting provider remains rollback until explicit owner approval after KingHost acceptance.
 - Never commit production secrets or paste passwords/TOTP/provider keys into docs, tests, or chat.
 - Preserve checkout-origin, provider-environment, admin-auth, customer-isolation, guest-claim, DTO-redaction, HTTPS and CSP safeguards.
 - No merge to `main` solely to perform this hosting migration.
@@ -145,11 +145,11 @@ Modify `package.json` scripts:
 
 - [ ] **Step 5: Make Next emit standalone and make HSTS provider-neutral**
 
-In `next.config.mjs`, replace the Vercel-only production flag with:
+In `next.config.mjs`, replace the provider-specific production flag with:
 
 ```js
-const isProductionDeployment = process.env.VERCEL_ENV
-  ? process.env.VERCEL_ENV === "production"
+const isProductionDeployment = process.env.HOSTING_ENV
+  ? process.env.HOSTING_ENV === "production"
   : process.env.NODE_ENV === "production"
 ```
 
@@ -159,12 +159,12 @@ Add to `nextConfig`:
 output: "standalone",
 ```
 
-Keep all existing security headers. This preserves Vercel Preview behavior while enabling HSTS on KingHost `NODE_ENV=production`.
+Keep all existing security headers. This preserves preview environment behavior while enabling HSTS on KingHost `NODE_ENV=production`.
 
-Update the HSTS assertion in `tests/security-headers.test.ts` so it requires both the Vercel compatibility branch and the provider-neutral `NODE_ENV` fallback:
+Update the HSTS assertion in `tests/security-headers.test.ts` so it requires both the previous hosting provider compatibility branch and the provider-neutral `NODE_ENV` fallback:
 
 ```ts
-assert.match(source, /VERCEL_ENV/)
+assert.match(source, /HOSTING_ENV/)
 assert.match(source, /NODE_ENV/)
 assert.match(source, /max-age=31536000; includeSubDomains/)
 ```
@@ -204,7 +204,7 @@ git commit -m "feat: add kinghost standalone runtime"
 
 ---
 
-### Task 2: Remove runtime Vercel Analytics coupling without changing application behavior
+### Task 2: Remove runtime legacy analytics integration coupling without changing application behavior
 
 **Files:**
 - Modify: `app/layout.tsx`
@@ -213,7 +213,7 @@ git commit -m "feat: add kinghost standalone runtime"
 
 **Interfaces:**
 - Consumes: existing root layout and CSP.
-- Produces: provider-neutral production HTML and CSP with no Vercel Analytics network dependency.
+- Produces: provider-neutral production HTML and CSP with no legacy analytics integration network dependency.
 
 - [ ] **Step 1: Write the failing provider-neutral test**
 
@@ -227,16 +227,16 @@ import test from "node:test"
 const layout = new URL("../app/layout.tsx", import.meta.url)
 const config = new URL("../next.config.mjs", import.meta.url)
 
-test("runtime no longer emits Vercel Analytics client integration", async () => {
+test("runtime no longer emits legacy analytics integration client integration", async () => {
   const [layoutSource, configSource] = await Promise.all([
     readFile(layout, "utf8"),
     readFile(config, "utf8"),
   ])
 
-  assert.doesNotMatch(layoutSource, /@vercel\/analytics/)
+  assert.doesNotMatch(layoutSource, /@previous hosting provider\/analytics/)
   assert.doesNotMatch(layoutSource, /<Analytics\s*\/>/)
-  assert.doesNotMatch(configSource, /va\.vercel-scripts\.com/)
-  assert.doesNotMatch(configSource, /vitals\.vercel-insights\.com/)
+  assert.doesNotMatch(configSource, /va\.previous hosting provider-scripts\.com/)
+  assert.doesNotMatch(configSource, /vitals\.previous hosting provider-insights\.com/)
 })
 ```
 
@@ -248,20 +248,20 @@ Run:
 pnpm test -- tests/provider-neutral-runtime.test.ts
 ```
 
-Expected: FAIL because `app/layout.tsx` imports/renders Vercel Analytics and CSP allowlists its endpoints.
+Expected: FAIL because `app/layout.tsx` imports/renders legacy analytics integration and CSP allowlists its endpoints.
 
 - [ ] **Step 3: Remove only the runtime integration**
 
 In `app/layout.tsx`:
 
-- remove `import { Analytics } from "@vercel/analytics/next"`;
+- remove `import { Analytics } from "legacy analytics package/next"`;
 - remove `{process.env.NODE_ENV === "production" && <Analytics />}`.
 
 In `next.config.mjs` change:
 
 ```js
-"script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
-`connect-src 'self' https://vitals.vercel-insights.com${supabaseBrowserOrigin ? ` ${supabaseBrowserOrigin}` : ""}`,
+"script-src 'self' 'unsafe-inline' https://legacy analytics script endpoint",
+`connect-src 'self' https://legacy analytics telemetry endpoint${supabaseBrowserOrigin ? ` ${supabaseBrowserOrigin}` : ""}`,
 ```
 
 into:
@@ -287,7 +287,7 @@ Expected: PASS.
 
 ```bash
 git add app/layout.tsx next.config.mjs tests/provider-neutral-runtime.test.ts
-git commit -m "refactor: remove vercel analytics runtime coupling"
+git commit -m "refactor: remove previous hosting provider analytics runtime coupling"
 ```
 
 ---
@@ -348,11 +348,11 @@ Expected: all PASS.
 Append a KingHost migration section to `docs/superpowers/CURRENT_STATUS.md` recording:
 
 ```text
-Infrastructure migration in progress: Vercel -> KingHost Node.js III.
+Infrastructure migration in progress: previous hosting provider -> KingHost Node.js III.
 Supabase remains hosted and unchanged.
 Phase 3 remains at Task 14; Tasks 1-13 are not to be repeated.
 KingHost app: proxybembem, Node 20.18.0, web path /.
-Vercel deletion remains forbidden until owner acceptance after KingHost smoke/account checks.
+previous hosting provider deletion remains forbidden until owner acceptance after KingHost smoke/account checks.
 ```
 
 Record the exact migration commit SHA and CI run only after they exist; do not fabricate PASS evidence.
@@ -375,7 +375,7 @@ pnpm typecheck: PASS
 pnpm build:kinghost: PASS
 ```
 
-Do not proceed to final Vercel removal on a failing or pending candidate.
+Do not proceed to final previous hosting provider removal on a failing or pending candidate.
 
 ---
 
@@ -422,7 +422,7 @@ NODE_ENV=production npx pnpm@10 build:kinghost
 
 Expected: build PASS and `.next/standalone/server.js` exists.
 
-If the 512 MB hosting limit causes an OOM during the build, stop here. Do not lower security or delete Vercel. The fallback is to build the same standalone artifact in GitHub Actions and transfer only the packaged runtime over SFTP; that becomes a separate reviewed deployment task rather than silently changing architecture.
+If the 512 MB hosting limit causes an OOM during the build, stop here. Do not lower security or delete previous hosting provider. The fallback is to build the same standalone artifact in GitHub Actions and transfer only the packaged runtime over SFTP; that becomes a separate reviewed deployment task rather than silently changing architecture.
 
 - [ ] **Step 3: Configure production environment variables outside Git**
 
@@ -517,8 +517,8 @@ Expected: no migration-introduced fatal errors, no customer private-read error b
 
 - [ ] **Step 9: Owner final cutover approval**
 
-Only after Steps 1–8 pass, ask explicitly whether the owner approves deleting the Vercel project. Do not infer approval from earlier migration approval.
+Only after Steps 1–8 pass, ask explicitly whether the owner approves deleting the previous hosting provider project. Do not infer approval from earlier migration approval.
 
-- [ ] **Step 10: Delete Vercel only after explicit approval, then resume Phase 3 Task 15**
+- [ ] **Step 10: Delete previous hosting provider only after explicit approval, then resume Phase 3 Task 15**
 
 After deletion, update `docs/superpowers/CURRENT_STATUS.md` with the accepted KingHost runtime evidence and continue from Phase 3 Task 15. Never restart Tasks 1–13 or reapply the Supabase migration.

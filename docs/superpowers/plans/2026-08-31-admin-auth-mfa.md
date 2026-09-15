@@ -1216,7 +1216,7 @@ No public signup route/component is added to the site regardless of dashboard co
 
 - [ ] **Step 4: Provision exactly one admin user manually**
 
-In Supabase Dashboard → Authentication → Users, create the owner's admin email/password account. The owner enters the password directly in Supabase; it is never pasted into chat, committed, logged, or stored in Vercel variables.
+In Supabase Dashboard → Authentication → Users, create the owner's admin email/password account. The owner enters the password directly in Supabase; it is never pasted into chat, committed, logged, or stored in previous hosting provider variables.
 
 Verify exactly one Auth user exists with:
 
@@ -1232,7 +1232,7 @@ Expected: one row.
 
 Use the `id` returned above as `ADMIN_USER_ID`.
 
-Configure these Vercel **Preview** variables without exposing their values in logs/chat:
+Configure these previous hosting provider **Preview** variables without exposing their values in logs/chat:
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
@@ -1244,7 +1244,7 @@ Keep `SUPABASE_SECRET_KEY` server-only. Do not add any of these changes to Produ
 
 - [ ] **Step 6: Redeploy the feature branch Preview**
 
-Trigger a fresh Vercel Preview deployment from the current feature-branch HEAD and verify state `READY` before browser acceptance.
+Trigger a fresh preview environment deployment from the current feature-branch HEAD and verify state `READY` before browser acceptance.
 
 ---
 

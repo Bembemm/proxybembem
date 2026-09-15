@@ -2,14 +2,13 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { NextRequest } from "next/server.js"
 
-const ENV_KEYS = ["NEXT_PUBLIC_SITE_URL", "VERCEL_ENV"] as const
+const ENV_KEYS = ["NEXT_PUBLIC_SITE_URL"] as const
 
 async function withEnv(run: () => Promise<void>) {
   const previous = new Map<string, string | undefined>()
   for (const key of ENV_KEYS) previous.set(key, process.env[key])
 
   process.env.NEXT_PUBLIC_SITE_URL = "https://public-preview.example"
-  process.env.VERCEL_ENV = "preview"
 
   try {
     await run()

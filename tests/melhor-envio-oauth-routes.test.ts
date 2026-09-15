@@ -24,7 +24,6 @@ const PHASE5_SCOPE = [
 
 const ENV_KEYS = [
   "NEXT_PUBLIC_SITE_URL",
-  "VERCEL_ENV",
   "SUPABASE_URL",
   "SUPABASE_SECRET_KEY",
   "RATE_LIMIT_SECRET",
@@ -44,7 +43,6 @@ async function withEnv(run: () => Promise<void>) {
   for (const key of ENV_KEYS) previous.set(key, process.env[key])
 
   process.env.NEXT_PUBLIC_SITE_URL = "https://preview.example"
-  process.env.VERCEL_ENV = "preview"
   process.env.SUPABASE_URL = "https://project.supabase.co"
   process.env.SUPABASE_SECRET_KEY = "supabase-server-secret"
   process.env.RATE_LIMIT_SECRET = RATE_SECRET

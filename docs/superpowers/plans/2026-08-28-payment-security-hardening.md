@@ -20,7 +20,7 @@
 - Conflicting payment IDs may not overwrite trusted approved/reversal states.
 - Mercado Pago webhook HMAC is validated before optional JSON parsing/provider work.
 - Production checkout requires the canonical configured HTTPS site origin.
-- Preview checkout remains testable on the active Vercel Preview origin.
+- Preview checkout remains testable on the active preview environment origin.
 - Redirect URL validation must accept genuine Mercado Pago hosts and reject lookalike hosts.
 - Next.js must be updated from `16.2.6` to the officially patched `16.3.3` release; no unrelated dependency modernization.
 
@@ -278,13 +278,13 @@ export function isAllowedCheckoutOrigin(input: {
   configuredSiteUrl: string
   requestOrigin: string
   nodeEnv: string | undefined
-  vercelEnv: string | undefined
+  previous hosting providerEnv: string | undefined
 }): boolean
 ```
 
 - [ ] **Step 1: Write failing policy tests**
 
-Production (`VERCEL_ENV=production`):
+Production (`HOSTING_ENV=production`):
 
 - exact configured HTTPS origin -> true;
 - missing Origin -> false;
@@ -397,8 +397,8 @@ form-action 'self';
 img-src 'self' data: https:;
 font-src 'self' data:;
 style-src 'self' 'unsafe-inline';
-script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com;
-connect-src 'self' https://vitals.vercel-insights.com;
+script-src 'self' 'unsafe-inline' https://legacy analytics script endpoint;
+connect-src 'self' https://legacy analytics telemetry endpoint;
 upgrade-insecure-requests
 ```
 
@@ -416,7 +416,7 @@ Use Next.js `headers()` configuration. For non-production environments, omit HST
 
 - [ ] **Step 4: Build and smoke-test pages**
 
-Run `pnpm build`, then check Home, products, cart, `/pedido/<test-token>` and Vercel Analytics behavior in Preview browser/devtools. If Analytics needs an additional documented origin, add only that exact origin and add it to the test fixture.
+Run `pnpm build`, then check Home, products, cart, `/pedido/<test-token>` and legacy analytics integration behavior in Preview browser/devtools. If Analytics needs an additional documented origin, add only that exact origin and add it to the test fixture.
 
 - [ ] **Step 5: Commit**
 

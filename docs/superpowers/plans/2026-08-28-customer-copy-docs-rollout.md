@@ -6,7 +6,7 @@
 
 **Architecture:** Customer-facing pages render only trusted order data from Supabase and describe the actual Mercado Pago + Melhor Envio flow. Policy pages avoid exposing private seller secrets/CPF/home address and avoid unsupported claims of legal compliance. Rollout is a checklist-driven environment promotion: CI first, then Preview/Sandbox end-to-end, then clean Production credentials/configuration, with no automatic merge to `main`.
 
-**Tech Stack:** Next.js App Router/React, existing site components, Supabase order data, Mercado Pago Checkout Pro, Melhor Envio Sandbox/Production, Vercel Preview/Production, GitHub Actions.
+**Tech Stack:** Next.js App Router/React, existing site components, Supabase order data, Mercado Pago Checkout Pro, Melhor Envio Sandbox/Production, preview/production hosting environments, GitHub Actions.
 
 **Spec:** `docs/superpowers/specs/2026-08-28-shipping-checkout-security-design.md`
 
@@ -187,7 +187,7 @@ The page must state in plain Portuguese:
 2. purposes: create/fulfill the order, calculate freight, communicate about production/delivery, handle payment status/support;
 3. Mercado Pago handles payment processing and ProxyBembem does not receive/store full card credentials;
 4. Melhor Envio receives shipping data necessary for quotation/fulfillment workflows;
-5. Vercel Analytics may receive technical/usage information but order address/contact is not intentionally placed in analytics events;
+5. legacy analytics integration may receive technical/usage information but order address/contact is not intentionally placed in analytics events;
 6. server/order records are protected from anonymous direct database access by the application's backend controls;
 7. customers can contact `contato@proxybembem.com.br` to ask questions about their order/data;
 8. no statement should claim certification, external audit, or guaranteed absolute security.
@@ -403,11 +403,11 @@ Do not declare readiness from local tests alone.
 ### Task 9: Configure Preview environment without sharing secrets in chat
 
 **Files:**
-- Vercel Preview environment settings; no source change.
+- preview environment environment settings; no source change.
 
 - [ ] **Step 1: Set Preview variables**
 
-Configure test/Sandbox values for all required environment names. The user enters secret values directly in Vercel; they are never pasted into chat, screenshots, git, or docs.
+Configure test/Sandbox values for all required environment names. The user enters secret values directly in previous hosting provider; they are never pasted into chat, screenshots, git, or docs.
 
 Use:
 
@@ -465,7 +465,7 @@ Record only non-secret identifiers/results, e.g. branch SHA, test order number, 
 ### Task 11: Prepare Production without merging
 
 **Files:**
-- Vercel Production/Mercado Pago/Melhor Envio account settings; no merge.
+- production environment/Mercado Pago/Melhor Envio account settings; no merge.
 
 - [ ] **Step 1: Create/use clean Production Melhor Envio credentials**
 
@@ -485,7 +485,7 @@ https://www.proxybembem.com.br/api/mercadopago/webhook
 NEXT_PUBLIC_SITE_URL=https://www.proxybembem.com.br
 ```
 
-Set Production-only secrets directly in Vercel.
+Set Production-only secrets directly in previous hosting provider.
 
 - [ ] **Step 4: Replace provisional package measurements before sustained real sales**
 

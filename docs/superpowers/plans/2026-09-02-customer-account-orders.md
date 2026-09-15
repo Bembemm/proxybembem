@@ -6,7 +6,7 @@
 
 **Architecture:** Customer identity uses the existing Supabase Auth installation but a separate customer authorization module; admin authorization remains UUID allowlist + AAL2 + `admin_sessions`. New orders persist a normalized email snapshot and optional immutable Auth UUID relationship. Customer order reads use narrow database RPCs that derive ownership from `auth.uid()` and return curated JSON rather than granting broad browser access to `orders`. Guest-order claiming is a separate service-role-only atomic RPC and requires both a verified account email and the existing 64-character public order token.
 
-**Tech Stack:** Next.js 16 App Router, React, TypeScript, Supabase Auth + SSR, Supabase/Postgres, existing service-role REST helpers, Node test runner, GitHub Actions, Vercel Preview.
+**Tech Stack:** Next.js 16 App Router, React, TypeScript, Supabase Auth + SSR, Supabase/Postgres, existing service-role REST helpers, Node test runner, GitHub Actions, preview environment.
 
 **Spec:** `docs/superpowers/specs/2026-09-01-admin-dashboard-expansion-design.md`
 

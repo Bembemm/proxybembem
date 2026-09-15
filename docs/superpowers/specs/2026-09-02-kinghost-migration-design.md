@@ -5,9 +5,9 @@
 
 ## Goal
 
-Move the ProxyBembem application runtime from Vercel to KingHost Node.js III while keeping the existing Supabase project as the database/authentication backend and preserving the current Phase 3 checkpoint.
+Move the ProxyBembem application runtime from previous hosting provider to KingHost Node.js III while keeping the existing Supabase project as the database/authentication backend and preserving the current Phase 3 checkpoint.
 
-The Vercel project must remain available until the KingHost runtime is deployed, validated, and owner-accepted. Deleting the Vercel project is the final step only.
+The previous hosting provider project must remain available until the KingHost runtime is deployed, validated, and owner-accepted. Deleting the previous hosting provider project is the final step only.
 
 ## Current checkpoint to preserve
 
@@ -51,13 +51,13 @@ Mercado Pago and Melhor Envio remain external providers. Their production callba
 
 ## Application changes
 
-Make the runtime provider-neutral rather than Vercel-dependent:
+Make the runtime provider-neutral rather than previous hosting provider-dependent:
 
 1. Add a KingHost-compatible production entrypoint that starts the Next.js runtime on the port supplied by KingHost.
 2. Prefer a Next.js production/standalone deployment layout suitable for the 512 MB Node.js III runtime rather than compiling on every request.
-3. Remove operational dependence on `VERCEL_ENV` where production behavior can safely derive from `NODE_ENV=production` or an explicit provider-neutral environment variable.
+3. Remove operational dependence on `HOSTING_ENV` where production behavior can safely derive from `NODE_ENV=production` or an explicit provider-neutral environment variable.
 4. Preserve all existing security behavior: HTTPS-only production origin checks, checkout origin validation, HSTS in production, Supabase browser CSP origin, Mercado Pago environment safety, Melhor Envio environment safety, admin auth/session boundaries, customer auth isolation, guest claim rules, and DTO redaction.
-5. Remove or disable Vercel Analytics only if it causes runtime/provider coupling; this must not affect checkout, auth, admin, or customer flows.
+5. Remove or disable legacy analytics integration only if it causes runtime/provider coupling; this must not affect checkout, auth, admin, or customer flows.
 6. Do not commit any production secrets. KingHost environment variables must be configured outside Git.
 
 ## Environment configuration
@@ -80,14 +80,14 @@ Secrets must never be copied into repository files, chat-visible documentation, 
 8. Run the pending Phase 3 Task 14 account acceptance on KingHost: normal verified test customer login, account pages, own order detail, second-account isolation and deliberate safe guest-order claim.
 9. Review KingHost/application error logs after the acceptance checks.
 10. Only after owner acceptance, treat KingHost as the replacement application runtime.
-11. Delete/remove the Vercel project only after explicit owner approval at the final cutover step.
+11. Delete/remove the previous hosting provider project only after explicit owner approval at the final cutover step.
 12. Resume Phase 3 Task 15/completion gate from the preserved checkpoint; do not restart Phase 3 from scratch.
 
 ## Rollback
 
-Until final owner acceptance, Vercel remains available as the fallback runtime. If the KingHost deployment has a blocking defect, stop the cutover and fix KingHost/runtime compatibility without changing the already-validated Supabase Phase 3 data model.
+Until final owner acceptance, previous hosting provider remains available as the fallback runtime. If the KingHost deployment has a blocking defect, stop the cutover and fix KingHost/runtime compatibility without changing the already-validated Supabase Phase 3 data model.
 
-Do not delete the Vercel project, feature branch, Supabase project, production data, or provider credentials as part of rollback.
+Do not delete the previous hosting provider project, feature branch, Supabase project, production data, or provider credentials as part of rollback.
 
 ## Acceptance criteria
 
@@ -103,7 +103,7 @@ The migration is accepted only when:
 - admin auth/session behavior remains intact;
 - no secrets are exposed in Git/client output;
 - post-smoke runtime logs contain no migration-introduced fatal/security errors;
-- owner explicitly approves final Vercel removal.
+- owner explicitly approves final previous hosting provider removal.
 
 ## Non-goals
 

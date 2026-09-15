@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the proven KingHost deployment workaround into a clean, tested deployment interface and retire active Vercel runtime configuration.
+**Goal:** Turn the proven KingHost deployment workaround into a clean, tested deployment interface and retire active previous hosting provider runtime configuration.
 
 **Architecture:** Keep the Next.js application untouched. Move KingHost packaging into `scripts/kinghost/`, add one asset publisher that copies browser assets into the KingHost webroot without deleting unrelated files, keep `build:kinghost` CI-safe, and expose `deploy:kinghost` only for the hosting server.
 
@@ -127,19 +127,19 @@ Expected: all PASS and `.next/standalone/server.js`, `.next/standalone/public/`,
 
 ---
 
-### Task 3: Retire active Vercel runtime configuration
+### Task 3: Retire active previous hosting provider runtime configuration
 
 **Files:**
 - Modify: `tests/security-headers.test.ts`
 - Modify: `next.config.mjs`
-- Delete: `vercel.json`
+- Delete: `legacy hosting configuration`
 
 **Interfaces:**
 - Production deployment detection becomes `process.env.NODE_ENV === "production"`.
 
 - [ ] **Step 1: Change the HSTS contract to RED**
 
-Change the HSTS source contract so it requires `NODE_ENV`, requires `production`, and rejects `VERCEL_ENV`.
+Change the HSTS source contract so it requires `NODE_ENV`, requires `production`, and rejects `HOSTING_ENV`.
 
 - [ ] **Step 2: Run tests and verify RED**
 
@@ -149,9 +149,9 @@ Run:
 pnpm test
 ```
 
-Expected: only the updated HSTS contract fails because `next.config.mjs` still references `VERCEL_ENV`.
+Expected: only the updated HSTS contract fails because `next.config.mjs` still references `HOSTING_ENV`.
 
-- [ ] **Step 3: Remove Vercel-specific production detection**
+- [ ] **Step 3: Remove provider-specific production detection**
 
 Replace the provider branch with:
 
@@ -159,7 +159,7 @@ Replace the provider branch with:
 const isProductionDeployment = process.env.NODE_ENV === "production"
 ```
 
-Delete `vercel.json`.
+Delete `legacy hosting configuration`.
 
 - [ ] **Step 4: Run tests and verify GREEN**
 
@@ -216,7 +216,7 @@ Record:
 - KingHost Node.js 22.1.0;
 - public root routing proven healthy;
 - KingHost webroot asset behavior proven and fixed;
-- Vercel is no longer the runtime/fallback target by owner decision;
+- previous hosting provider is no longer the runtime/fallback target by owner decision;
 - Phase 3 remains at Task 14 and database work must not be repeated;
 - next action is deploy the cleaned candidate, smoke it, then continue Task 14 owner-auth acceptance.
 
