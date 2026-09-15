@@ -17,7 +17,7 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada está em `d
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 - Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 - Phase 8 — Dashboard Metrics + Attention Center: **IMPLEMENTATION COMPLETE / HOSTED VALIDATED / CANDIDATE DEPLOYED**; smoke autenticado `/admin` ainda **PENDING OWNER SMOKE**, portanto não registrar como Production accepted.
-- Phase 9 — Hardening + Final Rollout: **IN PROGRESS / REPOSITORY HARDENING + HOSTED SUPABASE VALIDATED**; final candidate rollout e smoke manual ainda pendentes.
+- Phase 9 — Hardening + Final Rollout: **IMPLEMENTATION/AUTOMATED HARDENING COMPLETE / HOSTED VALIDATED / FINAL CANDIDATE DEPLOYED**; smoke manual autenticado ainda **PENDING OWNER SMOKE**, portanto o projeto ainda não deve ser descrito como plenamente Production accepted.
 
 ## Phase 9 — checkpoint atual
 
@@ -49,7 +49,7 @@ No mesmo SHA o job `verify` passou:
 - KingHost startup adapter smoke;
 - full `pnpm test`.
 
-Commits posteriores de Phase 9 são documentação/evidência hospedada; não alteraram o runtime de aplicação após esse candidate.
+Commits posteriores de Phase 9 são documentação/evidência hospedada e não alteraram o runtime de aplicação após esse candidate. O fechamento documental posterior também passou CI completo (#1653) antes do rollout final.
 
 ### Hosted Supabase Phase 9
 
@@ -80,6 +80,20 @@ Evidência: `docs/superpowers/phase-9/HOSTED_VALIDATION.md`.
 O advisor hospedado ainda reporta **Leaked Password Protection Disabled**. A documentação atual do Supabase informa que o recurso é disponível no **Pro Plan e acima**. A integração Supabase disponível nesta sessão não expõe leitura/escrita da configuração Auth nem prova do tier atual; portanto não foi ativado às cegas e não será descrito como habilitado.
 
 Disposition: **PLATFORM_LIMITATION / OWNER DASHBOARD CHECK**.
+
+### Final KingHost rollout
+
+O owner executou o rollout final do exact runtime candidate e informou restart concluído pelo painel KingHost, sem uso de PM2 CLI.
+
+Evidência terminal fornecida pelo owner em 2026-09-15:
+
+- `git rev-parse HEAD` => `cdb3f863336237ab49f9b91cca20f0d876aa75c7`;
+- `curl -sSI https://www.proxybembem.com.br/ | head -n 10` => `HTTP/2 200`;
+- resposta pública apresentou CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e HSTS;
+- o primeiro status pós-build mostrou somente `M next-env.d.ts`, e o diff continha apenas referências de tipos geradas pelo Next.js durante build;
+- após `git restore next-env.d.ts`, `git status -sb` retornou somente `## HEAD (no branch)`, sem modificações locais.
+
+O checkout detached é intencional neste rollout para manter Production pinada no exact candidate aprovado. A evidência detalhada está em `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`.
 
 ## Phase 8 — estado real preservado
 
@@ -134,13 +148,12 @@ Migrations Phase 5 preservadas:
 - Não fazer merge/rebase/force/delete de branch sem aprovação explícita do owner.
 - Não usar PM2 CLI para reiniciar a aplicação KingHost; restart somente pelo painel.
 
-## Pendências antes de fechar Phase 9
+## Pendências antes do aceite final completo
 
-1. Reconciliar os documentos canônicos da Phase 9 e validar CI do fechamento documental.
-2. Fazer **um único rollout final** do exact runtime candidate na KingHost, mantendo `umask 022`.
-3. Reiniciar somente pelo painel KingHost.
-4. Validar public HTTP health.
-5. Executar o smoke manual final registrado em `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`, incluindo Phase 4 product-admin debt, Phase 8 authenticated `/admin`, private customer order, admin MFA/session, Store Settings, shipping safe state e notification path.
-6. Só então criar `FINAL_ACCEPTANCE.md` e marcar Phase 9 como encerrada.
+1. Executar o smoke manual Phase 4 product-admin registrado em `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`.
+2. Executar o smoke autenticado Phase 8 `/admin` que foi explicitamente diferido.
+3. Executar as linhas autenticadas/business do smoke final Phase 9: private customer order, admin MFA/session, Store Settings, shipping safe state e notification path.
+4. Quando possível, verificar no dashboard Supabase se Leaked Password Protection pode ser habilitado no tier atual; se suportado, habilitar e revalidar o advisor.
+5. Só depois dessas evidências criar `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md` e declarar o projeto plenamente Production accepted.
 
 A branch **não está integrada em `main`** e nenhuma integração deve ocorrer sem aprovação explícita do proprietário.
