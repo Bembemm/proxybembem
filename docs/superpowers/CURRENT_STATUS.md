@@ -12,14 +12,16 @@ Este arquivo é o checkpoint operacional curto. A visão consolidada está em `d
 - Phase 1 — Data + Audit Foundation: **COMPLETE / APPLIED**.
 - Phase 2 — Admin Orders + Fulfillment: **COMPLETE / ACCEPTED**.
 - Phase 3 — Customer Account + Private Orders: **COMPLETE / PRODUCTION ACCEPTED**.
-- Phase 4 — Catalog + Products Admin + Navigation: **IMPLEMENTATION COMPLETE / AUTOMATED GREEN**; o browser smoke amplo histórico continua pendente.
+- Phase 4 — Catalog + Products Admin + Navigation: **COMPLETE / OWNER ACCEPTED**; o smoke browser histórico foi concluído em 2026-09-15.
 - Phase 5 — Melhor Envio + Labels + Tracking: **COMPLETE / OWNER ACCEPTED**.
 - Phase 6 — Transactional Notifications: **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
 - Phase 7 — Store Settings: **COMPLETE / HOSTED SUPABASE VALIDATED / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN**.
-- Phase 8 — Dashboard Metrics + Attention Center: **IMPLEMENTATION COMPLETE / HOSTED VALIDATED / CANDIDATE DEPLOYED**; smoke autenticado `/admin` ainda **PENDING OWNER SMOKE**, portanto não registrar como Production accepted.
-- Phase 9 — Hardening + Final Rollout: **IMPLEMENTATION/AUTOMATED HARDENING COMPLETE / HOSTED VALIDATED / FINAL CANDIDATE DEPLOYED**; smoke manual autenticado ainda **PENDING OWNER SMOKE**, portanto o projeto ainda não deve ser descrito como plenamente Production accepted.
+- Phase 8 — Dashboard Metrics + Attention Center: **COMPLETE / HOSTED VALIDATED / PRODUCTION ACCEPTED**.
+- Phase 9 — Hardening + Final Rollout: **COMPLETE / HOSTED VALIDATED / FINAL CANDIDATE DEPLOYED / PRODUCTION ACCEPTED**.
 
-## Phase 9 — checkpoint atual
+O projeto está **tecnicamente e manualmente aceito em Production** no escopo das Phases 0–9. A branch final ainda **não está integrada em `main`**; isso continua dependendo de aprovação explícita do proprietário.
+
+## Phase 9 — fechamento
 
 Branch ativa: `feat/phase-9-hardening-final-rollout`.
 
@@ -30,9 +32,9 @@ Branch ativa: `feat/phase-9-hardening-final-rollout`.
 - matriz consolidada de concorrência/idempotência para pagamento, checkout lease, fulfillment, produtos, Store Settings, shipments, notificações, recovery grants, attention flags e dashboard;
 - revisão de `SECURITY DEFINER`, fixed `search_path`, execute grants e exposição de browser roles;
 - seis índices `unused` analisados individualmente; nenhum removido sem prova de redundância segura;
-- checklist final manual criado preservando explicitamente a dívida de smoke Phase 4 e Phase 8.
+- Phase 4 browser debt, Phase 8 dashboard smoke e Phase 9 final authenticated/business smoke concluídos e aceitos pelo owner em 2026-09-15.
 
-### Final automated application candidate
+### Final application runtime candidate
 
 `cdb3f863336237ab49f9b91cca20f0d876aa75c7` — `test: preserve Phase 9 manual acceptance gates`.
 
@@ -49,13 +51,13 @@ No mesmo SHA o job `verify` passou:
 - KingHost startup adapter smoke;
 - full `pnpm test`.
 
-Commits posteriores de Phase 9 são documentação/evidência hospedada e não alteraram o runtime de aplicação após esse candidate. O fechamento documental posterior também passou CI completo (#1653) antes do rollout final.
+Commits posteriores ao runtime candidate são aceitação/testes/documentação e não exigem novo deploy de runtime enquanto não alterarem código de aplicação.
 
 ### Hosted Supabase Phase 9
 
 Antes da escrita, a migration history hospedada terminava em `20260915092352 dashboard_metrics_attention_center` para a Phase 8.
 
-Foi aplicada **uma única vez e somente** a migration:
+Foi aplicada uma única vez e somente a migration:
 
 - repo: `supabase/migrations/202609150002_phase9_customer_profiles_rls_performance.sql`;
 - hosted version: `20260915145834`;
@@ -77,9 +79,9 @@ Evidência: `docs/superpowers/phase-9/HOSTED_VALIDATION.md`.
 
 ### Leaked-password protection
 
-O advisor hospedado ainda reporta **Leaked Password Protection Disabled**. A documentação atual do Supabase informa que o recurso é disponível no **Pro Plan e acima**. A integração Supabase disponível nesta sessão não expõe leitura/escrita da configuração Auth nem prova do tier atual; portanto não foi ativado às cegas e não será descrito como habilitado.
+O advisor hospedado continua reportando **Leaked Password Protection Disabled**. O tooling conectado não expôs leitura/escrita da configuração Auth nem prova do tier do projeto; portanto o recurso não foi ativado às cegas.
 
-Disposition: **PLATFORM_LIMITATION / OWNER DASHBOARD CHECK**.
+Disposition final: **PLATFORM_LIMITATION / OWNER DASHBOARD CHECK**. É uma pendência de plataforma/configuração documentada, não uma finding crítica/alta desconhecida da aplicação.
 
 ### Final KingHost rollout
 
@@ -93,20 +95,39 @@ Evidência terminal fornecida pelo owner em 2026-09-15:
 - o primeiro status pós-build mostrou somente `M next-env.d.ts`, e o diff continha apenas referências de tipos geradas pelo Next.js durante build;
 - após `git restore next-env.d.ts`, `git status -sb` retornou somente `## HEAD (no branch)`, sem modificações locais.
 
-O checkout detached é intencional neste rollout para manter Production pinada no exact candidate aprovado. A evidência detalhada está em `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`.
+O checkout detached é intencional neste rollout para manter Production pinada no exact candidate aprovado.
 
-## Phase 8 — estado real preservado
+### Final owner smoke
 
-A Phase 8 possui implementação, hosted migration e reconciliação validadas.
+Em 2026-09-15 o owner recebeu o checklist completo restante e reportou **“tudo ok”** após executá-lo. O registro detalhado está em `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`.
+
+Isso fecha:
+
+- dívida histórica Phase 4 product-admin;
+- authenticated `/admin` smoke da Phase 8;
+- customer/private-order isolation;
+- authenticated checkout initiation;
+- admin MFA/session;
+- Store Settings e conflito otimista;
+- shipping safe non-spending state;
+- notification admin/worker reachability;
+- ausência observada de exposição de secrets/provider payloads;
+- public health final.
+
+Aceite formal: `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`.
+
+## Phase 8 — estado final
+
+A Phase 8 possui implementação, hosted migration, reconciliação e owner smoke validados.
 
 - hosted migration: `20260915092352 dashboard_metrics_attention_center`;
 - rollout candidate: `773504f0e68220c1bda0ec706c4e62f8d542e433`;
 - CI #1631 / run `34960866441`: **PASS**;
-- candidate KingHost foi deployado;
 - dashboard permanece read-only e server-side;
-- snapshot financeiro/operacional foi reconciliado contra dados hospedados reais.
+- snapshot financeiro/operacional foi reconciliado contra dados hospedados reais;
+- authenticated `/admin` smoke: **PASS / OWNER-REPORTED 2026-09-15**.
 
-O que **não** deve ser inventado: o owner não concluiu o smoke autenticado de `/admin`. Portanto Phase 8 não deve ser marcada como Production accepted até esse smoke ser realmente observado.
+Status: **PRODUCTION ACCEPTED**.
 
 ## Phase 5 — evidência histórica preservada
 
@@ -118,15 +139,6 @@ Phase 5 permanece **complete / owner accepted**.
 - Task 18 **owner accepted / owner-reported** em 2026-09-11;
 - Task 19 **complete / concluída**;
 - Task 20 **owner accepted / owner-reported** em 2026-09-11.
-
-Migrations Phase 5 preservadas:
-
-- `202609080002_melhor_envio_oauth_scope_grants.sql`
-- `202609080003_shipments_foundation.sql`
-- `202609080004_shipment_operations.sql`
-- `202609080005_shipment_cancel_reconciliation.sql`
-- `202609080006_customer_shipment_projection.sql`
-- `20260909194848_shipments_sender_profile_fk_index.sql`
 
 ## Baseline / invariantes ainda válidos
 
@@ -148,12 +160,12 @@ Migrations Phase 5 preservadas:
 - Não fazer merge/rebase/force/delete de branch sem aprovação explícita do owner.
 - Não usar PM2 CLI para reiniciar a aplicação KingHost; restart somente pelo painel.
 
-## Pendências antes do aceite final completo
+## Próxima ação
 
-1. Executar o smoke manual Phase 4 product-admin registrado em `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`.
-2. Executar o smoke autenticado Phase 8 `/admin` que foi explicitamente diferido.
-3. Executar as linhas autenticadas/business do smoke final Phase 9: private customer order, admin MFA/session, Store Settings, shipping safe state e notification path.
-4. Quando possível, verificar no dashboard Supabase se Leaked Password Protection pode ser habilitado no tier atual; se suportado, habilitar e revalidar o advisor.
-5. Só depois dessas evidências criar `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md` e declarar o projeto plenamente Production accepted.
+O desenvolvimento planejado Phases 0–9 está encerrado e aceito. Resta apenas a decisão de integração Git:
 
-A branch **não está integrada em `main`** e nenhuma integração deve ocorrer sem aprovação explícita do proprietário.
+1. manter Production pinada no runtime SHA atual até decisão do owner;
+2. integrar `feat/phase-9-hardening-final-rollout` em `main` somente após autorização explícita;
+3. não apagar branches nem reescrever histórico sem autorização separada quando aplicável.
+
+A branch **não está integrada em `main`** neste registro.
