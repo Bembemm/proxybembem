@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X } from "lucide-react"
+import { Menu, ShoppingCart, UserRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useCart } from "@/contexts/cart-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const navItems = [
-  { label: "Início", href: "/", freshDocument: true },
   { label: "Produtos", href: "/produtos", freshDocument: true },
   { label: "Contato", href: "/contato", freshDocument: false },
 ] as const
@@ -19,6 +19,7 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [accountState, setAccountState] = useState<AccountState>("loading")
   const pathname = usePathname()
+  const { totalItems, setIsCartOpen } = useCart()
 
   useEffect(() => {
     let cancelled = false
@@ -46,41 +47,44 @@ export function Navbar() {
         ? { label: "Meu perfil", href: "/minha-conta/perfil" }
         : { label: "Entrar", href: "/entrar" }
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+
+  const cartButton = (
+    <button
+      type="button"
+      onClick={() => setIsCartOpen(true)}
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 hover:text-[#8B5CF6]"
+      aria-label="Abrir carrinho"
+    >
+      <ShoppingCart className="h-5 w-5" />
+      {totalItems > 0 ? (
+        <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#8B5CF6] px-1 text-[11px] font-bold leading-none text-white">
+          {totalItems > 99 ? "99+" : totalItems}
+        </span>
+      ) : null}
+    </button>
+  )
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 shadow-sm">
-      <nav className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between" aria-label="Navegação principal">
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-slate-200/70 bg-white/90 shadow-sm backdrop-blur-xl">
+      <nav className="container mx-auto flex h-14 items-center justify-between px-3 sm:h-16 sm:px-4" aria-label="Navegação principal">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsOpen(false)}>
-          <img src="/brand/pb" alt="" aria-hidden="true" className="h-10 sm:h-12 w-auto object-contain" />
-          <span className="text-xl sm:text-2xl font-[family-name:var(--font-display)] text-black tracking-wide">
+          <img src="/brand/pb" alt="" aria-hidden="true" className="h-10 w-auto object-contain sm:h-12" />
+          <span className="hidden text-xl tracking-wide text-black sm:inline sm:text-2xl font-[family-name:var(--font-display)]">
             ProxyBembem
           </span>
         </Link>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsOpen((current) => !current)}
-          className="md:hidden text-slate-700 h-9 w-9"
-          aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
-          aria-expanded={isOpen}
-          aria-controls="mobile-navigation"
-        >
-          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </Button>
-
-        <div className="hidden md:flex items-center gap-6 lg:gap-8">
+        <div className="hidden items-center gap-6 md:flex lg:gap-8">
           {navItems.map((item) =>
             item.freshDocument ? (
               <a
                 key={item.href}
                 href={item.href}
                 aria-current={isActive(item.href) ? "page" : undefined}
-                className={`text-base tracking-wide uppercase transition-colors ${
+                className={`text-base uppercase tracking-wide transition-colors ${
                   isActive(item.href)
-                    ? "text-[#8B5CF6] font-semibold"
+                    ? "font-semibold text-[#8B5CF6]"
                     : "text-slate-600 hover:text-[#8B5CF6]"
                 }`}
               >
@@ -91,9 +95,9 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 aria-current={isActive(item.href) ? "page" : undefined}
-                className={`text-base tracking-wide uppercase transition-colors ${
+                className={`text-base uppercase tracking-wide transition-colors ${
                   isActive(item.href)
-                    ? "text-[#8B5CF6] font-semibold"
+                    ? "font-semibold text-[#8B5CF6]"
                     : "text-slate-600 hover:text-[#8B5CF6]"
                 }`}
               >
@@ -101,28 +105,61 @@ export function Navbar() {
               </Link>
             ),
           )}
+
+          <div className="ml-1 flex items-center gap-1 border-l border-slate-200 pl-4">
+            {accountItem ? (
+              <Link
+                href={accountItem.href}
+                aria-current={isActive(accountItem.href) ? "page" : undefined}
+                aria-label={accountItem.label}
+                title={accountItem.label}
+                className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+                  isActive(accountItem.href)
+                    ? "bg-[#8B5CF6]/10 text-[#8B5CF6]"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-[#8B5CF6]"
+                }`}
+              >
+                <UserRound className="h-5 w-5" />
+              </Link>
+            ) : (
+              <span className="h-10 w-10" aria-hidden="true" />
+            )}
+            {cartButton}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 md:hidden">
           {accountItem ? (
             <Link
               href={accountItem.href}
-              aria-current={isActive(accountItem.href) ? "page" : undefined}
-              className={`text-base tracking-wide uppercase transition-colors ${
-                isActive(accountItem.href)
-                  ? "text-[#8B5CF6] font-semibold"
-                  : "text-slate-600 hover:text-[#8B5CF6]"
-              }`}
+              onClick={() => setIsOpen(false)}
+              aria-label={accountItem.label}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"
             >
-              {accountItem.label}
+              <UserRound className="h-5 w-5" />
             </Link>
           ) : null}
+          {cartButton}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsOpen((current) => !current)}
+            className="h-9 w-9 text-slate-700"
+            aria-label={isOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={isOpen}
+            aria-controls="mobile-navigation"
+          >
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
         </div>
       </nav>
 
-      {isOpen && (
+      {isOpen ? (
         <div
           id="mobile-navigation"
-          className="md:hidden bg-white/95 backdrop-blur-xl border-b border-slate-200/50 animate-in slide-in-from-top-2"
+          className="border-b border-slate-200/50 bg-white/95 backdrop-blur-xl md:hidden animate-in slide-in-from-top-2"
         >
-          <div className="container mx-auto px-3 sm:px-4 py-3 flex flex-col gap-1">
+          <div className="container mx-auto flex flex-col gap-1 px-3 py-3 sm:px-4">
             {navItems.map((item) =>
               item.freshDocument ? (
                 <a
@@ -130,10 +167,10 @@ export function Navbar() {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   aria-current={isActive(item.href) ? "page" : undefined}
-                  className={`py-3 px-2 text-base tracking-wide uppercase text-left transition-colors rounded-lg ${
+                  className={`rounded-lg px-2 py-3 text-left text-base uppercase tracking-wide transition-colors ${
                     isActive(item.href)
-                      ? "text-[#8B5CF6] font-semibold bg-[#8B5CF6]/10"
-                      : "text-slate-600 hover:text-[#8B5CF6] hover:bg-slate-100"
+                      ? "bg-[#8B5CF6]/10 font-semibold text-[#8B5CF6]"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-[#8B5CF6]"
                   }`}
                 >
                   {item.label}
@@ -144,33 +181,19 @@ export function Navbar() {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   aria-current={isActive(item.href) ? "page" : undefined}
-                  className={`py-3 px-2 text-base tracking-wide uppercase text-left transition-colors rounded-lg ${
+                  className={`rounded-lg px-2 py-3 text-left text-base uppercase tracking-wide transition-colors ${
                     isActive(item.href)
-                      ? "text-[#8B5CF6] font-semibold bg-[#8B5CF6]/10"
-                      : "text-slate-600 hover:text-[#8B5CF6] hover:bg-slate-100"
+                      ? "bg-[#8B5CF6]/10 font-semibold text-[#8B5CF6]"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-[#8B5CF6]"
                   }`}
                 >
                   {item.label}
                 </Link>
               ),
             )}
-            {accountItem ? (
-              <Link
-                href={accountItem.href}
-                onClick={() => setIsOpen(false)}
-                aria-current={isActive(accountItem.href) ? "page" : undefined}
-                className={`py-3 px-2 text-base tracking-wide uppercase text-left transition-colors rounded-lg ${
-                  isActive(accountItem.href)
-                    ? "text-[#8B5CF6] font-semibold bg-[#8B5CF6]/10"
-                    : "text-slate-600 hover:text-[#8B5CF6] hover:bg-slate-100"
-                }`}
-              >
-                {accountItem.label}
-              </Link>
-            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
     </header>
   )
 }
