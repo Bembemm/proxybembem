@@ -1,7 +1,7 @@
 # ProxyBembem — Visão Geral Mestre do Projeto
 
 **Atualizado em:** 2026-09-15  
-**Estado consolidado:** Phases 0–7 concluídas; Phases 6 e 7 integradas na `main`; Phase 7 aceita em Production no runtime `3fd88688a6cfae343fea3b346a3d1cad1035eb86`; Phases 8–9 não iniciadas.
+**Estado consolidado:** Phases 0–7 concluídas; Phases 6 e 7 integradas na `main`; Phase 8 implementation complete/automated green na branch `feat/phase-8-dashboard-metrics-attention`, ainda sem hosted migration/Production acceptance; Phase 9 não iniciada.
 
 Este documento é o ponto de entrada canônico para entender o projeto. A realidade hospedada e a implementação atual prevalecem sobre anotações históricas antigas. Planos/specs em `docs/superpowers/plans/` e `docs/superpowers/specs/` preservam o processo histórico de design/TDD e não devem ser lidos como pendências atuais apenas porque contêm passos RED/GREEN antigos.
 
@@ -11,12 +11,15 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 
 ### Git / CI
 
-- Branch canônica e ativa: `main`.
+- Branch canônica de integração: `main`.
+- Branch ativa de implementação Phase 8: `feat/phase-8-dashboard-metrics-attention`.
 - Phase 6 está integrada na `main` via merge `95ac936ca11dfd695734138e579eb97085714980`.
 - Phase 7 foi integrada na `main` por fast-forward para `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
-- Branch histórica da Phase 7: `feat/phase-7-store-settings`.
+- Docs closure da Phase 7 em `main`: `75c78437883627e241a9708c8d07a0988dc8c8b5`.
 - Runtime Phase 7 aceito em Production: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
-- CI desse runtime: GitHub Actions #1613 / run `34923612641` — **PASS** no próprio `main`.
+- CI Phase 7 runtime: GitHub Actions #1613 / run `34923612641` — **PASS**.
+- Phase 8 implementation candidate antes do checkpoint documental: `2023595cc845aca3fc482db484cea18332c36b5f`.
+- CI Phase 8 desse candidate: GitHub Actions #1626 / run `34951178021` — **PASS**.
 
 ### Production
 
@@ -25,12 +28,11 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 - pnpm operacional: major **10**.
 - Backend/Auth/banco: Supabase hospedado separadamente.
 - Projeto Supabase: `ProxyBembem`.
-- Runtime de aplicação comprovado em Production para a Phase 7: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
+- Runtime de aplicação atualmente comprovado em Production: Phase 7 `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
 - Checkout Git da KingHost normalizado para branch local `main` rastreando `origin/main`.
-- Homepage comprovada com **HTTP/2 200** após o deploy/restart.
+- Homepage comprovada com **HTTP/2 200** após o último deploy/restart aceito.
 - Phase 7 hosted migration: `20260915002740 store_settings`.
-- O aviso público temporário usado no smoke foi desligado ao final da primeira aceitação.
-- Smoke funcional final confirmou que Store Settings públicos propagam para os consumidores globais auditados.
+- Phase 8 hosted migration ainda **não aplicada** neste checkpoint.
 
 ### Provedores externos
 
@@ -44,13 +46,13 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 
 ## 2. Arquitetura atual
 
-ProxyBembem é um **monólito modular em Next.js + TypeScript**, com fronteiras server-side para checkout, autenticação, administração, pagamentos, frete, notificações e Store Settings.
+ProxyBembem é um **monólito modular em Next.js + TypeScript**, com fronteiras server-side para checkout, autenticação, administração, pagamentos, frete, notificações, Store Settings e agora agregação read-only do dashboard administrativo.
 
 A aplicação é dividida operacionalmente entre:
 
 - **browser/UI:** catálogo, carrinho, formulários, conta do cliente e telas administrativas;
-- **Next.js server:** validação, autorização, checkout, integrações, projeções sanitizadas e cache público de settings;
-- **Supabase:** persistência, Auth, Storage, RLS, RPCs, eventos, auditoria e Store Settings;
+- **Next.js server:** validação, autorização, checkout, integrações, projeções sanitizadas, dashboard protegido e cache público de settings;
+- **Supabase:** persistência, Auth, Storage, RLS, RPCs, eventos, auditoria, attention flags e Store Settings;
 - **Mercado Pago:** verdade financeira;
 - **Melhor Envio:** verdade operacional de remessa/rastreamento;
 - **Resend:** transporte/callbacks de e-mail;
@@ -83,6 +85,9 @@ Não existe uma segunda implementação de backend que deva ser ressuscitada de 
 19. Store Settings é allowlisted e não contém credenciais/provider secrets.
 20. Falha de leitura pública de settings usa fallback seguro server-side; mutação administrativa continua fail-closed.
 21. Informações públicas representadas por Store Settings usam esses settings como fonte global; buyer data, provider identity e delivery transit time permanecem domínios separados.
+22. Phase 8 é read-only: dashboard e Attention Center não resolvem flags nem executam provider/payment/order mutations.
+23. Métricas financeiras da Phase 8 usam eventos confiáveis do Mercado Pago; `orders.created_at` não substitui horário de aprovação/reversão.
+24. Falha do snapshot administrativo aparece explicitamente; nunca é convertida em zeros sintéticos.
 
 ---
 
@@ -128,6 +133,8 @@ Principais superfícies:
 - `/admin/configuracoes`
 
 Autorização depende de owner UUID, senha, TOTP/AAL2 e sessão administrativa ativa.
+
+Na Phase 8, `/admin` passa a consumir um snapshot read-only server-side contendo métricas de período, filas operacionais, risco financeiro atual, Attention Center e ranking mensal de produtos. O browser não calcula nem busca essas métricas diretamente.
 
 ### 4.5 Melhor Envio
 
@@ -178,6 +185,23 @@ Browser público recebe somente projeção sanitizada. FAQ, footer, `/contato`, 
 
 Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 
+### 4.8 Dashboard Metrics + Attention Center
+
+Contrato implementado na branch Phase 8:
+
+- `public.admin_get_dashboard_snapshot()` captura um único `as_of`;
+- Today/Week/Month usam `America/Sao_Paulo`, semana iniciando segunda-feira;
+- pedidos criados usam `orders.created_at` apenas para a métrica de criação;
+- aprovado bruto usa primeiro `payment_status_changed=approved` confiável de `order_events`/Mercado Pago por pedido;
+- reversões usam primeiro `refunded`/`charged_back` confiável por pedido e ficam separadas do aprovado bruto;
+- operações são contagens atuais de fulfillment;
+- risco financeiro é contagem atual de `manual_review`, `refunded`, `charged_back`;
+- Attention Center agrupa flags não resolvidas por pedido, usa maior severidade e top 5 read-only;
+- ranking mensal soma `quantity` dos snapshots imutáveis `orders.items` dos pedidos aprovados no mês, top 10;
+- erro de backend produz estado visível de indisponibilidade, sem zeros falsos.
+
+Spec: `docs/superpowers/specs/2026-09-15-dashboard-metrics-attention-center-design.md`.
+
 ---
 
 ## 5. Roadmap consolidado
@@ -192,7 +216,7 @@ Detalhes da aceitação: `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md`.
 | 5 — Melhor Envio + Labels + Tracking | **COMPLETE / OWNER ACCEPTED** | OAuth, remessas, compra explícita, geração, DACE, postagem e tracking. |
 | 6 — Transactional Notifications | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Outbox, worker, Resend, webhook, admin history e resend auditável. |
 | 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Settings allowlisted, admin protegido, projeção pública global, hosted DB, CI e smoke final aceitos. |
-| 8 — Dashboard Metrics + Attention Center | **NOT STARTED** | Métricas/filas operacionais confiáveis. |
+| 8 — Dashboard Metrics + Attention Center | **IMPLEMENTATION COMPLETE / AUTOMATED GREEN** | Snapshot DB-derived, métricas/filas, Attention Center read-only e ranking mensal; hosted/Production pendentes. |
 | 9 — Hardening + Final Rollout | **NOT STARTED** | Revisão final de auth, isolation, origins, rate limit, secrets, concorrência e smoke. |
 
 ---
@@ -227,6 +251,13 @@ Migrations Phase 6 incluem foundation, triggers, advisory indexes, webhook recon
 - hosted: `20260915002740 store_settings`.
 
 Essa migration já foi aplicada/validada e não deve ser reaplicada.
+
+### Dashboard Metrics + Attention Center
+
+- repo candidate: `supabase/migrations/202609150001_dashboard_metrics_attention_center.sql`;
+- hosted: **ainda não aplicada neste checkpoint**.
+
+A migration cria somente uma RPC de agregação read-only service-role-only; não altera dados de pedidos nem adiciona mutation administrativa.
 
 ---
 
@@ -263,9 +294,11 @@ Em 2026-09-14 um shell com `umask 077` fez assets nascerem `600`, causando 403 d
 
 CI valida runtime exato Node 22.1.0, install com lockfile congelado, typecheck, KingHost build, private-order contract, startup adapter/smoke e suíte automatizada.
 
-Para a Phase 7, o runtime final aceito `3fd88688...` passou GitHub Actions #1613 / run `34923612641` no próprio `main`.
+Phase 7 runtime final aceito `3fd88688...`: GitHub Actions #1613 / run `34923612641` — **PASS**.
 
-As regressões cobrem banner abaixo da navbar, optimistic concurrency e consumidores globais de Store Settings.
+Phase 8 implementation candidate `2023595...`: GitHub Actions #1626 / run `34951178021` — **PASS**.
+
+As regressões Phase 8 cobrem contrato SQL, timezone/períodos, dedupe de eventos financeiros, snapshot parser, failure behavior, Attention Center read-only e composição protegida do `/admin`.
 
 ---
 
@@ -299,6 +332,17 @@ Resend Production, webhook assinado, cron KingHost, entrega real de fixture e re
 - homepage respondeu HTTP/2 200 após deploy/restart;
 - smoke funcional do proprietário confirmou atualização global de contato/prazo nas superfícies testadas.
 
+### Phase 8
+
+Até este checkpoint existe apenas evidência de implementação/automação:
+
+- spec + plano aprovados e versionados;
+- RPC/repository/UI implementados;
+- semântica financeira/tempo/attention endurecida por regressão;
+- CI #1626 passou no candidate `2023595...`.
+
+Ainda **não** registrar Phase 8 como hosted/deployed/Production accepted até a migration real, reconciliação e smoke autenticado acontecerem.
+
 ---
 
 ## 10. Pendências e riscos conhecidos
@@ -313,14 +357,17 @@ Estes itens são backlog/hardening e não reabrem automaticamente as fases aceit
 6. RLS sem policy em tabelas backend-only é intencional quando browser CRUD está revogado.
 7. Não repetir deploy/build com `umask 077` ativo.
 8. Branches históricas não devem ser usadas como base de trabalho novo quando a `main` já as superou.
+9. Phase 8 ainda depende de hosted migration/reconciliation/Production acceptance; não inferir isso do CI.
 
 ---
 
 ## 11. Próxima ação
 
-A Phase 7 está completa, integrada na `main` e aceita em Production. Não existe pendência de merge ou rollout da fase.
+Phase 8 está **implementation complete / automated green** na branch `feat/phase-8-dashboard-metrics-attention`.
 
-Phase 8 e Phase 9 permanecem **NOT STARTED**. Iniciar qualquer uma exige instrução explícita do proprietário.
+Próximo passo operacional: validar o exact-SHA do checkpoint documental, aplicar uma única vez `dashboard_metrics_attention_center` no Supabase hospedado, reconciliar o snapshot contra dados autoritativos e verificar grants/advisors. Só depois fazer rollout KingHost e aceitação autenticada.
+
+Phase 9 permanece **NOT STARTED**.
 
 ---
 
@@ -334,4 +381,6 @@ Phase 8 e Phase 9 permanecem **NOT STARTED**. Iniciar qualquer uma exige instru�
 - `docs/superpowers/ADMIN_DASHBOARD_MASTER_PLAN.md` — roadmap/decisões;
 - `docs/superpowers/phase-7/CONTINUIDADE.md` — handoff Phase 7;
 - `docs/superpowers/phase-7/FINAL_ACCEPTANCE.md` — evidência final Phase 7;
+- `docs/superpowers/specs/2026-09-15-dashboard-metrics-attention-center-design.md` — design Phase 8;
+- `docs/superpowers/plans/2026-09-15-dashboard-metrics-attention-center.md` — implementação/rollout Phase 8;
 - `docs/superpowers/plans/` e `docs/superpowers/specs/` — histórico de implementação/design.
