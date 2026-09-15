@@ -5,37 +5,45 @@
 **Design:** `docs/superpowers/specs/2026-09-15-phase-9-hardening-final-rollout-design.md`  
 **Plan:** `docs/superpowers/plans/2026-09-15-phase-9-hardening-final-rollout.md`
 
-This matrix is the operational audit ledger for Phase 9. A `PASS` means the reviewed repository boundary has current evidence. `HOSTED CHECK` means repository evidence is insufficient and hosted Supabase/Auth state must be checked. `FIX REQUIRED` is reserved for a demonstrated issue, not a speculative improvement. `OWNER SMOKE PENDING` means the remaining proof requires an authenticated/manual observation by the owner.
+This matrix is the operational audit ledger for Phase 9. `PASS` means repository/hosted evidence is sufficient for that technical boundary. `RESOLVED` means a demonstrated defect was corrected and revalidated. `KEEP_INTENTIONAL` / `KEEP_UNPROVEN` mean advisor findings were reviewed and intentionally retained. `PLATFORM_LIMITATION / OWNER DASHBOARD CHECK` means the connected tooling cannot safely complete or verify the hosted setting. `OWNER SMOKE PENDING` means the remaining proof requires an authenticated/manual observation by the owner.
 
 | Domain | Disposition | Evidence / next proof |
 | --- | --- | --- |
-| Admin auth + AAL2 + app session | PASS | `lib/server/admin-auth.ts`; `tests/admin-auth-core.test.ts`; `tests/admin-auth.test.ts`; `tests/admin-auth-ui.test.ts`. Owner UUID/AAL2 plus active app session remains the authorization boundary. |
-| Customer ownership/isolation | PASS | `lib/server/customer-auth.ts`, `lib/server/customer-profiles.ts`, private customer order/shipment repositories; `tests/customer-profile.test.ts`, `tests/private-order-only.test.ts`, account/order ownership suites. Identity comes from trusted Supabase Auth, not browser-selected customer UUID. |
-| Checkout authority | PASS | `app/api/checkout/route.ts` keeps checkout rate limiting, exact origin validation and verified authenticated customer identity before payment start; server checkout flow remains price/freight/order authority. |
-| Origin / CSRF mutation boundaries | PASS | Account mutation tests require exact same-origin; admin products, image upload and Store Settings use the shared allowed-origin boundary; shipment mutation suites cover protected admin actions. Task 3 performs the final full-route inventory and may reclassify a concrete miss. |
-| Cache / no-store | OWNER SMOKE PENDING | Automated contracts cover `no-store` on checkout/admin/private mutation/read paths and `/admin` is force-dynamic. The historical authenticated Production header observation is intentionally carried into `FINAL_MANUAL_SMOKE.md`. |
-| Rate limits / abuse resistance | PASS | `lib/server/rate-limit.ts` has separate HMAC-backed scopes for checkout, public shipping, account auth/recovery/profile, Melhor Envio OAuth and admin shipping mutations/spend; existing route suites verify wiring. Task 3 will inventory all sensitive endpoints and document signed/idempotent webhook exceptions. |
-| Secret / browser boundary | PASS | Admin/client auth tests and repository review keep Supabase service keys, provider credentials, TOTP/admin secrets and Resend/Mercado Pago/Melhor Envio credentials server-only. Phase 9 inventory adds an explicit regression guard. |
-| Guest order/payment retirement | PASS | `tests/private-order-only.test.ts` plus Phase 9 inventory require `/pedido/[token]`, guest claim and browser-authoritative ownership surfaces to remain absent. |
-| Melhor Envio explicit spending / ambiguity | PASS | `lib/server/shipment-lifecycle-service.ts` returns `purchase_disabled` before provider purchase when the spending gate is off; ambiguous purchase persistence transitions to `purchase_outcome_unknown` attention instead of blind retry. `tests/shipment-no-auto-spend.test.ts` guards webhook/ready-to-ship paths. |
-| Transactional notifications | PASS | Durable outbox/worker/provider idempotency behavior has existing Phase 6 regression coverage including `tests/notification-worker.test.ts`; e-mail outcome remains separate from payment/fulfillment/shipping truth. Task 5 re-records concurrency evidence. |
-| Store Settings authority | PASS | Protected same-origin server mutation, bounded body, optimistic `expectedUpdatedAt`, no-store responses and sanitized public projection are existing Phase 7 contracts. Task 5 re-records stale-write behavior. |
-| Phase 8 dashboard read-only contract | PASS | `app/admin/page.tsx`, server repository and `tests/admin-dashboard-ui.test.ts` preserve server-only aggregation, explicit unavailable state, no synthetic zeros and read-only attention presentation. Manual Production acceptance remains separate below. |
-| Supabase RLS / grants / privileged functions | HOSTED CHECK | Phase 8 hosted review found no new Phase 8 exposure; Phase 9 must re-audit RLS, execute grants, `SECURITY DEFINER` and fixed `search_path` after any new DDL. Repository test + hosted advisor reconciliation are Task 4/7 gates. |
-| Supabase Auth leaked-password protection | HOSTED CHECK | Existing advisor reports protection disabled. Phase 9 will inspect hosted Auth capability and enable only if supported and safe; otherwise record the platform/compatibility limitation without forcing it. |
-| `customer_profiles` RLS initplan | FIX REQUIRED | Hosted performance advisor reports three `auth_rls_initplan` findings from direct `auth.uid()` policy evaluation. Task 2 replaces only those policies through an additive migration using `(select auth.uid())` with identical ownership semantics. |
-| Unused index review | HOSTED CHECK | Six existing informational findings require DDL, FK/constraint, query-pattern and hosted usage review. No index is removed merely because the advisor calls it unused. |
-| Concurrency / idempotency | PASS | Existing payment dedupe, preference lease, optimistic product/settings versions, shipment operation claims/reconciliation, notification idempotency, recovery lease and dashboard snapshot contracts exist. Task 5 consolidates them into one matrix and can reclassify any demonstrated hole. |
-| Historical Phase 4 product-admin smoke | OWNER SMOKE PENDING | Automated product lifecycle/image/conflict coverage exists, but the historically deferred broad browser smoke is intentionally included in the final Phase 9 manual checklist. |
-| Phase 8 authenticated dashboard smoke | OWNER SMOKE PENDING | Phase 8 implementation/hosted validation and KingHost candidate deployment exist, but owner could not complete authenticated `/admin` Production smoke. It remains open and must not be rewritten as accepted. |
-| Final Phase 9 Production smoke | OWNER SMOKE PENDING | Only after one exact CI-green Phase 9 candidate is deployed. Public health can be observed independently; authenticated business/admin acceptance remains owner-performed. |
+| Admin auth + AAL2 + app session | PASS | Owner UUID/AAL2 + active app session remains the authorization boundary; admin auth core/UI suites remain green. |
+| Customer ownership/isolation | PASS | Identity comes from trusted Supabase Auth, not a browser-selected customer UUID; private-order/account ownership suites remain green. |
+| Checkout authority | PASS | Checkout keeps rate limiting, exact-origin validation and verified authenticated customer identity; server remains price/freight/order authority. |
+| Origin / CSRF mutation boundaries | PASS | Phase 9 route inventory plus focused suites cover account/admin product/image/settings/shipment mutation boundaries. |
+| Cache / no-store | OWNER SMOKE PENDING | Automated contracts cover protected no-store/force-dynamic behavior; final authenticated browser/network observation remains in `FINAL_MANUAL_SMOKE.md`. |
+| Rate limits / abuse resistance | PASS | HMAC-backed scopes remain wired for checkout, public shipping, account auth/recovery/profile, Melhor Envio OAuth and admin shipping mutations/spend; signed/idempotent webhooks remain exceptions by design. |
+| Secret / browser boundary | PASS | Service keys/provider credentials/TOTP/admin secrets remain server-only; Phase 9 inventory adds explicit regression coverage. |
+| Guest order/payment retirement | PASS | Browser guest-order/payment/claim surfaces remain absent; any legacy service-only RPC does not restore browser authority. |
+| Melhor Envio explicit spending / ambiguity | PASS | Purchase gate remains fail-closed; ambiguous provider outcomes enter attention/reconciliation instead of blind retry. |
+| Transactional notifications | PASS | Durable outbox/worker/provider idempotency remains separate from payment/fulfillment/shipping truth. |
+| Store Settings authority | PASS | Protected same-origin mutation, bounded body, optimistic `expectedUpdatedAt`, sanitized public projection and stale-write rejection remain intact. |
+| Phase 8 dashboard read-only contract | PASS | Server-only aggregation, explicit unavailable state, no synthetic zeros and read-only Attention Center remain guarded. |
+| Supabase RLS / grants / privileged functions | PASS | Post-migration hosted scan confirmed fixed search paths and expected execute grants; administrative RPCs are service-role-only and the two authenticated customer RPCs remain intentionally owner-scoped through `auth.uid()`. |
+| Supabase Auth leaked-password protection | PLATFORM_LIMITATION / OWNER DASHBOARD CHECK | Fresh advisor confirms disabled. Supabase docs state Pro+ availability; connected tooling does not expose hosted Auth config mutation or project-tier verification, so Phase 9 did not enable/claim it blindly. |
+| `customer_profiles` RLS initplan | RESOLVED | Hosted migration `20260915145834 phase9_customer_profiles_rls_performance` preserved ownership semantics using `(select auth.uid()) = id`; all three `auth_rls_initplan` warnings disappeared. |
+| Unused index review | KEEP_INTENTIONAL / KEEP_UNPROVEN | Six INFO findings reviewed against DDL, FK/constraints, query shape, overlap and hosted stats. No index met the safe-removal evidence gate; no drop migration was created. |
+| Concurrency / idempotency | PASS | Payment dedupe, preference lease, fulfillment row locks, product/settings optimistic revisions, shipment operation IDs/versioning, notification idempotency, recovery lease, attention uniqueness and dashboard single-`as_of` consistency are consolidated in `CONCURRENCY_MATRIX.md`. |
+| Historical Phase 4 product-admin smoke | OWNER SMOKE PENDING | Automated lifecycle/image/conflict coverage exists; broad browser smoke remains explicitly deferred into the final checklist. |
+| Phase 8 authenticated dashboard smoke | OWNER SMOKE PENDING | Phase 8 hosted validation and KingHost candidate deployment exist; authenticated `/admin` owner observation remains open. |
+| Final Phase 9 Production smoke | OWNER SMOKE PENDING | Run only after exact final candidate deployment/restart; authenticated business/admin acceptance remains owner-performed. |
 
-## Current demonstrated correction target
+## Phase 9 demonstrated correction
 
-The only repository/hosted issue classified `FIX REQUIRED` at Phase 9 start is the `customer_profiles` RLS initplan performance finding. The planned correction is semantic-preserving: recreate the existing select/insert/update ownership policies with `(select auth.uid()) = id`, without changing grants, browser authority, table ownership or customer identity rules.
+The only concrete hosted DB defect identified at Phase 9 start was the `customer_profiles` RLS initplan performance issue. It was corrected by the additive migration `202609150002_phase9_customer_profiles_rls_performance.sql`, hosted as `20260915145834 phase9_customer_profiles_rls_performance`.
 
-All other domains remain subject to the deeper Task 3–7 audit. A later finding may change a row from `PASS`/`HOSTED CHECK` to `FIX REQUIRED`, but only when evidence identifies a concrete defect.
+Post-migration evidence confirms the three warnings are gone, RLS remains enabled, authenticated ownership semantics are unchanged, and no browser authority was broadened.
+
+## Advisor baseline after correction
+
+- Performance: only six pre-existing `unused_index` INFO findings remain; all were retained after evidence review.
+- Security: 16 backend-private `rls_enabled_no_policy` INFO findings remain intentional; two authenticated customer `SECURITY DEFINER` WARN findings remain intentional owner-scoped RPCs; leaked-password protection remains disabled.
+- No new Phase 9-specific advisor regression was introduced.
+
+Detailed hosted evidence: `docs/superpowers/phase-9/HOSTED_VALIDATION.md`.
 
 ## Acceptance debt intentionally preserved
 
-The project must not be described as fully Production-accepted until the owner can perform the inherited Phase 4/8 checks and the final Phase 9 authenticated smoke. Automated green status, hosted advisor cleanup, and public HTTP health are necessary evidence but do not substitute for those manual gates.
+The project must not be described as fully Production-accepted until the owner performs the inherited Phase 4 product-admin smoke, the Phase 8 authenticated dashboard smoke and the final Phase 9 Production smoke. Automated green status, hosted advisor cleanup and public HTTP health are necessary evidence but do not substitute for those manual gates.
