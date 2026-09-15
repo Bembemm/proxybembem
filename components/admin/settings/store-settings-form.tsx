@@ -222,7 +222,7 @@ export function StoreSettingsForm({ settings }: { settings: StoreSettings }) {
               onChange={(event) => update("contactWhatsappE164", event.target.value)}
               aria-invalid={Boolean(fieldErrors.contactWhatsappE164)}
               className={inputClass}
-              placeholder="+5544991250332"
+              placeholder="+5511999999999"
             />
             <span className="mt-1 block text-xs text-slate-500">
               Use o formato E.164 com código do país, por exemplo +55 seguido do DDD e número.
