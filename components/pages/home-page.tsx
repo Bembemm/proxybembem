@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { Check, Eye, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProductDetailModal } from "@/components/product-detail-modal"
@@ -37,21 +36,21 @@ function AddToCartButton({ product }: { product: Product }) {
       onClick={handleClick}
       size="sm"
       type="button"
-      className={`w-full tracking-wide text-sm sm:text-base h-12 transition-all duration-300 active:scale-[0.98] ${
+      className={`h-10 w-full text-sm transition-all duration-200 active:scale-[0.98] ${
         justAdded
-          ? "bg-green-500 border-green-500 text-white hover:bg-green-600"
-          : "bg-[#8B5CF6] border border-[#8B5CF6] text-white hover:bg-[#7C3AED] hover:border-[#7C3AED]"
+          ? "border-green-500 bg-green-500 text-white hover:bg-green-600"
+          : "border border-slate-900 bg-slate-900 text-white hover:bg-[#8B5CF6] hover:border-[#8B5CF6]"
       }`}
     >
       {justAdded ? (
         <>
-          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" />
-          Adicionado!
+          <Check className="mr-1.5 h-3.5 w-3.5" />
+          Adicionado
         </>
       ) : (
         <>
-          <ShoppingCart className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" />
-          {itemInCart ? `No Carrinho (${itemInCart.quantity})` : "Adicionar ao Carrinho"}
+          <ShoppingCart className="mr-1.5 h-3.5 w-3.5" />
+          {itemInCart ? `No carrinho (${itemInCart.quantity})` : "Adicionar"}
         </>
       )}
     </Button>
@@ -82,179 +81,96 @@ export function HomePage({
 
   return (
     <>
-      <section className="relative flex items-center justify-center overflow-hidden pt-16 sm:pt-20 pb-3 sm:pb-6">
-        <div className="relative container mx-auto px-3 sm:px-4 py-5 sm:py-8 text-center z-10">
-          <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-5 sm:p-7 md:p-9 max-w-3xl mx-auto rounded-xl">
-            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-[#8B5CF6] mb-3">
-              ProxyBembem
-            </p>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-[family-name:var(--font-display)] text-slate-900 mb-4 sm:mb-6 tracking-wide text-balance">
-              Monte seu deck do seu jeito
+      <section className="min-h-[70vh] bg-white pb-10 pt-20 sm:pb-14 sm:pt-24">
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="mb-5 border-b border-slate-200 pb-3 sm:mb-7 sm:pb-4">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              Destaques
             </h1>
-
-            <div className="w-32 sm:w-48 mx-auto mb-4 sm:mb-6 h-px bg-gradient-to-r from-transparent via-slate-300 to-transparent" />
-
-            <p className="text-lg sm:text-xl md:text-2xl text-slate-700 max-w-2xl mx-auto leading-relaxed text-pretty px-2 mb-5 sm:mb-7">
-              Escolha a quantidade de cartas, envie sua lista e receba proxies de alta qualidade prontas para jogar.
-            </p>
-
-            <Button
-              asChild
-              size="lg"
-              className="h-12 sm:h-14 px-7 sm:px-9 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white text-base sm:text-lg transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0"
-            >
-              <Link href="/produtos">
-                <ShoppingCart className="w-4 h-4 mr-2" />
-                Ver produtos
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative py-5 sm:py-9">
-        <div className="container mx-auto px-3 sm:px-4 relative z-10">
-          <div className="text-center mb-6 sm:mb-9 max-w-2xl mx-auto">
-            <p className="text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-[#8B5CF6] mb-2">
-              Em destaque
-            </p>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-[family-name:var(--font-display)] text-slate-900 mb-3 tracking-wide text-balance">
-              Proxies em Destaque
-            </h2>
-            <p className="text-slate-700 text-base sm:text-lg px-2">
-              Confira nossa seleção especial e acesse a página de produtos para ver o catálogo completo.
-            </p>
           </div>
 
-          {unavailable && (
-            <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-6 sm:p-8 mb-4 sm:mb-6 text-center rounded-xl" role="status">
-              <p className="text-slate-700 text-base sm:text-lg font-medium">
-                Catálogo temporariamente indisponível.
-              </p>
-              <p className="text-slate-500 text-sm sm:text-base mt-2">
-                Tente novamente em alguns instantes.
-              </p>
+          {unavailable ? (
+            <div className="border border-slate-200 bg-slate-50 px-5 py-8 text-center" role="status">
+              <p className="text-base font-medium text-slate-700">Catálogo temporariamente indisponível.</p>
+              <p className="mt-1 text-sm text-slate-500">Tente novamente em alguns instantes.</p>
             </div>
-          )}
+          ) : null}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-5xl mx-auto">
+          {!unavailable && featuredProducts.length === 0 ? (
+            <div className="border border-slate-200 bg-slate-50 px-5 py-8 text-center">
+              <p className="text-base text-slate-600">Nenhum produto em destaque no momento.</p>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 sm:gap-x-4 lg:grid-cols-4 xl:grid-cols-6">
             {featuredProducts.map((product) => {
               const discount = discountPercent(product)
 
               return (
-                <article
-                  key={product.id}
-                  className="group relative bg-white/65 backdrop-blur-md border border-white/60 shadow-lg overflow-hidden rounded-xl hover:shadow-2xl hover:border-[#8B5CF6]/50 hover:-translate-y-1 transition-all duration-300"
-                >
+                <article key={product.id} className="group min-w-0">
                   <button
                     type="button"
-                    className="relative aspect-[16/10] w-full bg-slate-100 overflow-hidden cursor-pointer text-left"
                     onClick={() => openProductModal(product)}
+                    className="block w-full text-left"
                     aria-label={`Ver detalhes de ${product.title}`}
                   >
-                    <Image
-                      src={product.image}
-                      alt={product.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                    />
-
-                    <span className="absolute inset-0 bg-gradient-to-t from-slate-950/35 via-transparent to-transparent" />
-
-                    <span className="absolute inset-0 bg-[#8B5CF6]/0 group-hover:bg-[#8B5CF6]/15 transition-colors duration-300 flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 bg-white/95 text-[#8B5CF6] text-sm font-semibold px-4 py-2 rounded-full flex items-center gap-1.5 shadow-lg">
-                        <Eye className="w-4 h-4" />
-                        Ver detalhes
+                    <div className="relative aspect-square overflow-hidden bg-slate-100">
+                      <Image
+                        src={product.image}
+                        alt={product.title}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      />
+                      <span className="absolute inset-0 flex items-center justify-center bg-slate-950/0 transition-colors group-hover:bg-slate-950/15">
+                        <span className="flex translate-y-1 items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-800 opacity-0 shadow-sm transition-all group-hover:translate-y-0 group-hover:opacity-100">
+                          <Eye className="h-3.5 w-3.5" />
+                          Ver detalhes
+                        </span>
                       </span>
-                    </span>
+                    </div>
 
-                    <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
-                      {product.tag ? (
-                        <span className="bg-[#8B5CF6] text-white text-xs sm:text-sm font-semibold px-3 py-1.5 tracking-wider uppercase rounded-full shadow">
-                          {product.tag}
-                        </span>
-                      ) : (
-                        <span />
-                      )}
+                    <div className="pt-3">
+                      <p className="mb-1 truncate text-xs text-slate-500">{product.category}</p>
+                      <h2 className="min-h-[2.5rem] text-sm font-medium leading-5 text-slate-900 line-clamp-2 sm:text-[15px]">
+                        {product.title}
+                      </h2>
 
-                      {discount > 0 && (
-                        <span className="bg-white/95 text-[#7C3AED] text-xs sm:text-sm font-bold px-3 py-1.5 rounded-full shadow">
-                          -{discount}%
-                        </span>
-                      )}
+                      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        {product.originalPrice > product.discountPrice ? (
+                          <span className="text-xs text-slate-400 line-through">
+                            {formatPrice(product.originalPrice)}
+                          </span>
+                        ) : null}
+                        {discount > 0 ? (
+                          <span className="text-xs font-medium text-red-500">{discount}% OFF</span>
+                        ) : null}
+                      </div>
+
+                      <p className="mt-0.5 text-lg font-bold leading-tight text-slate-950">
+                        {formatPrice(product.discountPrice)}
+                      </p>
                     </div>
                   </button>
 
-                  <div className="p-4 sm:p-5">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-slate-500 mb-1">
-                          {product.category}
-                        </p>
-                        <h3 className="font-semibold text-slate-900 text-xl sm:text-2xl leading-snug">
-                          {product.title}
-                        </h3>
-                      </div>
-                    </div>
-
-                    <p className="text-sm sm:text-base text-slate-600 leading-relaxed mb-4 line-clamp-2">
-                      {product.description}
-                    </p>
-
-                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
-                      <span className="text-sm sm:text-base text-slate-500 line-through opacity-75">
-                        {formatPrice(product.originalPrice)}
-                      </span>
-                      <span className="text-2xl sm:text-3xl font-bold text-[#8B5CF6]">
-                        {formatPrice(product.discountPrice)}
-                      </span>
-                      {product.originalPrice > product.discountPrice && (
-                        <span className="text-xs sm:text-sm font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-full">
-                          Economize {formatPrice(product.originalPrice - product.discountPrice)}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
-                      <AddToCartButton product={product} />
-                      <Button
-                        onClick={() => openProductModal(product)}
-                        variant="outline"
-                        size="sm"
-                        type="button"
-                        className="h-12 px-4 border-[#8B5CF6]/30 text-[#8B5CF6] hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED] active:scale-[0.98]"
-                      >
-                        <Eye className="w-4 h-4 mr-1.5" />
-                        Detalhes
-                      </Button>
-                    </div>
+                  <div className="mt-3">
+                    <AddToCartButton product={product} />
                   </div>
                 </article>
               )
             })}
           </div>
-
-          <div className="text-center mt-6 sm:mt-8">
-            <Button
-              asChild
-              size="lg"
-              className="w-full sm:w-auto bg-transparent border border-[#8B5CF6] text-[#8B5CF6] px-6 sm:px-8 h-14 tracking-wide hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 text-base sm:text-lg active:scale-[0.98]"
-            >
-              <Link href="/produtos">Ver Todos os Produtos</Link>
-            </Button>
-          </div>
         </div>
       </section>
 
-      {selectedProduct && (
+      {selectedProduct ? (
         <ProductDetailModal
           product={selectedProduct}
           isOpen={isModalOpen}
           onClose={closeProductModal}
           productionLeadTimeBusinessDays={productionLeadTimeBusinessDays}
         />
-      )}
+      ) : null}
     </>
   )
 }
