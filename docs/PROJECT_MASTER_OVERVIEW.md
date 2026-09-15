@@ -1,7 +1,7 @@
 # ProxyBembem — Visão Geral Mestre do Projeto
 
 **Atualizado em:** 2026-09-15  
-**Estado consolidado:** Phases 0–7 concluídas; Phase 8 implementada/hosted validada/candidate deployado com smoke autenticado ainda pendente; Phase 9 em hardening final com repository + hosted Supabase validados e rollout/manual acceptance ainda pendentes.
+**Estado consolidado:** Phases 0–9 concluídas; hosted Supabase validado; final runtime candidate deployado na KingHost; Phase 4 historical browser debt, Phase 8 authenticated dashboard smoke e Phase 9 final Production smoke aceitos pelo owner.
 
 Este documento é o ponto de entrada canônico para entender o projeto. A realidade hospedada e a implementação atual prevalecem sobre anotações históricas antigas. Planos/specs em `docs/superpowers/plans/` e `docs/superpowers/specs/` preservam o processo histórico de design/TDD e não devem ser lidos como pendências atuais apenas porque contêm passos RED/GREEN antigos.
 
@@ -12,12 +12,13 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 ### Git / CI
 
 - Branch canônica de integração: `main`.
-- Branch ativa: `feat/phase-9-hardening-final-rollout`.
+- Branch final ativa: `feat/phase-9-hardening-final-rollout`.
 - Phase 6 integrada na `main` via merge `95ac936ca11dfd695734138e579eb97085714980`.
 - Phase 7 integrada na `main`; docs closure `75c78437883627e241a9708c8d07a0988dc8c8b5`.
 - Runtime Phase 7 aceito: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
 - Phase 8 rollout candidate: `773504f0e68220c1bda0ec706c4e62f8d542e433`; CI #1631 / run `34960866441` — **PASS**.
-- Phase 9 final automated application candidate: `cdb3f863336237ab49f9b91cca20f0d876aa75c7`; CI #1648 / run `34983376962` — **PASS**.
+- Phase 9 final application runtime candidate: `cdb3f863336237ab49f9b91cca20f0d876aa75c7`; CI #1648 / run `34983376962` — **PASS**.
+- A aceitação final de Production está registrada em `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`.
 - No merge/rebase/force/delete de branch sem aprovação explícita do proprietário.
 
 ### Production / hosted
@@ -30,8 +31,10 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 - Phase 7 hosted migration: `20260915002740 store_settings`.
 - Phase 8 hosted migration: `20260915092352 dashboard_metrics_attention_center`.
 - Phase 9 hosted migration: `20260915145834 phase9_customer_profiles_rls_performance`.
-- Phase 8 candidate foi deployado na KingHost; o smoke autenticado `/admin` ainda não foi concluído pelo owner.
-- Phase 9 ainda não teve o rollout final nem o smoke manual final.
+- Final runtime candidate Phase 9 foi deployado na KingHost e reiniciado pelo painel.
+- Public health pós-restart: `HTTP/2 200` com headers de segurança esperados.
+- Phase 8 authenticated `/admin` smoke: **PASS / OWNER-REPORTED 2026-09-15**.
+- Phase 9 final authenticated/business smoke: **PASS / OWNER-REPORTED 2026-09-15**.
 
 ### Provedores externos
 
@@ -191,7 +194,7 @@ Contrato Phase 8:
 - ranking mensal soma quantities de `orders.items` imutáveis de pedidos aprovados no mês;
 - erro backend produz estado de indisponibilidade, sem zeros falsos.
 
-Hosted reconciliation da Phase 8 correspondeu aos dados autoritativos reais.
+Hosted reconciliation da Phase 8 correspondeu aos dados autoritativos reais. O authenticated dashboard smoke foi concluído e aceito pelo owner em 2026-09-15.
 
 ### 4.9 Hardening Phase 9
 
@@ -202,7 +205,8 @@ A Phase 9 consolidou:
 - matriz de concorrência/idempotência para pagamento, checkout lease, fulfillment, produtos, Store Settings, shipments, notificações, recovery grants, attention flags e dashboard;
 - evidence gate para índices advisor;
 - migração performance-only de `customer_profiles` para `(select auth.uid())` sem alteração de ownership;
-- checklist manual final que mantém as dívidas Phase 4 e Phase 8 explicitamente pendentes.
+- rollout final pinado em exact SHA;
+- smoke final completo owner-reported cobrindo Phase 4 historical debt, Phase 8 dashboard e Phase 9 Production acceptance.
 
 ---
 
@@ -214,12 +218,12 @@ A Phase 9 consolidou:
 | 1 — Data + Audit Foundation | **COMPLETE / APPLIED** | Fulfillment, eventos, auditoria e attention flags. |
 | 2 — Admin Orders + Fulfillment | **COMPLETE / ACCEPTED** | Pedidos/admin/produção e transições protegidas. |
 | 3 — Customer Account + Private Orders | **COMPLETE / PRODUCTION ACCEPTED** | Conta verificada, pedidos privados e recuperação de senha. |
-| 4 — Catalog + Products Admin + Navigation | **IMPLEMENTATION COMPLETE** | Supabase catalog/admin; smoke manual amplo histórico ainda pendente. |
+| 4 — Catalog + Products Admin + Navigation | **COMPLETE / OWNER ACCEPTED** | Supabase catalog/admin; historical broad browser smoke fechado em 2026-09-15. |
 | 5 — Melhor Envio + Labels + Tracking | **COMPLETE / OWNER ACCEPTED** | OAuth, remessas, compra explícita, geração, DACE, postagem e tracking. |
 | 6 — Transactional Notifications | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Outbox, worker, Resend, webhook, admin history e resend auditável. |
 | 7 — Store Settings | **COMPLETE / PRODUCTION ACCEPTED / IN MAIN** | Settings allowlisted, admin protegido, projeção pública global e hosted DB validados. |
-| 8 — Dashboard Metrics + Attention Center | **IMPLEMENTATION COMPLETE / HOSTED VALIDATED / CANDIDATE DEPLOYED** | Authenticated `/admin` owner smoke ainda pendente. |
-| 9 — Hardening + Final Rollout | **IN PROGRESS** | Repository + hosted hardening validados; rollout final/manual acceptance pendentes. |
+| 8 — Dashboard Metrics + Attention Center | **COMPLETE / HOSTED VALIDATED / PRODUCTION ACCEPTED** | Hosted reconciliation + authenticated owner smoke concluídos. |
+| 9 — Hardening + Final Rollout | **COMPLETE / PRODUCTION ACCEPTED** | Repository + hosted hardening, rollout final e owner smoke concluídos. |
 
 ---
 
@@ -269,7 +273,7 @@ Baseline atual:
 - 2 WARN de authenticated `SECURITY DEFINER` para `customer_list_orders` e `customer_get_order`, intencionais e owner-scoped por `auth.uid()`;
 - leaked-password protection continua disabled.
 
-Supabase documenta leaked-password protection como recurso Pro+. O tooling conectado nesta sessão não expõe Auth-config read/write nem tier do projeto; portanto nenhuma ativação foi fingida/forçada. Estado: `PLATFORM_LIMITATION / OWNER DASHBOARD CHECK`.
+O tooling conectado não expôs Auth-config read/write nem prova do tier do projeto; portanto nenhuma ativação foi fingida/forçada. Estado final: `PLATFORM_LIMITATION / OWNER DASHBOARD CHECK`. Esse item permanece documentado como disposição de plataforma/configuração e não como finding crítica/alta desconhecida da aplicação.
 
 ---
 
@@ -300,17 +304,25 @@ Para rollout de branch/candidate não integrado, usar detached exact SHA deliber
 
 Em 2026-09-14 um shell com `umask 077` fez assets nascerem `600`, causando 403 do nginx em CSS/JS. Regra: build/deploy com umask normal (`022`).
 
+### Final rollout Phase 9
+
+Production foi pinada no exact runtime SHA:
+
+`cdb3f863336237ab49f9b91cca20f0d876aa75c7`
+
+O owner confirmou restart via painel, `HTTP/2 200`, headers de segurança esperados e working tree limpo após restaurar apenas a alteração gerada pelo Next.js em `next-env.d.ts`.
+
 ---
 
 ## 9. Verificação / CI
 
 CI verifica Node 22.1.0, frozen install, typecheck, `build:kinghost`, private-order contract, startup adapter smoke e full tests.
 
-Phase 9 automated candidate:
+Phase 9 runtime candidate:
 
 `cdb3f863336237ab49f9b91cca20f0d876aa75c7` — GitHub Actions CI #1648 / run `34983376962`: **PASS**.
 
-O job `verify` passou todas as etapas relevantes. Commits posteriores do branch nesta etapa são documentação/evidência hospedada e não alteraram runtime application code após esse candidate.
+O job `verify` passou todas as etapas relevantes. Commits posteriores do branch nesta etapa são aceitação/testes/documentação e não alteraram runtime application code após esse candidate.
 
 ---
 
@@ -344,7 +356,7 @@ Conta/pedidos privados: Production accepted.
 
 ### Phase 4
 
-Stage 1/2 aceitas. Stage 3 implementada/automatizada; checklist browser amplo antigo ainda não integralmente refeito.
+Catalog + Products Admin + Navigation: implementation/automated green e historical broad browser smoke **owner accepted em 2026-09-15**.
 
 ### Phase 5
 
@@ -364,32 +376,35 @@ Hosted migration + rollout + global settings propagation aceitos e integrados em
 - hosted migration aplicada/validada;
 - snapshot hospedado reconciliado;
 - exact candidate CI-green deployado;
-- **authenticated `/admin` owner smoke ainda pendente**.
+- authenticated `/admin` owner smoke **PASS / owner-reported 2026-09-15**.
 
-Não registrar Phase 8 como Production accepted sem esse último gate.
+Status: **PRODUCTION ACCEPTED**.
 
 ### Phase 9
 
 - repository hardening: validado;
 - hosted RLS performance migration: aplicada/validada;
 - advisors/grants/reconciliation: validados;
-- final automated candidate: CI-green;
-- **KingHost final rollout + final manual smoke ainda pendentes**.
+- final runtime candidate: CI-green;
+- KingHost final rollout: concluído;
+- final manual smoke: **PASS / owner-reported 2026-09-15**.
+
+Status: **PRODUCTION ACCEPTED**.
+
+Evidência formal: `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`.
 
 ---
 
 ## 12. Pendências e próxima ação
 
-Pendências antes do fechamento:
+O roadmap planejado Phases 0–9 está concluído e aceito. Não há nova etapa de implementação obrigatória neste plano.
 
-1. validar CI do head documental canônico;
-2. fazer um único rollout final do exact Phase 9 runtime candidate na KingHost;
-3. restart somente pelo painel;
-4. confirmar public HTTP health;
-5. executar `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md`;
-6. nesse smoke, fechar a dívida Phase 4 product admin e Phase 8 authenticated dashboard;
-7. criar `FINAL_ACCEPTANCE.md` apenas após evidência manual real;
-8. merge em `main` somente com aprovação explícita do owner.
+Próxima decisão:
+
+1. manter Production pinada no exact runtime SHA atual até decisão do owner;
+2. integrar `feat/phase-9-hardening-final-rollout` em `main` somente com aprovação explícita do proprietário;
+3. manter as disposições de advisor/plataforma documentadas, sem remover índices nem alterar Auth config às cegas;
+4. não apagar branches nem reescrever histórico sem autorização explícita separada quando aplicável.
 
 ---
 
@@ -406,5 +421,6 @@ Pendências antes do fechamento:
 - `docs/superpowers/phase-9/SUPABASE_AUDIT.md` — grants/index/advisor review;
 - `docs/superpowers/phase-9/CONCURRENCY_MATRIX.md` — concorrência/idempotência;
 - `docs/superpowers/phase-9/HOSTED_VALIDATION.md` — hosted Phase 9 evidence;
-- `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md` — gates manuais finais;
+- `docs/superpowers/phase-9/FINAL_MANUAL_SMOKE.md` — owner-reported final manual smoke;
+- `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md` — aceite final Phase 9/projeto;
 - `docs/superpowers/plans/` e `docs/superpowers/specs/` — histórico de design/implementação.
