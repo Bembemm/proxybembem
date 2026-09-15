@@ -140,6 +140,15 @@ Phase 5 permanece **complete / owner accepted**.
 - Task 19 **complete / concluída**;
 - Task 20 **owner accepted / owner-reported** em 2026-09-11.
 
+Migrations Phase 5 preservadas:
+
+- `202609080002_melhor_envio_oauth_scope_grants.sql`
+- `202609080003_shipments_foundation.sql`
+- `202609080004_shipment_operations.sql`
+- `202609080005_shipment_cancel_reconciliation.sql`
+- `202609080006_customer_shipment_projection.sql`
+- `20260909194848_shipments_sender_profile_fk_index.sql`
+
 ## Baseline / invariantes ainda válidos
 
 - Supabase `public.products` é a única autoridade runtime de catálogo.
