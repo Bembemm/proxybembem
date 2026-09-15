@@ -18,6 +18,7 @@ const PRODUCTS = new URL(
   "../components/admin/dashboard-product-sales.tsx",
   import.meta.url,
 )
+const ADMIN_PAGE = new URL("../app/admin/page.tsx", import.meta.url)
 
 async function source(url: URL) {
   return readFile(url, "utf8")
@@ -73,4 +74,24 @@ test("product sales component renders approved snapshot ranking without catalog 
   assert.match(text, /Nenhuma venda aprovada neste mês\./)
   assert.match(text, /product\.quantity/)
   assertServerPresentationOnly(text)
+})
+
+test("admin home loads the protected server snapshot and keeps failures visibly non-zero", async () => {
+  const page = await source(ADMIN_PAGE)
+
+  assert.match(page, /export\s+const\s+dynamic\s*=\s*["']force-dynamic["']/)
+  assert.match(page, /requireAdminPageAccess\s*\(\s*\{\s*touch:\s*true\s*\}\s*\)/)
+  assert.match(page, /getAdminDashboardSnapshot\s*\(/)
+  assert.match(page, /DashboardPeriodCard/)
+  assert.match(page, /DashboardOperations/)
+  assert.match(page, /DashboardAttentionCenter/)
+  assert.match(page, /DashboardProductSales/)
+  assert.match(page, /Não foi possível carregar os indicadores agora/)
+  assert.match(page, /Os dados não foram substituídos por zeros/)
+  assert.match(page, /\/admin\/integrations\/melhor-envio/)
+
+  assert.doesNotMatch(page, /\bfetch\s*\(/)
+  assert.doesNotMatch(page, /supabase\.co/i)
+  assert.doesNotMatch(page, /order_events/)
+  assert.doesNotMatch(page, /order_attention_flags/)
 })
