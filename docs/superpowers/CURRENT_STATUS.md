@@ -88,6 +88,25 @@ GitHub Actions CI #1613 / run `34923612641`: **PASS** no mesmo SHA. O pipeline c
 
 A Phase 7 foi integrada na `main` por fast-forward. A documentação de fechamento posterior está no commit `75c78437883627e241a9708c8d07a0988dc8c8b5`.
 
+## Phase 5 — evidência histórica preservada
+
+Phase 5 está **complete / owner accepted** e permanece fechada no nível de handoff do proprietário.
+
+- O caminho controlado Production **non-spending / sem gasto** chegou ao carrinho real do Melhor Envio com shipment local em `in_cart`; custo observado no fixture: **R$ 23,69**; sem provider purchased-order identity e sem transição falsa para `shipped`.
+- `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` continua sendo o default seguro fora de uma janela deliberada de compra.
+- Task 18 **owner accepted** em 2026-09-11 — aceitação **owner-reported** da primeira compra real, sem fabricar provider trace não observado.
+- Task 19 **complete / concluída** — documentação operacional da Phase 5 reconciliada com a arquitetura e a evidência aceita.
+- Task 20 **owner accepted** em 2026-09-11 — smoke final de Production **owner-reported** pelo proprietário.
+
+Migrations Phase 5 registradas/aplicadas:
+
+- `202609080002_melhor_envio_oauth_scope_grants.sql`
+- `202609080003_shipments_foundation.sql`
+- `202609080004_shipment_operations.sql`
+- `202609080005_shipment_cancel_reconciliation.sql`
+- `202609080006_customer_shipment_projection.sql`
+- `20260909194848_shipments_sender_profile_fk_index.sql`
+
 ## Baseline / invariantes ainda válidos
 
 - Supabase `public.products` é a única autoridade runtime de catálogo.
