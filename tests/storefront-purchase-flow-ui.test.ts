@@ -13,7 +13,7 @@ test("floating action is WhatsApp contact instead of the cart", () => {
   assert.match(floating, /WhatsAppFloatingButton/)
   assert.match(floating, /contactWhatsappE164/)
   assert.match(floating, /https:\/\/wa\.me\//)
-  assert.match(floating, /bg-green-/)
+  assert.match(floating, /bg-\[#25D366\]/)
   assert.doesNotMatch(floating, /setIsCartOpen\(true\)/)
   assert.doesNotMatch(floating, /ShoppingCart/)
   assert.match(shell, /WhatsAppFloatingButton/)
