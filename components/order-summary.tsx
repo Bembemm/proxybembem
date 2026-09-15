@@ -1,4 +1,4 @@
-import { AlertCircle, CreditCard, Loader2, Lock, MessageCircle, Truck } from "lucide-react"
+import { AlertCircle, CreditCard, Loader2, Lock, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatPrice } from "@/lib/checkout"
 import type { PublicShippingOption } from "@/lib/server/shipping-quote"
@@ -27,86 +27,71 @@ export function OrderSummary({
   const paymentDisabled = isSubmitting || isQuoting || !selectedShipping
 
   return (
-    <div className="pt-4 pb-8 space-y-4">
-      <div className="space-y-2 border-t border-b border-[#8B5CF6]/20 py-4">
+    <div className="space-y-4 pt-5">
+      <div className="space-y-2 border-y border-slate-200 py-4 text-sm">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-400 font-medium">Produtos</span>
-          <span className="font-semibold text-white">{formatPrice(totalPrice)}</span>
+          <span className="text-slate-600">Subtotal</span>
+          <span className="font-medium text-slate-950">{formatPrice(totalPrice)}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-400 font-medium">Frete</span>
-          <span className="font-semibold text-white">
+          <span className="text-slate-600">Frete</span>
+          <span className="font-medium text-slate-950">
             {selectedShipping ? formatPrice(shippingPrice) : isQuoting ? "Calculando..." : "Selecione"}
           </span>
         </div>
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-          <span className="text-lg font-semibold text-white">Total</span>
-          <span className="text-2xl font-bold text-[#8B5CF6]">{formatPrice(finalTotal)}</span>
-        </div>
-      </div>
-
-      <div className="bg-purple-900/20 border border-purple-500/30 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <Truck className="w-6 h-6 text-[#8B5CF6] shrink-0 mt-0.5" />
-          <div>
-            <p className="text-white text-lg font-semibold mb-1">Frete incluído no pagamento</p>
-            <p className="text-gray-400 text-base leading-relaxed">
-              Escolha uma opção de entrega antes de pagar. O Mercado Pago cobrará produtos e frete juntos.
-            </p>
-          </div>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+          <span className="text-base font-semibold text-slate-950">Total</span>
+          <span className="text-xl font-semibold text-slate-950">{formatPrice(finalTotal)}</span>
         </div>
       </div>
 
       <Button
         onClick={onCheckout}
         disabled={paymentDisabled}
-        className="w-full bg-[#8B5CF6] hover:bg-[#7C3AED] text-white h-14 text-lg font-semibold rounded-xl active:scale-[0.98] transition-transform disabled:opacity-60"
+        className="h-12 w-full rounded-lg bg-black text-base font-medium text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
         type="button"
       >
         {isSubmitting ? (
           <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Preparando pagamento...
           </>
         ) : isQuoting ? (
           <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
             Calculando frete...
           </>
         ) : (
           <>
-            <CreditCard className="w-5 h-5 mr-2" />
-            {selectedShipping ? "Finalizar com Mercado Pago" : "Escolha o frete para continuar"}
+            <CreditCard className="mr-2 h-5 w-5" />
+            {selectedShipping ? "Continuar para pagamento" : "Escolha o frete para continuar"}
           </>
         )}
       </Button>
 
-      {checkoutError && (
-        <div
-          className="flex items-start gap-2 text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3"
-          role="alert"
-        >
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+      {checkoutError ? (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700" role="alert">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <p className="text-sm leading-relaxed">{checkoutError}</p>
         </div>
-      )}
+      ) : null}
 
       {whatsappFallbackUrl ? (
         <Button
           asChild
           variant="outline"
-          className="w-full border-slate-600 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white h-11"
+          className="h-11 w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-950"
         >
           <a href={whatsappFallbackUrl} target="_blank" rel="noopener noreferrer">
-            <MessageCircle className="w-4 h-4 mr-2" />
+            <MessageCircle className="mr-2 h-4 w-4" />
             Prefiro continuar pelo WhatsApp
           </a>
         </Button>
       ) : null}
 
-      <div className="flex items-start justify-center gap-2 text-slate-500/90">
-        <Lock className="w-4 h-4 text-[#8B5CF6]/60 shrink-0 mt-0.5" />
-        <p className="text-sm text-center leading-relaxed">
+      <div className="flex items-start justify-center gap-2 text-slate-500">
+        <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="text-center text-xs leading-relaxed">
           Pix e cartão são processados no ambiente seguro do Mercado Pago. O site não recebe número do cartão nem CVV.
         </p>
       </div>
