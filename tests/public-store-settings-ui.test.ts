@@ -69,11 +69,11 @@ test("store notice is plain text, conditional, rendered directly below navbar, a
   assert.match(notice, /return\s+null/)
   assert.doesNotMatch(notice, /dangerouslySetInnerHTML/)
   assert.doesNotMatch(notice, /innerHTML/)
-  assert.match(navbarSource, /\bh-14\b/)
-  assert.match(navbarSource, /\bsm:h-16\b/)
+  assert.match(navbarSource, /\bh-16\b/)
+  assert.match(navbarSource, /\bmd:h-14\b/)
   assert.match(
     notice,
-    /className="[^"]*\brelative\b[^"]*\btop-14\b[^"]*\bsm:top-16\b[^"]*"/,
+    /className="[^"]*\brelative\b[^"]*\btop-16\b[^"]*\bmd:top-24\b[^"]*"/,
   )
   assert.match(shell, /<Navbar\s*\/?>[\s\S]*<StoreNotice/)
   const navbar = shell.indexOf("<Navbar")
