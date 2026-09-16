@@ -77,14 +77,15 @@ test("signup rejects an already registered email before asking Supabase to creat
   assert.ok(duplicateCheck >= 0 && signup > duplicateCheck)
 })
 
-test("password signup sends the exact validated password to Supabase", async () => {
+test("password signup sends the exact strongly validated password to Supabase", async () => {
   const signupForm = await source("../components/account/signup-form.tsx")
   const signupRoute = await source("../app/api/account/signup/route.ts")
   const actions = await source("../lib/server/customer-account-actions.ts")
 
   assert.match(signupForm, /const password = String\(form\.get\(["']password["']/)
   assert.match(signupForm, /body:\s*JSON\.stringify\(input\)/)
-  assert.match(actions, /password:\s*validatePassword\(input\.password\)/)
+  assert.match(actions, /password:\s*validateNewPassword\(input\.password\)/)
+  assert.match(actions, /validateCustomerPassword/)
   assert.match(signupRoute, /password:\s*input\.password/)
 })
 
