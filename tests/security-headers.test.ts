@@ -4,45 +4,10 @@ import test from "node:test"
 
 const CONFIG = new URL("../next.config.mjs", import.meta.url)
 
-type HeaderEntry = {
-  key: string
-  value: string
-}
-
-type HeaderRule = {
-  headers: HeaderEntry[]
-}
-
-async function cspForMelhorEnvioEnvironment(
-  environment: string | undefined,
-  nonce: string,
-) {
-  const previous = process.env.MELHOR_ENVIO_ENVIRONMENT
-  if (environment === undefined) delete process.env.MELHOR_ENVIO_ENVIRONMENT
-  else process.env.MELHOR_ENVIO_ENVIRONMENT = environment
-
-  try {
-    const configUrl = new URL(CONFIG)
-    configUrl.searchParams.set("test-case", nonce)
-    const loaded = (await import(configUrl.href)) as {
-      default: { headers(): Promise<HeaderRule[]> }
-    }
-    const rules = await loaded.default.headers()
-    const csp = rules[0]?.headers.find(
-      (header) => header.key === "Content-Security-Policy",
-    )?.value
-    assert.ok(csp)
-    return csp
-  } finally {
-    if (previous === undefined) delete process.env.MELHOR_ENVIO_ENVIRONMENT
-    else process.env.MELHOR_ENVIO_ENVIRONMENT = previous
-  }
-}
-
-test("Next config defines the required security headers and a restrictive CSP", async () => {
+test("Next config keeps static security headers but does not define CSP", async () => {
   const source = await readFile(CONFIG, "utf8")
 
-  assert.match(source, /Content-Security-Policy/)
+  assert.doesNotMatch(source, /key:\s*["']Content-Security-Policy["']/)
   assert.match(source, /Strict-Transport-Security/)
   assert.match(source, /X-Content-Type-Options/)
   assert.match(source, /nosniff/)
@@ -54,37 +19,6 @@ test("Next config defines the required security headers and a restrictive CSP", 
   assert.match(source, /camera=\(\)/)
   assert.match(source, /microphone=\(\)/)
   assert.match(source, /geolocation=\(\)/)
-
-  assert.match(source, /default-src 'self'/)
-  assert.match(source, /frame-ancestors 'none'/)
-  assert.match(source, /object-src 'none'/)
-  assert.doesNotMatch(source, /unsafe-eval/)
-  assert.doesNotMatch(source, /script-src[^;]*\*/)
-})
-
-test("Melhor Envio OAuth form navigation is allowlisted only for the active environment", async () => {
-  const sandbox = await cspForMelhorEnvioEnvironment("sandbox", "sandbox")
-  assert.match(
-    sandbox,
-    /form-action 'self' https:\/\/sandbox\.melhorenvio\.com\.br(?:;|$)/,
-  )
-  assert.doesNotMatch(sandbox, /form-action[^;]*\*/)
-  assert.doesNotMatch(sandbox, /form-action[^;]* https:\/\/melhorenvio\.com\.br(?:;|$)/)
-
-  const production = await cspForMelhorEnvioEnvironment(
-    "production",
-    "production",
-  )
-  assert.match(
-    production,
-    /form-action 'self' https:\/\/melhorenvio\.com\.br(?:;|$)/,
-  )
-  assert.doesNotMatch(production, /sandbox\.melhorenvio\.com\.br/)
-  assert.doesNotMatch(production, /form-action[^;]*\*/)
-
-  const invalid = await cspForMelhorEnvioEnvironment("invalid", "invalid")
-  assert.match(invalid, /form-action 'self'(?:;|$)/)
-  assert.doesNotMatch(invalid, /form-action[^;]*https:\/\//)
 })
 
 test("HSTS is conditionally enabled only for the production runtime", async () => {
