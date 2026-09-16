@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, ArrowRight, ShoppingCart } from "lucide-react"
 import { ProductDetailModal } from "@/components/product-detail-modal"
-import type { Product } from "@/contexts/cart-context"
+import { useCart, type Product } from "@/contexts/cart-context"
 
 function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -16,6 +16,23 @@ function formatPrice(value: number) {
 function discountPercent(product: Product) {
   if (product.originalPrice <= product.discountPrice) return 0
   return Math.round((1 - product.discountPrice / product.originalPrice) * 100)
+}
+
+function AddToCartButton({ product }: { product: Product }) {
+  const { addToCart, items } = useCart()
+  const quantity = items.find((item) => item.product.id === product.id)?.quantity ?? 0
+
+  return (
+    <button
+      type="button"
+      onClick={() => addToCart(product)}
+      aria-label={`Adicionar ${product.title} ao carrinho`}
+      className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#8B5CF6] px-3 text-sm font-semibold text-white transition hover:bg-[#7C3AED] active:scale-[0.98]"
+    >
+      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+      {quantity > 0 ? `Adicionar ao carrinho (${quantity})` : "Adicionar ao carrinho"}
+    </button>
+  )
 }
 
 export function HomePage({
@@ -129,9 +146,9 @@ export function HomePage({
                 onClick={() => scrollFeatured(-1)}
                 disabled={!canScrollLeft}
                 aria-label="Ver produtos anteriores"
-                className="absolute left-0 top-[92px] z-20 flex h-11 w-11 -translate-x-2 items-center justify-center text-slate-950 transition hover:scale-110 disabled:cursor-default disabled:opacity-25 disabled:hover:scale-100 sm:-translate-x-7 lg:-translate-x-10"
+                className="absolute left-0 top-[99px] z-20 flex h-10 w-10 -translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:-translate-x-3 disabled:cursor-default disabled:opacity-25 disabled:hover:-translate-x-2 sm:top-[105px] sm:-translate-x-7 sm:disabled:hover:-translate-x-7 lg:top-[99px] lg:-translate-x-10 lg:disabled:hover:-translate-x-10"
               >
-                <ChevronLeft className="h-7 w-7" aria-hidden="true" />
+                <ArrowLeft className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
               </button>
 
               <div
@@ -188,6 +205,8 @@ export function HomePage({
                             </div>
                           </div>
                         </button>
+
+                        <AddToCartButton product={product} />
                       </article>
                     )
                   })}
@@ -199,9 +218,9 @@ export function HomePage({
                 onClick={() => scrollFeatured(1)}
                 disabled={!canScrollRight}
                 aria-label="Ver próximos produtos"
-                className="absolute right-0 top-[92px] z-20 flex h-11 w-11 translate-x-2 items-center justify-center text-slate-950 transition hover:scale-110 disabled:cursor-default disabled:opacity-25 disabled:hover:scale-100 sm:translate-x-7 lg:translate-x-10"
+                className="absolute right-0 top-[99px] z-20 flex h-10 w-10 translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:translate-x-3 disabled:cursor-default disabled:opacity-25 disabled:hover:translate-x-2 sm:top-[105px] sm:translate-x-7 sm:disabled:hover:translate-x-7 lg:top-[99px] lg:translate-x-10 lg:disabled:hover:translate-x-10"
               >
-                <ChevronRight className="h-7 w-7" aria-hidden="true" />
+                <ArrowRight className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
               </button>
 
               {pageCount > 1 ? (
