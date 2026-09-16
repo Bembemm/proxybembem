@@ -4,6 +4,10 @@ import {
   buildContentSecurityPolicy,
   createCspNonce,
 } from "../lib/security/content-security-policy.ts"
+import {
+  needsPageCsp,
+  needsSupabaseSession,
+} from "../lib/security/proxy-routing.ts"
 
 test("creates a fresh base64 nonce for every call", () => {
   const first = createCspNonce()
@@ -48,4 +52,43 @@ test("invalid configured origins fail closed", () => {
   })
   assert.match(csp, /form-action 'self'(?:;|$)/)
   assert.match(csp, /connect-src 'self'(?:;|$)/)
+})
+
+test("public pages need CSP without needing Supabase session refresh", () => {
+  assert.equal(needsPageCsp("/"), true)
+  assert.equal(needsPageCsp("/produtos"), true)
+  assert.equal(needsSupabaseSession("/"), false)
+  assert.equal(needsSupabaseSession("/produtos"), false)
+})
+
+test("existing protected and auth routes keep Supabase session handling", () => {
+  for (const pathname of [
+    "/admin",
+    "/admin/pedidos",
+    "/entrar",
+    "/criar-conta",
+    "/esqueci-a-senha",
+    "/redefinir-senha",
+    "/auth/callback",
+    "/auth/confirm",
+    "/minha-conta",
+    "/minha-conta/pedidos",
+    "/api/account/login",
+    "/api/checkout",
+    "/api/admin/orders",
+    "/api/internal/melhor-envio/oauth/start",
+  ]) {
+    assert.equal(needsSupabaseSession(pathname), true, pathname)
+  }
+})
+
+test("static and API resources do not need page CSP", () => {
+  for (const pathname of [
+    "/_next/static/a.js",
+    "/_next/image",
+    "/favicon.ico",
+    "/api/shipping/quote",
+  ]) {
+    assert.equal(needsPageCsp(pathname), false, pathname)
+  }
 })
