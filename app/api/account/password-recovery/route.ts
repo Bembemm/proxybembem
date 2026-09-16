@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 import {
+  CustomerPasswordPolicyError,
   isSameOriginAccountRequest,
   parseAccountPasswordUpdateInput,
 } from "../../../../lib/server/customer-account-actions.ts"
@@ -56,7 +57,10 @@ export async function POST(request: NextRequest) {
   let input: ReturnType<typeof parseAccountPasswordUpdateInput>
   try {
     input = parseAccountPasswordUpdateInput(await readJsonBody(request, 4_096))
-  } catch {
+  } catch (error) {
+    if (error instanceof CustomerPasswordPolicyError) {
+      return json(400, { ok: false, message: error.message })
+    }
     return json(400, { ok: false, message: "Nova senha inválida." })
   }
 
