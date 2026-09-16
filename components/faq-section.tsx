@@ -36,35 +36,35 @@ export function FaqSection({ productionLeadTimeBusinessDays }: FaqSectionProps) 
   ]
 
   return (
-    <section className="relative bg-gradient-to-b from-transparent to-white/30 pb-12 pt-8 sm:pb-16 sm:pt-10">
+    <section className="relative bg-gradient-to-b from-transparent to-white/30 pb-10 pt-6 sm:pb-12 sm:pt-8">
       <div className="container mx-auto px-4 sm:px-6">
-        <div className="text-center mb-8 sm:mb-10">
-          <div className="inline-flex items-center gap-2 bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 rounded-full px-4 py-1.5 mb-4">
-            <HelpCircle className="w-5 h-5 text-[#8B5CF6]" />
-            <span className="text-sm sm:text-base text-[#8B5CF6] font-medium">
+        <div className="mb-7 text-center sm:mb-8">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-1.5">
+            <HelpCircle className="h-5 w-5 text-[#8B5CF6]" />
+            <span className="text-sm font-medium text-[#8B5CF6] sm:text-base">
               Tire suas dúvidas
             </span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">
+          <h2 className="mb-2 text-3xl font-bold text-slate-900 sm:text-4xl">
             Perguntas Frequentes
           </h2>
-          <p className="text-slate-600 text-base sm:text-lg max-w-md mx-auto">
+          <p className="mx-auto max-w-md text-base text-slate-600 sm:text-lg">
             Tudo o que você precisa saber antes de comprar
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto">
+        <div className="mx-auto max-w-2xl">
           <Accordion type="single" collapsible className="space-y-3">
             {faqs.map((faq, index) => (
               <AccordionItem
                 key={index}
                 value={`item-${index}`}
-                className="bg-white/70 backdrop-blur-sm border border-slate-200/60 rounded-lg px-4 sm:px-6 shadow-sm"
+                className="rounded-lg border border-slate-200/60 bg-white/70 px-4 shadow-sm backdrop-blur-sm sm:px-6"
               >
-                <AccordionTrigger className="text-left text-base sm:text-lg font-medium text-slate-800 hover:text-[#8B5CF6] transition-colors py-4 [&[data-state=open]]:text-[#8B5CF6]">
+                <AccordionTrigger className="py-4 text-left text-base font-medium text-slate-800 transition-colors hover:text-[#8B5CF6] sm:text-lg [&[data-state=open]]:text-[#8B5CF6]">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-slate-600 text-base leading-relaxed pb-4">
+                <AccordionContent className="pb-4 text-base leading-relaxed text-slate-600">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
