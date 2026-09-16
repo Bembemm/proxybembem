@@ -3,6 +3,9 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Termos",
   description: "Condições de compra, pagamento, personalização e entrega da ProxyBembem.",
+  alternates: {
+    canonical: "/termos",
+  },
 }
 
 export default function TermosPage() {

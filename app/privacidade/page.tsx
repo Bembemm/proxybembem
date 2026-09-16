@@ -4,6 +4,9 @@ import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 export const metadata: Metadata = {
   title: "Privacidade",
   description: "Saiba como a ProxyBembem usa os dados necessários para pedidos, pagamentos e entregas.",
+  alternates: {
+    canonical: "/privacidade",
+  },
 }
 
 export default async function PrivacidadePage() {

@@ -4,6 +4,9 @@ import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 export const metadata: Metadata = {
   title: "Trocas e reembolsos",
   description: "Saiba como solicitar suporte para problemas, cancelamentos, trocas e reembolsos.",
+  alternates: {
+    canonical: "/trocas-e-reembolsos",
+  },
 }
 
 export default async function TrocasReembolsosPage() {

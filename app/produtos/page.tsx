@@ -8,6 +8,9 @@ export const dynamic = "force-dynamic"
 export const metadata: Metadata = {
   title: "Produtos",
   description: "Veja os decks, cartas avulsas e proxies disponíveis na ProxyBembem.",
+  alternates: {
+    canonical: "/produtos",
+  },
 }
 
 function firstSearchParam(value: string | string[] | undefined) {

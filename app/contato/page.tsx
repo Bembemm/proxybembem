@@ -5,6 +5,9 @@ import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 export const metadata: Metadata = {
   title: "Contato",
   description: "Fale com a ProxyBembem pelo WhatsApp ou e-mail.",
+  alternates: {
+    canonical: "/contato",
+  },
 }
 
 export default async function ContatoPage() {
