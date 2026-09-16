@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
+import { buildContentSecurityPolicy } from "../lib/security/content-security-policy.ts"
 
 async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8").catch(() => "")
@@ -121,13 +122,19 @@ test("only meaningful protected admin interactions refresh inactivity", async ()
   assert.doesNotMatch(rootProxy, /authorizeAdminAccess|requireAdminPageAccess|touch:\s*true/)
 })
 
-test("CSP permits browser auth only to the configured Supabase origin", async () => {
-  const config = await source("../next.config.mjs")
+test("CSP permits browser auth only to the configured Supabase origin", () => {
+  const csp = buildContentSecurityPolicy({
+    nonce: "YWRtaW4tY3Nw",
+    nodeEnv: "production",
+    melhorEnvioEnvironment: "production",
+    supabaseBrowserUrl: "https://project-ref.supabase.co",
+  })
 
-  assert.match(config, /NEXT_PUBLIC_SUPABASE_URL/)
-  assert.match(config, /supabase(?:Browser|Auth)Origin/)
-  assert.match(config, /connect-src[^\n]*supabase(?:Browser|Auth)Origin/)
-  assert.doesNotMatch(config, /\*\.supabase\.co/)
+  assert.match(
+    csp,
+    /connect-src 'self' https:\/\/project-ref\.supabase\.co(?:;|$)/,
+  )
+  assert.doesNotMatch(csp, /\*\.supabase\.co/)
 })
 
 test("admin routes use a dedicated protected shell instead of storefront chrome", async () => {
