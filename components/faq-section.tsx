@@ -36,7 +36,7 @@ export function FaqSection({ productionLeadTimeBusinessDays }: FaqSectionProps) 
   ]
 
   return (
-    <section className="relative py-12 sm:py-16 bg-gradient-to-b from-transparent to-white/30">
+    <section className="relative bg-gradient-to-b from-transparent to-white/30 pb-12 pt-8 sm:pb-16 sm:pt-10">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 bg-[#8B5CF6]/10 border border-[#8B5CF6]/30 rounded-full px-4 py-1.5 mb-4">
