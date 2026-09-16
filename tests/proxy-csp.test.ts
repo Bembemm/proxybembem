@@ -139,3 +139,21 @@ test("root Proxy matches pages broadly while skipping static assets and prefetch
   assert.match(source, /["']\/api\/checkout["']/)
   assert.match(source, /["']\/api\/internal\/melhor-envio\/oauth\/start["']/)
 })
+
+test("static config yields CSP ownership to Proxy and root layout opts into request context", async () => {
+  const nextConfig = await readFile(
+    new URL("../next.config.mjs", import.meta.url),
+    "utf8",
+  )
+  assert.doesNotMatch(
+    nextConfig,
+    /key:\s*["']Content-Security-Policy["']/,
+  )
+
+  const layout = await readFile(
+    new URL("../app/layout.tsx", import.meta.url),
+    "utf8",
+  )
+  assert.match(layout, /from\s+["']next\/headers["']/)
+  assert.match(layout, /await\s+headers\s*\(\s*\)/)
+})
