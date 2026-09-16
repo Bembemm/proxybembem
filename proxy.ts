@@ -7,32 +7,41 @@ import {
   needsPageCsp,
   needsSupabaseSession,
 } from "@/lib/security/proxy-routing"
-import { updateSupabaseSession } from "@/lib/supabase/proxy"
+import {
+  buildUpstreamHeaders,
+  updateSupabaseSession,
+  type RequestSecurityHeaders,
+} from "@/lib/supabase/proxy"
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const pageCsp = needsPageCsp(pathname)
-  const requestHeaders = new Headers(request.headers)
-  let csp: string | null = null
+  let security: RequestSecurityHeaders | null = null
 
   if (pageCsp) {
     const nonce = createCspNonce()
-    csp = buildContentSecurityPolicy({
+    security = {
       nonce,
-      nodeEnv: process.env.NODE_ENV,
-      melhorEnvioEnvironment: process.env.MELHOR_ENVIO_ENVIRONMENT,
-      supabaseBrowserUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    })
-    requestHeaders.set("x-nonce", nonce)
-    requestHeaders.set("Content-Security-Policy", csp)
+      contentSecurityPolicy: buildContentSecurityPolicy({
+        nonce,
+        nodeEnv: process.env.NODE_ENV,
+        melhorEnvioEnvironment: process.env.MELHOR_ENVIO_ENVIRONMENT,
+        supabaseBrowserUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      }),
+    }
   }
 
   const response = needsSupabaseSession(pathname)
-    ? await updateSupabaseSession(request, pageCsp ? requestHeaders : undefined)
-    : NextResponse.next({ request: { headers: requestHeaders } })
+    ? await updateSupabaseSession(request, security)
+    : NextResponse.next({
+        request: { headers: buildUpstreamHeaders(request, security) },
+      })
 
-  if (csp) {
-    response.headers.set("Content-Security-Policy", csp)
+  if (security) {
+    response.headers.set(
+      "Content-Security-Policy",
+      security.contentSecurityPolicy,
+    )
   }
 
   return response
