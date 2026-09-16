@@ -1,3 +1,7 @@
+import {
+  CUSTOMER_PASSWORD_REQUIREMENTS,
+  validateCustomerPassword,
+} from "../auth/password-policy.ts"
 import { normalizeCheckoutEmail } from "../checkout.ts"
 import { isAllowedCheckoutOrigin, resolvePublicSiteUrl } from "./env.ts"
 
@@ -32,6 +36,13 @@ interface AccountProfileInput {
 export interface AccountProfileMetadata {
   name: string
   whatsapp: string
+}
+
+export class CustomerPasswordPolicyError extends Error {
+  constructor() {
+    super(CUSTOMER_PASSWORD_REQUIREMENTS)
+    this.name = "CustomerPasswordPolicyError"
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -83,9 +94,19 @@ function normalizeWhatsapp(value: unknown) {
   return whatsapp
 }
 
-function validatePassword(value: unknown) {
+function validateCredentialPassword(value: unknown) {
   if (typeof value !== "string" || value.length < 8 || value.length > 128) {
     throw new Error("Invalid account request")
+  }
+  return value
+}
+
+function validateNewPassword(value: unknown) {
+  if (typeof value !== "string") {
+    throw new Error("Invalid account request")
+  }
+  if (validateCustomerPassword(value)) {
+    throw new CustomerPasswordPolicyError()
   }
   return value
 }
@@ -96,7 +117,7 @@ export function parseAccountSignupInput(value: unknown): AccountSignupInput {
     name: normalizeName(input.name),
     email: normalizeEmail(input.email),
     whatsapp: normalizeWhatsapp(input.whatsapp),
-    password: validatePassword(input.password),
+    password: validateNewPassword(input.password),
   }
 }
 
@@ -104,7 +125,7 @@ export function parseAccountLoginInput(value: unknown): AccountLoginInput {
   const input = requireExactKeys(value, ["email", "password"])
   return {
     email: normalizeEmail(input.email),
-    password: validatePassword(input.password),
+    password: validateCredentialPassword(input.password),
   }
 }
 
@@ -117,7 +138,7 @@ export function parseAccountPasswordUpdateInput(
   value: unknown,
 ): AccountPasswordUpdateInput {
   const input = requireExactKeys(value, ["password"])
-  return { password: validatePassword(input.password) }
+  return { password: validateNewPassword(input.password) }
 }
 
 export function parseAccountProfileInput(value: unknown): AccountProfileInput {
