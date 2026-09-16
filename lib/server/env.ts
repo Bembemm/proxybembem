@@ -41,6 +41,7 @@ export interface MelhorEnvioShipmentEnv extends MelhorEnvioOAuthEnv {
 
 export interface RateLimitEnv extends SupabaseEnv {
   rateLimitSecret: string
+  trustedProxyHops: number
 }
 
 export interface ServerEnv extends SupabaseEnv, MercadoPagoEnv {}
@@ -69,6 +70,17 @@ function optionalExactBoolean(name: string) {
   if (value === "true") return true
   if (value === "false") return false
   throw new Error(`${name} must be true or false`)
+}
+
+function trustedProxyHops() {
+  const raw = process.env.RATE_LIMIT_TRUSTED_PROXY_HOPS
+  if (raw === undefined) return 0
+
+  const value = raw.trim()
+  if (!/^[0-5]$/.test(value)) {
+    throw new Error("RATE_LIMIT_TRUSTED_PROXY_HOPS must be an integer from 0 to 5")
+  }
+  return Number(value)
 }
 
 function isProductionRuntime(nodeEnv: string | undefined) {
@@ -231,6 +243,7 @@ export function getRateLimitEnv(): RateLimitEnv {
   return {
     ...getSupabaseEnv(),
     rateLimitSecret,
+    trustedProxyHops: trustedProxyHops(),
   }
 }
 
