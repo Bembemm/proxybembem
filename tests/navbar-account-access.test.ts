@@ -31,17 +31,27 @@ test("navbar resolves an unauthenticated getUser error to guest instead of stayi
   )
 })
 
-test("navbar keeps Categorias as the only storefront text navigation and exposes account and cart as icons", () => {
+test("navbar uses the approved two-level desktop header and compact mobile menu", () => {
   const navbar = source("components/navbar.tsx")
 
+  assert.match(navbar, /Menu/)
+  assert.match(navbar, /X/)
+  assert.match(navbar, /aria-label=["']Abrir menu["']/)
+  assert.match(navbar, /md:hidden/)
+  assert.match(navbar, /hidden[^"']*md:flex/)
+
+  assert.match(navbar, />\s*Contato\s*</)
   assert.match(navbar, />\s*Categorias\s*</)
-  assert.doesNotMatch(navbar, /label:\s*["']Início["']/)
-  assert.doesNotMatch(navbar, /label:\s*["']Produtos["']/)
-  assert.doesNotMatch(navbar, /label:\s*["']Contato["']/)
+  assert.match(navbar, />\s*Início\s*</)
+  assert.match(navbar, />\s*Produtos\s*</)
+
   assert.match(navbar, /UserRound/)
   assert.match(navbar, /ShoppingCart/)
   assert.match(navbar, /useCart/)
   assert.match(navbar, /setIsCartOpen\(true\)/)
   assert.match(navbar, /totalItems/)
   assert.match(navbar, /aria-label=["']Abrir carrinho["']/)
+
+  assert.doesNotMatch(navbar, /placeholder=.*busc/i)
+  assert.doesNotMatch(navbar, /Lançamentos/)
 })
