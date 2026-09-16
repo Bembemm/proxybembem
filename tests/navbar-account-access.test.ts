@@ -31,23 +31,31 @@ test("navbar resolves an unauthenticated getUser error to guest instead of stayi
   )
 })
 
-test("navbar uses the approved two-level desktop header and compact category-free mobile menu", () => {
+test("navbar uses one aligned storefront grid with desktop navigation and a category-free mobile menu", () => {
   const navbar = source("components/navbar.tsx")
 
-  assert.match(navbar, /Menu/)
-  assert.match(navbar, /X/)
-  assert.match(navbar, /aria-label=["']Abrir menu["']/)
-  assert.match(navbar, /md:hidden/)
-  assert.match(navbar, /md:flex/)
-  assert.match(navbar, /hidden[^"']*md:block/)
-  assert.match(navbar, /max-w-\[1280px\]/)
+  assert.match(navbar, /sticky[^"']*top-0/)
+  assert.match(navbar, /max-w-\[1180px\]/)
+  assert.match(navbar, /h-16[^"']*lg:h-\[72px\]/)
+  assert.match(navbar, /lg:hidden/)
+  assert.match(navbar, /hidden[^"']*lg:block/)
+  assert.match(navbar, /h-11/)
 
   assert.match(navbar, />\s*Contato\s*</)
   assert.match(navbar, />\s*Categorias\s*</)
   assert.match(navbar, />\s*Início\s*</)
   assert.match(navbar, />\s*Produtos\s*</)
   assert.match(navbar, /id=["']store-category-menu["']/)
-  assert.doesNotMatch(navbar, /isMobileCategoriesOpen/)
+
+  const mobileStart = navbar.indexOf('id="mobile-store-menu"')
+  assert.notEqual(mobileStart, -1)
+  const mobileEnd = navbar.indexOf("</nav>", mobileStart)
+  assert.notEqual(mobileEnd, -1)
+  const mobileMenu = navbar.slice(mobileStart, mobileEnd)
+  assert.doesNotMatch(mobileMenu, /Categorias/)
+  assert.match(mobileMenu, />\s*Início\s*</)
+  assert.match(mobileMenu, />\s*Produtos\s*</)
+  assert.match(mobileMenu, />\s*Contato\s*</)
 
   assert.match(navbar, /UserRound/)
   assert.match(navbar, /ShoppingCart/)
