@@ -6,7 +6,7 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
 }
 
-test("home starts with a compact featured storefront instead of the large marketing hero", () => {
+test("home uses a centered horizontal featured carousel with side arrows instead of a static grid", () => {
   const home = source("components/pages/home-page.tsx")
 
   assert.doesNotMatch(home, /@\/data\/products/)
@@ -15,7 +15,14 @@ test("home starts with a compact featured storefront instead of the large market
   assert.match(home, />\s*Destaques\s*</)
   assert.doesNotMatch(home, /Monte seu deck do seu jeito/)
   assert.doesNotMatch(home, /Escolha a quantidade de cartas/)
-  assert.doesNotMatch(home, /Ver Todos os Produtos/)
+  assert.match(home, /useRef/)
+  assert.match(home, /ChevronLeft/)
+  assert.match(home, /ChevronRight/)
+  assert.match(home, /scrollBy\s*\(/)
+  assert.match(home, /overflow-x-auto/)
+  assert.match(home, /snap-x/)
+  assert.match(home, /max-w-\[1380px\]/)
+  assert.match(home, /aria-label=["']Produtos em destaque["']/)
 })
 
 test("navbar exposes only a dynamic Categorias storefront menu alongside account and cart icons", () => {
