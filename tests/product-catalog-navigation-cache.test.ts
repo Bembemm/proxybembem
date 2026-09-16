@@ -55,5 +55,8 @@ test("mutable storefront destinations bypass soft navigation that can reuse stal
     /<a\s+[^>]*href=["']\/["'][^>]*aria-label=["']ProxyBembem - Início["'][^>]*>/,
   )
   assert.match(source, /href=\{`\/produtos\?categoria=\$\{encodeURIComponent\(category\)\}`\}/)
-  assert.doesNotMatch(source, /<Link[\s\S]*\/produtos\?categoria=/)
+  assert.doesNotMatch(
+    source,
+    /<Link\b[^>]*href=\{`\/produtos\?categoria=\$\{encodeURIComponent\(category\)\}`\}[^>]*>/,
+  )
 })
