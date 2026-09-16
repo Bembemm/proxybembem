@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Branch: `hardening/site-security-nonce`; do not modify `main` directly.
-- Production hosting is KingHost, not Vercel.
+- Production hosting is KingHost; preserve the existing KingHost runtime contract.
 - Keep `style-src 'unsafe-inline'` unless a separately tested change proves it can be removed safely.
 - Accepted target: `script-src` must not contain `'unsafe-inline'`.
 - Do not add Supabase session/auth lookups to ordinary public requests.
@@ -529,5 +529,5 @@ Record that `script-src` is nonce-based, `style-src 'unsafe-inline'` intentional
 
 ```bash
 git add docs/superpowers
- git commit -m "docs: record nonce CSP verification"
+git commit -m "docs: record nonce CSP verification"
 ```
