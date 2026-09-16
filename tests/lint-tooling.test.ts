@@ -30,13 +30,33 @@ test("flat config enables Next core web vitals and TypeScript rules", async () =
   assert.match(source, /next-env\.d\.ts/)
 })
 
-test("CI runs lint on the exact KingHost Node runtime before building", async () => {
+test("CI runs lint then typecheck on the exact KingHost Node runtime before building", async () => {
   const source = await readFile(CI_WORKFLOW, "utf8")
-  const typecheck = source.indexOf("pnpm typecheck")
   const lint = source.indexOf("pnpm lint")
+  const typecheck = source.indexOf("pnpm typecheck")
   const build = source.indexOf("pnpm build:kinghost")
 
-  assert.ok(typecheck >= 0, "typecheck step missing")
-  assert.ok(lint > typecheck, "lint must run after typecheck")
-  assert.ok(build > lint, "lint must run before the KingHost build")
+  assert.ok(lint >= 0, "lint step missing")
+  assert.ok(typecheck > lint, "typecheck must run after lint")
+  assert.ok(build > typecheck, "KingHost build must run after typecheck")
+})
+
+test("CI runs the explicit critical commerce and security subset before the full suite", async () => {
+  const source = await readFile(CI_WORKFLOW, "utf8")
+  const subset = source.indexOf("Critical commerce and security subset")
+  const fullSuite = source.indexOf("pnpm test")
+
+  assert.ok(subset >= 0, "critical subset step missing")
+  assert.ok(fullSuite > subset, "full suite must run after the critical subset")
+  for (const path of [
+    "tests/checkout-flow.test.ts",
+    "tests/mercadopago-preference.test.ts",
+    "tests/webhook-signature.test.ts",
+    "tests/melhor-envio-oauth-routes.test.ts",
+    "tests/private-order-only.test.ts",
+    "tests/phase9-route-security.test.ts",
+    "tests/phase9-supabase-hardening.test.ts",
+  ]) {
+    assert.ok(source.includes(path), `critical subset missing ${path}`)
+  }
 })
