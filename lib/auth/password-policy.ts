@@ -1,7 +1,7 @@
 export const CUSTOMER_PASSWORD_REQUIREMENTS =
   "A senha precisa ter entre 8 e 128 caracteres e incluir pelo menos uma letra maiúscula, uma minúscula, um número e um símbolo."
 
-const SYMBOLS = "!@#$%^&*()_+-=[]{};':\"|<>?,./`~"
+const SYMBOLS = "!@#$%^&*()_+-=[]{};'\\:\"|<>?,./`~"
 
 export function validateCustomerPassword(password: string) {
   if (
