@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next"
 import { Crimson_Text, MedievalSharp } from "next/font/google"
+import { headers } from "next/headers"
 import { SiteShell } from "@/components/site-shell"
 import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 import "./globals.css"
@@ -36,6 +37,7 @@ export const viewport: Viewport = {
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  await headers()
   const storeSettings = await getPublicStoreSettings()
 
   return (
