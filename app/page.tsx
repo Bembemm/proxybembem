@@ -15,11 +15,9 @@ export default async function Home() {
     unavailable = true
   }
 
-  const featuredProducts = products.filter((product) => product.featured === true)
-
   return (
     <HomePage
-      featuredProducts={featuredProducts}
+      products={products}
       unavailable={unavailable}
       productionLeadTimeBusinessDays={storeSettings.productionLeadTimeBusinessDays}
     />
