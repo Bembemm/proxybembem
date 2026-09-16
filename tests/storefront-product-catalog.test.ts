@@ -30,7 +30,8 @@ test("storefront routes load published products from the server repository with 
   }
 
   assert.match(productsRoute, /await\s+listPublishedProducts\s*\(/)
-  assert.match(productsRoute, /<ProductsPage\s+products=/)
+  assert.match(productsRoute, /<ProductsPage/)
+  assert.match(productsRoute, /products=\{products\}/)
   assert.match(homeRoute, /await\s+listPublishedProducts\s*\(/)
   assert.doesNotMatch(homeRoute, /featuredProducts\s*=\s*products\.filter/)
   assert.match(homeRoute, /<HomePage\s+products=/)

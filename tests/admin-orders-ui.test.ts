@@ -106,7 +106,8 @@ test("orders list page is protected and maps only normalized URL filters into th
   assert.match(page, /listAdminOrders\s*\(/)
   assert.match(page, /activeSection=["']orders["']/)
   assert.match(page, /sort:\s*["']newest["']/)
-  assert.match(page, /pageSize:\s*25/)
+  assert.match(page, /const\s+PAGE_SIZE\s*=\s*25/)
+  assert.match(page, /pageSize:\s*PAGE_SIZE/)
 
   for (const filter of ["q", "payment", "fulfillment", "attention", "from", "to", "page"]) {
     assert.match(page, new RegExp(`\\.${filter}\\b|\\[\\s*["']${filter}["']\\s*\\]`))

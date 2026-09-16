@@ -38,7 +38,8 @@ test("admin products page authorizes before catalog reads and bounds URL filters
   assert.match(page, /slice\(\s*0\s*,\s*100\s*\)|maxLength=\{100\}/)
   assert.match(page, /isProductStatus/)
   assert.match(page, /Number\.isSafeInteger|Number\.parseInt/)
-  assert.match(page, /pageSize:\s*25/)
+  assert.match(page, /const\s+PAGE_SIZE\s*=\s*25/)
+  assert.match(page, /pageSize:\s*PAGE_SIZE/)
 })
 
 test("admin product list renders the approved operational fields and actions", async () => {
