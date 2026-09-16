@@ -16,27 +16,27 @@ test("signup input is exact bounded normalized customer data", async () => {
     name: "  Cliente   Teste  ",
     email: " Cliente+Deck@Example.COM ",
     whatsapp: "(44) 99999-9999",
-    password: "senha-segura-123",
+    password: "SenhaSegura9!",
   })
 
   assert.deepEqual(input, {
     name: "Cliente Teste",
     email: "cliente+deck@example.com",
     whatsapp: "44999999999",
-    password: "senha-segura-123",
+    password: "SenhaSegura9!",
   })
 
   for (const invalid of [
-    { name: "ab", email: "cliente@example.com", whatsapp: "44999999999", password: "12345678" },
-    { name: "Cliente Teste", email: "invalido", whatsapp: "44999999999", password: "12345678" },
-    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "123", password: "12345678" },
+    { name: "ab", email: "cliente@example.com", whatsapp: "44999999999", password: "SenhaSegura9!" },
+    { name: "Cliente Teste", email: "invalido", whatsapp: "44999999999", password: "SenhaSegura9!" },
+    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "123", password: "SenhaSegura9!" },
     { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "1234567" },
-    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "x".repeat(129) },
+    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "A1!" + "x".repeat(126) },
     {
       name: "Cliente Teste",
       email: "cliente@example.com",
       whatsapp: "44999999999",
-      password: "senha-segura-123",
+      password: "SenhaSegura9!",
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     },
   ]) {
@@ -59,8 +59,8 @@ test("login reset and password-update inputs accept only exact bounded credentia
     "cliente@example.com",
   )
   assert.deepEqual(
-    actions.parseAccountPasswordUpdateInput({ password: "nova-senha-123" }),
-    { password: "nova-senha-123" },
+    actions.parseAccountPasswordUpdateInput({ password: "NovaSenha9!" }),
+    { password: "NovaSenha9!" },
   )
 
   assert.throws(() => actions.parseAccountLoginInput({ email: "x", password: "12345678" }))
@@ -81,7 +81,7 @@ test("login reset and password-update inputs accept only exact bounded credentia
   )
   assert.throws(() =>
     actions.parseAccountPasswordUpdateInput({
-      password: "nova-senha-123",
+      password: "NovaSenha9!",
       userId: "browser-must-not-control-this",
     }),
   )
