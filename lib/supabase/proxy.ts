@@ -30,15 +30,6 @@ export function buildUpstreamHeaders(
   return headers
 }
 
-function nextResponse(
-  request: NextRequest,
-  security: RequestSecurityHeaders | null,
-) {
-  return NextResponse.next({
-    request: { headers: buildUpstreamHeaders(request, security) },
-  })
-}
-
 function copySupabaseState(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) {
     target.cookies.set(cookie)
@@ -81,7 +72,9 @@ export async function updateSupabaseSession(
   request: NextRequest,
   security: RequestSecurityHeaders | null = null,
 ) {
-  let supabaseResponse = nextResponse(request, security)
+  let supabaseResponse = NextResponse.next({
+    request: { headers: buildUpstreamHeaders(request, security) },
+  })
   const env = getSupabaseBrowserConfig()
 
   const supabase = createServerClient(env.url, env.publishableKey, {
@@ -95,7 +88,9 @@ export async function updateSupabaseSession(
           request.cookies.set(name, value)
         })
 
-        supabaseResponse = nextResponse(request, security)
+        supabaseResponse = NextResponse.next({
+          request: { headers: buildUpstreamHeaders(request, security) },
+        })
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, options)
         })
