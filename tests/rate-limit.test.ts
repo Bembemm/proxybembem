@@ -3,16 +3,29 @@ import { createHmac } from "node:crypto"
 import test from "node:test"
 import { consumeRateLimit } from "../lib/server/rate-limit.ts"
 
-const KEYS = ["SUPABASE_URL", "SUPABASE_SECRET_KEY", "RATE_LIMIT_SECRET"] as const
+const KEYS = [
+  "SUPABASE_URL",
+  "SUPABASE_SECRET_KEY",
+  "RATE_LIMIT_SECRET",
+  "RATE_LIMIT_TRUSTED_PROXY_HOPS",
+] as const
 const RATE_SECRET = "rate-limit-secret-12345678901234567890"
 
-async function withEnv(run: () => Promise<void>) {
+async function withEnv(
+  trustedProxyHops: string | undefined,
+  run: () => Promise<void>,
+) {
   const previous = new Map<string, string | undefined>()
   for (const key of KEYS) previous.set(key, process.env[key])
 
   process.env.SUPABASE_URL = "https://example.supabase.co"
   process.env.SUPABASE_SECRET_KEY = "server-secret"
   process.env.RATE_LIMIT_SECRET = RATE_SECRET
+  if (trustedProxyHops === undefined) {
+    delete process.env.RATE_LIMIT_TRUSTED_PROXY_HOPS
+  } else {
+    process.env.RATE_LIMIT_TRUSTED_PROXY_HOPS = trustedProxyHops
+  }
 
   try {
     await run()
@@ -25,8 +38,8 @@ async function withEnv(run: () => Promise<void>) {
   }
 }
 
-test("prefers standard forwarded IP and sends only its HMAC bucket to Supabase", async (t) => {
-  await withEnv(async () => {
+test("uses the explicitly trusted forwarding depth and sends only its HMAC bucket to Supabase", async (t) => {
+  await withEnv("2", async () => {
     const rawIp = "198.51.100.2"
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update(`checkout:${rawIp}`)
@@ -65,10 +78,10 @@ test("prefers standard forwarded IP and sends only its HMAC bucket to Supabase",
   })
 })
 
-test("falls through unusable forwarded header to x-real-ip and isolates scopes", async (t) => {
-  await withEnv(async () => {
+test("malformed forwarded chains fail closed instead of trusting x-real-ip", async (t) => {
+  await withEnv("1", async () => {
     const expectedBucket = createHmac("sha256", RATE_SECRET)
-      .update("shipping-quote:192.0.2.3")
+      .update("shipping-quote:unknown")
       .digest("hex")
 
     t.mock.method(
@@ -96,7 +109,7 @@ test("falls through unusable forwarded header to x-real-ip and isolates scopes",
 })
 
 test("uses an unknown bucket when no forwarding IP is usable", async (t) => {
-  await withEnv(async () => {
+  await withEnv("1", async () => {
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update("checkout:unknown")
       .digest("hex")
@@ -121,8 +134,39 @@ test("uses an unknown bucket when no forwarding IP is usable", async (t) => {
   })
 })
 
+test("default zero proxy trust ignores otherwise valid forwarding headers", async (t) => {
+  await withEnv(undefined, async () => {
+    const expectedBucket = createHmac("sha256", RATE_SECRET)
+      .update("checkout:unknown")
+      .digest("hex")
+
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const body = JSON.parse(String(init?.body)) as { p_bucket_key: string }
+        assert.equal(body.p_bucket_key, expectedBucket)
+        return new Response("true", { status: 200 })
+      },
+    )
+
+    assert.equal(
+      await consumeRateLimit({
+        request: new Request("https://store.test/api/checkout", {
+          headers: {
+            "x-forwarded-for": "203.0.113.9",
+            "x-real-ip": "192.0.2.4",
+          },
+        }),
+        scope: "checkout",
+      }),
+      true,
+    )
+  })
+})
+
 test("returns false when the Supabase rate-limit RPC denies the request", async (t) => {
-  await withEnv(async () => {
+  await withEnv("1", async () => {
     t.mock.method(globalThis, "fetch", async () => new Response("false", { status: 200 }))
 
     assert.equal(
@@ -138,7 +182,7 @@ test("returns false when the Supabase rate-limit RPC denies the request", async 
 })
 
 test("uses a separate 5-per-15-minute bucket for Melhor Envio OAuth starts", async (t) => {
-  await withEnv(async () => {
+  await withEnv("1", async () => {
     const rawIp = "192.0.2.10"
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update(`melhor-envio-oauth-start:${rawIp}`)
@@ -170,7 +214,7 @@ test("uses a separate 5-per-15-minute bucket for Melhor Envio OAuth starts", asy
 })
 
 test("shipment admin actions use distinct HMAC buckets with bounded config mutation and spend policies", async (t) => {
-  await withEnv(async () => {
+  await withEnv("1", async () => {
     const rawIp = "192.0.2.55"
     const cases = [
       { scope: "admin-shipping-config", limit: 10, windowSeconds: 600 },
