@@ -16,7 +16,7 @@ test("home sends every published product to the storefront without a featured-on
   assert.match(home, /products\.map\s*\(/)
 })
 
-test("home carousel centers a short row and becomes horizontally scrollable when products overflow", () => {
+test("home carousel keeps a wide reference-style row with persistent edge arrows and page indicators", () => {
   const home = source("components/pages/home-page.tsx")
 
   assert.doesNotMatch(home, /@\/data\/products/)
@@ -28,12 +28,16 @@ test("home carousel centers a short row and becomes horizontally scrollable when
   assert.match(home, /ChevronLeft/)
   assert.match(home, /ChevronRight/)
   assert.match(home, /scrollBy\s*\(/)
+  assert.match(home, /scrollTo\s*\(/)
   assert.match(home, /overflow-x-auto/)
   assert.match(home, /w-max/)
   assert.match(home, /min-w-full/)
-  assert.match(home, /justify-center/)
-  assert.match(home, /canScrollLeft/)
-  assert.match(home, /canScrollRight/)
+  assert.match(home, /justify-start/)
+  assert.match(home, /pageCount/)
+  assert.match(home, /activePage/)
+  assert.match(home, /disabled=\{!canScrollLeft\}/)
+  assert.match(home, /disabled=\{!canScrollRight\}/)
+  assert.match(home, /aria-label=\{`Ir para página/)
   assert.match(home, /max-w-\[1380px\]/)
   assert.match(home, /aria-label=["']Produtos em destaque["']/)
 })
