@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next"
 import { isSandboxDeployment, resolveSeoSiteUrl } from "@/lib/seo"
 
+export const dynamic = "force-dynamic"
+
 const PUBLIC_CANONICAL_ROUTES = [
   "/",
   "/produtos",
