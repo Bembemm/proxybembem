@@ -97,21 +97,28 @@ test("static and API resources do not need page CSP", () => {
   }
 })
 
-test("Supabase session refresh preserves upstream security request headers", async () => {
+test("Supabase session refresh rebuilds current request headers and reapplies security values", async () => {
   const source = await readFile(SUPABASE_PROXY, "utf8")
 
+  assert.match(source, /type\s+RequestSecurityHeaders\s*=\s*\{/)
+  assert.match(source, /nonce:\s*string/)
+  assert.match(source, /contentSecurityPolicy:\s*string/)
   assert.match(
     source,
-    /updateSupabaseSession\(request: NextRequest, requestHeaders\?: Headers\)/,
+    /updateSupabaseSession\(\s*request:\s*NextRequest,\s*security:\s*RequestSecurityHeaders\s*\|\s*null\s*=\s*null/,
   )
+  assert.match(source, /function\s+buildUpstreamHeaders\s*\(/)
+  assert.match(source, /new\s+Headers\(request\.headers\)/)
+  assert.match(source, /headers\.set\(["']x-nonce["'],\s*security\.nonce\)/)
   assert.match(
     source,
-    /request:\s*\{\s*headers:\s*requestHeaders\s*\?\?\s*request\.headers\s*\}/,
+    /headers\.set\(\s*["']Content-Security-Policy["'],\s*security\.contentSecurityPolicy\s*\)/,
   )
   assert.ok(
-    (source.match(/nextResponse\(request, requestHeaders\)/g) ?? []).length >= 2,
-    "expected both initial and cookie-refresh responses to preserve requestHeaders",
+    (source.match(/buildUpstreamHeaders\(request, security\)/g) ?? []).length >= 2,
+    "expected initial and cookie-refresh responses to rebuild current request headers",
   )
+  assert.doesNotMatch(source, /requestHeaders\?:\s*Headers/)
 })
 
 test("root Proxy owns the per-request nonce CSP contract", async () => {
@@ -119,10 +126,12 @@ test("root Proxy owns the per-request nonce CSP contract", async () => {
 
   assert.match(source, /createCspNonce/)
   assert.match(source, /buildContentSecurityPolicy/)
+  assert.match(source, /buildUpstreamHeaders/)
   assert.match(source, /needsPageCsp/)
   assert.match(source, /needsSupabaseSession/)
-  assert.match(source, /requestHeaders\.set\(["']x-nonce["']/)
-  assert.match(source, /requestHeaders\.set\(["']Content-Security-Policy["']/)
+  assert.match(source, /nonce/)
+  assert.match(source, /contentSecurityPolicy/)
+  assert.match(source, /updateSupabaseSession\(request, security\)/)
   assert.match(source, /response\.headers\.set\(["']Content-Security-Policy["']/)
 })
 
