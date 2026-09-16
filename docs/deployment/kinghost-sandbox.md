@@ -60,11 +60,14 @@ SHIPPING_ORIGIN_CEP=86730000
 SHIPPING_QUOTE_SECRET=<sandbox-secret>
 CRON_SECRET=<sandbox-secret>
 RATE_LIMIT_SECRET=<sandbox-secret>
+RATE_LIMIT_TRUSTED_PROXY_HOPS=0
 ```
 
 `APP_ENVIRONMENT=sandbox` é a trava que permite usar os dois provedores em sandbox mesmo com o Next rodando em runtime otimizado de Production. Se `APP_ENVIRONMENT` estiver ausente, o runtime continua exigindo ambientes de provedor `production` e falha fechado.
 
 Mantenha `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` durante toda a validação inicial. Cotação, OAuth, preparação e demais fluxos que não gastam saldo continuam testáveis sem liberar compra de etiqueta.
+
+Mantenha também `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` no primeiro deploy do sandbox. Com zero hops confiáveis, a aplicação ignora `X-Forwarded-For` e `X-Real-IP` e usa o bucket `unknown`; isso evita confiar em um header forjado, mas compartilha o limite entre clientes. Só altere para um valor entre `1` e `5` depois de verificar, neste host sandbox, a cadeia real `X-Forwarded-For` que a KingHost entrega ao processo Node.
 
 Segredos reais não entram em commit, issue, documentação, screenshot ou chat. Gere segredos independentes, quando necessário, com:
 
@@ -131,9 +134,10 @@ Confirme, nesta ordem:
 5. `MERCADO_PAGO_ENVIRONMENT=sandbox`;
 6. `MELHOR_ENVIO_ENVIRONMENT=sandbox`;
 7. `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`;
-8. o callback do Melhor Envio aponta para o host sandbox;
-9. o webhook do Mercado Pago aponta para o host sandbox;
-10. nenhum segredo de Production foi copiado para o ambiente de teste.
+8. `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` até a cadeia de proxy ser verificada;
+9. o callback do Melhor Envio aponta para o host sandbox;
+10. o webhook do Mercado Pago aponta para o host sandbox;
+11. nenhum segredo de Production foi copiado para o ambiente de teste.
 
 ## Aceitação Mercado Pago
 
