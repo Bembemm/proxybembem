@@ -214,7 +214,7 @@ export default async function AdminOrdersPage({
     to: filters.to,
     sort: "newest",
     page: filters.page,
-    pageSize: 25,
+    pageSize: PAGE_SIZE,
   })
 
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))

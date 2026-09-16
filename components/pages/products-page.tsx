@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import Image from "next/image"
 import { Check, ChevronDown, Eye, Filter, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -73,10 +73,6 @@ export function ProductsPage({
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const categories = Array.from(new Set(products.map((product) => product.category)))
-
-  useEffect(() => {
-    setSelectedCategories(initialCategory ? [initialCategory] : [])
-  }, [initialCategory])
 
   const openProductModal = (product: Product) => {
     setSelectedProduct(product)

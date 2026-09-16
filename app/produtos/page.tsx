@@ -38,6 +38,7 @@ export default async function ProdutosPage({
 
   return (
     <ProductsPage
+      key={initialCategory ?? "all-products"}
       products={products}
       unavailable={unavailable}
       productionLeadTimeBusinessDays={storeSettings.productionLeadTimeBusinessDays}

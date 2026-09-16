@@ -30,7 +30,6 @@ export function Navbar() {
     let cancelled = false
     const supabase = createSupabaseBrowserClient()
 
-    setAccountState("loading")
     void supabase.auth.getUser().then(({ data, error }) => {
       if (cancelled) return
       if (error) {
@@ -79,11 +78,6 @@ export function Navbar() {
     }
   }, [])
 
-  useEffect(() => {
-    setIsCategoriesOpen(false)
-    setIsMobileMenuOpen(false)
-  }, [pathname])
-
   const accountItem =
     accountState === "loading"
       ? null
@@ -113,6 +107,10 @@ export function Navbar() {
   const accountButton = accountItem ? (
     <Link
       href={accountItem.href}
+      onClick={() => {
+        setIsCategoriesOpen(false)
+        setIsMobileMenuOpen(false)
+      }}
       aria-current={isActive(accountItem.href) ? "page" : undefined}
       aria-label={accountItem.label}
       title={accountItem.label}

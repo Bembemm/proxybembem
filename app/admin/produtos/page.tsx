@@ -71,7 +71,7 @@ export default async function AdminProductsPage({
     query: filters.query,
     status: filters.status,
     page: filters.page,
-    pageSize: 25,
+    pageSize: PAGE_SIZE,
   })
 
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))

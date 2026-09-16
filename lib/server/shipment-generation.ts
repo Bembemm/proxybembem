@@ -50,7 +50,7 @@ interface GenerationShipmentLike {
   version: number
 }
 
-interface PrintShipmentLike extends GenerationShipmentLike {}
+type PrintShipmentLike = GenerationShipmentLike
 
 export type ShipmentGenerationActionResult =
   | { outcome: "not_found" }

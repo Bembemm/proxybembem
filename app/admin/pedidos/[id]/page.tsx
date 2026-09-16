@@ -112,10 +112,6 @@ function whatsappHref(value: string) {
   return digits ? `https://wa.me/${digits}` : null
 }
 
-function actionUrl(orderId: string, action: string) {
-  return `/api/internal/admin/orders/${orderId}/${action}`
-}
-
 function ActionForm({
   action,
   label,
