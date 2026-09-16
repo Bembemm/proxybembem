@@ -27,10 +27,12 @@ function AddToCartButton({ product }: { product: Product }) {
       type="button"
       onClick={() => addToCart(product)}
       aria-label={`Adicionar ${product.title} ao carrinho`}
-      className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#8B5CF6] px-3 text-sm font-semibold text-white transition hover:bg-[#7C3AED] active:scale-[0.98]"
+      className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#8B5CF6] px-2 text-xs font-semibold text-white transition hover:bg-[#7C3AED] active:scale-[0.98] sm:px-3 sm:text-sm lg:h-9 lg:text-xs"
     >
-      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-      {quantity > 0 ? `Adicionar ao carrinho (${quantity})` : "Adicionar ao carrinho"}
+      <ShoppingCart className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="truncate">
+        {quantity > 0 ? `Adicionar ao carrinho (${quantity})` : "Adicionar ao carrinho"}
+      </span>
     </button>
   )
 }
@@ -120,9 +122,9 @@ export function HomePage({
 
   return (
     <>
-      <section className="bg-white pb-8 pt-24 md:pt-32">
-        <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8">
-          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-950 md:mb-6 md:text-[32px]">
+      <section className="bg-white pb-10 pt-6 lg:pb-12 lg:pt-8">
+        <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8">
+          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-950 lg:mb-6 lg:text-[32px]">
             Destaques
           </h1>
 
@@ -146,7 +148,7 @@ export function HomePage({
                 onClick={() => scrollFeatured(-1)}
                 disabled={!canScrollLeft}
                 aria-label="Ver produtos anteriores"
-                className="absolute left-0 top-[78px] z-20 flex h-10 w-10 -translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:-translate-x-3 disabled:cursor-default disabled:opacity-20 disabled:hover:-translate-x-2 md:top-[105px] md:-translate-x-7 md:disabled:hover:-translate-x-7 lg:top-[99px] lg:-translate-x-10 lg:disabled:hover:-translate-x-10"
+                className="absolute left-0 top-[67px] z-20 flex h-10 w-10 -translate-x-1 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:-translate-x-2 disabled:cursor-default disabled:opacity-20 disabled:hover:-translate-x-1 md:top-[95px] md:-translate-x-6 md:disabled:hover:-translate-x-6 lg:top-[86px] lg:-translate-x-8 lg:disabled:hover:-translate-x-8"
               >
                 <ArrowLeft className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
               </button>
@@ -164,7 +166,7 @@ export function HomePage({
                     return (
                       <article
                         key={product.id}
-                        className="group w-[calc(100vw-2rem)] shrink-0 snap-start md:w-[210px] lg:w-[198px]"
+                        className="group w-[min(78vw,320px)] shrink-0 snap-start md:w-[190px] lg:w-[172px]"
                       >
                         <button
                           type="button"
@@ -177,13 +179,13 @@ export function HomePage({
                               src={product.image}
                               alt={product.title}
                               fill
-                              sizes="(max-width: 767px) 42vw, (max-width: 1024px) 210px, 198px"
+                              sizes="(max-width: 767px) 33vw, (max-width: 1023px) 190px, 172px"
                               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                             />
                           </div>
 
                           <div className="pt-0 md:pt-3">
-                            <h2 className="text-base font-normal leading-[1.35] text-slate-900 line-clamp-3 md:min-h-[2.6rem] md:text-[15px] md:line-clamp-2">
+                            <h2 className="line-clamp-3 text-base font-normal leading-[1.35] text-slate-900 md:min-h-[2.6rem] md:line-clamp-2 md:text-[15px] lg:text-sm">
                               {product.title}
                             </h2>
 
@@ -196,11 +198,11 @@ export function HomePage({
                             )}
 
                             <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 md:mt-0.5">
-                              <span className="text-xl font-bold leading-tight text-slate-950 md:text-lg">
+                              <span className="text-xl font-bold leading-tight text-slate-950 md:text-lg lg:text-base">
                                 {formatPrice(product.discountPrice)}
                               </span>
                               {discount > 0 ? (
-                                <span className="text-sm font-medium text-red-500">{discount}% OFF</span>
+                                <span className="text-sm font-medium text-red-500 lg:text-xs">{discount}% OFF</span>
                               ) : null}
                             </div>
                           </div>
@@ -218,7 +220,7 @@ export function HomePage({
                 onClick={() => scrollFeatured(1)}
                 disabled={!canScrollRight}
                 aria-label="Ver próximos produtos"
-                className="absolute right-0 top-[78px] z-20 flex h-10 w-10 translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:translate-x-3 disabled:cursor-default disabled:opacity-20 disabled:hover:translate-x-2 md:top-[105px] md:translate-x-7 md:disabled:hover:translate-x-7 lg:top-[99px] lg:translate-x-10 lg:disabled:hover:translate-x-10"
+                className="absolute right-0 top-[67px] z-20 flex h-10 w-10 translate-x-1 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:translate-x-2 disabled:cursor-default disabled:opacity-20 disabled:hover:translate-x-1 md:top-[95px] md:translate-x-6 md:disabled:hover:translate-x-6 lg:top-[86px] lg:translate-x-8 lg:disabled:hover:translate-x-8"
               >
                 <ArrowRight className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
               </button>
