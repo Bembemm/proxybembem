@@ -10,7 +10,7 @@ This document is the final evidence ledger for the four approved hardening plans
 
 **NOT YET MERGE-READY.**
 
-Repository implementation for CSP/nonce, proxy-aware rate limiting, lint/CI, SEO and the application-side password policy is present and the final repository candidate has a complete green CI run. The remaining blockers are external Supabase Auth dashboard verification and isolated KingHost sandbox acceptance.
+Repository implementation for CSP/nonce, proxy-aware rate limiting, lint/CI, SEO and the application-side password policy is complete, the repository candidate has a complete green CI run, and the Supabase Auth dashboard gate has now been owner-verified. The remaining blocker is isolated KingHost sandbox acceptance.
 
 ## Repository implementation status
 
@@ -85,7 +85,7 @@ Verified in source/tests:
 
 Project reviewed: `ProxyBembem` (`kicgoocozxzkuoqajqif`).
 
-Live Advisor state reviewed on 2026-09-16:
+Live Advisor state re-reviewed on 2026-09-16 after the Auth dashboard changes. The findings remained the expected three groups:
 
 1. `auth_leaked_password_protection` — WARN.
    - accepted known limitation;
@@ -106,19 +106,28 @@ Detailed evidence and the full table list are recorded in `SUPABASE_AUTH_SECURIT
 
 ## Supabase Auth dashboard gate
 
-Status: **OWNER DASHBOARD VERIFICATION REQUIRED**.
+Status: **COMPLETE — OWNER-VERIFIED ON 2026-09-16**.
 
-The available Supabase connector can inspect database/advisor state but does not expose a hosted Auth configuration read/mutation action. Therefore these settings are not claimed as verified:
+The owner verified the hosted Auth settings directly in the Supabase dashboard:
 
-- [ ] Minimum password length = `8`.
-- [ ] Required characters = lowercase + uppercase + digits + symbols.
-- [ ] Email confirmation enabled.
-- [ ] Auth rate limits reviewed for compatibility with the application flow.
-- [ ] Leaked Password Protection remains OFF unless the project is upgraded and the owner chooses to enable it.
-- [ ] CAPTCHA remains OFF unless provider credentials plus frontend challenge-token integration are separately implemented/tested.
-- [ ] Password-change reauthentication/current-password enforcement remains unchanged until the UI/server flow supports the required nonce/current-password data.
+- [x] Minimum password length = `8`.
+- [x] Required characters = lowercase + uppercase + digits + symbols.
+- [x] Email confirmation enabled.
+- [x] Auth rate limits reviewed for compatibility with the application flow.
+  - email sending: `30/hour` as configured for this project;
+  - token refreshes: `150/5 min` per IP;
+  - token verifications: `30/5 min` per IP;
+  - anonymous users: `30/hour` per IP (anonymous sign-ins remain disabled);
+  - sign-ups/sign-ins: `30/5 min` per IP;
+  - Web3 sign-ups/sign-ins: `30/5 min` per IP.
+- [x] Leaked Password Protection remains OFF because it is unavailable on the current Free plan; the Advisor warning is accepted and documented.
+- [x] CAPTCHA remains OFF because provider credentials plus frontend challenge-token integration have not been implemented/tested.
+- [x] Secure password change remains OFF and require-current-password remains OFF; the existing UI/server flow does not yet implement the required reauthentication/current-password data path.
+- [x] IP Address Forwarding remains OFF. The current application does not send `Sb-Forwarded-For` using a supported Supabase secret-key flow, and application-side proxy/IP trust is handled separately by the hardened rate limiter.
 
-Current Supabase documentation checked during this review confirms the 8+ recommendation, strongest required-character option, hosted email-confirmation setting, and Pro+ requirement for leaked-password protection.
+Current Supabase documentation checked during this review confirms the hosted rate-limit behavior, the explicit opt-in semantics of IP Address Forwarding, the 8+ password recommendation, the strongest required-character option, hosted email-confirmation setting, and Pro+ requirement for leaked-password protection.
+
+Supabase Auth dashboard gate status: **COMPLETE**.
 
 ## Repository verification evidence
 
@@ -138,9 +147,11 @@ Verified gates:
 - explicit critical commerce/security subset: PASS, 58/58;
 - full test suite: PASS, 880/880.
 
+A later documentation-only head (`279a4ff1c168161b0ba757a740a1bc27cd566ddf`) also completed the same CI workflow successfully before this Supabase evidence update. No application code changed in that documentation-only commit.
+
 The production build also confirmed request-time rendering for the application routes required by nonce CSP, including dynamic `/robots.txt` and `/sitemap.xml`, and successfully prepared the KingHost standalone package.
 
-Earlier runs on the same branch had failed before runner allocation because the account had exhausted private-repository Actions minutes. Those infrastructure failures had `runner_id: 0` and `steps: []`; they are superseded for repository verification by the complete green run above.
+Earlier runs on the same branch had failed before runner allocation because the account had exhausted private-repository Actions minutes. Those infrastructure failures had `runner_id: 0` and `steps: []`; they are superseded for repository verification by the complete green runs after the repository was made public.
 
 Repository gate status: **COMPLETE**.
 
@@ -180,8 +191,8 @@ Before merge readiness, the isolated KingHost application must verify:
 
 Do **not** open/merge the hardening PR as accepted until all three items below are true:
 
-1. [x] current final SHA receives a real green CI execution;
-2. [ ] Supabase Auth dashboard checklist is owner-verified;
+1. [x] application repository candidate receives a real green CI execution;
+2. [x] Supabase Auth dashboard checklist is owner-verified;
 3. [ ] isolated KingHost sandbox smoke is completed and this document is updated with the sandbox evidence.
 
 Production remains unchanged until that explicit owner decision.
