@@ -31,7 +31,7 @@ test("navbar resolves an unauthenticated getUser error to guest instead of stayi
   )
 })
 
-test("navbar uses the approved two-level desktop header and compact mobile menu", () => {
+test("navbar uses the approved two-level desktop header and compact category-free mobile menu", () => {
   const navbar = source("components/navbar.tsx")
 
   assert.match(navbar, /Menu/)
@@ -40,11 +40,14 @@ test("navbar uses the approved two-level desktop header and compact mobile menu"
   assert.match(navbar, /md:hidden/)
   assert.match(navbar, /md:flex/)
   assert.match(navbar, /hidden[^"']*md:block/)
+  assert.match(navbar, /max-w-\[1280px\]/)
 
   assert.match(navbar, />\s*Contato\s*</)
   assert.match(navbar, />\s*Categorias\s*</)
   assert.match(navbar, />\s*Início\s*</)
   assert.match(navbar, />\s*Produtos\s*</)
+  assert.match(navbar, /id=["']store-category-menu["']/)
+  assert.doesNotMatch(navbar, /isMobileCategoriesOpen/)
 
   assert.match(navbar, /UserRound/)
   assert.match(navbar, /ShoppingCart/)
