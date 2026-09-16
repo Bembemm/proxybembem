@@ -13,9 +13,29 @@ const PRIVATE_ACCOUNT_CACHE_CONTROL =
 const PRIVATE_ADMIN_CACHE_CONTROL =
   "private, no-cache, no-store, max-age=0, must-revalidate"
 
-function nextResponse(request: NextRequest, requestHeaders?: Headers) {
+export type RequestSecurityHeaders = {
+  nonce: string
+  contentSecurityPolicy: string
+}
+
+export function buildUpstreamHeaders(
+  request: NextRequest,
+  security: RequestSecurityHeaders | null,
+) {
+  const headers = new Headers(request.headers)
+  if (security) {
+    headers.set("x-nonce", security.nonce)
+    headers.set("Content-Security-Policy", security.contentSecurityPolicy)
+  }
+  return headers
+}
+
+function nextResponse(
+  request: NextRequest,
+  security: RequestSecurityHeaders | null,
+) {
   return NextResponse.next({
-    request: { headers: requestHeaders ?? request.headers },
+    request: { headers: buildUpstreamHeaders(request, security) },
   })
 }
 
@@ -57,8 +77,11 @@ function disablePrivateBrowserCache(
   return response
 }
 
-export async function updateSupabaseSession(request: NextRequest, requestHeaders?: Headers) {
-  let supabaseResponse = nextResponse(request, requestHeaders)
+export async function updateSupabaseSession(
+  request: NextRequest,
+  security: RequestSecurityHeaders | null = null,
+) {
+  let supabaseResponse = nextResponse(request, security)
   const env = getSupabaseBrowserConfig()
 
   const supabase = createServerClient(env.url, env.publishableKey, {
@@ -72,7 +95,7 @@ export async function updateSupabaseSession(request: NextRequest, requestHeaders
           request.cookies.set(name, value)
         })
 
-        supabaseResponse = nextResponse(request, requestHeaders)
+        supabaseResponse = nextResponse(request, security)
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, options)
         })
