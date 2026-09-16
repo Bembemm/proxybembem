@@ -38,10 +38,7 @@ export async function proxy(request: NextRequest) {
       })
 
   if (security) {
-    response.headers.set(
-      "Content-Security-Policy",
-      security.contentSecurityPolicy,
-    )
+    response.headers.set("Content-Security-Policy", security.contentSecurityPolicy)
   }
 
   return response
