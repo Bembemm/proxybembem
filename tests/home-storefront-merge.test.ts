@@ -6,21 +6,34 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
 }
 
-test("home uses a centered horizontal featured carousel with side arrows instead of a static grid", () => {
+test("home sends every published product to the storefront without a featured-only filter", () => {
+  const route = source("app/page.tsx")
+  const home = source("components/pages/home-page.tsx")
+
+  assert.doesNotMatch(route, /products\.filter\s*\(.*featured/s)
+  assert.match(route, /<HomePage\s+products=\{products\}/)
+  assert.match(home, /HomePage\s*\(\s*\{\s*products/)
+  assert.match(home, /products\.map\s*\(/)
+})
+
+test("home carousel centers a short row and becomes horizontally scrollable when products overflow", () => {
   const home = source("components/pages/home-page.tsx")
 
   assert.doesNotMatch(home, /@\/data\/products/)
-  assert.match(home, /HomePage\s*\(\s*\{\s*featuredProducts/)
-  assert.match(home, /featuredProducts\.map\s*\(/)
   assert.match(home, />\s*Destaques\s*</)
   assert.doesNotMatch(home, /Monte seu deck do seu jeito/)
   assert.doesNotMatch(home, /Escolha a quantidade de cartas/)
   assert.match(home, /useRef/)
+  assert.match(home, /useEffect/)
   assert.match(home, /ChevronLeft/)
   assert.match(home, /ChevronRight/)
   assert.match(home, /scrollBy\s*\(/)
   assert.match(home, /overflow-x-auto/)
-  assert.match(home, /snap-x/)
+  assert.match(home, /w-max/)
+  assert.match(home, /min-w-full/)
+  assert.match(home, /justify-center/)
+  assert.match(home, /canScrollLeft/)
+  assert.match(home, /canScrollRight/)
   assert.match(home, /max-w-\[1380px\]/)
   assert.match(home, /aria-label=["']Produtos em destaque["']/)
 })
