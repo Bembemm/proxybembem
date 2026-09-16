@@ -59,6 +59,20 @@ Não use `pm2 start`, Express, `next dev` ou uma porta hard-coded como procedime
 
 **Permissões do shell:** execute build/deploy com o umask normal da sessão (`022`). Não deixe `umask 077` ativo durante o build: em 2026-09-14 isso fez assets recém-gerados de `/_next/static` nascerem em modo `600`, e o nginx respondeu `403` para CSS/JS. O `.env.production` deve continuar privado com permissão restrita própria; não afrouxe o arquivo de segredos para corrigir assets.
 
+## Rate limit e proxy reverso
+
+`RATE_LIMIT_TRUSTED_PROXY_HOPS` controla quantos hops de proxy confiáveis a aplicação considera ao resolver o IP do cliente a partir de `X-Forwarded-For`.
+
+O default seguro é `0`. Nesse modo, a aplicação não confia em `X-Forwarded-For` nem em `X-Real-IP`; endpoints com rate limit usam o bucket HMAC de `unknown`. Isso evita aceitar um header de IP potencialmente forjado, mas também faz clientes diferentes compartilharem o mesmo limite enquanto o trust de proxy não estiver configurado.
+
+Não configure `1` ou outro valor não-zero por suposição. Primeiro verifique a cadeia real `X-Forwarded-For` que chega ao processo Node na aplicação KingHost, incluindo se o proxy sobrescreve ou acrescenta valores recebidos do cliente. Somente depois configure o número observado de proxies confiáveis, entre `1` e `5`, reinicie a aplicação pelo painel e repita os testes de rate limit.
+
+Configuração inicial/fail-closed:
+
+```text
+RATE_LIMIT_TRUSTED_PROXY_HOPS=0
+```
+
 ## Smoke após deploy
 
 O host canônico direto é `www`; o apex pode redirecionar para ele.
@@ -187,7 +201,7 @@ O webhook rejeita corpos acima de 64 KiB antes de consultar o signing secret ou 
 
 ## Arquivos de ambiente
 
-Segredos ficam fora do Git. O `.env.production` no servidor continua privado e deve manter permissões restritas. Para a Phase 6, produção precisa de `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` e do `CRON_SECRET` já existente. Não faça `source .env.production` no shell; valores dotenv podem conter espaços e caracteres que não são sintaxe shell. O Next/runtime lê o arquivo pelo mecanismo de ambiente da aplicação.
+Segredos ficam fora do Git. O `.env.production` no servidor continua privado e deve manter permissões restritas. Para a Phase 6, produção precisa de `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` e do `CRON_SECRET` já existente. O rate limit também usa `RATE_LIMIT_SECRET` e `RATE_LIMIT_TRUSTED_PROXY_HOPS`, cujo default seguro deve permanecer `0` até a verificação do proxy descrita acima. Não faça `source .env.production` no shell; valores dotenv podem conter espaços e caracteres que não são sintaxe shell. O Next/runtime lê o arquivo pelo mecanismo de ambiente da aplicação.
 
 ## Build de CI vs deploy de servidor
 
