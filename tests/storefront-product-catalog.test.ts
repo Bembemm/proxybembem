@@ -17,7 +17,7 @@ test("public storefront components receive products and never import the static 
   assert.doesNotMatch(productsPage, /@\/data\/products/)
   assert.doesNotMatch(homePage, /@\/data\/products/)
   assert.match(productsPage, /ProductsPage\s*\(\s*\{\s*products/)
-  assert.match(homePage, /HomePage\s*\(\s*\{\s*featuredProducts/)
+  assert.match(homePage, /HomePage\s*\(\s*\{\s*products/)
 })
 
 test("storefront routes load published products from the server repository with no static fallback", () => {
@@ -32,8 +32,8 @@ test("storefront routes load published products from the server repository with 
   assert.match(productsRoute, /await\s+listPublishedProducts\s*\(/)
   assert.match(productsRoute, /<ProductsPage\s+products=/)
   assert.match(homeRoute, /await\s+listPublishedProducts\s*\(/)
-  assert.match(homeRoute, /\.filter\s*\([\s\S]*featured/)
-  assert.match(homeRoute, /<HomePage\s+featuredProducts=/)
+  assert.doesNotMatch(homeRoute, /featuredProducts\s*=\s*products\.filter/)
+  assert.match(homeRoute, /<HomePage\s+products=/)
 })
 
 test("storefront catalog pages render at request time instead of capturing a build-time snapshot", () => {
