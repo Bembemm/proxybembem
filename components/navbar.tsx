@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronDown, ShoppingCart, UserRound } from "lucide-react"
+import { ChevronDown, Menu, ShoppingCart, UserRound, X } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -22,6 +22,8 @@ export function Navbar() {
   const [accountState, setAccountState] = useState<AccountState>("loading")
   const [categories, setCategories] = useState<string[]>([])
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false)
   const pathname = usePathname()
   const { totalItems, setIsCartOpen } = useCart()
 
@@ -80,6 +82,8 @@ export function Navbar() {
 
   useEffect(() => {
     setIsCategoriesOpen(false)
+    setIsMobileMenuOpen(false)
+    setIsMobileCategoriesOpen(false)
   }, [pathname])
 
   const accountItem =
@@ -89,13 +93,14 @@ export function Navbar() {
         ? { label: "Meu perfil", href: "/minha-conta/perfil" }
         : { label: "Entrar", href: "/entrar" }
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
 
   const cartButton = (
     <button
       type="button"
       onClick={() => setIsCartOpen(true)}
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-700 transition-colors hover:bg-slate-100 hover:text-[#8B5CF6]"
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-800 transition-colors hover:bg-slate-100 hover:text-[#8B5CF6]"
       aria-label="Abrir carrinho"
     >
       <ShoppingCart className="h-5 w-5" />
@@ -107,28 +112,114 @@ export function Navbar() {
     </button>
   )
 
-  return (
-    <header className="fixed left-0 right-0 top-0 z-50 border-b border-slate-200/70 bg-white/95 shadow-sm backdrop-blur-xl">
-      <nav
-        className="container mx-auto flex h-14 items-center justify-between gap-2 px-3 sm:h-16 sm:px-4"
-        aria-label="Navegação principal"
-      >
-        <a href="/" className="flex min-w-0 items-center gap-2">
-          <img src="/brand/pb" alt="" aria-hidden="true" className="h-10 w-auto shrink-0 object-contain sm:h-12" />
-          <span className="hidden truncate text-xl tracking-wide text-black sm:inline sm:text-2xl font-[family-name:var(--font-display)]">
-            ProxyBembem
-          </span>
-        </a>
+  const accountButton = accountItem ? (
+    <Link
+      href={accountItem.href}
+      aria-current={isActive(accountItem.href) ? "page" : undefined}
+      aria-label={accountItem.label}
+      title={accountItem.label}
+      className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+        isActive(accountItem.href)
+          ? "bg-[#8B5CF6]/10 text-[#8B5CF6]"
+          : "text-slate-800 hover:bg-slate-100 hover:text-[#8B5CF6]"
+      }`}
+    >
+      <UserRound className="h-5 w-5" />
+    </Link>
+  ) : (
+    <span className="h-10 w-10" aria-hidden="true" />
+  )
 
-        <div className="flex items-center gap-1 sm:gap-2">
+  const categoryItems = (mobile = false) =>
+    categories.length > 0 ? (
+      categories.map((category) => (
+        <a
+          key={category}
+          href={`/produtos?categoria=${encodeURIComponent(category)}`}
+          role="menuitem"
+          onClick={() => {
+            setIsCategoriesOpen(false)
+            setIsMobileCategoriesOpen(false)
+            if (mobile) setIsMobileMenuOpen(false)
+          }}
+          className={
+            mobile
+              ? "block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
+              : "block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
+          }
+        >
+          {category}
+        </a>
+      ))
+    ) : (
+      <span className="block px-3 py-2.5 text-sm text-slate-500">
+        Categorias indisponíveis no momento.
+      </span>
+    )
+
+  return (
+    <header className="fixed left-0 right-0 top-0 z-50 bg-white/95 shadow-sm backdrop-blur-xl">
+      <div className="border-b border-slate-200/80">
+        <nav
+          className="container mx-auto grid h-16 grid-cols-[1fr_auto_1fr] items-center px-3 sm:h-16 sm:px-4 md:flex md:h-14 md:justify-between"
+          aria-label="Navegação principal"
+        >
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen((current) => !current)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-900 transition-colors hover:bg-slate-100 md:hidden"
+            aria-label="Abrir menu"
+            aria-expanded={isMobileMenuOpen}
+            aria-controls="mobile-store-menu"
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+
+          <a
+            href="/"
+            className="flex min-w-0 items-center justify-self-center gap-2 md:justify-self-auto"
+            aria-label="ProxyBembem - Início"
+          >
+            <img
+              src="/brand/pb"
+              alt=""
+              aria-hidden="true"
+              className="h-10 w-auto shrink-0 object-contain md:h-11"
+            />
+            <span className="hidden truncate text-2xl tracking-wide text-black md:inline font-[family-name:var(--font-display)]">
+              ProxyBembem
+            </span>
+          </a>
+
+          <div className="flex items-center justify-self-end gap-1 md:gap-2">
+            <a
+              href="/contato"
+              className={`hidden h-10 items-center px-3 text-sm font-medium transition-colors md:inline-flex ${
+                isActive("/contato") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]"
+              }`}
+            >
+              Contato
+            </a>
+            <div className="hidden h-5 w-px bg-slate-200 md:block" aria-hidden="true" />
+            {accountButton}
+            {cartButton}
+          </div>
+        </nav>
+      </div>
+
+      <div className="hidden border-b border-slate-200/80 bg-white md:block">
+        <nav
+          className="container mx-auto flex h-10 items-center gap-7 px-4 text-sm"
+          aria-label="Navegação da loja"
+        >
           <div className="relative">
             <button
               type="button"
               onClick={() => setIsCategoriesOpen((current) => !current)}
-              className={`inline-flex h-10 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium transition-colors sm:px-4 sm:text-base ${
+              className={`inline-flex h-9 items-center gap-1.5 font-medium transition-colors ${
                 pathname.startsWith("/produtos") || isCategoriesOpen
-                  ? "bg-[#8B5CF6]/10 text-[#7C3AED]"
-                  : "text-slate-700 hover:bg-slate-100 hover:text-[#7C3AED]"
+                  ? "text-[#7C3AED]"
+                  : "text-slate-700 hover:text-[#7C3AED]"
               }`}
               aria-expanded={isCategoriesOpen}
               aria-controls="store-category-menu"
@@ -145,51 +236,80 @@ export function Navbar() {
               <div
                 id="store-category-menu"
                 role="menu"
-                className="absolute right-0 top-[calc(100%+0.5rem)] w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl sm:left-0 sm:right-auto"
+                className="absolute left-0 top-[calc(100%+0.35rem)] w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
               >
-                {categories.length > 0 ? (
-                  categories.map((category) => (
-                    <a
-                      key={category}
-                      href={`/produtos?categoria=${encodeURIComponent(category)}`}
-                      role="menuitem"
-                      onClick={() => setIsCategoriesOpen(false)}
-                      className="block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
-                    >
-                      {category}
-                    </a>
-                  ))
-                ) : (
-                  <span className="block px-3 py-2.5 text-sm text-slate-500">
-                    Categorias indisponíveis no momento.
-                  </span>
-                )}
+                {categoryItems()}
               </div>
             ) : null}
           </div>
 
-          <div className="ml-1 flex items-center gap-1 border-l border-slate-200 pl-2 sm:pl-3">
-            {accountItem ? (
-              <Link
-                href={accountItem.href}
-                aria-current={isActive(accountItem.href) ? "page" : undefined}
-                aria-label={accountItem.label}
-                title={accountItem.label}
-                className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
-                  isActive(accountItem.href)
-                    ? "bg-[#8B5CF6]/10 text-[#8B5CF6]"
-                    : "text-slate-700 hover:bg-slate-100 hover:text-[#8B5CF6]"
-                }`}
-              >
-                <UserRound className="h-5 w-5" />
-              </Link>
-            ) : (
-              <span className="h-10 w-10" aria-hidden="true" />
-            )}
-            {cartButton}
-          </div>
+          <a
+            href="/"
+            aria-current={isActive("/") ? "page" : undefined}
+            className={`font-medium transition-colors ${
+              isActive("/") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]"
+            }`}
+          >
+            Início
+          </a>
+          <a
+            href="/produtos"
+            aria-current={isActive("/produtos") ? "page" : undefined}
+            className={`font-medium transition-colors ${
+              isActive("/produtos") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]"
+            }`}
+          >
+            Produtos
+          </a>
+        </nav>
+      </div>
+
+      {isMobileMenuOpen ? (
+        <div
+          id="mobile-store-menu"
+          className="max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-slate-200 bg-white px-4 py-3 shadow-lg md:hidden"
+        >
+          <nav className="mx-auto flex max-w-lg flex-col" aria-label="Menu móvel da loja">
+            <button
+              type="button"
+              onClick={() => setIsMobileCategoriesOpen((current) => !current)}
+              className="flex min-h-12 items-center justify-between border-b border-slate-100 px-1 text-left text-base font-medium text-slate-900"
+              aria-expanded={isMobileCategoriesOpen}
+            >
+              Categorias
+              <ChevronDown
+                className={`h-4 w-4 transition-transform ${isMobileCategoriesOpen ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {isMobileCategoriesOpen ? (
+              <div className="border-b border-slate-100 bg-slate-50 py-1" role="menu">
+                {categoryItems(true)}
+              </div>
+            ) : null}
+
+            <a
+              href="/"
+              className="flex min-h-12 items-center border-b border-slate-100 px-1 text-base font-medium text-slate-900"
+            >
+              Início
+            </a>
+            <a
+              href="/produtos"
+              className="flex min-h-12 items-center border-b border-slate-100 px-1 text-base font-medium text-slate-900"
+            >
+              Produtos
+            </a>
+            <a
+              href="/contato"
+              className="flex min-h-12 items-center px-1 text-base font-medium text-slate-900"
+            >
+              Contato
+            </a>
+          </nav>
         </div>
-      </nav>
+      ) : null}
     </header>
   )
 }
