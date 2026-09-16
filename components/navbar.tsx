@@ -148,16 +148,16 @@ export function Navbar() {
     )
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 bg-white/95 shadow-sm backdrop-blur-xl">
+    <header className="sticky top-0 z-50 bg-white/95 shadow-sm backdrop-blur-xl">
       <div className="border-b border-slate-200/80">
         <nav
-          className="mx-auto grid h-16 w-full max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 md:flex md:h-14 md:justify-between lg:px-8"
+          className="mx-auto grid h-16 w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 lg:h-[72px] lg:px-8"
           aria-label="Navegação principal"
         >
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen((current) => !current)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-900 transition-colors hover:bg-slate-100 md:hidden"
+            className="col-start-1 row-start-1 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-900 transition-colors hover:bg-slate-100 lg:hidden"
             aria-label="Abrir menu"
             aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-store-menu"
@@ -167,39 +167,39 @@ export function Navbar() {
 
           <a
             href="/"
-            className="flex min-w-0 items-center justify-self-center gap-2 md:justify-self-auto"
+            className="col-start-2 row-start-1 flex min-w-0 items-center justify-self-center gap-2.5"
             aria-label="ProxyBembem - Início"
           >
             <img
               src="/brand/pb"
               alt=""
               aria-hidden="true"
-              className="h-10 w-auto shrink-0 object-contain md:h-11"
+              className="h-10 w-auto shrink-0 object-contain lg:h-11"
             />
-            <span className="hidden truncate text-2xl tracking-wide text-black md:inline font-[family-name:var(--font-display)]">
+            <span className="hidden truncate text-2xl tracking-wide text-black lg:inline font-[family-name:var(--font-display)]">
               ProxyBembem
             </span>
           </a>
 
-          <div className="flex items-center justify-self-end gap-1 md:gap-2">
+          <div className="col-start-3 row-start-1 flex items-center justify-self-end gap-1 lg:gap-2">
             <a
               href="/contato"
-              className={`hidden h-10 items-center px-3 text-sm font-medium transition-colors md:inline-flex ${
+              className={`hidden h-10 items-center px-3 text-sm font-medium transition-colors lg:inline-flex ${
                 isActive("/contato") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]"
               }`}
             >
               Contato
             </a>
-            <div className="hidden h-5 w-px bg-slate-200 md:block" aria-hidden="true" />
+            <div className="hidden h-5 w-px bg-slate-200 lg:block" aria-hidden="true" />
             {accountButton}
             {cartButton}
           </div>
         </nav>
       </div>
 
-      <div className="hidden border-b border-slate-200/80 bg-white md:block">
+      <div className="hidden border-b border-slate-200/80 bg-white lg:block">
         <nav
-          className="mx-auto flex h-10 w-full max-w-[1280px] items-center gap-7 px-6 text-sm lg:px-8"
+          className="mx-auto flex h-11 w-full max-w-[1180px] items-center gap-8 px-8 text-sm"
           aria-label="Navegação da loja"
         >
           <div className="relative">
@@ -257,7 +257,7 @@ export function Navbar() {
       {isMobileMenuOpen ? (
         <div
           id="mobile-store-menu"
-          className="border-b border-slate-200 bg-white px-4 py-2 shadow-lg md:hidden"
+          className="border-b border-slate-200 bg-white px-4 py-2 shadow-lg lg:hidden"
         >
           <nav className="mx-auto flex max-w-lg flex-col" aria-label="Menu móvel da loja">
             <a
