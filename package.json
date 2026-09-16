@@ -11,7 +11,7 @@
     "build:kinghost": "next build --webpack && node scripts/kinghost/prepare-standalone.mjs",
     "deploy:kinghost": "pnpm build:kinghost && node scripts/kinghost/publish-assets.mjs",
     "start": "next start",
-    "lint": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
@@ -36,6 +36,8 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.3",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
