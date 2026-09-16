@@ -103,7 +103,7 @@ export function HomePage({
     if (!carousel) return
 
     carousel.scrollBy({
-      left: direction * Math.max(carousel.clientWidth * 0.88, 280),
+      left: direction * carousel.clientWidth,
       behavior: "smooth",
     })
   }
@@ -120,9 +120,9 @@ export function HomePage({
 
   return (
     <>
-      <section className="min-h-[70vh] bg-white pb-12 pt-20 sm:pb-16 sm:pt-24">
-        <div className="mx-auto max-w-[1380px] px-4 sm:px-8 lg:px-12">
-          <h1 className="mb-5 text-2xl font-bold tracking-tight text-slate-950 sm:mb-6 sm:text-3xl">
+      <section className="bg-white pb-8 pt-24 md:pt-32">
+        <div className="mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8">
+          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-950 md:mb-6 md:text-[32px]">
             Destaques
           </h1>
 
@@ -146,7 +146,7 @@ export function HomePage({
                 onClick={() => scrollFeatured(-1)}
                 disabled={!canScrollLeft}
                 aria-label="Ver produtos anteriores"
-                className="absolute left-0 top-[99px] z-20 flex h-10 w-10 -translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:-translate-x-3 disabled:cursor-default disabled:opacity-25 disabled:hover:-translate-x-2 sm:top-[105px] sm:-translate-x-7 sm:disabled:hover:-translate-x-7 lg:top-[99px] lg:-translate-x-10 lg:disabled:hover:-translate-x-10"
+                className="absolute left-0 top-[78px] z-20 flex h-10 w-10 -translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:-translate-x-3 disabled:cursor-default disabled:opacity-20 disabled:hover:-translate-x-2 md:top-[105px] md:-translate-x-7 md:disabled:hover:-translate-x-7 lg:top-[99px] lg:-translate-x-10 lg:disabled:hover:-translate-x-10"
               >
                 <ArrowLeft className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
               </button>
@@ -155,21 +155,21 @@ export function HomePage({
                 ref={carouselRef}
                 onScroll={updateScrollState}
                 aria-label="Produtos em destaque"
-                className="snap-x snap-mandatory overflow-x-auto scroll-smooth pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="snap-x snap-mandatory overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <div className="flex w-max min-w-full justify-start gap-4 px-8 sm:px-0">
+                <div className="flex w-max min-w-full justify-center gap-4">
                   {products.map((product) => {
                     const discount = discountPercent(product)
 
                     return (
                       <article
                         key={product.id}
-                        className="group w-[74vw] max-w-[220px] shrink-0 snap-start sm:w-[210px] lg:w-[198px]"
+                        className="group w-[calc(100vw-2rem)] shrink-0 snap-start md:w-[210px] lg:w-[198px]"
                       >
                         <button
                           type="button"
                           onClick={() => openProductModal(product)}
-                          className="block w-full text-left"
+                          className="grid w-full grid-cols-[42%_1fr] items-start gap-4 text-left md:block"
                           aria-label={`Ver detalhes de ${product.title}`}
                         >
                           <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
@@ -177,26 +177,26 @@ export function HomePage({
                               src={product.image}
                               alt={product.title}
                               fill
-                              sizes="(max-width: 640px) 74vw, (max-width: 1024px) 210px, 198px"
+                              sizes="(max-width: 767px) 42vw, (max-width: 1024px) 210px, 198px"
                               className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                             />
                           </div>
 
-                          <div className="pt-3">
-                            <h2 className="min-h-[2.6rem] text-[15px] font-normal leading-[1.35] text-slate-900 line-clamp-2">
+                          <div className="pt-0 md:pt-3">
+                            <h2 className="text-base font-normal leading-[1.35] text-slate-900 line-clamp-3 md:min-h-[2.6rem] md:text-[15px] md:line-clamp-2">
                               {product.title}
                             </h2>
 
                             {product.originalPrice > product.discountPrice ? (
-                              <p className="mt-2 text-xs text-slate-500 line-through">
+                              <p className="mt-3 text-sm text-slate-500 line-through md:mt-2 md:text-xs">
                                 {formatPrice(product.originalPrice)}
                               </p>
                             ) : (
-                              <div className="mt-2 h-4" aria-hidden="true" />
+                              <div className="mt-3 h-5 md:mt-2 md:h-4" aria-hidden="true" />
                             )}
 
-                            <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                              <span className="text-lg font-bold leading-tight text-slate-950">
+                            <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 md:mt-0.5">
+                              <span className="text-xl font-bold leading-tight text-slate-950 md:text-lg">
                                 {formatPrice(product.discountPrice)}
                               </span>
                               {discount > 0 ? (
@@ -218,7 +218,7 @@ export function HomePage({
                 onClick={() => scrollFeatured(1)}
                 disabled={!canScrollRight}
                 aria-label="Ver próximos produtos"
-                className="absolute right-0 top-[99px] z-20 flex h-10 w-10 translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:translate-x-3 disabled:cursor-default disabled:opacity-25 disabled:hover:translate-x-2 sm:top-[105px] sm:translate-x-7 sm:disabled:hover:translate-x-7 lg:top-[99px] lg:translate-x-10 lg:disabled:hover:translate-x-10"
+                className="absolute right-0 top-[78px] z-20 flex h-10 w-10 translate-x-2 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:translate-x-3 disabled:cursor-default disabled:opacity-20 disabled:hover:translate-x-2 md:top-[105px] md:translate-x-7 md:disabled:hover:translate-x-7 lg:top-[99px] lg:translate-x-10 lg:disabled:hover:translate-x-10"
               >
                 <ArrowRight className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
               </button>
