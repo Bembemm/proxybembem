@@ -11,6 +11,7 @@ import {
 } from "../lib/security/proxy-routing.ts"
 
 const SUPABASE_PROXY = new URL("../lib/supabase/proxy.ts", import.meta.url)
+const ROOT_PROXY = new URL("../proxy.ts", import.meta.url)
 
 test("creates a fresh base64 nonce for every call", () => {
   const first = createCspNonce()
@@ -111,4 +112,30 @@ test("Supabase session refresh preserves upstream security request headers", asy
     (source.match(/nextResponse\(request, requestHeaders\)/g) ?? []).length >= 2,
     "expected both initial and cookie-refresh responses to preserve requestHeaders",
   )
+})
+
+test("root Proxy owns the per-request nonce CSP contract", async () => {
+  const source = await readFile(ROOT_PROXY, "utf8")
+
+  assert.match(source, /createCspNonce/)
+  assert.match(source, /buildContentSecurityPolicy/)
+  assert.match(source, /needsPageCsp/)
+  assert.match(source, /needsSupabaseSession/)
+  assert.match(source, /requestHeaders\.set\(["']x-nonce["']/)
+  assert.match(source, /requestHeaders\.set\(["']Content-Security-Policy["']/)
+  assert.match(source, /response\.headers\.set\(["']Content-Security-Policy["']/)
+})
+
+test("root Proxy matches pages broadly while skipping static assets and prefetches", async () => {
+  const source = await readFile(ROOT_PROXY, "utf8")
+
+  assert.match(source, /_next\/static/)
+  assert.match(source, /_next\/image/)
+  assert.match(source, /next-router-prefetch/)
+  assert.match(source, /purpose/)
+  assert.match(source, /prefetch/)
+  assert.match(source, /["']\/api\/admin\/:path\*["']/)
+  assert.match(source, /["']\/api\/account\/:path\*["']/)
+  assert.match(source, /["']\/api\/checkout["']/)
+  assert.match(source, /["']\/api\/internal\/melhor-envio\/oauth\/start["']/)
 })
