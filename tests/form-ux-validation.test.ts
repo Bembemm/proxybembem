@@ -49,17 +49,22 @@ test("password fields share an accessible show-hide control across customer and 
 
 test("account forms validate fields explicitly and expose invalid state for red highlighting", async () => {
   const validation = await source("../lib/account-form.ts")
+  const passwordPolicy = await source("../lib/auth/password-policy.ts")
   requireSource(validation, "account form validation")
+  requireSource(passwordPolicy, "password policy")
 
   for (const expectedMessage of [
     "Informe seu nome.",
     "Informe um e-mail válido.",
     "Informe um WhatsApp válido com DDD.",
-    "A senha precisa ter entre 8 e 128 caracteres.",
     "As senhas não coincidem.",
   ]) {
     assert.ok(validation.includes(expectedMessage), `missing clear validation copy: ${expectedMessage}`)
   }
+  for (const fragment of ["8", "maiúscula", "minúscula", "número", "símbolo"]) {
+    assert.ok(passwordPolicy.includes(fragment), `missing strong password guidance: ${fragment}`)
+  }
+  assert.match(validation, /validateCustomerPassword/)
 
   const forms = [
     await source("../components/account/signup-form.tsx"),
