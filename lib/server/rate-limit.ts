@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto"
+import { resolveClientIp } from "./client-ip.ts"
 import { getRateLimitEnv } from "./env.ts"
 
 export type RateLimitScope =
@@ -28,30 +29,17 @@ const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> =
   "account-profile": { limit: 20, windowSeconds: 600 },
 }
 
-function firstUsableForwardedValue(value: string | null): string | null {
-  if (!value) return null
-  const first = value.split(",", 1)[0]?.trim() ?? ""
-  if (!first || first.length > 64) return null
-  return first
-}
-
-function getClientIp(request: Request): string {
-  const headers = ["x-forwarded-for", "x-real-ip"] as const
-
-  for (const name of headers) {
-    const candidate = firstUsableForwardedValue(request.headers.get(name))
-    if (candidate) return candidate
-  }
-
-  return "unknown"
-}
-
 export async function consumeRateLimit(input: {
   request: Request
   scope: RateLimitScope
 }): Promise<boolean> {
   const env = getRateLimitEnv()
-  const clientIp = getClientIp(input.request)
+  const clientIp =
+    resolveClientIp({
+      forwardedFor: input.request.headers.get("x-forwarded-for"),
+      realIp: input.request.headers.get("x-real-ip"),
+      trustedProxyHops: env.trustedProxyHops,
+    }) ?? "unknown"
   const policy = LIMITS[input.scope]
   const bucketKey = createHmac("sha256", env.rateLimitSecret)
     .update(`${input.scope}:${clientIp}`)
