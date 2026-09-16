@@ -23,7 +23,6 @@ export function Navbar() {
   const [categories, setCategories] = useState<string[]>([])
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false)
   const pathname = usePathname()
   const { totalItems, setIsCartOpen } = useCart()
 
@@ -83,7 +82,6 @@ export function Navbar() {
   useEffect(() => {
     setIsCategoriesOpen(false)
     setIsMobileMenuOpen(false)
-    setIsMobileCategoriesOpen(false)
   }, [pathname])
 
   const accountItem =
@@ -130,23 +128,15 @@ export function Navbar() {
     <span className="h-10 w-10" aria-hidden="true" />
   )
 
-  const categoryItems = (mobile = false) =>
+  const categoryItems =
     categories.length > 0 ? (
       categories.map((category) => (
         <a
           key={category}
           href={`/produtos?categoria=${encodeURIComponent(category)}`}
           role="menuitem"
-          onClick={() => {
-            setIsCategoriesOpen(false)
-            setIsMobileCategoriesOpen(false)
-            if (mobile) setIsMobileMenuOpen(false)
-          }}
-          className={
-            mobile
-              ? "block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
-              : "block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
-          }
+          onClick={() => setIsCategoriesOpen(false)}
+          className="block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
         >
           {category}
         </a>
@@ -161,7 +151,7 @@ export function Navbar() {
     <header className="fixed left-0 right-0 top-0 z-50 bg-white/95 shadow-sm backdrop-blur-xl">
       <div className="border-b border-slate-200/80">
         <nav
-          className="container mx-auto grid h-16 grid-cols-[1fr_auto_1fr] items-center px-3 sm:h-16 sm:px-4 md:flex md:h-14 md:justify-between"
+          className="mx-auto grid h-16 w-full max-w-[1280px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 md:flex md:h-14 md:justify-between lg:px-8"
           aria-label="Navegação principal"
         >
           <button
@@ -209,7 +199,7 @@ export function Navbar() {
 
       <div className="hidden border-b border-slate-200/80 bg-white md:block">
         <nav
-          className="container mx-auto flex h-10 items-center gap-7 px-4 text-sm"
+          className="mx-auto flex h-10 w-full max-w-[1280px] items-center gap-7 px-6 text-sm lg:px-8"
           aria-label="Navegação da loja"
         >
           <div className="relative">
@@ -238,7 +228,7 @@ export function Navbar() {
                 role="menu"
                 className="absolute left-0 top-[calc(100%+0.35rem)] w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
               >
-                {categoryItems()}
+                {categoryItems}
               </div>
             ) : null}
           </div>
@@ -267,28 +257,9 @@ export function Navbar() {
       {isMobileMenuOpen ? (
         <div
           id="mobile-store-menu"
-          className="max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-slate-200 bg-white px-4 py-3 shadow-lg md:hidden"
+          className="border-b border-slate-200 bg-white px-4 py-2 shadow-lg md:hidden"
         >
           <nav className="mx-auto flex max-w-lg flex-col" aria-label="Menu móvel da loja">
-            <button
-              type="button"
-              onClick={() => setIsMobileCategoriesOpen((current) => !current)}
-              className="flex min-h-12 items-center justify-between border-b border-slate-100 px-1 text-left text-base font-medium text-slate-900"
-              aria-expanded={isMobileCategoriesOpen}
-            >
-              Categorias
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${isMobileCategoriesOpen ? "rotate-180" : ""}`}
-                aria-hidden="true"
-              />
-            </button>
-
-            {isMobileCategoriesOpen ? (
-              <div className="border-b border-slate-100 bg-slate-50 py-1" role="menu">
-                {categoryItems(true)}
-              </div>
-            ) : null}
-
             <a
               href="/"
               className="flex min-h-12 items-center border-b border-slate-100 px-1 text-base font-medium text-slate-900"
