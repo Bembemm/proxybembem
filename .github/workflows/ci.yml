@@ -26,8 +26,8 @@ jobs:
           }
           NODE
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm typecheck
       - run: pnpm build:kinghost
       - name: Verify private order route contract
         run: |
@@ -57,4 +57,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Critical commerce and security subset
+        run: |
+          node --experimental-strip-types --test \
+            tests/checkout-flow.test.ts \
+            tests/checkout-route.test.ts \
+            tests/checkout-origin.test.ts \
+            tests/shipping-quote.test.ts \
+            tests/shipping-quote-token.test.ts \
+            tests/mercadopago-checkout-url.test.ts \
+            tests/mercadopago-preference.test.ts \
+            tests/webhook-route.test.ts \
+            tests/webhook-signature.test.ts \
+            tests/melhor-envio-oauth-routes.test.ts \
+            tests/private-order-only.test.ts \
+            tests/phase9-route-security.test.ts \
+            tests/phase9-supabase-hardening.test.ts
       - run: pnpm test
