@@ -16,7 +16,7 @@ test("home sends every published product to the storefront without a featured-on
   assert.match(home, /products\.map\s*\(/)
 })
 
-test("home carousel keeps a wide reference-style row with persistent edge arrows and page indicators", () => {
+test("home carousel keeps each product card together with reference arrows pagination and cart action", () => {
   const home = source("components/pages/home-page.tsx")
 
   assert.doesNotMatch(home, /@\/data\/products/)
@@ -25,8 +25,10 @@ test("home carousel keeps a wide reference-style row with persistent edge arrows
   assert.doesNotMatch(home, /Escolha a quantidade de cartas/)
   assert.match(home, /useRef/)
   assert.match(home, /useEffect/)
-  assert.match(home, /ChevronLeft/)
-  assert.match(home, /ChevronRight/)
+  assert.match(home, /ArrowLeft/)
+  assert.match(home, /ArrowRight/)
+  assert.doesNotMatch(home, /ChevronLeft/)
+  assert.doesNotMatch(home, /ChevronRight/)
   assert.match(home, /scrollBy\s*\(/)
   assert.match(home, /scrollTo\s*\(/)
   assert.match(home, /overflow-x-auto/)
@@ -40,6 +42,11 @@ test("home carousel keeps a wide reference-style row with persistent edge arrows
   assert.match(home, /aria-label=\{`Ir para página/)
   assert.match(home, /max-w-\[1380px\]/)
   assert.match(home, /aria-label=["']Produtos em destaque["']/)
+  assert.match(home, /useCart/)
+  assert.match(home, /addToCart\(product\)/)
+  assert.match(home, /Adicionar ao carrinho/)
+  assert.match(home, /ShoppingCart/)
+  assert.match(home, /className="group[^\"]*shrink-0[^\"]*snap-start/)
 })
 
 test("navbar exposes only a dynamic Categorias storefront menu alongside account and cart icons", () => {
