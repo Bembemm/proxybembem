@@ -13,6 +13,12 @@ const PRIVATE_ACCOUNT_CACHE_CONTROL =
 const PRIVATE_ADMIN_CACHE_CONTROL =
   "private, no-cache, no-store, max-age=0, must-revalidate"
 
+function nextResponse(request: NextRequest, requestHeaders?: Headers) {
+  return NextResponse.next({
+    request: { headers: requestHeaders ?? request.headers },
+  })
+}
+
 function copySupabaseState(source: NextResponse, target: NextResponse) {
   for (const cookie of source.cookies.getAll()) {
     target.cookies.set(cookie)
@@ -51,8 +57,8 @@ function disablePrivateBrowserCache(
   return response
 }
 
-export async function updateSupabaseSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+export async function updateSupabaseSession(request: NextRequest, requestHeaders?: Headers) {
+  let supabaseResponse = nextResponse(request, requestHeaders)
   const env = getSupabaseBrowserConfig()
 
   const supabase = createServerClient(env.url, env.publishableKey, {
@@ -66,7 +72,7 @@ export async function updateSupabaseSession(request: NextRequest) {
           request.cookies.set(name, value)
         })
 
-        supabaseResponse = NextResponse.next({ request })
+        supabaseResponse = nextResponse(request, requestHeaders)
         cookiesToSet.forEach(({ name, value, options }) => {
           supabaseResponse.cookies.set(name, value, options)
         })
