@@ -31,12 +31,14 @@ test("navbar resolves an unauthenticated getUser error to guest instead of stayi
   )
 })
 
-test("navbar keeps only Produtos and Contato as text navigation and exposes the cart as an icon", () => {
+test("navbar keeps Categorias as the only storefront text navigation and exposes account and cart as icons", () => {
   const navbar = source("components/navbar.tsx")
 
+  assert.match(navbar, />\s*Categorias\s*</)
   assert.doesNotMatch(navbar, /label:\s*["']Início["']/)
-  assert.match(navbar, /label:\s*["']Produtos["']/)
-  assert.match(navbar, /label:\s*["']Contato["']/)
+  assert.doesNotMatch(navbar, /label:\s*["']Produtos["']/)
+  assert.doesNotMatch(navbar, /label:\s*["']Contato["']/)
+  assert.match(navbar, /UserRound/)
   assert.match(navbar, /ShoppingCart/)
   assert.match(navbar, /useCart/)
   assert.match(navbar, /setIsCartOpen\(true\)/)
