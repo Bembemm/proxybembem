@@ -6,6 +6,12 @@ import {
   CUSTOMER_PASSWORD_REQUIREMENTS,
   validateCustomerPassword,
 } from "../lib/auth/password-policy.ts"
+import {
+  CustomerPasswordPolicyError,
+  parseAccountLoginInput,
+  parseAccountPasswordUpdateInput,
+  parseAccountSignupInput,
+} from "../lib/server/customer-account-actions.ts"
 
 const invalidPasswords = [
   "short7!",
@@ -20,8 +26,47 @@ test("customer password policy requires length plus lower upper digit and symbol
     assert.equal(validateCustomerPassword(password), CUSTOMER_PASSWORD_REQUIREMENTS, password)
   }
   assert.equal(validateCustomerPassword("ProxyBembem9!"), null)
-  assert.equal(validateCustomerPassword("A1!" + "x".repeat(126)), null)
-  assert.equal(validateCustomerPassword("A1!" + "x".repeat(127)), CUSTOMER_PASSWORD_REQUIREMENTS)
+  assert.equal(validateCustomerPassword("A1!" + "x".repeat(125)), null)
+  assert.equal(validateCustomerPassword("A1!" + "x".repeat(126)), CUSTOMER_PASSWORD_REQUIREMENTS)
+})
+
+test("signup and password updates reject weak passwords with a specific policy error", () => {
+  for (const password of invalidPasswords) {
+    assert.throws(
+      () =>
+        parseAccountSignupInput({
+          name: "Cliente Teste",
+          email: "cliente@example.com",
+          whatsapp: "44999999999",
+          password,
+        }),
+      CustomerPasswordPolicyError,
+    )
+    assert.throws(
+      () => parseAccountPasswordUpdateInput({ password }),
+      CustomerPasswordPolicyError,
+    )
+  }
+
+  assert.equal(
+    parseAccountSignupInput({
+      name: "Cliente Teste",
+      email: "cliente@example.com",
+      whatsapp: "44999999999",
+      password: "ProxyBembem9!",
+    }).password,
+    "ProxyBembem9!",
+  )
+})
+
+test("login does not reject an existing credential only because it predates the stronger policy", () => {
+  assert.equal(
+    parseAccountLoginInput({
+      email: "cliente@example.com",
+      password: "senhafraca",
+    }).password,
+    "senhafraca",
+  )
 })
 
 test("client and server validators share the same customer password policy", async () => {
@@ -33,6 +78,18 @@ test("client and server validators share the same customer password policy", asy
 
   assert.match(client, /validateCustomerPassword/)
   assert.match(server, /validateCustomerPassword/)
+})
+
+test("account mutation routes expose the password requirements without account-specific information", async () => {
+  for (const path of [
+    "../app/api/account/signup/route.ts",
+    "../app/api/account/password/route.ts",
+    "../app/api/account/password-recovery/route.ts",
+  ]) {
+    const route = await readFile(new URL(path, import.meta.url), "utf8")
+    assert.match(route, /CustomerPasswordPolicyError/, path)
+    assert.match(route, /instanceof CustomerPasswordPolicyError/, path)
+  }
 })
 
 test("password requirement message is explicit without account-specific information", () => {
