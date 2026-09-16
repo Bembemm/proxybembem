@@ -1,15 +1,5 @@
 const isProductionDeployment = process.env.NODE_ENV === "production"
 
-function melhorEnvioFormActionOrigin() {
-  if (process.env.MELHOR_ENVIO_ENVIRONMENT === "sandbox") {
-    return "https://sandbox.melhorenvio.com.br"
-  }
-  if (process.env.MELHOR_ENVIO_ENVIRONMENT === "production") {
-    return "https://melhorenvio.com.br"
-  }
-  return null
-}
-
 function resolveSupabaseBrowserOrigin() {
   const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
   if (!configuredUrl) return null
@@ -33,31 +23,12 @@ function resolveSupabaseProductImagePattern(origin) {
   }
 }
 
-const melhorEnvioOAuthOrigin = melhorEnvioFormActionOrigin()
 const supabaseBrowserOrigin = resolveSupabaseBrowserOrigin()
 const supabaseProductImagePattern = resolveSupabaseProductImagePattern(
   supabaseBrowserOrigin,
 )
 
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  `form-action 'self'${melhorEnvioOAuthOrigin ? ` ${melhorEnvioOAuthOrigin}` : ""}`,
-  "img-src 'self' data: https:",
-  "font-src 'self' data:",
-  "style-src 'self' 'unsafe-inline'",
-  "script-src 'self' 'unsafe-inline'",
-  `connect-src 'self'${supabaseBrowserOrigin ? ` ${supabaseBrowserOrigin}` : ""}`,
-  "upgrade-insecure-requests",
-].join("; ")
-
 const securityHeaders = [
-  {
-    key: "Content-Security-Policy",
-    value: contentSecurityPolicy,
-  },
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
