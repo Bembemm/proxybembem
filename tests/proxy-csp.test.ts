@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import test from "node:test"
 import {
   buildContentSecurityPolicy,
@@ -8,6 +9,8 @@ import {
   needsPageCsp,
   needsSupabaseSession,
 } from "../lib/security/proxy-routing.ts"
+
+const SUPABASE_PROXY = new URL("../lib/supabase/proxy.ts", import.meta.url)
 
 test("creates a fresh base64 nonce for every call", () => {
   const first = createCspNonce()
@@ -91,4 +94,21 @@ test("static and API resources do not need page CSP", () => {
   ]) {
     assert.equal(needsPageCsp(pathname), false, pathname)
   }
+})
+
+test("Supabase session refresh preserves upstream security request headers", async () => {
+  const source = await readFile(SUPABASE_PROXY, "utf8")
+
+  assert.match(
+    source,
+    /updateSupabaseSession\(request: NextRequest, requestHeaders\?: Headers\)/,
+  )
+  assert.match(
+    source,
+    /request:\s*\{\s*headers:\s*requestHeaders\s*\?\?\s*request\.headers\s*\}/,
+  )
+  assert.ok(
+    (source.match(/nextResponse\(request, requestHeaders\)/g) ?? []).length >= 2,
+    "expected both initial and cookie-refresh responses to preserve requestHeaders",
+  )
 })
