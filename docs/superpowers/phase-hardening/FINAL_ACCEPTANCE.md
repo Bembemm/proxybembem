@@ -2,7 +2,7 @@
 
 Date: 2026-09-16
 Branch: `hardening/site-security-nonce`
-Runtime candidate reviewed before this evidence commit: `57f2c97d8bfef4eae195a2f6a68460691081d4eb`
+Final repository candidate verified by CI: `b0a2f6ce405dd66a7c1841dbc94d2524015fc49f`
 
 This document is the final evidence ledger for the four approved hardening plans. It intentionally separates repository verification from external production/sandbox acceptance. A repository-green result does not by itself authorize merge or deployment.
 
@@ -10,7 +10,7 @@ This document is the final evidence ledger for the four approved hardening plans
 
 **NOT YET MERGE-READY.**
 
-Repository implementation for CSP/nonce, proxy-aware rate limiting, lint/CI, SEO and the application-side password policy is present. The remaining blockers are external acceptance/configuration evidence plus a fresh final CI run on the current candidate.
+Repository implementation for CSP/nonce, proxy-aware rate limiting, lint/CI, SEO and the application-side password policy is present and the final repository candidate has a complete green CI run. The remaining blockers are external Supabase Auth dashboard verification and isolated KingHost sandbox acceptance.
 
 ## Repository implementation status
 
@@ -122,43 +122,27 @@ Current Supabase documentation checked during this review confirms the 8+ recomm
 
 ## Repository verification evidence
 
-Last fully observed green hardening run before the final Auth/reconciliation commits:
+Final repository candidate: `b0a2f6ce405dd66a7c1841dbc94d2524015fc49f`.
 
-- SHA `59d4d03a53d0fcf588e513fc564d0b5b17ee19bb`;
-- exact KingHost Node runtime `22.1.0`;
-- frozen lockfile install: PASS;
-- typecheck: PASS;
-- ESLint: PASS with zero warnings;
-- `build:kinghost`: PASS;
+GitHub Actions run `35123516886` was re-run after the repository became public and received a GitHub-hosted runner. The complete workflow executed successfully on 2026-09-16.
+
+Verified gates:
+
+- exact KingHost Node runtime `22.1.0`: PASS;
+- `pnpm install --frozen-lockfile`: PASS;
+- `pnpm lint`: PASS with zero warnings;
+- `pnpm typecheck`: PASS;
+- `pnpm build:kinghost`: PASS;
 - private-order route contract: PASS;
 - KingHost startup adapter smoke: PASS;
-- full test suite: PASS, 873/873 at that checkpoint.
+- explicit critical commerce/security subset: PASS, 58/58;
+- full test suite: PASS, 880/880.
 
-After that green checkpoint, the branch added the strong password-policy changes, explicit critical commerce/security CI subset, Supabase evidence documentation and plan reconciliation.
+The production build also confirmed request-time rendering for the application routes required by nonce CSP, including dynamic `/robots.txt` and `/sitemap.xml`, and successfully prepared the KingHost standalone package.
 
-### Current GitHub Actions infrastructure state
+Earlier runs on the same branch had failed before runner allocation because the account had exhausted private-repository Actions minutes. Those infrastructure failures had `runner_id: 0` and `steps: []`; they are superseded for repository verification by the complete green run above.
 
-The latest pushes (`31b897d...`, `904f536...`, `57f2c97...`) created CI runs, but GitHub reported the single `verify` job as failed before any runner/step started:
-
-- `runner_id: 0`;
-- empty runner name;
-- `steps: []`;
-- job completed in roughly 2–4 seconds.
-
-Because no repository command executed in those runs, these failures are **not evidence of a lint/typecheck/build/test regression**, but they also cannot be counted as a passing final gate. A fresh CI run that actually allocates a runner and executes all steps is still required before merge readiness.
-
-Required final repository gate order once Actions executes normally:
-
-```text
-pnpm install --frozen-lockfile
-pnpm lint
-pnpm typecheck
-pnpm build:kinghost
-private-order route contract
-KingHost startup adapter smoke
-critical commerce/security subset
-pnpm test
-```
+Repository gate status: **COMPLETE**.
 
 ## Isolated KingHost sandbox acceptance
 
@@ -196,8 +180,8 @@ Before merge readiness, the isolated KingHost application must verify:
 
 Do **not** open/merge the hardening PR as accepted until all three items below are true:
 
-1. current final SHA receives a real green CI execution;
-2. Supabase Auth dashboard checklist is owner-verified;
-3. isolated KingHost sandbox smoke is completed and this document is updated with the sandbox evidence.
+1. [x] current final SHA receives a real green CI execution;
+2. [ ] Supabase Auth dashboard checklist is owner-verified;
+3. [ ] isolated KingHost sandbox smoke is completed and this document is updated with the sandbox evidence.
 
 Production remains unchanged until that explicit owner decision.
