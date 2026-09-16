@@ -38,7 +38,8 @@ test("navbar uses the approved two-level desktop header and compact mobile menu"
   assert.match(navbar, /X/)
   assert.match(navbar, /aria-label=["']Abrir menu["']/)
   assert.match(navbar, /md:hidden/)
-  assert.match(navbar, /hidden[^"']*md:flex/)
+  assert.match(navbar, /md:flex/)
+  assert.match(navbar, /hidden[^"']*md:block/)
 
   assert.match(navbar, />\s*Contato\s*</)
   assert.match(navbar, />\s*Categorias\s*</)
