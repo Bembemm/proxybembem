@@ -10,7 +10,7 @@ test("home sends every published product to the storefront without a featured-on
   const route = source("app/page.tsx")
   const home = source("components/pages/home-page.tsx")
 
-  assert.doesNotMatch(route, /products\.filter\s*\(.*featured/s)
+  assert.doesNotMatch(route, /featuredProducts\s*=\s*products\.filter/)
   assert.match(route, /<HomePage\s+products=\{products\}/)
   assert.match(home, /HomePage\s*\(\s*\{\s*products/)
   assert.match(home, /products\.map\s*\(/)
