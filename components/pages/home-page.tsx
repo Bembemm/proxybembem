@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import { ChevronLeft, ChevronRight, Eye } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { ProductDetailModal } from "@/components/product-detail-modal"
 import type { Product } from "@/contexts/cart-context"
 
@@ -32,6 +32,8 @@ export function HomePage({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const [pageCount, setPageCount] = useState(1)
+  const [activePage, setActivePage] = useState(0)
 
   const openProductModal = (product: Product) => {
     setSelectedProduct(product)
@@ -48,8 +50,16 @@ export function HomePage({
     if (!carousel) return
 
     const maxScrollLeft = Math.max(carousel.scrollWidth - carousel.clientWidth, 0)
+    const nextPageCount = Math.max(1, Math.ceil(maxScrollLeft / Math.max(carousel.clientWidth, 1)) + 1)
+    const nextActivePage = Math.min(
+      nextPageCount - 1,
+      Math.max(0, Math.round(carousel.scrollLeft / Math.max(carousel.clientWidth, 1))),
+    )
+
     setCanScrollLeft(carousel.scrollLeft > 4)
     setCanScrollRight(maxScrollLeft - carousel.scrollLeft > 4)
+    setPageCount(nextPageCount)
+    setActivePage(nextActivePage)
   }
 
   useEffect(() => {
@@ -76,7 +86,17 @@ export function HomePage({
     if (!carousel) return
 
     carousel.scrollBy({
-      left: direction * Math.max(carousel.clientWidth * 0.82, 280),
+      left: direction * Math.max(carousel.clientWidth * 0.88, 280),
+      behavior: "smooth",
+    })
+  }
+
+  const scrollToPage = (page: number) => {
+    const carousel = carouselRef.current
+    if (!carousel) return
+
+    carousel.scrollTo({
+      left: page * carousel.clientWidth,
       behavior: "smooth",
     })
   }
@@ -104,16 +124,15 @@ export function HomePage({
 
           {!unavailable && products.length > 0 ? (
             <div className="relative">
-              {canScrollLeft ? (
-                <button
-                  type="button"
-                  onClick={() => scrollFeatured(-1)}
-                  aria-label="Ver produtos anteriores"
-                  className="absolute left-0 top-[36%] z-20 flex h-10 w-10 -translate-x-1/3 items-center justify-center rounded-full bg-white/95 text-slate-900 shadow-sm ring-1 ring-slate-200 transition hover:scale-105 hover:bg-white sm:-translate-x-1/2"
-                >
-                  <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => scrollFeatured(-1)}
+                disabled={!canScrollLeft}
+                aria-label="Ver produtos anteriores"
+                className="absolute left-0 top-[92px] z-20 flex h-11 w-11 -translate-x-2 items-center justify-center text-slate-950 transition hover:scale-110 disabled:cursor-default disabled:opacity-25 disabled:hover:scale-100 sm:-translate-x-7 lg:-translate-x-10"
+              >
+                <ChevronLeft className="h-7 w-7" aria-hidden="true" />
+              </button>
 
               <div
                 ref={carouselRef}
@@ -121,14 +140,14 @@ export function HomePage({
                 aria-label="Produtos em destaque"
                 className="snap-x snap-mandatory overflow-x-auto scroll-smooth pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <div className="flex w-max min-w-full justify-center gap-4 px-8 sm:gap-5 sm:px-7">
+                <div className="flex w-max min-w-full justify-start gap-4 px-8 sm:px-0">
                   {products.map((product) => {
                     const discount = discountPercent(product)
 
                     return (
                       <article
                         key={product.id}
-                        className="group w-[78vw] max-w-[220px] shrink-0 snap-start sm:w-[210px] lg:w-[205px] xl:w-[195px]"
+                        className="group w-[74vw] max-w-[220px] shrink-0 snap-start sm:w-[210px] lg:w-[198px]"
                       >
                         <button
                           type="button"
@@ -141,16 +160,9 @@ export function HomePage({
                               src={product.image}
                               alt={product.title}
                               fill
-                              sizes="(max-width: 640px) 78vw, 210px"
-                              className="object-cover transition-transform duration-300 group-hover:scale-[1.025]"
+                              sizes="(max-width: 640px) 74vw, (max-width: 1024px) 210px, 198px"
+                              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                             />
-
-                            <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/10">
-                              <span className="flex translate-y-1 items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-medium text-slate-900 opacity-0 shadow-sm transition-all group-hover:translate-y-0 group-hover:opacity-100">
-                                <Eye className="h-3.5 w-3.5" />
-                                Ver detalhes
-                              </span>
-                            </span>
                           </div>
 
                           <div className="pt-3">
@@ -182,15 +194,31 @@ export function HomePage({
                 </div>
               </div>
 
-              {canScrollRight ? (
-                <button
-                  type="button"
-                  onClick={() => scrollFeatured(1)}
-                  aria-label="Ver próximos produtos"
-                  className="absolute right-0 top-[36%] z-20 flex h-10 w-10 translate-x-1/3 items-center justify-center rounded-full bg-white/95 text-slate-900 shadow-sm ring-1 ring-slate-200 transition hover:scale-105 hover:bg-white sm:translate-x-1/2"
-                >
-                  <ChevronRight className="h-6 w-6" aria-hidden="true" />
-                </button>
+              <button
+                type="button"
+                onClick={() => scrollFeatured(1)}
+                disabled={!canScrollRight}
+                aria-label="Ver próximos produtos"
+                className="absolute right-0 top-[92px] z-20 flex h-11 w-11 translate-x-2 items-center justify-center text-slate-950 transition hover:scale-110 disabled:cursor-default disabled:opacity-25 disabled:hover:scale-100 sm:translate-x-7 lg:translate-x-10"
+              >
+                <ChevronRight className="h-7 w-7" aria-hidden="true" />
+              </button>
+
+              {pageCount > 1 ? (
+                <div className="mt-4 flex items-center justify-center gap-2" aria-label="Páginas dos destaques">
+                  {Array.from({ length: pageCount }, (_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => scrollToPage(index)}
+                      aria-label={`Ir para página ${index + 1}`}
+                      aria-current={activePage === index ? "true" : undefined}
+                      className={`h-1.5 w-1.5 rounded-full transition ${
+                        activePage === index ? "bg-slate-950" : "bg-slate-300 hover:bg-slate-500"
+                      }`}
+                    />
+                  ))}
+                </div>
               ) : null}
             </div>
           ) : null}
