@@ -73,6 +73,7 @@ test("production robots allows public crawling, blocks private infrastructure an
   const robots = source("app/robots.ts")
 
   assert.match(robots, /MetadataRoute\.Robots/)
+  assert.match(robots, /export const dynamic\s*=\s*["']force-dynamic["']/)
   assert.match(robots, /isSandboxDeployment\(\)/)
   assert.match(robots, /disallow:\s*["']\/["']/)
   for (const path of ["/admin/", "/minha-conta/", "/api/", "/auth/", "/checkout"]) {
@@ -85,6 +86,7 @@ test("sitemap contains only the approved public canonical routes and is empty in
   const sitemap = source("app/sitemap.ts")
 
   assert.match(sitemap, /MetadataRoute\.Sitemap/)
+  assert.match(sitemap, /export const dynamic\s*=\s*["']force-dynamic["']/)
   assert.match(sitemap, /isSandboxDeployment\(\)/)
   assert.match(sitemap, /return \[\]/)
   for (const [, path] of publicCanonicals) {
