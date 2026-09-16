@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { type NextRequest } from "next/server"
 import {
+  CustomerPasswordPolicyError,
   isSameOriginAccountRequest,
   parseAccountSignupInput,
 } from "../../../../lib/server/customer-account-actions.ts"
@@ -68,7 +69,10 @@ export async function POST(request: NextRequest) {
   let input: ReturnType<typeof parseAccountSignupInput>
   try {
     input = parseAccountSignupInput(await readJsonBody(request, 4_096))
-  } catch {
+  } catch (error) {
+    if (error instanceof CustomerPasswordPolicyError) {
+      return json(400, { ok: false, message: error.message })
+    }
     return json(400, { ok: false, message: "Dados de cadastro inválidos." })
   }
 
