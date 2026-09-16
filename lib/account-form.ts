@@ -1,3 +1,4 @@
+import { validateCustomerPassword } from "./auth/password-policy.ts"
 import { digitsOnly } from "./checkout.ts"
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -25,9 +26,7 @@ export function validateAccountWhatsapp(value: string) {
 }
 
 export function validateAccountPassword(value: string) {
-  return value.length >= 8 && value.length <= 128
-    ? undefined
-    : "A senha precisa ter entre 8 e 128 caracteres."
+  return validateCustomerPassword(value) ?? undefined
 }
 
 export function validateAccountPasswordConfirmation(
