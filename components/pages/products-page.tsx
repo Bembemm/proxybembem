@@ -98,7 +98,7 @@ export function ProductsPage({
   )
 
   return (
-    <section className="relative pt-16 sm:pt-20 pb-8 sm:pb-12 min-h-screen">
+    <section className="relative pt-16 sm:pt-20 pb-8 sm:pb-12">
       <div className="container mx-auto px-3 sm:px-4 relative z-10">
         <div className="lg:hidden mb-3 sm:mb-4">
           <Button
