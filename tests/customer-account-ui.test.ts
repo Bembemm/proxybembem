@@ -258,3 +258,23 @@ test("protected customer UI contains no forbidden order internals or admin bound
     /components\/admin|requireAdminPageAccess|ADMIN_USER_ID|admin_sessions/,
   )
 })
+
+test("customer account shell mirrors the admin visual system without crossing the admin security boundary", async () => {
+  const shell = await source("../components/account/account-shell.tsx")
+
+  requireSource(shell, "customer account shell")
+
+  assert.match(shell, /usePathname/)
+  assert.match(shell, /LayoutDashboard/)
+  assert.match(shell, /PackageSearch/)
+  assert.match(shell, /UserRound/)
+  assert.match(shell, /ShieldCheck/)
+  assert.match(shell, /Menu/)
+  assert.match(shell, /Painel do cliente/)
+  assert.match(shell, /lg:grid-cols-\[16rem_minmax\(0,1fr\)\]/)
+  assert.match(shell, /sticky top-/)
+  assert.match(shell, /lg:hidden/)
+  assert.match(shell, /bg-violet-50/)
+  assert.match(shell, /aria-current/)
+  assert.doesNotMatch(shell, /components\/admin|AdminShell|AdminNav|requireAdminPageAccess/)
+})
