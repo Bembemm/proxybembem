@@ -1,25 +1,5 @@
+import { fulfillmentStatusLabel, paymentStatusLabel } from "../../lib/order-status-labels.ts"
 import type { FulfillmentStatus } from "../../lib/server/fulfillment.ts"
-
-const PAYMENT_LABELS: Readonly<Record<string, string>> = {
-  pending: "Pendente",
-  approved: "Aprovado",
-  refunded: "Reembolsado",
-  charged_back: "Chargeback",
-  manual_review: "Revisão manual",
-  in_process: "Em processamento",
-  rejected: "Recusado",
-  cancelled: "Cancelado",
-}
-
-const FULFILLMENT_LABELS: Readonly<Record<FulfillmentStatus, string>> = {
-  awaiting_payment: "Aguardando pagamento",
-  awaiting_production: "Aguardando produção",
-  in_production: "Em produção",
-  ready_to_ship: "Pronto para envio",
-  shipped: "Enviado",
-  completed: "Concluído",
-  canceled: "Cancelado",
-}
 
 const TONES = {
   neutral: "bg-slate-100 text-slate-700 ring-slate-200",
@@ -50,14 +30,11 @@ function fulfillmentTone(value: FulfillmentStatus): keyof typeof TONES {
 }
 
 export function PaymentStatusBadge({ value }: { value: string }) {
-  const label = PAYMENT_LABELS[value] ?? "Status desconhecido"
-  const tone = PAYMENT_LABELS[value] ? paymentTone(value) : "neutral"
-
-  return <Badge label={label} tone={tone} />
+  return <Badge label={paymentStatusLabel(value)} tone={paymentTone(value)} />
 }
 
 export function FulfillmentStatusBadge({ value }: { value: FulfillmentStatus }) {
-  return <Badge label={FULFILLMENT_LABELS[value]} tone={fulfillmentTone(value)} />
+  return <Badge label={fulfillmentStatusLabel(value)} tone={fulfillmentTone(value)} />
 }
 
 function Badge({
