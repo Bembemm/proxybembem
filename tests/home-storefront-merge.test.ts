@@ -33,7 +33,7 @@ test("home and products share one storefront product-card presentation", () => {
   assert.match(card, /addToCart\(product\)/)
 })
 
-test("home highlights one centered product per slide with responsive stacking, arrows, dots and cart action", () => {
+test("home keeps its existing carousel mechanics while card presentation is shared", () => {
   const home = source("components/pages/home-page.tsx")
 
   assert.doesNotMatch(home, /@\/data\/products/)
@@ -47,10 +47,6 @@ test("home highlights one centered product per slide with responsive stacking, a
   assert.match(home, /snap-center/)
   assert.ok(home.includes("max-w-[860px]"))
   assert.ok(home.includes("max-w-[760px]"))
-  assert.ok(home.includes("grid-cols-1"))
-  assert.ok(home.includes("md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]"))
-  assert.ok(home.includes("rounded-2xl"))
-  assert.ok(home.includes("bg-violet-50"))
   assert.match(home, /products\.length > 1/)
   assert.match(home, /products\.map\s*\(\(product, index\)/)
   assert.match(home, /activePage/)
@@ -59,12 +55,7 @@ test("home highlights one centered product per slide with responsive stacking, a
   assert.match(home, /aria-label=\{`Ir para produto/)
   assert.match(home, /max-w-\[1180px\]/)
   assert.match(home, /aria-label=["']Produtos em destaque["']/)
-  assert.match(home, /useCart/)
-  assert.match(home, /addToCart\(product\)/)
-  assert.match(home, /Adicionar ao carrinho/)
-  assert.match(home, /ShoppingCart/)
-  assert.doesNotMatch(home, /w-\[min\(78vw,320px\)\]/)
-  assert.doesNotMatch(home, /lg:w-\[172px\]/)
+  assert.match(home, /StorefrontProductCard/)
 })
 
 test("home, notice and FAQ use one compact vertical rhythm without artificial header offsets", () => {
