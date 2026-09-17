@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function SignupReceivedPage() {
   return (
-    <section className="min-h-[70vh] px-4 pb-16 pt-24 sm:pt-28">
+    <section className="px-4 pb-16 pt-24 sm:pt-28">
       <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-violet-50 text-violet-700">
           <MailCheck className="h-8 w-8" aria-hidden="true" />
