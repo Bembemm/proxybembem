@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronDown, Menu, ShoppingCart, UserRound, X } from "lucide-react"
+import { ChevronDown, Menu, Search, ShoppingCart, UserRound, X } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -23,6 +23,7 @@ export function Navbar() {
   const [categories, setCategories] = useState<string[]>([])
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
   const pathname = usePathname()
   const { totalItems, setIsCartOpen } = useCart()
 
@@ -110,6 +111,7 @@ export function Navbar() {
       onClick={() => {
         setIsCategoriesOpen(false)
         setIsMobileMenuOpen(false)
+        setIsMobileSearchOpen(false)
       }}
       aria-current={isActive(accountItem.href) ? "page" : undefined}
       aria-label={accountItem.label}
@@ -149,12 +151,15 @@ export function Navbar() {
     <header className="sticky top-0 z-50 bg-white/95 shadow-sm backdrop-blur-xl">
       <div className="border-b border-slate-200/80">
         <nav
-          className="mx-auto grid h-16 w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 lg:h-[72px] lg:px-8"
+          className="mx-auto grid h-16 w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 lg:h-[72px] lg:grid-cols-[auto_minmax(280px,1fr)_auto] lg:gap-8 lg:px-8"
           aria-label="Navegação principal"
         >
           <button
             type="button"
-            onClick={() => setIsMobileMenuOpen((current) => !current)}
+            onClick={() => {
+              setIsMobileMenuOpen((current) => !current)
+              setIsMobileSearchOpen(false)
+            }}
             className="col-start-1 row-start-1 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-900 transition-colors hover:bg-slate-100 lg:hidden"
             aria-label="Abrir menu"
             aria-expanded={isMobileMenuOpen}
@@ -165,7 +170,7 @@ export function Navbar() {
 
           <a
             href="/"
-            className="col-start-2 row-start-1 flex min-w-0 items-center justify-self-center gap-2.5"
+            className="col-start-2 row-start-1 flex min-w-0 items-center justify-self-center gap-2.5 lg:col-start-1 lg:justify-self-start"
             aria-label="ProxyBembem - Início"
           >
             <img
@@ -179,7 +184,46 @@ export function Navbar() {
             </span>
           </a>
 
-          <div className="col-start-3 row-start-1 flex items-center justify-self-end gap-1 lg:gap-2">
+          <form
+            id="desktop-store-search"
+            action="/produtos"
+            method="get"
+            role="search"
+            className="hidden min-w-0 max-w-[460px] items-center justify-self-center rounded-full border border-slate-200 bg-slate-50/80 px-4 shadow-sm transition focus-within:border-[#8B5CF6]/60 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#8B5CF6]/10 lg:flex lg:w-full"
+          >
+            <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+            <input
+              type="search"
+              name="busca"
+              maxLength={100}
+              placeholder="Buscar produtos..."
+              aria-label="Buscar produtos"
+              className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="submit"
+              aria-label="Buscar produtos"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </form>
+
+          <div className="col-start-3 row-start-1 flex items-center justify-self-end gap-0.5 lg:gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSearchOpen((current) => !current)
+                setIsMobileMenuOpen(false)
+              }}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-800 transition-colors hover:bg-slate-100 hover:text-[#8B5CF6] lg:hidden"
+              aria-label="Buscar produtos"
+              aria-expanded={isMobileSearchOpen}
+              aria-controls="mobile-store-search"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+
             <a
               href="/contato"
               className={`hidden h-10 items-center px-3 text-sm font-medium transition-colors lg:inline-flex ${
@@ -189,11 +233,41 @@ export function Navbar() {
               Contato
             </a>
             <div className="hidden h-5 w-px bg-slate-200 lg:block" aria-hidden="true" />
-            {accountButton}
+            <div className="hidden lg:block">{accountButton}</div>
             {cartButton}
           </div>
         </nav>
       </div>
+
+      {isMobileSearchOpen ? (
+        <div className="border-b border-slate-200 bg-white px-4 py-3 shadow-sm lg:hidden">
+          <form
+            id="mobile-store-search"
+            action="/produtos"
+            method="get"
+            role="search"
+            className="mx-auto flex max-w-lg items-center rounded-full border border-slate-200 bg-slate-50 px-4 focus-within:border-[#8B5CF6]/60 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#8B5CF6]/10"
+          >
+            <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+            <input
+              type="search"
+              name="busca"
+              maxLength={100}
+              autoFocus
+              placeholder="Buscar produtos..."
+              aria-label="Buscar produtos"
+              className="h-11 min-w-0 flex-1 bg-transparent px-3 text-base text-slate-900 outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="submit"
+              aria-label="Buscar produtos"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </form>
+        </div>
+      ) : null}
 
       <div className="hidden border-b border-slate-200/80 bg-white lg:block">
         <nav
