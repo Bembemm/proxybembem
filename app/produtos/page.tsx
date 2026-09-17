@@ -20,7 +20,10 @@ function firstSearchParam(value: string | string[] | undefined) {
 export default async function ProdutosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoria?: string | string[] }>
+  searchParams: Promise<{
+    categoria?: string | string[]
+    busca?: string | string[]
+  }>
 }) {
   const storeSettings = await getPublicStoreSettings()
   const params = await searchParams
@@ -38,14 +41,17 @@ export default async function ProdutosPage({
     requestedCategory && products.some((product) => product.category === requestedCategory)
       ? requestedCategory
       : undefined
+  const requestedSearch = firstSearchParam(params.busca)?.trim().slice(0, 100)
+  const initialSearch = requestedSearch || undefined
 
   return (
     <ProductsPage
-      key={initialCategory ?? "all-products"}
+      key={`${initialCategory ?? "all-products"}:${initialSearch ?? "all-search"}`}
       products={products}
       unavailable={unavailable}
       productionLeadTimeBusinessDays={storeSettings.productionLeadTimeBusinessDays}
       initialCategory={initialCategory}
+      initialSearch={initialSearch}
     />
   )
 }
