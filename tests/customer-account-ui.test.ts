@@ -113,26 +113,28 @@ test("signup keeps a stable form reference across await and never reports provid
 test("customer account shell stays structural while leaf pages own server protection", async () => {
   const layout = await source("../app/minha-conta/layout.tsx")
   const shell = await source("../components/account/account-shell.tsx")
+  const nav = await source("../components/account/account-nav.tsx")
   const logout = await source("../components/account/logout-form.tsx")
 
   requireSource(layout, "customer account layout")
   requireSource(shell, "customer account shell")
+  requireSource(nav, "customer account navigation")
   requireSource(logout, "customer logout form")
 
   assert.match(layout, /AccountShell/)
   assert.doesNotMatch(layout, /requireCustomerPageAccess/)
-  assert.match(shell, /\/minha-conta["']/)
-  assert.match(shell, /\/minha-conta\/pedidos/)
-  assert.match(shell, /\/minha-conta\/perfil/)
-  assert.match(shell, /\/minha-conta\/seguranca/)
-  assert.match(shell, /Visão geral/)
-  assert.match(shell, /Pedidos/)
-  assert.match(shell, /Perfil/)
-  assert.match(shell, /Segurança/)
+  assert.match(nav, /\/minha-conta["']/)
+  assert.match(nav, /\/minha-conta\/pedidos/)
+  assert.match(nav, /\/minha-conta\/perfil/)
+  assert.match(nav, /\/minha-conta\/seguranca/)
+  assert.match(nav, /Visão geral/)
+  assert.match(nav, /Pedidos/)
+  assert.match(nav, /Perfil/)
+  assert.match(nav, /Segurança/)
   assert.match(logout, /\/api\/account\/logout/)
   assert.match(logout, /method:\s*["']POST["']/)
 
-  for (const value of [layout, shell, logout]) {
+  for (const value of [layout, shell, nav, logout]) {
     assert.doesNotMatch(value, /components\/admin|AdminShell|requireAdminPageAccess|ADMIN_USER_ID/)
   }
 })
@@ -235,6 +237,8 @@ test("protected customer UI contains no forbidden order internals or admin bound
     "../app/minha-conta/perfil/page.tsx",
     "../app/minha-conta/seguranca/page.tsx",
     "../components/account/account-shell.tsx",
+    "../components/account/account-nav.tsx",
+    "../components/account/account-page.tsx",
     "../components/account/logout-form.tsx",
     "../components/account/profile-form.tsx",
     "../components/account/password-form.tsx",
