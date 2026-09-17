@@ -1,5 +1,6 @@
 "use client"
 
+import { LogOut } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -28,9 +29,10 @@ export function LogoutForm() {
       type="button"
       onClick={logout}
       disabled={pending}
-      className="rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-violet-700 disabled:opacity-60"
+      className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:opacity-60"
     >
-      {pending ? "Saindo..." : "Sair"}
+      <LogOut className="size-4.5 shrink-0" aria-hidden="true" />
+      <span>{pending ? "Saindo..." : "Sair"}</span>
     </button>
   )
 }
