@@ -31,7 +31,7 @@ test("navbar resolves an unauthenticated getUser error to guest instead of stayi
   )
 })
 
-test("navbar uses one aligned storefront grid with desktop navigation and a category-free mobile menu", () => {
+test("navbar uses the approved desktop and mobile storefront navigation", () => {
   const navbar = source("components/navbar.tsx")
 
   assert.match(navbar, /sticky[^"']*top-0/)
@@ -63,7 +63,21 @@ test("navbar uses one aligned storefront grid with desktop navigation and a cate
   assert.match(navbar, /setIsCartOpen\(true\)/)
   assert.match(navbar, /totalItems/)
   assert.match(navbar, /aria-label=["']Abrir carrinho["']/)
-
-  assert.doesNotMatch(navbar, /placeholder=.*busc/i)
   assert.doesNotMatch(navbar, /Lançamentos/)
+})
+
+test("navbar provides the approved real product search on desktop and an expandable search on mobile", () => {
+  const navbar = source("components/navbar.tsx")
+
+  assert.match(navbar, /\bSearch\b/)
+  assert.match(navbar, /isMobileSearchOpen/)
+  assert.match(navbar, /setIsMobileSearchOpen/)
+  assert.match(navbar, /action=["']\/produtos["']/)
+  assert.match(navbar, /method=["']get["']/i)
+  assert.match(navbar, /name=["']busca["']/)
+  assert.match(navbar, /placeholder=["']Buscar produtos\.\.\.["']/)
+  assert.match(navbar, /aria-label=["']Buscar produtos["']/)
+  assert.match(navbar, /id=["']desktop-store-search["']/)
+  assert.match(navbar, /id=["']mobile-store-search["']/)
+  assert.match(navbar, /hidden[^"']*lg:flex/)
 })
