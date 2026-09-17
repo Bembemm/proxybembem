@@ -27,9 +27,9 @@ function AddToCartButton({ product }: { product: Product }) {
       type="button"
       onClick={() => addToCart(product)}
       aria-label={`Adicionar ${product.title} ao carrinho`}
-      className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-[#8B5CF6] px-2 text-xs font-semibold text-white transition hover:bg-[#7C3AED] active:scale-[0.98] sm:px-3 sm:text-sm lg:h-9 lg:text-xs"
+      className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#8B5CF6] px-4 text-sm font-semibold text-white transition hover:bg-[#7C3AED] active:scale-[0.99] sm:text-base"
     >
-      <ShoppingCart className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <ShoppingCart className="h-5 w-5 shrink-0" aria-hidden="true" />
       <span className="truncate">
         {quantity > 0 ? `Adicionar ao carrinho (${quantity})` : "Adicionar ao carrinho"}
       </span>
@@ -50,8 +50,7 @@ export function HomePage({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-  const [pageCount, setPageCount] = useState(1)
+  const [canScrollRight, setCanScrollRight] = useState(products.length > 1)
   const [activePage, setActivePage] = useState(0)
 
   const openProductModal = (product: Product) => {
@@ -68,17 +67,13 @@ export function HomePage({
     const carousel = carouselRef.current
     if (!carousel) return
 
-    const maxScrollLeft = Math.max(carousel.scrollWidth - carousel.clientWidth, 0)
-    const nextPageCount = Math.max(1, Math.ceil(maxScrollLeft / Math.max(carousel.clientWidth, 1)) + 1)
-    const nextActivePage = Math.min(
-      nextPageCount - 1,
-      Math.max(0, Math.round(carousel.scrollLeft / Math.max(carousel.clientWidth, 1))),
-    )
+    const slideWidth = Math.max(carousel.clientWidth, 1)
+    const lastPage = Math.max(products.length - 1, 0)
+    const nextActivePage = Math.min(lastPage, Math.max(0, Math.round(carousel.scrollLeft / slideWidth)))
 
-    setCanScrollLeft(carousel.scrollLeft > 4)
-    setCanScrollRight(maxScrollLeft - carousel.scrollLeft > 4)
-    setPageCount(nextPageCount)
     setActivePage(nextActivePage)
+    setCanScrollLeft(nextActivePage > 0)
+    setCanScrollRight(nextActivePage < lastPage)
   }
 
   useEffect(() => {
@@ -100,24 +95,21 @@ export function HomePage({
     }
   }, [products])
 
-  const scrollFeatured = (direction: -1 | 1) => {
-    const carousel = carouselRef.current
-    if (!carousel) return
-
-    carousel.scrollBy({
-      left: direction * carousel.clientWidth,
-      behavior: "smooth",
-    })
-  }
-
   const scrollToPage = (page: number) => {
     const carousel = carouselRef.current
     if (!carousel) return
 
+    const lastPage = Math.max(products.length - 1, 0)
+    const nextPage = Math.min(lastPage, Math.max(0, page))
+
     carousel.scrollTo({
-      left: page * carousel.clientWidth,
+      left: nextPage * carousel.clientWidth,
       behavior: "smooth",
     })
+  }
+
+  const scrollFeatured = (direction: -1 | 1) => {
+    scrollToPage(activePage + direction)
   }
 
   return (
@@ -142,104 +134,112 @@ export function HomePage({
           ) : null}
 
           {!unavailable && products.length > 0 ? (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => scrollFeatured(-1)}
-                disabled={!canScrollLeft}
-                aria-label="Ver produtos anteriores"
-                className="absolute left-0 top-[67px] z-20 flex h-10 w-10 -translate-x-1 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:-translate-x-2 disabled:cursor-default disabled:opacity-20 disabled:hover:-translate-x-1 md:top-[95px] md:-translate-x-6 md:disabled:hover:-translate-x-6 lg:top-[86px] lg:-translate-x-8 lg:disabled:hover:-translate-x-8"
-              >
-                <ArrowLeft className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
-              </button>
+            <div className="relative mx-auto max-w-[860px]">
+              {products.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => scrollFeatured(-1)}
+                  disabled={!canScrollLeft}
+                  aria-label="Ver produto anterior"
+                  className="absolute left-0 top-1/2 z-20 flex h-11 w-11 -translate-x-1 -translate-y-1/2 items-center justify-center rounded-full bg-violet-50 text-slate-950 shadow-sm ring-1 ring-violet-100 transition hover:bg-violet-100 disabled:cursor-default disabled:opacity-25 sm:h-12 sm:w-12 md:-translate-x-2"
+                >
+                  <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              ) : null}
 
               <div
                 ref={carouselRef}
                 onScroll={updateScrollState}
                 aria-label="Produtos em destaque"
-                className="snap-x snap-mandatory overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <div className="flex w-max min-w-full justify-center gap-4">
-                  {products.map((product) => {
+                <div className="flex">
+                  {products.map((product, index) => {
                     const discount = discountPercent(product)
 
                     return (
-                      <article
-                        key={product.id}
-                        className="group w-[min(78vw,320px)] shrink-0 snap-start md:w-[190px] lg:w-[172px]"
-                      >
-                        <button
-                          type="button"
-                          onClick={() => openProductModal(product)}
-                          className="grid w-full grid-cols-[42%_1fr] items-start gap-4 text-left md:block"
-                          aria-label={`Ver detalhes de ${product.title}`}
+                      <div key={product.id} className="w-full shrink-0 snap-center px-7 py-1 sm:px-10 md:px-12">
+                        <article
+                          aria-label={`Destaque ${index + 1} de ${products.length}`}
+                          className="group mx-auto w-full max-w-[760px] rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_8px_28px_rgba(15,23,42,0.08)] sm:p-4 md:p-5"
                         >
-                          <div className="relative aspect-square w-full overflow-hidden bg-slate-100">
-                            <Image
-                              src={product.image}
-                              alt={product.title}
-                              fill
-                              sizes="(max-width: 767px) 33vw, (max-width: 1023px) 190px, 172px"
-                              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                            />
-                          </div>
-
-                          <div className="pt-0 md:pt-3">
-                            <h2 className="line-clamp-3 text-base font-normal leading-[1.35] text-slate-900 md:min-h-[2.6rem] md:line-clamp-2 md:text-[15px] lg:text-sm">
-                              {product.title}
-                            </h2>
-
-                            {product.originalPrice > product.discountPrice ? (
-                              <p className="mt-3 text-sm text-slate-500 line-through md:mt-2 md:text-xs">
-                                {formatPrice(product.originalPrice)}
-                              </p>
-                            ) : (
-                              <div className="mt-3 h-5 md:mt-2 md:h-4" aria-hidden="true" />
-                            )}
-
-                            <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 md:mt-0.5">
-                              <span className="text-xl font-bold leading-tight text-slate-950 md:text-lg lg:text-base">
-                                {formatPrice(product.discountPrice)}
-                              </span>
-                              {discount > 0 ? (
-                                <span className="text-sm font-medium text-red-500 lg:text-xs">{discount}% OFF</span>
-                              ) : null}
+                          <button
+                            type="button"
+                            onClick={() => openProductModal(product)}
+                            className="grid w-full grid-cols-1 gap-4 text-left md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] md:items-center md:gap-6"
+                            aria-label={`Ver detalhes de ${product.title}`}
+                          >
+                            <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-slate-100">
+                              <Image
+                                src={product.image}
+                                alt={product.title}
+                                fill
+                                sizes="(max-width: 767px) 76vw, 390px"
+                                className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                              />
                             </div>
-                          </div>
-                        </button>
 
-                        <AddToCartButton product={product} />
-                      </article>
+                            <div className="flex min-w-0 flex-col justify-center px-1 pb-1 md:px-0 md:py-2">
+                              <h2 className="text-xl font-normal leading-tight text-slate-950 sm:text-2xl md:text-[26px]">
+                                {product.title}
+                              </h2>
+
+                              {product.originalPrice > product.discountPrice ? (
+                                <p className="mt-4 text-base text-slate-500 line-through md:mt-5 md:text-lg">
+                                  {formatPrice(product.originalPrice)}
+                                </p>
+                              ) : (
+                                <div className="mt-4 h-6 md:mt-5" aria-hidden="true" />
+                              )}
+
+                              <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                <span className="text-3xl font-bold leading-tight text-slate-950 md:text-[34px]">
+                                  {formatPrice(product.discountPrice)}
+                                </span>
+                                {discount > 0 ? (
+                                  <span className="text-base font-medium text-red-500 md:text-lg">{discount}% OFF</span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </button>
+
+                          <AddToCartButton product={product} />
+                        </article>
+                      </div>
                     )
                   })}
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => scrollFeatured(1)}
-                disabled={!canScrollRight}
-                aria-label="Ver próximos produtos"
-                className="absolute right-0 top-[67px] z-20 flex h-10 w-10 translate-x-1 -translate-y-1/2 items-center justify-center text-slate-950 transition hover:translate-x-2 disabled:cursor-default disabled:opacity-20 disabled:hover:translate-x-1 md:top-[95px] md:translate-x-6 md:disabled:hover:translate-x-6 lg:top-[86px] lg:translate-x-8 lg:disabled:hover:translate-x-8"
-              >
-                <ArrowRight className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
-              </button>
+              {products.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => scrollFeatured(1)}
+                    disabled={!canScrollRight}
+                    aria-label="Ver próximo produto"
+                    className="absolute right-0 top-1/2 z-20 flex h-11 w-11 translate-x-1 -translate-y-1/2 items-center justify-center rounded-full bg-violet-50 text-slate-950 shadow-sm ring-1 ring-violet-100 transition hover:bg-violet-100 disabled:cursor-default disabled:opacity-25 sm:h-12 sm:w-12 md:translate-x-2"
+                  >
+                    <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
+                  </button>
 
-              {pageCount > 1 ? (
-                <div className="mt-4 flex items-center justify-center gap-2" aria-label="Páginas dos destaques">
-                  {Array.from({ length: pageCount }, (_, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => scrollToPage(index)}
-                      aria-label={`Ir para página ${index + 1}`}
-                      aria-current={activePage === index ? "true" : undefined}
-                      className={`h-1.5 w-1.5 rounded-full transition ${
-                        activePage === index ? "bg-slate-950" : "bg-slate-300 hover:bg-slate-500"
-                      }`}
-                    />
-                  ))}
-                </div>
+                  <div className="mt-5 flex items-center justify-center gap-2.5" aria-label="Produtos em destaque">
+                    {products.map((product, index) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => scrollToPage(index)}
+                        aria-label={`Ir para produto ${index + 1}`}
+                        aria-current={activePage === index ? "true" : undefined}
+                        className={`rounded-full transition-all ${
+                          activePage === index
+                            ? "h-2.5 w-2.5 bg-[#8B5CF6]"
+                            : "h-2 w-2 bg-slate-200 hover:bg-slate-300"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
               ) : null}
             </div>
           ) : null}
