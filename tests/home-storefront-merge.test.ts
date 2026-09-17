@@ -112,3 +112,23 @@ test("dedicated ProductsPage applies and resynchronizes the category received fr
   assert.match(page, /filteredProducts\.map\s*\(/)
   assert.match(page, /ProductDetailModal/)
 })
+
+test("/produtos accepts a bounded busca query and passes it to ProductsPage", () => {
+  const route = source("app/produtos/page.tsx")
+
+  assert.match(route, /busca/)
+  assert.match(route, /slice\(0,\s*100\)/)
+  assert.match(route, /initialSearch=/)
+})
+
+test("ProductsPage combines normalized text search with selected categories", () => {
+  const page = source("components/pages/products-page.tsx")
+
+  assert.match(page, /initialSearch\?: string/)
+  assert.match(page, /normalizeSearch/)
+  assert.match(page, /product\.title/)
+  assert.match(page, /product\.category/)
+  assert.match(page, /matchesSearch/)
+  assert.match(page, /matchesCategory/)
+  assert.match(page, /matchesSearch\s*&&\s*matchesCategory/)
+})
