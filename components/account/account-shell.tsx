@@ -18,7 +18,7 @@ function AccountIdentity() {
 
 export function AccountShell({ children }: { children: React.ReactNode }) {
   return (
-    <section className="min-h-screen bg-slate-100 px-4 pb-12 pt-24 sm:px-6 sm:pb-16 sm:pt-28 lg:px-8">
+    <section className="bg-slate-100 px-4 pb-12 pt-24 sm:px-6 sm:pb-16 sm:pt-28 lg:px-8">
       <div className="mx-auto grid w-full max-w-7xl gap-5 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-6">
         <aside className="hidden lg:block">
           <div className="sticky top-24 flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
