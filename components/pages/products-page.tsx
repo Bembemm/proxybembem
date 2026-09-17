@@ -9,16 +9,26 @@ import { ProductDetailModal } from "@/components/product-detail-modal"
 import { StorefrontProductCard } from "@/components/storefront-product-card"
 import type { Product } from "@/contexts/cart-context"
 
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim()
+}
+
 export function ProductsPage({
   products,
   unavailable = false,
   productionLeadTimeBusinessDays,
   initialCategory,
+  initialSearch,
 }: {
   products: Product[]
   unavailable?: boolean
   productionLeadTimeBusinessDays: number
   initialCategory?: string
+  initialSearch?: string
 }) {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialCategory ? [initialCategory] : [],
@@ -28,6 +38,7 @@ export function ProductsPage({
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const categories = Array.from(new Set(products.map((product) => product.category)))
+  const normalizedSearch = normalizeSearch(initialSearch ?? "")
 
   const openProductModal = (product: Product) => {
     setSelectedProduct(product)
@@ -47,10 +58,15 @@ export function ProductsPage({
     )
   }
 
-  const filteredProducts = products.filter(
-    (product) =>
-      selectedCategories.length === 0 || selectedCategories.includes(product.category),
-  )
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory =
+      selectedCategories.length === 0 || selectedCategories.includes(product.category)
+    const searchableText = normalizeSearch(`${product.title} ${product.category}`)
+    const matchesSearch =
+      normalizedSearch.length === 0 || searchableText.includes(normalizedSearch)
+
+    return matchesSearch && matchesCategory
+  })
 
   return (
     <section className="relative pb-8 pt-16 sm:pb-12 sm:pt-20">
