@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
+import { fulfillmentStatusLabel, paymentStatusLabel } from "@/lib/order-status-labels"
 import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import { listOwnOrders } from "@/lib/server/customer-orders"
 
@@ -60,8 +61,8 @@ export default async function OrdersPage({
                 </div>
                 <div className="text-sm text-slate-600 sm:text-right">
                   <p className="font-semibold text-slate-900">{formatMoney(order.totalCents ?? order.subtotalCents)}</p>
-                  <p>Pagamento: {order.paymentStatus}</p>
-                  <p>Produção: {order.fulfillmentStatus}</p>
+                  <p>Pagamento: {paymentStatusLabel(order.paymentStatus)}</p>
+                  <p>Produção: {fulfillmentStatusLabel(order.fulfillmentStatus)}</p>
                 </div>
               </div>
             </Link>
