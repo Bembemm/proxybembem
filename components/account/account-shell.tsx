@@ -1,36 +1,50 @@
-import Link from "next/link"
+import { CircleUserRound } from "lucide-react"
+import { AccountNav } from "./account-nav"
 import { LogoutForm } from "./logout-form"
 
-const NAV_ITEMS = [
-  { href: "/minha-conta", label: "Visão geral" },
-  { href: "/minha-conta/pedidos", label: "Pedidos" },
-  { href: "/minha-conta/perfil", label: "Perfil" },
-  { href: "/minha-conta/seguranca", label: "Segurança" },
-] as const
+function AccountIdentity() {
+  return (
+    <div className="flex items-center gap-3 border-b border-slate-200 p-4">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-white shadow-sm">
+        <CircleUserRound className="size-5" aria-hidden="true" />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-base font-semibold tracking-tight text-slate-950">ProxyBembem</p>
+        <p className="text-xs text-slate-500">Minha conta</p>
+      </div>
+    </div>
+  )
+}
 
 export function AccountShell({ children }: { children: React.ReactNode }) {
   return (
-    <section className="min-h-[70vh] px-4 pb-16 pt-24 sm:pt-28">
-      <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="mb-2 px-3 py-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-600">Minha conta</p>
+    <section className="min-h-screen bg-slate-100 px-4 pb-12 pt-24 sm:px-6 sm:pb-16 sm:pt-28 lg:px-8">
+      <div className="mx-auto grid w-full max-w-7xl gap-5 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-6">
+        <aside className="hidden lg:block">
+          <div className="sticky top-24 flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <AccountIdentity />
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <AccountNav />
+            </div>
+            <div className="border-t border-slate-200 p-3">
+              <LogoutForm />
+            </div>
           </div>
-          <nav aria-label="Navegação da conta" className="flex gap-1 overflow-x-auto lg:flex-col">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                prefetch={false}
-                href={item.href}
-                className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <LogoutForm />
-          </nav>
         </aside>
-        <main className="min-w-0">{children}</main>
+
+        <main className="min-w-0">
+          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:hidden">
+            <AccountIdentity />
+            <div className="p-3">
+              <AccountNav mobile />
+            </div>
+            <div className="border-t border-slate-200 p-3">
+              <LogoutForm />
+            </div>
+          </div>
+
+          {children}
+        </main>
       </div>
     </section>
   )
