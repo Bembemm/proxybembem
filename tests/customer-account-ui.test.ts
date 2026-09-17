@@ -278,3 +278,30 @@ test("customer account shell mirrors the admin visual system without crossing th
   assert.match(shell, /aria-current/)
   assert.doesNotMatch(shell, /components\/admin|AdminShell|AdminNav|requireAdminPageAccess/)
 })
+
+test("customer account leaf pages defer top-level titles to the shared shell without losing their content", async () => {
+  const overview = await source("../app/minha-conta/page.tsx")
+  const list = await source("../app/minha-conta/pedidos/page.tsx")
+  const detail = await source("../app/minha-conta/pedidos/[id]/page.tsx")
+  const profile = await source("../app/minha-conta/perfil/page.tsx")
+  const security = await source("../app/minha-conta/seguranca/page.tsx")
+
+  for (const [label, page] of [
+    ["overview", overview],
+    ["orders", list],
+    ["order detail", detail],
+    ["profile", profile],
+    ["security", security],
+  ] as const) {
+    requireSource(page, label)
+    assert.doesNotMatch(page, /<h1[\s>]/)
+  }
+
+  assert.match(overview, /Pedidos recentes/)
+  assert.match(list, /result\.orders/)
+  assert.match(profile, /ProfileForm/)
+  assert.match(security, /PasswordForm/)
+  assert.match(detail, /<h2[^>]*>\{order\.orderNumber\}<\/h2>/)
+  assert.match(detail, /order\.items/)
+  assert.match(detail, /order\.timeline/)
+})
