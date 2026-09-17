@@ -16,6 +16,23 @@ test("home sends every published product to the storefront without a featured-on
   assert.match(home, /products\.map\s*\(/)
 })
 
+test("home and products share one storefront product-card presentation", () => {
+  const home = source("components/pages/home-page.tsx")
+  const products = source("components/pages/products-page.tsx")
+  const card = source("components/storefront-product-card.tsx")
+
+  assert.match(home, /StorefrontProductCard/)
+  assert.match(products, /StorefrontProductCard/)
+  assert.match(card, /product\.tag/)
+  assert.match(card, /product\.image/)
+  assert.match(card, /product\.title/)
+  assert.match(card, /product\.originalPrice/)
+  assert.match(card, /product\.discountPrice/)
+  assert.match(card, /Adicionar/)
+  assert.match(card, /Ver Detalhes/)
+  assert.match(card, /addToCart\(product\)/)
+})
+
 test("home highlights one centered product per slide with responsive stacking, arrows, dots and cart action", () => {
   const home = source("components/pages/home-page.tsx")
 
