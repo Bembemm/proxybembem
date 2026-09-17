@@ -34,7 +34,7 @@ export function ContactPage({ contactEmail, contactWhatsappE164 }: ContactPagePr
   const hasContactChannel = Boolean(whatsappUrl || emailUrl)
 
   return (
-    <section className="relative pt-16 sm:pt-20 pb-8 sm:pb-12 min-h-screen">
+    <section className="relative pt-16 sm:pt-20 pb-8 sm:pb-12">
       <div className="container mx-auto px-3 sm:px-4 relative z-10">
         <div className="text-center mb-6 sm:mb-10">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-[family-name:var(--font-display)] text-slate-900 mb-3 sm:mb-4 tracking-wide text-balance">
