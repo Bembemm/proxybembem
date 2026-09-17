@@ -1,58 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
-import { Check, ChevronDown, Eye, Filter, ShoppingCart } from "lucide-react"
+import { ChevronDown, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { ProductDetailModal } from "@/components/product-detail-modal"
-import { useCart, type Product } from "@/contexts/cart-context"
-
-function formatPrice(value: number) {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  })
-}
-
-function AddToCartButton({ product }: { product: Product }) {
-  const { addToCart, items } = useCart()
-  const [justAdded, setJustAdded] = useState(false)
-
-  const itemInCart = items.find((item) => item.product.id === product.id)
-
-  const handleClick = () => {
-    addToCart(product)
-    setJustAdded(true)
-    window.setTimeout(() => setJustAdded(false), 1500)
-  }
-
-  return (
-    <Button
-      onClick={handleClick}
-      size="sm"
-      type="button"
-      className={`w-full tracking-wide text-sm sm:text-base h-11 transition-all duration-300 active:scale-[0.98] ${
-        justAdded
-          ? "bg-green-500 border-green-500 text-white hover:bg-green-600"
-          : "bg-transparent border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6]"
-      }`}
-    >
-      {justAdded ? (
-        <>
-          <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-          Adicionado!
-        </>
-      ) : (
-        <>
-          <ShoppingCart className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
-          {itemInCart ? `No Carrinho (${itemInCart.quantity})` : "Adicionar"}
-        </>
-      )}
-    </Button>
-  )
-}
+import { StorefrontProductCard } from "@/components/storefront-product-card"
+import type { Product } from "@/contexts/cart-context"
 
 export function ProductsPage({
   products,
@@ -98,36 +53,36 @@ export function ProductsPage({
   )
 
   return (
-    <section className="relative pt-16 sm:pt-20 pb-8 sm:pb-12">
-      <div className="container mx-auto px-3 sm:px-4 relative z-10">
-        <div className="lg:hidden mb-3 sm:mb-4">
+    <section className="relative pb-8 pt-16 sm:pb-12 sm:pt-20">
+      <div className="container relative z-10 mx-auto px-3 sm:px-4">
+        <div className="mb-3 sm:mb-4 lg:hidden">
           <Button
             onClick={() => setShowFilters((current) => !current)}
             type="button"
             aria-expanded={showFilters}
             aria-controls="product-filters"
-            className="w-full bg-transparent border border-[#8B5CF6] text-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] transition-colors duration-300 h-12 text-base active:scale-[0.98]"
+            className="h-12 w-full border border-[#8B5CF6] bg-transparent text-base text-[#8B5CF6] transition-colors duration-300 active:scale-[0.98] hover:border-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white"
           >
-            <Filter className="w-4 h-4 mr-2" />
+            <Filter className="mr-2 h-4 w-4" />
             Filtros
             <ChevronDown
-              className={`w-4 h-4 ml-auto transition-transform ${showFilters ? "rotate-180" : ""}`}
+              className={`ml-auto h-4 w-4 transition-transform ${showFilters ? "rotate-180" : ""}`}
             />
           </Button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row">
           <aside
             id="product-filters"
-            className={`lg:w-56 xl:w-64 shrink-0 ${showFilters ? "block" : "hidden lg:block"}`}
+            className={`shrink-0 lg:w-56 xl:w-64 ${showFilters ? "block" : "hidden lg:block"}`}
           >
-            <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-4 sm:p-5 lg:sticky lg:top-20 rounded-lg">
-              <h2 className="font-[family-name:var(--font-display)] text-lg sm:text-xl text-slate-900 mb-3 sm:mb-4 tracking-wide">
+            <div className="rounded-lg border border-white/50 bg-white/60 p-4 shadow-lg backdrop-blur-md sm:p-5 lg:sticky lg:top-20">
+              <h2 className="mb-3 text-lg tracking-wide text-slate-900 font-[family-name:var(--font-display)] sm:mb-4 sm:text-xl">
                 Filtros
               </h2>
 
               <div>
-                <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-2 sm:mb-3 uppercase tracking-wider">
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-900 sm:mb-3 sm:text-base">
                   Categorias
                 </h3>
                 <div className="space-y-2">
@@ -137,11 +92,11 @@ export function ProductsPage({
                         id={`cat-${category}`}
                         checked={selectedCategories.includes(category)}
                         onCheckedChange={() => toggleCategory(category)}
-                        className="border-slate-400 data-[state=checked]:bg-[#8B5CF6] data-[state=checked]:border-[#8B5CF6]"
+                        className="border-slate-400 data-[state=checked]:border-[#8B5CF6] data-[state=checked]:bg-[#8B5CF6]"
                       />
                       <Label
                         htmlFor={`cat-${category}`}
-                        className="text-base text-slate-700 cursor-pointer hover:text-slate-900 transition-colors"
+                        className="cursor-pointer text-base text-slate-700 transition-colors hover:text-slate-900"
                       >
                         {category}
                       </Label>
@@ -152,113 +107,58 @@ export function ProductsPage({
             </div>
           </aside>
 
-          <div className="flex-1 min-w-0">
-            {unavailable && (
-              <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-6 sm:p-8 mb-4 sm:mb-6 text-center rounded-lg" role="status">
-                <p className="text-slate-700 text-base sm:text-lg font-medium">
+          <div className="min-w-0 flex-1">
+            {unavailable ? (
+              <div
+                className="mb-4 rounded-lg border border-white/50 bg-white/60 p-6 text-center shadow-lg backdrop-blur-md sm:mb-6 sm:p-8"
+                role="status"
+              >
+                <p className="text-base font-medium text-slate-700 sm:text-lg">
                   Catálogo temporariamente indisponível.
                 </p>
-                <p className="text-slate-500 text-sm sm:text-base mt-2">
+                <p className="mt-2 text-sm text-slate-500 sm:text-base">
                   Tente novamente em alguns instantes.
                 </p>
               </div>
-            )}
+            ) : null}
 
             <div className="mb-4 sm:mb-6" aria-live="polite">
-              <p className="text-sm sm:text-base text-slate-700">
+              <p className="text-sm text-slate-700 sm:text-base">
                 {filteredProducts.length} produto{filteredProducts.length !== 1 ? "s" : ""} encontrado
                 {filteredProducts.length !== 1 ? "s" : ""}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-              {filteredProducts.map((product, index) => (
-                <article
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+              {filteredProducts.map((product) => (
+                <StorefrontProductCard
                   key={product.id}
-                  className="group relative bg-white/60 backdrop-blur-md border border-white/50 shadow-lg overflow-hidden rounded-lg hover:shadow-xl hover:border-[#8B5CF6]/50 transition-all duration-300 animate-fade-in-up"
-                  style={{ animationDelay: `${index * 80}ms` }}
-                >
-                  <button
-                    type="button"
-                    className="relative aspect-[4/3] w-full bg-slate-100 overflow-hidden cursor-pointer text-left"
-                    onClick={() => openProductModal(product)}
-                    aria-label={`Ver detalhes de ${product.title}`}
-                  >
-                    <Image
-                      src={product.image}
-                      alt={product.title}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                    />
-
-                    <span className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent opacity-60" />
-
-                    <span className="absolute inset-0 bg-[#8B5CF6]/0 group-hover:bg-[#8B5CF6]/20 transition-colors duration-300 flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/90 text-[#8B5CF6] text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5" />
-                        Ver Detalhes
-                      </span>
-                    </span>
-
-                    {product.tag && (
-                      <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 bg-[#8B5CF6] text-white text-xs sm:text-sm font-semibold px-2 sm:px-2.5 py-1 tracking-wider uppercase rounded">
-                        {product.tag}
-                      </span>
-                    )}
-                  </button>
-
-                  <div className="p-2 sm:p-3 relative">
-                    <h3 className="font-semibold text-slate-900 text-sm sm:text-base mb-1.5 sm:mb-2 line-clamp-2 min-h-[2.5rem] sm:min-h-[3rem] leading-snug">
-                      {product.title}
-                    </h3>
-
-                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2 mb-2 sm:mb-3">
-                      <span className="text-xs sm:text-sm text-slate-500 line-through opacity-70">
-                        {formatPrice(product.originalPrice)}
-                      </span>
-                      <span className="text-base sm:text-xl font-bold text-[#8B5CF6]">
-                        {formatPrice(product.discountPrice)}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <AddToCartButton product={product} />
-                      <Button
-                        onClick={() => openProductModal(product)}
-                        variant="ghost"
-                        size="sm"
-                        type="button"
-                        className="w-full text-xs sm:text-sm h-9 text-slate-500 hover:text-[#8B5CF6] hover:bg-[#8B5CF6]/5 active:scale-[0.98]"
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        Ver Detalhes
-                      </Button>
-                    </div>
-                  </div>
-                </article>
+                  product={product}
+                  onViewDetails={openProductModal}
+                  className="animate-fade-in-up"
+                />
               ))}
             </div>
 
-            {!unavailable && filteredProducts.length === 0 && (
-              <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-8 sm:p-12 text-center rounded-lg">
-                <p className="text-slate-700 text-base sm:text-lg">
+            {!unavailable && filteredProducts.length === 0 ? (
+              <div className="rounded-lg border border-white/50 bg-white/60 p-8 text-center shadow-lg backdrop-blur-md sm:p-12">
+                <p className="text-base text-slate-700 sm:text-lg">
                   Nenhum produto encontrado com os filtros selecionados.
                 </p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
 
-      {selectedProduct && (
+      {selectedProduct ? (
         <ProductDetailModal
           product={selectedProduct}
           isOpen={isModalOpen}
           onClose={closeProductModal}
           productionLeadTimeBusinessDays={productionLeadTimeBusinessDays}
         />
-      )}
+      ) : null}
     </section>
   )
 }
