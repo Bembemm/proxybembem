@@ -32,21 +32,44 @@ export function HomePage({
     setSelectedProduct(null)
   }
 
+  const getCarouselItems = useCallback(() => {
+    const carousel = carouselRef.current
+    if (!carousel) return []
+
+    return Array.from(carousel.querySelectorAll<HTMLElement>("[data-carousel-item]"))
+  }, [])
+
   const updateScrollState = useCallback(() => {
     const carousel = carouselRef.current
     if (!carousel) return
 
-    const slideWidth = Math.max(carousel.clientWidth, 1)
-    const lastPage = Math.max(products.length - 1, 0)
-    const nextActivePage = Math.min(
-      lastPage,
-      Math.max(0, Math.round(carousel.scrollLeft / slideWidth)),
-    )
+    const items = getCarouselItems()
+    if (items.length === 0) {
+      setActivePage(0)
+      setCanScrollLeft(false)
+      setCanScrollRight(false)
+      return
+    }
 
-    setActivePage(nextActivePage)
-    setCanScrollLeft(nextActivePage > 0)
-    setCanScrollRight(nextActivePage < lastPage)
-  }, [products.length])
+    const firstItemOffset = items[0].offsetLeft
+    let nearestIndex = 0
+    let nearestDistance = Number.POSITIVE_INFINITY
+
+    items.forEach((item, index) => {
+      const itemOffset = item.offsetLeft - firstItemOffset
+      const distance = Math.abs(itemOffset - carousel.scrollLeft)
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance
+        nearestIndex = index
+      }
+    })
+
+    const maxScrollLeft = Math.max(carousel.scrollWidth - carousel.clientWidth, 0)
+    setActivePage(nearestIndex)
+    setCanScrollLeft(carousel.scrollLeft > 2)
+    setCanScrollRight(carousel.scrollLeft < maxScrollLeft - 2)
+  }, [getCarouselItems])
 
   useEffect(() => {
     const carousel = carouselRef.current
@@ -69,13 +92,16 @@ export function HomePage({
 
   const scrollToPage = (page: number) => {
     const carousel = carouselRef.current
-    if (!carousel) return
+    const items = getCarouselItems()
+    if (!carousel || items.length === 0) return
 
-    const lastPage = Math.max(products.length - 1, 0)
+    const lastPage = items.length - 1
     const nextPage = Math.min(lastPage, Math.max(0, page))
+    const firstItemOffset = items[0].offsetLeft
+    const targetOffset = Math.max(0, items[nextPage].offsetLeft - firstItemOffset)
 
     carousel.scrollTo({
-      left: nextPage * carousel.clientWidth,
+      left: targetOffset,
       behavior: "smooth",
     })
   }
@@ -88,9 +114,17 @@ export function HomePage({
     <>
       <section className="bg-white pb-10 pt-6 lg:pb-12 lg:pt-8">
         <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8">
-          <h1 className="mb-5 text-3xl font-bold tracking-tight text-slate-950 lg:mb-6 lg:text-[32px]">
-            Destaques
-          </h1>
+          <div className="mb-5 flex items-end justify-between gap-4 lg:mb-6">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-950 lg:text-[32px]">
+              Destaques
+            </h1>
+            <a
+              href="/produtos"
+              className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-[#7C3AED] transition-colors hover:text-[#6D28D9] sm:text-base"
+            >
+              Ver todos <span aria-hidden="true">→</span>
+            </a>
+          </div>
 
           {unavailable ? (
             <div className="border border-slate-200 bg-slate-50 px-5 py-8 text-center" role="status">
@@ -106,16 +140,16 @@ export function HomePage({
           ) : null}
 
           {!unavailable && products.length > 0 ? (
-            <div className="relative mx-auto max-w-[860px]">
+            <div className="relative">
               {products.length > 1 ? (
                 <button
                   type="button"
                   onClick={() => scrollFeatured(-1)}
                   disabled={!canScrollLeft}
                   aria-label="Ver produto anterior"
-                  className="absolute left-0 top-1/2 z-20 flex h-11 w-11 -translate-x-1 -translate-y-1/2 items-center justify-center rounded-full bg-violet-50 text-slate-950 shadow-sm ring-1 ring-violet-100 transition hover:bg-violet-100 disabled:cursor-default disabled:opacity-25 sm:h-12 sm:w-12 md:-translate-x-2"
+                  className="absolute -left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-left-3 sm:h-11 sm:w-11"
                 >
-                  <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
+                  <ArrowLeft className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                 </button>
               ) : null}
 
@@ -123,19 +157,20 @@ export function HomePage({
                 ref={carouselRef}
                 onScroll={updateScrollState}
                 aria-label="Produtos em destaque"
-                className="snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="-mx-4 snap-x snap-mandatory overflow-x-auto scroll-smooth px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
               >
-                <div className="flex">
+                <div className="flex gap-4">
                   {products.map((product, index) => (
                     <div
                       key={product.id}
+                      data-carousel-item
                       aria-label={`Destaque ${index + 1} de ${products.length}`}
-                      className="w-full shrink-0 snap-center px-7 py-1 sm:px-10 md:px-12"
+                      className="w-[82vw] shrink-0 snap-start sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)] xl:w-[calc((100%-3rem)/4)]"
                     >
                       <StorefrontProductCard
                         product={product}
                         onViewDetails={openProductModal}
-                        className="mx-auto w-full max-w-[760px]"
+                        className="h-full w-full"
                       />
                     </div>
                   ))}
@@ -149,12 +184,12 @@ export function HomePage({
                     onClick={() => scrollFeatured(1)}
                     disabled={!canScrollRight}
                     aria-label="Ver próximo produto"
-                    className="absolute right-0 top-1/2 z-20 flex h-11 w-11 translate-x-1 -translate-y-1/2 items-center justify-center rounded-full bg-violet-50 text-slate-950 shadow-sm ring-1 ring-violet-100 transition hover:bg-violet-100 disabled:cursor-default disabled:opacity-25 sm:h-12 sm:w-12 md:translate-x-2"
+                    className="absolute -right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-right-3 sm:h-11 sm:w-11"
                   >
-                    <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
+                    <ArrowRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                   </button>
 
-                  <div className="mt-5 flex items-center justify-center gap-2.5" aria-label="Produtos em destaque">
+                  <div className="mt-4 flex items-center justify-center gap-2" aria-label="Produtos em destaque">
                     {products.map((product, index) => (
                       <button
                         key={product.id}
