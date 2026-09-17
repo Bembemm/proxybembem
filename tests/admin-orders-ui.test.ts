@@ -40,7 +40,9 @@ test("protected admin pages use one responsive server shell with fixed live navi
 
 test("status badges translate known operational states and keep unknown payment states neutral", async () => {
   const badge = await source("../components/admin/status-badge.tsx")
+  const labels = await source("../lib/order-status-labels.ts")
   assert.ok(badge.length > 0, "missing status badge")
+  assert.ok(labels.length > 0, "missing shared status labels")
   assert.doesNotMatch(badge, /^["']use client["']/m)
 
   for (const label of [
@@ -57,10 +59,12 @@ test("status badges translate known operational states and keep unknown payment 
     "Concluído",
     "Cancelado",
   ]) {
-    assert.match(badge, new RegExp(label))
+    assert.match(labels, new RegExp(label))
   }
 
-  assert.match(badge, /Status desconhecido/)
+  assert.match(labels, /Status desconhecido/)
+  assert.match(badge, /paymentStatusLabel/)
+  assert.match(badge, /fulfillmentStatusLabel/)
   assert.match(badge, /bg-slate|text-slate/)
 })
 
