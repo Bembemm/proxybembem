@@ -251,15 +251,21 @@ export default async function AdminOrdersPage({
               <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">
                 Pagamento
               </span>
-              <input
+              <select
                 name="payment"
-                type="text"
-                maxLength={100}
-                pattern="[a-z][a-z0-9_]{0,99}"
                 defaultValue={filters.paymentStatus ?? ""}
-                placeholder="Ex.: approved"
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
-              />
+              >
+                <option value="">Todos</option>
+                <option value="pending">Pendente</option>
+                <option value="approved">Aprovado</option>
+                <option value="in_process">Em processamento</option>
+                <option value="manual_review">Revisão manual</option>
+                <option value="rejected">Recusado</option>
+                <option value="refunded">Reembolsado</option>
+                <option value="charged_back">Chargeback</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
             </label>
 
             <label>
