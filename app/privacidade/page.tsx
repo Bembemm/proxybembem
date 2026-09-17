@@ -14,7 +14,7 @@ export default async function PrivacidadePage() {
   const contactEmail = storeSettings.contactEmail
 
   return (
-    <section className="relative pt-20 sm:pt-24 pb-14 min-h-screen">
+    <section className="relative pt-20 sm:pt-24 pb-14">
       <div className="container mx-auto px-4 relative z-10">
         <article className="mx-auto max-w-3xl rounded-2xl border border-white/70 bg-white/85 p-5 shadow-xl backdrop-blur-md sm:p-8">
           <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">Privacidade</h1>
