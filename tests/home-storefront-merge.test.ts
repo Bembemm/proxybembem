@@ -101,13 +101,17 @@ test("/produtos validates the categoria query against the published catalog befo
   assert.match(route, /<ProductsPage/)
 })
 
-test("dedicated ProductsPage applies and resynchronizes the category received from the URL", () => {
+test("dedicated ProductsPage applies and resynchronizes category and search received from the URL", () => {
   const route = source("app/produtos/page.tsx")
   const page = source("components/pages/products-page.tsx")
 
   assert.match(page, /useState<string\[\]>\(\s*initialCategory \? \[initialCategory\] : \[\]/)
-  assert.match(route, /key=\{initialCategory \?\? ["']all-products["']\}/)
+  assert.match(
+    route,
+    /key=\{`\$\{initialCategory \?\? ["']all-products["']\}:\$\{initialSearch \?\? ["']all-search["']\}`\}/,
+  )
   assert.match(route, /initialCategory=\{initialCategory\}/)
+  assert.match(route, /initialSearch=\{initialSearch\}/)
   assert.doesNotMatch(page, /setSelectedCategories\(initialCategory \? \[initialCategory\] : \[\]\)/)
   assert.match(page, /filteredProducts\.map\s*\(/)
   assert.match(page, /ProductDetailModal/)
