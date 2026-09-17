@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { ArrowLeft, ArrowRight, ShoppingCart } from "lucide-react"
 import { ProductDetailModal } from "@/components/product-detail-modal"
@@ -63,7 +63,7 @@ export function HomePage({
     setSelectedProduct(null)
   }
 
-  const updateScrollState = () => {
+  const updateScrollState = useCallback(() => {
     const carousel = carouselRef.current
     if (!carousel) return
 
@@ -74,7 +74,7 @@ export function HomePage({
     setActivePage(nextActivePage)
     setCanScrollLeft(nextActivePage > 0)
     setCanScrollRight(nextActivePage < lastPage)
-  }
+  }, [products.length])
 
   useEffect(() => {
     const carousel = carouselRef.current
@@ -93,7 +93,7 @@ export function HomePage({
       window.removeEventListener("resize", handleResize)
       resizeObserver?.disconnect()
     }
-  }, [products])
+  }, [updateScrollState])
 
   const scrollToPage = (page: number) => {
     const carousel = carouselRef.current
