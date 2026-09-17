@@ -10,7 +10,7 @@ test("profile save invalidates visited customer-account routes through a server 
   const action = await source("../app/minha-conta/perfil/actions.ts")
   const form = await source("../components/account/profile-form.tsx")
   const route = await source("../app/api/account/profile/route.ts")
-  const shell = await source("../components/account/account-shell.tsx")
+  const nav = await source("../components/account/account-nav.tsx")
 
   assert.match(action, /^["']use server["']/m)
   assert.match(action, /from\s+["']next\/cache["']/)
@@ -25,7 +25,8 @@ test("profile save invalidates visited customer-account routes through a server 
   assert.match(form, /router\.refresh\(\s*\)/)
 
   assert.doesNotMatch(route, /from\s+["']next\/cache["']/)
-  assert.match(shell, /<Link[\s\S]*?prefetch=\{false\}[\s\S]*?href=\{item\.href\}/)
+  assert.match(nav, /href=\{item\.href\}/)
+  assert.match(nav, /prefetch=\{false\}/)
 })
 
 test("private customer-account HTML and RSC responses explicitly disable browser HTTP caching", async () => {
