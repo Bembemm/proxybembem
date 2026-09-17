@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { buildWhatsAppOrderUrl } from "@/lib/checkout"
+import { fulfillmentStatusLabel, paymentStatusLabel } from "@/lib/order-status-labels"
 import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import {
   getOwnOrderById,
@@ -98,11 +99,11 @@ export default async function OrderDetailPage({
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pagamento</p>
-            <p className="mt-1 font-semibold text-slate-900">{order.paymentStatus}</p>
+            <p className="mt-1 font-semibold text-slate-900">{paymentStatusLabel(order.paymentStatus)}</p>
           </div>
           <div className="rounded-xl bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Produção</p>
-            <p className="mt-1 font-semibold text-slate-900">{order.fulfillmentStatus}</p>
+            <p className="mt-1 font-semibold text-slate-900">{fulfillmentStatusLabel(order.fulfillmentStatus)}</p>
           </div>
         </div>
       </section>
