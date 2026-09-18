@@ -13,14 +13,16 @@ async function migrations() {
 test("customer addresses migration is owner-scoped with bounded defaults", async () => {
   const sql = await migrations()
 
-  assert.match(sql, /create table[\\s\\S]*?public\\.customer_addresses/i)
+  assert.match(sql, /create table(?: if not exists)?\s+public\.customer_addresses/i)
   assert.match(sql, /customer_id\s+uuid\s+not null\s+references\s+auth\.users\s*\(\s*id\s*\)\s+on delete cascade/i)
   assert.match(sql, /alter table\s+public\.customer_addresses\s+enable row level security/i)
   assert.match(sql, /grant\s+select,\s*insert,\s*update,\s*delete\s+on table\s+public\.customer_addresses\s+to\s+authenticated/i)
   assert.match(sql, /revoke all on table\s+public\.customer_addresses\s+from\s+public,\s*anon,\s*authenticated/i)
   assert.match(sql, /using\s*\(\s*\(select auth\.uid\(\)\)\s*=\s*customer_id\s*\)/i)
   assert.match(sql, /with check\s*\(\s*\(select auth\.uid\(\)\)\s*=\s*customer_id\s*\)/i)
-  assert.match(sql, /create unique index[\\s\\S]*?customer_id[\\s\\S]*?where\\s+is_default/i)
+  assert.match(sql, /create unique index(?: if not exists)?\s+customer_addresses_one_default_idx[\s\S]*?customer_id[\s\S]*?where\s+is_default/i)
   assert.match(sql, /cep[^;]*\^\\d\{8\}\$/i)
   assert.match(sql, /state[^;]*\^\[A-Z\]\{2\}\$/i)
+  assert.match(sql, /pg_advisory_xact_lock/)
+  assert.match(sql, /as \$\$[\s\S]*?normalize_customer_address_default/s)
 })
