@@ -30,13 +30,13 @@ export function HomeHighlightProductCard({
   return (
     <article
       className={
-        "group grid grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] gap-3 rounded-xl bg-white sm:block " +
+        "group grid grid-cols-[44%_minmax(0,1fr)] items-stretch gap-4 bg-white sm:block " +
         className
       }
     >
       <Link
         href={productHref(product)}
-        className="relative block aspect-square overflow-hidden rounded-lg bg-slate-100 sm:aspect-[4/3]"
+        className="relative block aspect-square w-full overflow-hidden rounded-[6px] bg-slate-100 sm:aspect-[4/3] sm:rounded-lg"
         aria-label={"Ver detalhes de " + product.title}
       >
         <Image
@@ -44,12 +44,12 @@ export function HomeHighlightProductCard({
           alt={product.title}
           fill
           sizes="(max-width: 639px) 44vw, (max-width: 1023px) 50vw, 25vw"
-          className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+          className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.025]"
         />
       </Link>
 
-      <div className="flex min-w-0 flex-col py-0.5 sm:p-3 sm:pt-4">
-        <h3 className="line-clamp-3 text-[15px] font-semibold leading-[1.25] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base">
+      <div className="flex min-w-0 flex-col sm:p-3 sm:pt-4">
+        <h3 className="line-clamp-3 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base sm:leading-snug sm:tracking-normal">
           <Link
             href={productHref(product)}
             className="transition-colors hover:text-[#7C3AED]"
@@ -58,19 +58,19 @@ export function HomeHighlightProductCard({
           </Link>
         </h3>
 
-        <div className="mt-2 sm:mt-3">
+        <div className="mt-2.5 sm:mt-3">
           {hasDiscount ? (
-            <span className="block text-xs text-slate-500 line-through sm:text-sm">
+            <span className="block text-[13px] leading-none text-slate-500 line-through sm:text-sm">
               {formatPrice(product.originalPrice)}
             </span>
           ) : null}
 
-          <div className="mt-0.5 flex flex-wrap items-center gap-2">
-            <span className="text-xl font-bold leading-none text-[#7C3AED] sm:text-2xl">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 sm:mt-1">
+            <span className="font-serif text-[25px] font-semibold leading-none tracking-[-0.03em] text-[#7C3AED] sm:text-2xl sm:font-bold sm:tracking-normal">
               {formatPrice(product.discountPrice)}
             </span>
             {hasDiscount ? (
-              <span className="rounded-md bg-violet-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#7C3AED] sm:text-xs">
+              <span className="rounded-[5px] bg-[#F1EAFE] px-2 py-1 text-[11px] font-semibold uppercase leading-none tracking-[0.01em] text-[#7C3AED] sm:text-xs">
                 {discount}% OFF
               </span>
             ) : null}

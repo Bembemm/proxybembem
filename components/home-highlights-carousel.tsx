@@ -143,7 +143,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
             <ArrowRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
           </button>
 
-          <div className="mt-4 flex items-center justify-center gap-2" aria-label="Páginas dos produtos em destaque">
+          <div className="mt-5 flex items-center justify-center gap-2.5 sm:mt-4 sm:gap-2" aria-label="Páginas dos produtos em destaque">
             {pages.map((_, pageIndex) => (
               <button
                 key={pageIndex}
@@ -154,8 +154,8 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
                 className={
                   "rounded-full transition-all " +
                   (activePage === pageIndex
-                    ? "h-2.5 w-2.5 bg-[#8B5CF6]"
-                    : "h-2 w-2 bg-slate-200 hover:bg-slate-300")
+                    ? "h-2.5 w-2.5 bg-[#7C3AED]"
+                    : "h-2.5 w-2.5 bg-slate-200 hover:bg-slate-300 sm:h-2 sm:w-2")
                 }
               />
             ))}
