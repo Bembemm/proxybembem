@@ -13,6 +13,7 @@ export type RateLimitScope =
   | "account-login"
   | "account-password-reset"
   | "account-password-recovery"
+  | "account-password-change"
   | "account-profile"
   | "account-confirmation-resend"
   | "account-email-change"
@@ -29,6 +30,7 @@ const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> =
   "account-login": { limit: 10, windowSeconds: 600 },
   "account-password-reset": { limit: 5, windowSeconds: 900 },
   "account-password-recovery": { limit: 5, windowSeconds: 900 },
+  "account-password-change": { limit: 5, windowSeconds: 900 },
   "account-profile": { limit: 20, windowSeconds: 600 },
   "account-confirmation-resend": { limit: 5, windowSeconds: 900 },
   "account-email-change": { limit: 5, windowSeconds: 900 },
