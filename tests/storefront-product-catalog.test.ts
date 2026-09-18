@@ -20,19 +20,20 @@ test("public storefront components receive products and never import the static 
   assert.match(homePage, /HomePage\s*\(\s*\{\s*products/)
 })
 
-test("storefront routes load published products from the server repository with no static fallback", () => {
+test("storefront routes load lightweight published summaries from the server cache with no static fallback", () => {
   const productsRoute = source("app/produtos/page.tsx")
   const homeRoute = source("app/page.tsx")
 
   for (const route of [productsRoute, homeRoute]) {
-    assert.match(route, /listPublishedProducts/)
+    assert.match(route, /getPublishedProductSummaries/)
+    assert.doesNotMatch(route, /listPublishedProducts/)
     assert.doesNotMatch(route, /@\/data\/products/)
   }
 
-  assert.match(productsRoute, /await\s+listPublishedProducts\s*\(/)
+  assert.match(productsRoute, /await\s+getPublishedProductSummaries\s*\(/)
   assert.match(productsRoute, /<ProductsPage/)
   assert.match(productsRoute, /products=\{products\}/)
-  assert.match(homeRoute, /await\s+listPublishedProducts\s*\(/)
+  assert.match(homeRoute, /await\s+getPublishedProductSummaries\s*\(/)
   assert.doesNotMatch(homeRoute, /featuredProducts\s*=\s*products\.filter/)
   assert.match(homeRoute, /<HomePage\s+products=/)
 })
@@ -67,8 +68,10 @@ test("GET api catalog exposes only the current published public product shape an
 
   const route = readFileSync(routePath, "utf8")
   assert.match(route, /export\s+async\s+function\s+GET/)
-  assert.match(route, /listPublishedProducts/)
-  assert.match(route, /toPublicProduct/)
+  assert.match(route, /getPublishedProductSummaries/)
+  assert.doesNotMatch(route, /listPublishedProducts/)
+  assert.doesNotMatch(route, /toPublicProduct/)
+  assert.doesNotMatch(route, /description|highlights|details|sections|shipping/)
   assert.match(route, /catalog_unavailable/)
   assert.match(route, /status:\s*503/)
   assert.doesNotMatch(route, /@\/data\/products/)
