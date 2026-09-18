@@ -1,10 +1,24 @@
 import {
   isProductStatus,
   parseProductRow,
+  parsePublishedProductSummaryRow,
   type CatalogProduct,
   type ProductStatus,
+  type StorefrontProduct,
 } from "../products/product.ts"
 import { getSupabaseEnv } from "./env.ts"
+
+const PUBLIC_PRODUCT_SUMMARY_SELECT = [
+  "id",
+  "status",
+  "title",
+  "category",
+  "tag",
+  "featured",
+  "image_path",
+  "original_price_cents",
+  "price_cents",
+].join(",")
 
 const PRODUCT_SELECT = [
   "id",
@@ -93,6 +107,29 @@ async function parseRows(
     throw new Error("Invalid product catalog response")
   }
   return payload.map((value) => parseProductRow(value, supabaseUrl))
+}
+
+async function parseSummaryRows(
+  response: Response,
+  supabaseUrl: string,
+): Promise<StorefrontProduct[]> {
+  const payload = (await response.json()) as unknown
+  if (!Array.isArray(payload)) {
+    throw new Error("Invalid product catalog response")
+  }
+  return payload.map((value) => parsePublishedProductSummaryRow(value, supabaseUrl))
+}
+
+export async function listPublishedProductSummaries(): Promise<StorefrontProduct[]> {
+  const params = new URLSearchParams({
+    select: PUBLIC_PRODUCT_SUMMARY_SELECT,
+    status: "eq.published",
+    order: "display_order.asc,id.asc",
+    limit: String(MAX_PUBLIC_PRODUCTS),
+  })
+
+  const { response, supabaseUrl } = await productCatalogRequest(params)
+  return parseSummaryRows(response, supabaseUrl)
 }
 
 export async function listPublishedProducts(): Promise<CatalogProduct[]> {
