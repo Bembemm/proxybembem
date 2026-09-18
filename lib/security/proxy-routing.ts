@@ -1,3 +1,5 @@
+import type { SupabaseAuthScope } from "../supabase/auth-scope.ts"
+
 const EXACT_SESSION_PATHS = new Set([
   "/entrar",
   "/criar-conta",
@@ -29,4 +31,18 @@ export function needsPageCsp(pathname: string) {
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml"
   )
+}
+
+
+export function supabaseAuthScopeForPath(pathname: string): SupabaseAuthScope {
+  if (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname.startsWith("/api/admin/") ||
+    pathname === "/api/internal/melhor-envio/oauth/start"
+  ) {
+    return "admin"
+  }
+
+  return "customer"
 }
