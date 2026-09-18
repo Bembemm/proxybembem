@@ -49,8 +49,8 @@ export function HomeHighlightProductCard({
         />
       </Link>
 
-      <div className="flex min-w-0 flex-col pb-2.5 pt-1.5 sm:p-3 sm:pt-4">
-        <h3 className="line-clamp-2 font-serif text-[14px] font-semibold leading-[1.12] tracking-[-0.015em] text-slate-950 sm:min-h-[3rem] sm:text-base sm:leading-snug sm:tracking-normal">
+      <div className="flex min-w-0 flex-col pb-2 pt-0.5 sm:p-3 sm:pt-4">
+        <h3 className="line-clamp-3 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base sm:leading-snug sm:tracking-normal">
           <Link
             href={href}
             className="transition-colors hover:text-[#7C3AED]"
@@ -59,19 +59,19 @@ export function HomeHighlightProductCard({
           </Link>
         </h3>
 
-        <div className="mt-3 sm:mt-3">
+        <div className="mt-2.5 sm:mt-3">
           {hasDiscount ? (
-            <span className="block text-[11px] leading-none text-slate-500 line-through sm:text-sm">
+            <span className="block text-[12px] leading-none text-slate-500 line-through sm:text-sm">
               {formatPrice(product.originalPrice)}
             </span>
           ) : null}
 
           <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:gap-x-2">
-            <span className="font-serif text-[20px] font-semibold leading-none tracking-[-0.025em] text-[#7C3AED] sm:text-2xl sm:font-bold sm:tracking-normal">
+            <span className="font-serif text-[23px] font-semibold leading-none tracking-[-0.03em] text-[#7C3AED] sm:text-2xl sm:font-bold sm:tracking-normal">
               {formatPrice(product.discountPrice)}
             </span>
             {hasDiscount ? (
-              <span className="rounded-[5px] bg-[#F1EAFE] px-1.5 py-1 text-[9px] font-semibold uppercase leading-none tracking-[0.01em] text-[#7C3AED] sm:px-2 sm:text-xs">
+              <span className="rounded-[5px] bg-[#F1EAFE] px-1.5 py-1 text-[10px] font-semibold uppercase leading-none tracking-[0.01em] text-[#7C3AED] sm:px-2 sm:text-xs">
                 {discount}% OFF
               </span>
             ) : null}
@@ -81,7 +81,7 @@ export function HomeHighlightProductCard({
         <div className="mt-auto">
           <Link
             href={href}
-            className="inline-flex h-9 w-[90%] items-center justify-center gap-2 rounded-[8px] border border-[#C4A5FF] bg-white px-2 font-serif text-[12px] font-medium text-[#7C3AED] transition-colors hover:border-[#A78BFA] hover:bg-[#F8F5FF] hover:text-[#6D28D9] active:bg-[#F3EDFF] sm:h-10 sm:w-full sm:text-sm"
+            className="inline-flex h-9 w-[92%] items-center justify-center gap-2 rounded-[8px] border border-[#C4A5FF] bg-white px-2 font-serif text-[12px] font-medium text-[#7C3AED] transition-colors hover:border-[#A78BFA] hover:bg-[#F8F5FF] hover:text-[#6D28D9] active:bg-[#F3EDFF] sm:h-10 sm:w-full sm:text-sm"
             aria-label={"Ver produto " + product.title}
           >
             <Eye className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} aria-hidden="true" />

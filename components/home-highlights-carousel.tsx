@@ -18,6 +18,7 @@ function getItemsPerPage() {
 
 export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
   const carouselRef = useRef<HTMLDivElement | null>(null)
+  const touchStartXRef = useRef<number | null>(null)
   const [itemsPerPage, setItemsPerPage] = useState(1)
   const [activePage, setActivePage] = useState(0)
   const items = useMemo(() => Children.toArray(children), [children])
@@ -102,6 +103,27 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
     scrollToPage(nextPage)
   }
 
+  const handleMobileTouchStart = (clientX: number) => {
+    if (itemsPerPage !== 1) return
+    touchStartXRef.current = clientX
+  }
+
+  const handleMobileTouchEnd = (clientX: number) => {
+    if (itemsPerPage !== 1 || touchStartXRef.current === null) return
+
+    const deltaX = clientX - touchStartXRef.current
+    touchStartXRef.current = null
+
+    if (Math.abs(deltaX) < 40) return
+
+    if (deltaX < 0) {
+      goToPage(activePage + 1)
+      return
+    }
+
+    goToPage(activePage - 1)
+  }
+
   const safeActivePage = Math.min(activePage, Math.max(0, pageCount - 1))
   const canScrollLeft = safeActivePage > 0
   const canScrollRight = safeActivePage < pageCount - 1
@@ -122,7 +144,12 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
       ) : null}
 
       {itemsPerPage === 1 ? (
-        <div aria-label="Produto em destaque" className="w-full overflow-hidden">
+        <div
+          aria-label="Produto em destaque"
+          className="w-full touch-pan-y overflow-hidden"
+          onTouchStart={(event) => handleMobileTouchStart(event.touches[0]?.clientX ?? 0)}
+          onTouchEnd={(event) => handleMobileTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
+        >
           <div data-carousel-page className="w-full">
             {activeMobileItem}
           </div>
