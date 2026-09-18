@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { AnimatedBackground } from "@/components/animated-background"
-import { CartPanel } from "@/components/cart-panel"
+import { LazyCartPanel } from "@/components/lazy-cart-panel"
 import { FaqSection } from "@/components/faq-section"
 import { Footer } from "@/components/footer"
 import { Navbar } from "@/components/navbar"
@@ -47,7 +47,7 @@ export function SiteShell({ children, storeSettings }: Readonly<SiteShellProps>)
           contactWhatsappE164={storeSettings.contactWhatsappE164}
         />
         <WhatsAppFloatingButton contactWhatsappE164={storeSettings.contactWhatsappE164} />
-        <CartPanel />
+        <LazyCartPanel />
       </main>
     </CartProvider>
   )
