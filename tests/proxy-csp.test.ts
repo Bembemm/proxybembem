@@ -164,5 +164,6 @@ test("static config yields CSP ownership to Proxy and root layout opts into requ
     "utf8",
   )
   assert.match(layout, /from\s+["']next\/headers["']/)
-  assert.match(layout, /await\s+headers\s*\(\s*\)/)
+  assert.match(layout, /headers\s*\(\s*\)/)
+  assert.match(layout, /await\s+Promise\.all/)
 })
