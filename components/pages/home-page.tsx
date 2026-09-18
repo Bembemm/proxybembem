@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, ArrowRight } from "lucide-react"
 import { StorefrontProductCard } from "@/components/storefront-product-card"
-import type { Product } from "@/contexts/cart-context"
+import type { StorefrontProduct } from "@/contexts/cart-context"
 
 function getItemsPerPage() {
   if (typeof window === "undefined") return 1
@@ -15,7 +15,7 @@ export function HomePage({
   products,
   unavailable = false,
 }: {
-  products: Product[]
+  products: StorefrontProduct[]
   unavailable?: boolean
   productionLeadTimeBusinessDays: number
 }) {
