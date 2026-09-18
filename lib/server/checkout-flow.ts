@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto"
+import { buildCheckoutExpirationWindow } from "../checkout-expiration.ts"
 import {
   normalizeCheckoutData,
   validateCheckout,
@@ -74,6 +75,8 @@ interface PreferenceInput {
   notificationUrl: string
   returnUrl: string
   payerName: string
+  expirationDateFrom: string
+  expirationDateTo: string
 }
 
 interface OrderUpdatePatch {
@@ -469,6 +472,7 @@ export async function executeCheckoutFlow(
   }
 
   try {
+    const expirationWindow = buildCheckoutExpirationWindow(deps.nowMs())
     const preference = await deps.createPreference({
       accessToken: input.mercadoPagoAccessToken,
       orderNumber,
@@ -481,6 +485,7 @@ export async function executeCheckoutFlow(
       notificationUrl: `${input.siteUrl}/api/mercadopago/webhook`,
       returnUrl,
       payerName: customer.nome,
+      ...expirationWindow,
     })
 
     const checkoutUrl = deps.selectCheckoutUrl(
