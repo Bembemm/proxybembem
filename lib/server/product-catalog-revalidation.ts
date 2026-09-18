@@ -10,4 +10,5 @@ export async function revalidatePublicProductCatalog() {
   revalidateTag("product-catalog", { expire: 0 })
   revalidatePath("/")
   revalidatePath("/produtos")
+  revalidatePath("/produtos/[produto]", "page")
 }
