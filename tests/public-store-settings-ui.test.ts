@@ -17,13 +17,16 @@ test("root layout loads cached public settings server-side and passes only the p
   assert.doesNotMatch(layout, /getAdminStoreSettings|SUPABASE_SECRET_KEY|service_role/)
 })
 
-test("client storefront shell receives only public settings and imports no server credential layer", async () => {
+test("server storefront shell receives only public settings while route switching stays in a tiny client boundary", async () => {
   const shell = await source("../components/site-shell.tsx")
+  const router = await source("../components/site-shell-router.tsx")
 
-  assert.match(shell, /^["']use client["']/m)
+  assert.doesNotMatch(shell, /^["']use client["']/m)
+  assert.match(router, /^["']use client["']/m)
   assert.match(shell, /PublicStoreSettings/)
   assert.match(shell, /storeSettings/)
   assert.doesNotMatch(shell, /lib\/server|SUPABASE_|service_role|SECRET_KEY|admin_update_store_settings/)
+  assert.doesNotMatch(router, /lib\/server|SUPABASE_|service_role|SECRET_KEY|admin_update_store_settings/)
 })
 
 test("FAQ receives the production lead time and renders singular or plural dynamically", async () => {
@@ -85,23 +88,24 @@ test("store notice is plain text, conditional, and follows the sticky storefront
   )
 })
 
-test("admin early return prevents every storefront-only settings consumer from rendering", async () => {
+test("admin early return in the client router prevents storefront chrome from mounting", async () => {
   const shell = await source("../components/site-shell.tsx")
+  const router = await source("../components/site-shell-router.tsx")
 
-  const earlyReturn = shell.indexOf("if (isAdminRoute)")
-  const navbar = shell.indexOf("<Navbar")
-  const notice = shell.indexOf("<StoreNotice")
-  const faq = shell.indexOf("<FaqSection")
-  const footer = shell.indexOf("<Footer")
-  const cart = shell.indexOf("<LazyCartPanel")
+  assert.match(shell, /<Navbar/)
+  assert.match(shell, /<StoreNotice/)
+  assert.match(shell, /<FaqSection/)
+  assert.match(shell, /<Footer/)
+  assert.match(shell, /<SiteShellRouter/)
+
+  const earlyReturn = router.indexOf("if (isAdminRoute)")
+  const cartProvider = router.indexOf("<CartProvider>", earlyReturn)
+  const lazyCart = router.indexOf("<LazyCartPanel", earlyReturn)
 
   assert.ok(earlyReturn >= 0)
-  assert.ok(navbar > earlyReturn)
-  assert.ok(notice > earlyReturn)
-  assert.ok(faq > earlyReturn)
-  assert.ok(footer > earlyReturn)
-  assert.ok(cart > earlyReturn)
-  assert.match(shell, /return\s+<>\{children\}<\/>/)
+  assert.ok(cartProvider > earlyReturn)
+  assert.ok(lazyCart > earlyReturn)
+  assert.match(router, /if \(isAdminRoute\) return <>{children}<\/>/)
 })
 
 test("successful admin settings save refreshes the App Router projection", async () => {
