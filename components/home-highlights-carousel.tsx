@@ -177,7 +177,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
               aria-current={safeActivePage === pageIndex ? "true" : undefined}
               className={
                 "h-2 w-2 rounded-full transition-all sm:h-2 sm:w-2 " +
-                (activePage === pageIndex
+                (safeActivePage === pageIndex
                   ? "bg-[#7C3AED]"
                   : "bg-slate-200 hover:bg-slate-300")
               }

@@ -70,7 +70,7 @@ test("home carousel paginates highlights by viewport: 1 mobile, 2 tablet, 4 desk
   assert.match(carousel, /slice\(pageIndex \* itemsPerPage/)
   assert.match(carousel, /activeMobileItem/)
   assert.match(carousel, /itemsPerPage === 1/)
-  assert.match(carousel, /pages\[activePage\]\?\.\[0\]/)
+  assert.match(carousel, /pages\[safeActivePage\]\?\.\[0\]/)
   assert.match(carousel, /grid-cols-2/)
   assert.match(carousel, /lg:grid-cols-4/)
   assert.match(carousel, /aria-label=\{`Ir para página \$\{pageIndex \+ 1\}\`\}/)
