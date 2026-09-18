@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react"
 import { PasswordInput } from "../../../components/ui/password-input"
-import { createSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
+import { createAdminSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -18,7 +18,7 @@ export function LoginForm() {
     setSubmitting(true)
 
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = createAdminSupabaseBrowserClient()
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setMessage("E-mail ou senha incorretos.")
