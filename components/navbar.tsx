@@ -176,15 +176,15 @@ export function Navbar() {
   const categoryItems =
     categories.length > 0 ? (
       categories.map((category) => (
-        <Link
+        <a
           key={category}
-          href={"/produtos?categoria=" + encodeURIComponent(category)}
+          href={`/produtos?categoria=${encodeURIComponent(category)}`}
           role="menuitem"
           onClick={closeOverlays}
           className="block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-violet-50 hover:text-[#7C3AED]"
         >
           {category}
-        </Link>
+        </a>
       ))
     ) : (
       <span className="block px-3 py-2.5 text-sm text-slate-500">
@@ -214,7 +214,7 @@ export function Navbar() {
             {isMobileMenuOpen ? <X className="h-5.5 w-5.5" /> : <Menu className="h-5.5 w-5.5" />}
           </button>
 
-          <Link
+          <a
             href="/"
             onClick={closeOverlays}
             className="flex min-w-0 items-center gap-2.5"
@@ -231,7 +231,7 @@ export function Navbar() {
             <span className="hidden truncate text-2xl tracking-wide text-black lg:inline font-[family-name:var(--font-display)]">
               ProxyBembem
             </span>
-          </Link>
+          </a>
         </div>
 
         <div className="hidden min-w-0 items-center justify-center gap-7 lg:flex">
