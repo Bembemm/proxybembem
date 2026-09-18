@@ -206,6 +206,15 @@ function parseRequiredText(value: unknown, maxLength: number, message: string) {
   return parsed
 }
 
+function parseOptionalAddressText(
+  value: unknown,
+  maxLength: number,
+  message: string,
+): string | null {
+  if (value === "") return null
+  return parseOptionalText(value, maxLength, message)
+}
+
 function parsePaymentStatus(value: unknown, message: string) {
   if (typeof value !== "string" || !PAYMENT_STATUS_PATTERN.test(value)) {
     throw new Error(message)
@@ -457,7 +466,7 @@ function parseDetail(value: unknown): CustomerOrderDetail {
     address: {
       street: parseOptionalText(row.address_street, 120, message),
       number: parseOptionalText(row.address_number, 20, message),
-      complement: parseOptionalText(row.address_complement, 80, message),
+      complement: parseOptionalAddressText(row.address_complement, 80, message),
       neighborhood: parseOptionalText(row.address_neighborhood, 80, message),
       city: parseOptionalText(row.address_city, 80, message),
       state: parseAddressState(row.address_state, message),
