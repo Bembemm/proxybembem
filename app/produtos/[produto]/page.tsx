@@ -2,21 +2,20 @@ import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { ProductPage } from "@/components/product-page"
 import { productHref, productIdFromRouteSegment } from "@/lib/products/product-url"
-import {
-  getPublishedProductsByIds,
-  listPublishedProducts,
-} from "@/lib/server/product-catalog"
+import { cache } from "react"
+import { getPublishedProductsByIds } from "@/lib/server/product-catalog"
+import { getPublishedProductSummaries } from "@/lib/server/product-catalog-cache"
 import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
 export const dynamic = "force-dynamic"
 
-async function getProductFromSegment(segment: string) {
+const getProductFromSegment = cache(async (segment: string) => {
   const productId = productIdFromRouteSegment(segment)
   if (!productId) return null
 
   const products = await getPublishedProductsByIds([productId])
   return products[0] ?? null
-}
+})
 
 export async function generateMetadata({
   params,
@@ -56,13 +55,12 @@ export default async function ProductRoute({
   const productId = productIdFromRouteSegment(produto)
   if (!productId) notFound()
 
-  const [selectedProducts, products, storeSettings] = await Promise.all([
-    getPublishedProductsByIds([productId]),
-    listPublishedProducts(),
+  const [product, products, storeSettings] = await Promise.all([
+    getProductFromSegment(produto),
+    getPublishedProductSummaries(),
     getPublicStoreSettings(),
   ])
 
-  const product = selectedProducts[0]
   if (!product) notFound()
 
   const canonicalPath = productHref(product)
