@@ -28,6 +28,15 @@ interface AccountPasswordUpdateInput {
   password: string
 }
 
+interface AccountPasswordChangeInput extends AccountPasswordUpdateInput {
+  currentPassword: string
+}
+
+interface AccountEmailChangeInput {
+  email: string
+  currentPassword: string
+}
+
 interface AccountProfileInput {
   name: string
   whatsapp: string
@@ -139,6 +148,26 @@ export function parseAccountPasswordUpdateInput(
 ): AccountPasswordUpdateInput {
   const input = requireExactKeys(value, ["password"])
   return { password: validateNewPassword(input.password) }
+}
+
+export function parseAccountPasswordChangeInput(
+  value: unknown,
+): AccountPasswordChangeInput {
+  const input = requireExactKeys(value, ["currentPassword", "password"])
+  return {
+    currentPassword: validateCredentialPassword(input.currentPassword),
+    password: validateNewPassword(input.password),
+  }
+}
+
+export function parseAccountEmailChangeInput(
+  value: unknown,
+): AccountEmailChangeInput {
+  const input = requireExactKeys(value, ["email", "currentPassword"])
+  return {
+    email: normalizeEmail(input.email),
+    currentPassword: validateCredentialPassword(input.currentPassword),
+  }
 }
 
 export function parseAccountProfileInput(value: unknown): AccountProfileInput {

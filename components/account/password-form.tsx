@@ -37,9 +37,14 @@ export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) 
 
     const formElement = event.currentTarget
     const form = new FormData(formElement)
+    const currentPassword = String(form.get("currentPassword") ?? "")
     const password = String(form.get("password") ?? "")
     const confirmPassword = String(form.get("confirmPassword") ?? "")
     const nextErrors: AccountFieldErrors = {
+      currentPassword:
+        !recovery && (currentPassword.length < 8 || currentPassword.length > 128)
+          ? "Informe sua senha atual."
+          : undefined,
       password: validateAccountPassword(password),
     }
 
@@ -59,7 +64,7 @@ export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) 
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify(recovery ? { password } : { currentPassword, password }),
       })
       const payload = (await response.json().catch(() => null)) as
         | { ok?: unknown; message?: unknown }
@@ -96,6 +101,24 @@ export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      {!recovery ? (
+        <div className="space-y-1.5">
+          <label htmlFor="currentPassword" className="text-sm font-semibold text-slate-800">Senha atual</label>
+          <PasswordInput
+            id="currentPassword"
+            name="currentPassword"
+            type="password"
+            autoComplete="current-password"
+            required
+            minLength={8}
+            maxLength={128}
+            aria-invalid={Boolean(errors.currentPassword)}
+            aria-describedby={errors.currentPassword ? "current-password-error" : undefined}
+            className={inputClass}
+          />
+          <FieldError id="current-password-error" message={errors.currentPassword} />
+        </div>
+      ) : null}
       <div className="space-y-1.5">
         <label htmlFor="password" className="text-sm font-semibold text-slate-800">Nova senha</label>
         <PasswordInput

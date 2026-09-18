@@ -15,6 +15,7 @@ export default async function LoginPage({
     next?: string | string[]
     senha?: string | string[]
     confirmado?: string | string[]
+    email?: string | string[]
     erro?: string | string[]
   }>
 }) {
@@ -24,6 +25,7 @@ export default async function LoginPage({
   )
   const passwordChanged = params.senha === "alterada"
   const emailConfirmed = params.confirmado === "1"
+  const emailChanged = params.email === "alterado"
   const callbackError = params.erro === "callback"
   const confirmationError = params.erro === "confirmacao"
   const recoveryError = params.erro === "recovery"
@@ -44,6 +46,11 @@ export default async function LoginPage({
         {emailConfirmed ? (
           <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
             E-mail confirmado. Entre com a senha criada no cadastro.
+          </p>
+        ) : null}
+        {emailChanged ? (
+          <p role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+            Confirmação de alteração de e-mail recebida. Entre novamente para atualizar sua sessão.
           </p>
         ) : null}
         {confirmationError ? (

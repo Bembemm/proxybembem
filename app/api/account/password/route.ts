@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server"
 import {
   CustomerPasswordPolicyError,
   isSameOriginAccountRequest,
-  parseAccountPasswordUpdateInput,
+  parseAccountPasswordChangeInput,
 } from "../../../../lib/server/customer-account-actions.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
@@ -21,16 +21,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!(await consumeRateLimit({ request, scope: "account-profile" }))) {
+    if (!(await consumeRateLimit({ request, scope: "account-password-change" }))) {
       return json(429, { ok: false, message: "Tente novamente em alguns minutos." })
     }
   } catch {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
 
-  let input: ReturnType<typeof parseAccountPasswordUpdateInput>
+  let input: ReturnType<typeof parseAccountPasswordChangeInput>
   try {
-    input = parseAccountPasswordUpdateInput(await readJsonBody(request, 4_096))
+    input = parseAccountPasswordChangeInput(await readJsonBody(request, 4_096))
   } catch (error) {
     if (error instanceof CustomerPasswordPolicyError) {
       return json(400, { ok: false, message: error.message })
@@ -45,7 +45,10 @@ export async function POST(request: NextRequest) {
       return json(401, { ok: false, message: "Autenticação necessária." })
     }
 
-    const { error } = await supabase.auth.updateUser({ password: input.password })
+    const { error } = await supabase.auth.updateUser({
+      password: input.password,
+      current_password: input.currentPassword,
+    })
     if (error) {
       return json(400, { ok: false, message: "Não foi possível atualizar a senha." })
     }

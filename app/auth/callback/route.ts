@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     tokenHash !== null &&
     tokenHash.length > 0 &&
     tokenHash.length <= 2_048 &&
-    type === "email"
+    (type === "email" || type === "email_change")
   const canExchangeCode = code !== null && code.length > 0 && code.length <= 2_048
 
   if (!canVerifyTokenHash && !canExchangeCode) {
@@ -33,10 +33,16 @@ export async function GET(request: NextRequest) {
   if (canVerifyTokenHash) {
     try {
       const supabase = createSupabaseAuthServerClient()
-      const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: tokenHash,
-        type: "email",
-      })
+      const { data, error } =
+        type === "email_change"
+          ? await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: "email_change",
+            })
+          : await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: "email",
+            })
 
       if (error || !data.user?.email_confirmed_at) {
         return redirect(request, "/entrar?erro=confirmacao")
@@ -45,7 +51,10 @@ export async function GET(request: NextRequest) {
       // Verification is intentionally stateless here. Successful auth sessions
       // are persisted by the browser login flow so the reverse proxy never has
       // to transport the large Supabase Set-Cookie response on this GET.
-      return redirect(request, "/entrar?confirmado=1")
+      return redirect(
+        request,
+        type === "email_change" ? "/entrar?email=alterado" : "/entrar?confirmado=1",
+      )
     } catch {
       return redirect(request, "/entrar?erro=confirmacao")
     }
