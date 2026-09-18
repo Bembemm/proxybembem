@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation"
 import { getAdminAuthEnv } from "../../../lib/server/env.ts"
 import { validateAdminIdentity } from "../../../lib/server/admin-auth-core.ts"
-import { createSupabaseServerClient } from "../../../lib/supabase/server.ts"
+import { createAdminSupabaseServerClient } from "../../../lib/supabase/server.ts"
 import { MfaForm } from "./mfa-form.tsx"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminMfaPage() {
-  const supabase = await createSupabaseServerClient()
+  const supabase = await createAdminSupabaseServerClient()
   const { data, error } = await supabase.auth.getClaims()
   if (error) throw new Error("Admin identity unavailable")
 
