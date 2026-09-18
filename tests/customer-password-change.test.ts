@@ -7,7 +7,7 @@ async function source(path: string) {
 }
 
 test("normal password change requires the current password while recovery stays separate", async () => {
-  const actions = await import("../lib/erver/customer-account-actions.ts")
+  const actions = await import("../lib/server/customer-account-actions.ts")
   assert.equal(typeof actions.parseAccountPasswordChangeInput, "function")
 
   const parseChange = actions.parseAccountPasswordChangeInput as (value: unknown) => {
