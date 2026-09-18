@@ -38,8 +38,6 @@ test("navbar uses the approved desktop and mobile storefront navigation", () => 
   assert.match(navbar, /max-w-\[1180px\]/)
   assert.match(navbar, /h-16[^"']*lg:h-\[72px\]/)
   assert.match(navbar, /lg:hidden/)
-  assert.match(navbar, /hidden[^"']*lg:block/)
-  assert.match(navbar, /h-11/)
 
   assert.match(navbar, />\s*Contato\s*</)
   assert.match(navbar, />\s*Categorias\s*</)
@@ -66,18 +64,19 @@ test("navbar uses the approved desktop and mobile storefront navigation", () => 
   assert.doesNotMatch(navbar, /Lançamentos/)
 })
 
-test("navbar provides the approved real product search on desktop and an expandable search on mobile", () => {
+test("navbar provides the approved shared search panel with live product suggestions", () => {
   const navbar = source("components/navbar.tsx")
 
   assert.match(navbar, /\bSearch\b/)
-  assert.match(navbar, /isMobileSearchOpen/)
-  assert.match(navbar, /setIsMobileSearchOpen/)
+  assert.match(navbar, /isSearchOpen/)
+  assert.match(navbar, /setIsSearchOpen/)
   assert.match(navbar, /action=["']\/produtos["']/)
   assert.match(navbar, /method=["']get["']/i)
   assert.match(navbar, /name=["']busca["']/)
   assert.match(navbar, /placeholder=["']Buscar produtos\.\.\.["']/)
   assert.match(navbar, /aria-label=["']Buscar produtos["']/)
-  assert.match(navbar, /id=["']desktop-store-search["']/)
-  assert.match(navbar, /id=["']mobile-store-search["']/)
-  assert.match(navbar, /hidden[^"']*lg:flex/)
+  assert.match(navbar, /id=["']store-search["']/)
+  assert.match(navbar, /Produtos sugeridos/)
+  assert.match(navbar, /Ver todos os resultados/)
+  assert.match(navbar, /productHref\(product\)/)
 })
