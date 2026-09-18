@@ -70,8 +70,10 @@ export const viewport: Viewport = {
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  await headers()
-  const storeSettings = await getPublicStoreSettings()
+  const [, storeSettings] = await Promise.all([
+    headers(),
+    getPublicStoreSettings(),
+  ])
 
   return (
     <html lang="pt-BR" className={`${medievalSharp.variable} ${crimsonText.variable} bg-slate-50`}>
