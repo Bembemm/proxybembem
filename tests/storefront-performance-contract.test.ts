@@ -67,13 +67,15 @@ test("product mutation invalidation expires the lightweight catalog cache immedi
 
 test("cart panel javascript is lazy-loaded only when the cart is opened", () => {
   const shell = source("components/site-shell.tsx")
+  const shellRouter = source("components/site-shell-router.tsx")
   const lazyCartPath = new URL("../components/lazy-cart-panel.tsx", import.meta.url)
 
   assert.equal(existsSync(lazyCartPath), true, "lazy cart boundary must exist")
   const lazyCart = readFileSync(lazyCartPath, "utf8")
 
   assert.doesNotMatch(shell, /import\s+\{\s*CartPanel\s*\}/)
-  assert.match(shell, /LazyCartPanel/)
+  assert.match(shell, /SiteShellRouter/)
+  assert.match(shellRouter, /LazyCartPanel/)
   assert.match(lazyCart, /dynamic\s*\(/)
   assert.match(lazyCart, /isCartOpen\s*\?\s*<CartPanel/)
 })
