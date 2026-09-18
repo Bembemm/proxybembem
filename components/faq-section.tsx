@@ -1,12 +1,4 @@
-"use client"
-
-import { HelpCircle } from "lucide-react"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { ChevronDown, HelpCircle } from "lucide-react"
 
 interface FaqSectionProps {
   productionLeadTimeBusinessDays: number
@@ -36,7 +28,7 @@ export function FaqSection({ productionLeadTimeBusinessDays }: FaqSectionProps) 
   ]
 
   return (
-    <section className="relative bg-gradient-to-b from-transparent to-white/30 pb-10 pt-6 sm:pb-12 sm:pt-8">
+    <section className="relative bg-gradient-to-b from-transparent to-white/40 pb-10 pt-6 sm:pb-12 sm:pt-8">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="mb-7 text-center sm:mb-8">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#8B5CF6]/30 bg-[#8B5CF6]/10 px-4 py-1.5">
@@ -53,23 +45,21 @@ export function FaqSection({ productionLeadTimeBusinessDays }: FaqSectionProps) 
           </p>
         </div>
 
-        <div className="mx-auto max-w-2xl">
-          <Accordion type="single" collapsible className="space-y-3">
-            {faqs.map((faq, index) => (
-              <AccordionItem
-                key={index}
-                value={`item-${index}`}
-                className="rounded-lg border border-slate-200/60 bg-white/70 px-4 shadow-sm backdrop-blur-sm sm:px-6"
-              >
-                <AccordionTrigger className="py-4 text-left text-base font-medium text-slate-800 transition-colors hover:text-[#8B5CF6] sm:text-lg [&[data-state=open]]:text-[#8B5CF6]">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="pb-4 text-base leading-relaxed text-slate-600">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+        <div className="mx-auto max-w-2xl space-y-3">
+          {faqs.map((faq) => (
+            <details
+              key={faq.question}
+              className="group rounded-lg border border-slate-200 bg-white px-4 shadow-sm sm:px-6"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-4 text-left text-base font-medium text-slate-800 transition-colors hover:text-[#8B5CF6] sm:text-lg [&::-webkit-details-marker]:hidden">
+                <span>{faq.question}</span>
+                <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <p className="pb-4 text-base leading-relaxed text-slate-600">
+                {faq.answer}
+              </p>
+            </details>
+          ))}
         </div>
       </div>
     </section>
