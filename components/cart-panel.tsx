@@ -207,7 +207,7 @@ export function CartPanel() {
     <>
       <button
         type="button"
-        className="fixed inset-0 z-50 hidden cursor-default bg-black/45 backdrop-blur-[1px] md:block"
+        className="fixed inset-0 z-50 hidden cursor-default bg-black/45 md:block"
         onClick={() => setIsCartOpen(false)}
         aria-label="Fechar carrinho"
       />
