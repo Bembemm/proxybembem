@@ -1,7 +1,7 @@
 import Image from "next/image"
 import Link from "next/link"
+import { ArrowRight, Eye } from "lucide-react"
 
-import { AddToCartButton } from "@/components/add-to-cart-button"
 import type { StorefrontProduct } from "@/contexts/cart-context"
 import { productHref } from "@/lib/products/product-url"
 
@@ -26,18 +26,19 @@ export function HomeHighlightProductCard({
 }) {
   const discount = discountPercent(product)
   const hasDiscount = discount > 0
+  const href = productHref(product)
 
   return (
     <article
       className={
-        "group grid grid-cols-[44%_minmax(0,1fr)] items-stretch gap-[14px] bg-white sm:block " +
+        "group grid grid-cols-[44%_minmax(0,1fr)] items-stretch gap-4 bg-white sm:block " +
         className
       }
     >
       <Link
-        href={productHref(product)}
+        href={href}
         className="relative block aspect-square w-full overflow-hidden rounded-[6px] bg-slate-100 sm:aspect-[4/3] sm:rounded-lg"
-        aria-label={"Ver detalhes de " + product.title}
+        aria-label={"Ver produto " + product.title}
       >
         <Image
           src={product.image}
@@ -48,24 +49,24 @@ export function HomeHighlightProductCard({
         />
       </Link>
 
-      <div className="flex min-w-0 flex-col sm:p-3 sm:pt-4">
+      <div className="flex min-w-0 flex-col pb-2.5 pt-1.5 sm:p-3 sm:pt-4">
         <h3 className="line-clamp-2 font-serif text-[14px] font-semibold leading-[1.12] tracking-[-0.015em] text-slate-950 sm:min-h-[3rem] sm:text-base sm:leading-snug sm:tracking-normal">
           <Link
-            href={productHref(product)}
+            href={href}
             className="transition-colors hover:text-[#7C3AED]"
           >
             {product.title}
           </Link>
         </h3>
 
-        <div className="mt-2 sm:mt-3">
+        <div className="mt-3 sm:mt-3">
           {hasDiscount ? (
             <span className="block text-[11px] leading-none text-slate-500 line-through sm:text-sm">
               {formatPrice(product.originalPrice)}
             </span>
           ) : null}
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:mt-1 sm:gap-x-2">
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:gap-x-2">
             <span className="font-serif text-[20px] font-semibold leading-none tracking-[-0.025em] text-[#7C3AED] sm:text-2xl sm:font-bold sm:tracking-normal">
               {formatPrice(product.discountPrice)}
             </span>
@@ -77,13 +78,16 @@ export function HomeHighlightProductCard({
           </div>
         </div>
 
-        <div className="mt-auto pt-2.5 sm:mt-4 sm:pt-0">
-          <AddToCartButton
-            product={product}
-            label="Adicionar ao carrinho"
-            variant="solid"
-            compact
-          />
+        <div className="mt-auto">
+          <Link
+            href={href}
+            className="inline-flex h-9 w-[90%] items-center justify-center gap-2 rounded-[8px] border border-[#C4A5FF] bg-white px-2 font-serif text-[12px] font-medium text-[#7C3AED] transition-colors hover:border-[#A78BFA] hover:bg-[#F8F5FF] hover:text-[#6D28D9] active:bg-[#F3EDFF] sm:h-10 sm:w-full sm:text-sm"
+            aria-label={"Ver produto " + product.title}
+          >
+            <Eye className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+            <span>Ver produto</span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+          </Link>
         </div>
       </div>
     </article>
