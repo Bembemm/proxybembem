@@ -1,15 +1,15 @@
 import { type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
-} from "../../../../../../lib/server/customer-account-actions.ts"
-import { requireCustomerPageAccess } from "../../../../../../lib/server/customer-auth.ts"
+} from "../../../../../lib/server/customer-account-actions.ts"
+import { requireCustomerPageAccess } from "../../../../../lib/server/customer-auth.ts"
 import {
   deleteOwnCustomerAddress,
   setDefaultOwnCustomerAddress,
   updateOwnCustomerAddress,
-} from "../../../../../../lib/server/customer-addresses.ts"
-import { consumeRateLimit } from "../../../../../../lib/server/rate-limit.ts"
-import { readJsonBody } from "../../../../../../lib/server/request-body.ts"
+} from "../../../../../lib/server/customer-addresses.ts"
+import { consumeRateLimit } from "../../../../../lib/server/rate-limit.ts"
+import { readJsonBody } from "../../../../../lib/server/request-body.ts"
 
 function json(status: number, body: Record<string, unknown>) {
   return Response.json(body, {
