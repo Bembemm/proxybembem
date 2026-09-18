@@ -29,6 +29,8 @@ const baseInput = {
   notificationUrl: "https://store.test/api/mercadopago/webhook",
   returnUrl: "https://store.test/pedido/token",
   payerName: "Breno Bembem",
+  expirationDateFrom: "2026-09-18T12:00:00.000Z",
+  expirationDateTo: "2026-09-21T12:00:00.000Z",
 }
 
 test("adds trusted mixed products and freight as explicit Mercado Pago preference items", async (t) => {
@@ -39,6 +41,9 @@ test("adds trusted mixed products and freight as explicit Mercado Pago preferenc
       const payload = JSON.parse(String(init?.body)) as {
         items: Array<{ id: string; unit_price: number; quantity: number; title: string }>
         external_reference: string
+        expires: boolean
+        expiration_date_from: string
+        expiration_date_to: string
       }
 
       assert.deepEqual(payload.items, [
@@ -70,6 +75,9 @@ test("adds trusted mixed products and freight as explicit Mercado Pago preferenc
       )
       assert.equal(totalCents, 27830)
       assert.equal(payload.external_reference, "PB-A1B2C3D4E5F6")
+      assert.equal(payload.expires, true)
+      assert.equal(payload.expiration_date_from, baseInput.expirationDateFrom)
+      assert.equal(payload.expiration_date_to, baseInput.expirationDateTo)
 
       return new Response(
         JSON.stringify({
