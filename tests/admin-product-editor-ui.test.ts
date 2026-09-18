@@ -93,7 +93,7 @@ test("image field authorizes metadata then uploads bytes directly to Supabase St
   assert.match(imageField, /image\/jpeg/)
   assert.match(imageField, /image\/png/)
   assert.match(imageField, /image\/webp/)
-  assert.match(imageField, /createSupabaseBrowserClient/)
+  assert.match(imageField, /createAdminSupabaseBrowserClient/)
   assert.match(imageField, /uploadToSignedUrl/)
   assert.match(imageField, /product-images/)
   assert.match(imageField, /upsert:\s*false/)
