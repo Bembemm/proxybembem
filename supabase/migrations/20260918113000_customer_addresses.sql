@@ -69,6 +69,39 @@ before insert on public.customer_addresses
 for each row
 execute function public.enforce_customer_address_limit();
 
+create or replace function public.normalize_customer_address_default()
+returns trigger
+language plpgsql
+set search_path = ''
+as $
+begin
+  if tg_op = 'INSERT'
+     and not exists (
+       select 1
+         from public.customer_addresses
+        where customer_id = new.customer_id
+     ) then
+    new.is_default := true;
+  end if;
+
+  if new.is_default then
+    update public.customer_addresses
+       set is_default = false
+     where customer_id = new.customer_id
+       and id is distinct from new.id
+       and is_default;
+  end if;
+
+  return new;
+end;
+$;
+
+drop trigger if exists normalize_customer_address_default on public.customer_addresses;
+create trigger normalize_customer_address_default
+before insert or update of is_default on public.customer_addresses
+for each row
+execute function public.normalize_customer_address_default();
+
 alter table public.customer_addresses enable row level security;
 
 revoke all on table public.customer_addresses from public, anon, authenticated;
