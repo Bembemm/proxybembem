@@ -24,5 +24,9 @@ test("customer addresses migration is owner-scoped with bounded defaults", async
   assert.match(sql, /cep[^;]*\^\\d\{8\}\$/i)
   assert.match(sql, /state[^;]*\^\[A-Z\]\{2\}\$/i)
   assert.match(sql, /pg_advisory_xact_lock/)
-  assert.match(sql, /as \$\$[\s\S]*?normalize_customer_address_default/s)
+  assert.match(
+    sql,
+    /create or replace function public\.normalize_customer_address_default\(\)[\s\S]*?as \$\$/i,
+  )
+  assert.doesNotMatch(sql, /as \$\s*begin/i)
 })
