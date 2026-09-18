@@ -1,11 +1,8 @@
-"use client"
-
-import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Check, Eye, ShoppingCart } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useCart, type StorefrontProduct } from "@/contexts/cart-context"
+import { Eye } from "lucide-react"
+import { AddToCartButton } from "@/components/add-to-cart-button"
+import type { StorefrontProduct } from "@/contexts/cart-context"
 import { productHref } from "@/lib/products/product-url"
 
 function formatPrice(value: number) {
@@ -22,19 +19,10 @@ export function StorefrontProductCard({
   product: StorefrontProduct
   className?: string
 }) {
-  const { addToCart, items } = useCart()
-  const [justAdded, setJustAdded] = useState(false)
-  const itemInCart = items.find((item) => item.product.id === product.id)
-  const handleAddToCart = () => {
-    addToCart(product)
-    setJustAdded(true)
-    window.setTimeout(() => setJustAdded(false), 1500)
-  }
-
   return (
     <article
       className={
-        "group relative overflow-hidden rounded-lg border border-white/50 bg-white/60 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-[#8B5CF6]/50 hover:shadow-xl " +
+        "group relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md transition-all duration-300 hover:border-[#8B5CF6]/40 hover:shadow-lg " +
         className
       }
     >
@@ -53,8 +41,8 @@ export function StorefrontProductCard({
 
         <span className="absolute inset-0 bg-gradient-to-t from-white/80 via-transparent to-transparent opacity-60" />
 
-        <span className="absolute inset-0 flex items-center justify-center bg-[#8B5CF6]/0 transition-colors duration-300 group-hover:bg-[#8B5CF6]/20">
-          <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-[#8B5CF6] opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+        <span className="absolute inset-0 flex items-center justify-center bg-[#8B5CF6]/0 transition-colors duration-300 group-hover:bg-[#8B5CF6]/15">
+          <span className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-[#8B5CF6] opacity-0 shadow-sm transition-opacity duration-300 group-hover:opacity-100">
             <Eye className="h-3.5 w-3.5" aria-hidden="true" />
             Ver Detalhes
           </span>
@@ -84,41 +72,14 @@ export function StorefrontProductCard({
         </div>
 
         <div className="space-y-1.5">
-          <Button
-            onClick={handleAddToCart}
-            size="sm"
-            type="button"
-            className={
-              "h-11 w-full text-sm tracking-wide transition-all duration-300 active:scale-[0.98] sm:text-base " +
-              (justAdded
-                ? "border-green-500 bg-green-500 text-white hover:bg-green-600"
-                : "border border-[#8B5CF6] bg-transparent text-[#8B5CF6] hover:border-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white")
-            }
+          <AddToCartButton product={product} />
+          <Link
+            href={productHref(product)}
+            className="flex h-9 w-full items-center justify-center rounded-md text-xs text-slate-500 transition hover:bg-[#8B5CF6]/5 hover:text-[#8B5CF6] active:scale-[0.98] sm:text-sm"
           >
-            {justAdded ? (
-              <>
-                <Check className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
-                Adicionado!
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
-                {itemInCart ? "No Carrinho (" + itemInCart.quantity + ")" : "Adicionar"}
-              </>
-            )}
-          </Button>
-
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="h-9 w-full text-xs text-slate-500 active:scale-[0.98] hover:bg-[#8B5CF6]/5 hover:text-[#8B5CF6] sm:text-sm"
-          >
-            <Link href={productHref(product)}>
-              <Eye className="mr-1 h-3 w-3" aria-hidden="true" />
-              Ver Detalhes
-            </Link>
-          </Button>
+            <Eye className="mr-1 h-3 w-3" aria-hidden="true" />
+            Ver Detalhes
+          </Link>
         </div>
       </div>
     </article>
