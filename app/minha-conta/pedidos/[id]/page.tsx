@@ -69,6 +69,12 @@ export default async function OrderDetailPage({
     storeSettings.contactWhatsappE164,
     `Olá, gostaria de falar sobre o pedido ${order.orderNumber}`,
   )
+  const listWhatsappUrl = buildWhatsAppOrderUrl(
+    storeSettings.contactWhatsappE164,
+    `Olá! Quero enviar a lista e as artes do pedido ${order.orderNumber}.
+
+Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
+  )
   const address = order.address
   const hasAddress = Boolean(
     address.street || address.number || address.neighborhood || address.city || address.state,
@@ -90,6 +96,34 @@ export default async function OrderDetailPage({
       ) : undefined}
     >
       <div className="space-y-6">
+        {listWhatsappUrl ? (
+          <section
+            aria-labelledby="order-list-title"
+            className="overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-violet-50/70 p-5 shadow-sm sm:p-6"
+          >
+            <div className="inline-flex rounded-full bg-violet-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-violet-700">
+              Envio da lista
+            </div>
+            <h2 id="order-list-title" className="mt-4 text-xl font-bold text-slate-950 sm:text-2xl">
+              Envie sua lista e artes
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Envie sua lista de cartas, link do Moxfield ou LigaMagic, artes e observações do pedido pelo WhatsApp.
+            </p>
+            <a
+              href={listWhatsappUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto"
+            >
+              Enviar lista / artes no WhatsApp
+            </a>
+            <p className="mt-3 text-xs leading-5 text-slate-500 sm:text-sm">
+              Você também pode mandar preferências de idioma, versões das cartas e outras observações importantes.
+            </p>
+          </section>
+        ) : null}
+
         <section aria-label="Status do pedido" className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pagamento</p>
