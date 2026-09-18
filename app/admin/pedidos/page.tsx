@@ -1,4 +1,5 @@
 import { AlertTriangle, Search } from "lucide-react"
+import { isCheckoutExpired } from "@/lib/checkout-expiration"
 import { AdminShell } from "../../../components/admin/admin-shell.tsx"
 import {
   FulfillmentStatusBadge,
@@ -151,6 +152,11 @@ function buildPageHref(filters: NormalizedFilters, page: number) {
 
 function OrderCard({ order }: { order: AdminOrderListRow }) {
   const totalCents = order.total_cents ?? order.subtotal_cents
+  const checkoutExpired = isCheckoutExpired({
+    createdAt: order.created_at,
+    paymentStatus: order.payment_status,
+    fulfillmentStatus: order.fulfillment_status,
+  })
 
   return (
     <article className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] md:items-center">
@@ -176,7 +182,13 @@ function OrderCard({ order }: { order: AdminOrderListRow }) {
       </div>
 
       <div className="flex flex-wrap gap-2 md:flex-col md:items-start">
-        <PaymentStatusBadge value={order.payment_status} />
+        {checkoutExpired ? (
+          <span className="inline-flex rounded-full bg-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700">
+            Checkout expirado
+          </span>
+        ) : (
+          <PaymentStatusBadge value={order.payment_status} />
+        )}
         <FulfillmentStatusBadge value={order.fulfillment_status} />
       </div>
 
@@ -225,7 +237,7 @@ export default async function AdminOrdersPage({
     <AdminShell
       activeSection="orders"
       title="Pedidos"
-      description="Consulte pedidos, pagamento, produção e alertas operacionais sem alterar o estado financeiro do Mercado Pago."
+      description="Consulte pedidos, pagamento, produção e alertas operacionais. Checkouts pendentes passam a ser identificados como expirados após 72 horas, sem alterar a verdade financeira do Mercado Pago."
     >
       <div className="space-y-6">
         <form method="get" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
