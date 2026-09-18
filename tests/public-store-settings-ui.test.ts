@@ -93,7 +93,7 @@ test("admin early return prevents every storefront-only settings consumer from r
   const notice = shell.indexOf("<StoreNotice")
   const faq = shell.indexOf("<FaqSection")
   const footer = shell.indexOf("<Footer")
-  const cart = shell.indexOf("<CartPanel")
+  const cart = shell.indexOf("<LazyCartPanel")
 
   assert.ok(earlyReturn >= 0)
   assert.ok(navbar > earlyReturn)
