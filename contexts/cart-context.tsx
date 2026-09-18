@@ -7,17 +7,18 @@ import {
   serializeCart,
   type StoredCartLine,
 } from "@/lib/cart-storage"
-import type { Product } from "@/lib/products/product"
+import type { Product, StorefrontProduct } from "@/lib/products/product"
 
 export type {
   Product,
   ProductDetail,
   ProductSection,
   ProductShipping,
+  StorefrontProduct,
 } from "@/lib/products/product"
 
 export interface CartItem {
-  product: Product
+  product: StorefrontProduct
   quantity: number
 }
 
@@ -37,6 +38,7 @@ interface CartContextType {
   retryCatalog: () => void
   cartNotice: string | null
   dismissCartNotice: () => void
+  catalogProducts: StorefrontProduct[]
 }
 
 interface CatalogResponse {
@@ -46,7 +48,7 @@ interface CatalogResponse {
 const CART_STORAGE_KEY = "proxybembem-cart-v1"
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
-function parseCatalogProducts(value: unknown): Product[] | null {
+function parseCatalogProducts(value: unknown): StorefrontProduct[] | null {
   if (!value || typeof value !== "object") return null
 
   const products = (value as CatalogResponse).products
@@ -54,7 +56,7 @@ function parseCatalogProducts(value: unknown): Product[] | null {
 
   for (const entry of products) {
     if (!entry || typeof entry !== "object") return null
-    const candidate = entry as Partial<Product>
+    const candidate = entry as Partial<StorefrontProduct>
     if (
       !Number.isSafeInteger(candidate.id) ||
       (candidate.id ?? 0) <= 0 ||
@@ -75,7 +77,7 @@ function parseCatalogProducts(value: unknown): Product[] | null {
     }
   }
 
-  return products as Product[]
+  return products as StorefrontProduct[]
 }
 
 function mergeHydratedItems(restoredItems: CartItem[], currentItems: CartItem[]): CartItem[] {
@@ -107,6 +109,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>("loading")
   const [catalogRetryKey, setCatalogRetryKey] = useState(0)
   const [cartNotice, setCartNotice] = useState<string | null>(null)
+  const [catalogProducts, setCatalogProducts] = useState<StorefrontProduct[]>([])
   const storedLinesRef = useRef<StoredCartLine[] | null>(null)
   const hasReadStoredCartRef = useRef(false)
 
@@ -150,6 +153,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const reconciliation = reconcileStoredCartWithCatalog(storedLines, catalog)
         if (cancelled) return
 
+        setCatalogProducts(catalog)
         setItems((currentItems) => mergeHydratedItems(reconciliation.items, currentItems))
         if (reconciliation.removedCount > 0) {
           setCartNotice("Um produto do seu carrinho não está mais disponível.")
@@ -175,7 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const retryCatalog = () => setCatalogRetryKey((current) => current + 1)
   const dismissCartNotice = () => setCartNotice(null)
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: StorefrontProduct) => {
     setItems((previousItems) => {
       const existingItem = previousItems.find((item) => item.product.id === product.id)
       if (existingItem) {
@@ -230,6 +234,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         retryCatalog,
         cartNotice,
         dismissCartNotice,
+        catalogProducts,
       }}
     >
       {children}
