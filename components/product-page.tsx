@@ -5,7 +5,6 @@ import Image from "next/image"
 import Link from "next/link"
 import {
   Check,
-  ChevronLeft,
   ChevronRight,
   Clock3,
   ImageIcon,
@@ -226,7 +225,7 @@ export function ProductPage({
                 size="lg"
                 onClick={handleAddToCart}
                 className={
-                  "mt-5 h-13 w-full rounded-xl text-base font-semibold text-white shadow-sm transition active:scale-[0.99] " +
+                  "mt-5 h-14 w-full rounded-xl text-base font-semibold text-white shadow-sm transition active:scale-[0.99] " +
                   (justAdded ? "bg-emerald-500 hover:bg-emerald-600" : "bg-[#8B5CF6] hover:bg-[#7C3AED]")
                 }
               >
@@ -248,7 +247,7 @@ export function ProductPage({
                 size="lg"
                 variant="outline"
                 onClick={handleBuyNow}
-                className="mt-2 h-13 w-full rounded-xl border-violet-300 text-base font-semibold text-[#7C3AED] hover:bg-violet-50 hover:text-[#6D28D9]"
+                className="mt-2 h-14 w-full rounded-xl border-violet-300 text-base font-semibold text-[#7C3AED] hover:bg-violet-50 hover:text-[#6D28D9]"
               >
                 Comprar agora
               </Button>
