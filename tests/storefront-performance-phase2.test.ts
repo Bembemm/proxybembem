@@ -6,6 +6,14 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8")
 }
 
+test("root layout resolves CSP request context and cached public settings in parallel", () => {
+  const layout = source("app/layout.tsx")
+
+  assert.match(layout, /Promise\.all\s*\(/)
+  assert.match(layout, /headers\(\)/)
+  assert.match(layout, /getPublicStoreSettings\(\)/)
+})
+
 test("storefront cards keep only the cart button interactive", () => {
   const card = source("components/storefront-product-card.tsx")
   const addButtonPath = new URL("../components/add-to-cart-button.tsx", import.meta.url)
