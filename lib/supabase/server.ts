@@ -1,12 +1,21 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { getSupabaseBrowserConfig } from "./config.ts"
+import {
+  ADMIN_AUTH_COOKIE_NAME,
+  CUSTOMER_AUTH_COOKIE_NAME,
+} from "./client.ts"
 
-export async function createSupabaseServerClient() {
+type ServerAuthScope = "customer" | "admin"
+
+async function createScopedSupabaseServerClient(scope: ServerAuthScope) {
   const cookieStore = await cookies()
   const env = getSupabaseBrowserConfig()
 
   return createServerClient(env.url, env.publishableKey, {
+    cookieOptions: {
+      name: scope === "admin" ? ADMIN_AUTH_COOKIE_NAME : CUSTOMER_AUTH_COOKIE_NAME,
+    },
     cookies: {
       encode: "tokens-only",
       getAll() {
@@ -23,4 +32,12 @@ export async function createSupabaseServerClient() {
       },
     },
   })
+}
+
+export async function createSupabaseServerClient() {
+  return createScopedSupabaseServerClient("customer")
+}
+
+export async function createAdminSupabaseServerClient() {
+  return createScopedSupabaseServerClient("admin")
 }
