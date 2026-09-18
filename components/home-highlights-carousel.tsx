@@ -65,8 +65,6 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    setActivePage(0)
-
     const carousel = carouselRef.current
     if (!carousel) return
 
@@ -104,16 +102,17 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
     scrollToPage(nextPage)
   }
 
-  const canScrollLeft = activePage > 0
-  const canScrollRight = activePage < pageCount - 1
-  const activeMobileItem = pages[activePage]?.[0] ?? pages[0]?.[0] ?? null
+  const safeActivePage = Math.min(activePage, Math.max(0, pageCount - 1))
+  const canScrollLeft = safeActivePage > 0
+  const canScrollRight = safeActivePage < pageCount - 1
+  const activeMobileItem = pages[safeActivePage]?.[0] ?? pages[0]?.[0] ?? null
 
   return (
     <div className="relative">
       {pageCount > 1 && itemsPerPage > 1 ? (
         <button
           type="button"
-          onClick={() => goToPage(activePage - 1)}
+          onClick={() => goToPage(safeActivePage - 1)}
           disabled={!canScrollLeft}
           aria-label="Ver página anterior de produtos"
           className="absolute -left-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
@@ -155,7 +154,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
       {pageCount > 1 && itemsPerPage > 1 ? (
         <button
           type="button"
-          onClick={() => goToPage(activePage + 1)}
+          onClick={() => goToPage(safeActivePage + 1)}
           disabled={!canScrollRight}
           aria-label="Ver próxima página de produtos"
           className="absolute -right-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
@@ -175,7 +174,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => goToPage(pageIndex)}
               aria-label={`Ir para página ${pageIndex + 1}`}
-              aria-current={activePage === pageIndex ? "true" : undefined}
+              aria-current={safeActivePage === pageIndex ? "true" : undefined}
               className={
                 "h-2 w-2 rounded-full transition-all sm:h-2 sm:w-2 " +
                 (activePage === pageIndex
