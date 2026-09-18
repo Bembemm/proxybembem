@@ -39,21 +39,21 @@ export function DashboardPeriodCard({
       </div>
 
       <dl className="mt-5 grid grid-cols-3 divide-x divide-slate-200 rounded-lg border border-slate-200 bg-white">
-        <div className="min-w-0 px-3 py-3 sm:px-4">
+        <div className="min-w-0 px-2.5 py-3 sm:px-3">
           <dt className="text-xs font-medium text-slate-500">Hoje</dt>
-          <dd className="mt-1 truncate text-base font-bold tabular-nums text-slate-950 sm:text-lg">
+          <dd className="mt-1 whitespace-nowrap text-[clamp(0.75rem,1vw,1rem)] font-bold leading-tight tracking-tight tabular-nums text-slate-950 2xl:text-lg">
             {today}
           </dd>
         </div>
-        <div className="min-w-0 px-3 py-3 sm:px-4">
+        <div className="min-w-0 px-2.5 py-3 sm:px-3">
           <dt className="text-xs font-medium text-slate-500">Semana</dt>
-          <dd className="mt-1 truncate text-base font-bold tabular-nums text-slate-950 sm:text-lg">
+          <dd className="mt-1 whitespace-nowrap text-[clamp(0.75rem,1vw,1rem)] font-bold leading-tight tracking-tight tabular-nums text-slate-950 2xl:text-lg">
             {week}
           </dd>
         </div>
-        <div className="min-w-0 px-3 py-3 sm:px-4">
+        <div className="min-w-0 px-2.5 py-3 sm:px-3">
           <dt className="text-xs font-medium text-slate-500">Mês</dt>
-          <dd className="mt-1 truncate text-base font-bold tabular-nums text-slate-950 sm:text-lg">
+          <dd className="mt-1 whitespace-nowrap text-[clamp(0.75rem,1vw,1rem)] font-bold leading-tight tracking-tight tabular-nums text-slate-950 2xl:text-lg">
             {month}
           </dd>
         </div>
