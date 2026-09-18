@@ -67,7 +67,9 @@ test("address account routes are authenticated, same-origin, bounded and custome
 
   assert.match(storage, /MAX_CUSTOMER_ADDRESSES\s*=\s*5/)
   assert.match(storage, /customer_id/)
-  assert.match(storage, /getCurrentUserId/)
+  assert.match(storage, /supabase\.auth\.getUser\(\)/)
+  assert.match(storage, /data\.user\?\.email_confirmed_at/)
+  assert.match(storage, /\.eq\("customer_id", userId\)/)
   assert.doesNotMatch(storage, /ADMIN_USER_ID/)
 
   assert.match(
