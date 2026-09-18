@@ -16,21 +16,9 @@ export function HomePage({
   productionLeadTimeBusinessDays: number
 }) {
   const carouselRef = useRef<HTMLDivElement | null>(null)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(products.length > 1)
   const [activePage, setActivePage] = useState(0)
-
-  const openProductModal = (product: Product) => {
-    setSelectedProduct(product)
-    setIsModalOpen(true)
-  }
-
-  const closeProductModal = () => {
-    setIsModalOpen(false)
-    setSelectedProduct(null)
-  }
 
   const getCarouselItems = useCallback(() => {
     const carousel = carouselRef.current
@@ -167,11 +155,7 @@ export function HomePage({
                       aria-label={`Destaque ${index + 1} de ${products.length}`}
                       className="w-[82vw] shrink-0 snap-start sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-2rem)/3)] xl:w-[calc((100%-3rem)/4)]"
                     >
-                      <StorefrontProductCard
-                        product={product}
-                        onViewDetails={openProductModal}
-                        className="h-full w-full"
-                      />
+                      <StorefrontProductCard product={product} className="h-full w-full" />
                     </div>
                   ))}
                 </div>
@@ -211,15 +195,6 @@ export function HomePage({
           ) : null}
         </div>
       </section>
-
-      {selectedProduct ? (
-        <ProductDetailModal
-          product={selectedProduct}
-          isOpen={isModalOpen}
-          onClose={closeProductModal}
-          productionLeadTimeBusinessDays={productionLeadTimeBusinessDays}
-        />
-      ) : null}
     </>
   )
 }
