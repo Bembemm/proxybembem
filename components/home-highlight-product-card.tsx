@@ -42,6 +42,7 @@ export function HomeHighlightProductCard({
       >
         <Image
           src={product.image}
+          unoptimized={product.image.startsWith("/")}
           alt={product.title}
           fill
           sizes="(max-width: 639px) 44vw, (max-width: 1023px) 50vw, 25vw"
