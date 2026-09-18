@@ -2,9 +2,11 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Check, Eye, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart, type Product } from "@/contexts/cart-context"
+import { productHref } from "@/lib/products/product-url"
 
 function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", {
@@ -15,16 +17,15 @@ function formatPrice(value: number) {
 
 export function StorefrontProductCard({
   product,
-  onViewDetails,
   className = "",
 }: {
   product: Product
-  onViewDetails: (product: Product) => void
   className?: string
 }) {
   const { addToCart, items } = useCart()
   const [justAdded, setJustAdded] = useState(false)
   const itemInCart = items.find((item) => item.product.id === product.id)
+  const href = productHref(product)
 
   const handleAddToCart = () => {
     addToCart(product)
@@ -34,13 +35,15 @@ export function StorefrontProductCard({
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-lg border border-white/50 bg-white/60 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-[#8B5CF6]/50 hover:shadow-xl ${className}`}
+      className={
+        "group relative overflow-hidden rounded-lg border border-white/50 bg-white/60 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-[#8B5CF6]/50 hover:shadow-xl " +
+        className
+      }
     >
-      <button
-        type="button"
-        className="relative aspect-[4/3] w-full cursor-pointer overflow-hidden bg-slate-100 text-left"
-        onClick={() => onViewDetails(product)}
-        aria-label={`Ver detalhes de ${product.title}`}
+      <Link
+        href={href}
+        className="relative block aspect-[4/3] w-full overflow-hidden bg-slate-100"
+        aria-label={"Ver detalhes de " + product.title}
       >
         <Image
           src={product.image}
@@ -64,11 +67,13 @@ export function StorefrontProductCard({
             {product.tag}
           </span>
         ) : null}
-      </button>
+      </Link>
 
       <div className="relative p-2 sm:p-3">
         <h3 className="mb-1.5 min-h-[2.5rem] line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:mb-2 sm:min-h-[3rem] sm:text-base">
-          {product.title}
+          <Link href={href} className="transition-colors hover:text-[#7C3AED]">
+            {product.title}
+          </Link>
         </h3>
 
         <div className="mb-2 flex flex-col gap-0.5 sm:mb-3 sm:flex-row sm:items-baseline sm:gap-2">
@@ -85,11 +90,12 @@ export function StorefrontProductCard({
             onClick={handleAddToCart}
             size="sm"
             type="button"
-            className={`h-11 w-full text-sm tracking-wide transition-all duration-300 active:scale-[0.98] sm:text-base ${
-              justAdded
+            className={
+              "h-11 w-full text-sm tracking-wide transition-all duration-300 active:scale-[0.98] sm:text-base " +
+              (justAdded
                 ? "border-green-500 bg-green-500 text-white hover:bg-green-600"
-                : "border border-[#8B5CF6] bg-transparent text-[#8B5CF6] hover:border-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white"
-            }`}
+                : "border border-[#8B5CF6] bg-transparent text-[#8B5CF6] hover:border-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white")
+            }
           >
             {justAdded ? (
               <>
@@ -99,20 +105,21 @@ export function StorefrontProductCard({
             ) : (
               <>
                 <ShoppingCart className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden="true" />
-                {itemInCart ? `No Carrinho (${itemInCart.quantity})` : "Adicionar"}
+                {itemInCart ? "No Carrinho (" + itemInCart.quantity + ")" : "Adicionar"}
               </>
             )}
           </Button>
 
           <Button
-            onClick={() => onViewDetails(product)}
+            asChild
             variant="ghost"
             size="sm"
-            type="button"
             className="h-9 w-full text-xs text-slate-500 active:scale-[0.98] hover:bg-[#8B5CF6]/5 hover:text-[#8B5CF6] sm:text-sm"
           >
-            <Eye className="mr-1 h-3 w-3" aria-hidden="true" />
-            Ver Detalhes
+            <Link href={href}>
+              <Eye className="mr-1 h-3 w-3" aria-hidden="true" />
+              Ver Detalhes
+            </Link>
           </Button>
         </div>
       </div>
