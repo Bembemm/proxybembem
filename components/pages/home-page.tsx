@@ -1,15 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import Link from "next/link"
 import { ArrowLeft, ArrowRight } from "lucide-react"
-import { ProductDetailModal } from "@/components/product-detail-modal"
 import { StorefrontProductCard } from "@/components/storefront-product-card"
 import type { Product } from "@/contexts/cart-context"
 
 export function HomePage({
   products,
   unavailable = false,
-  productionLeadTimeBusinessDays,
 }: {
   products: Product[]
   unavailable?: boolean
@@ -106,12 +105,12 @@ export function HomePage({
             <h1 className="text-3xl font-bold tracking-tight text-slate-950 lg:text-[32px]">
               Destaques
             </h1>
-            <a
+            <Link
               href="/produtos"
               className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-[#7C3AED] transition-colors hover:text-[#6D28D9] sm:text-base"
             >
               Ver todos <span aria-hidden="true">→</span>
-            </a>
+            </Link>
           </div>
 
           {unavailable ? (
