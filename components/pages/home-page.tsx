@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { HomeHighlightsCarousel } from "@/components/home-highlights-carousel"
-import { StorefrontProductCard } from "@/components/storefront-product-card"
+import { HomeHighlightProductCard } from "@/components/home-highlight-product-card"
 import type { StorefrontProduct } from "@/contexts/cart-context"
 
 export function HomePage({
@@ -41,7 +41,7 @@ export function HomePage({
         {!unavailable && products.length > 0 ? (
           <HomeHighlightsCarousel>
             {products.map((product) => (
-              <StorefrontProductCard
+              <HomeHighlightProductCard
                 key={product.id}
                 product={product}
                 className="h-full w-full"

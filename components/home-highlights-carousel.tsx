@@ -103,7 +103,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
           onClick={() => scrollToPage(activePage - 1)}
           disabled={!canScrollLeft}
           aria-label="Ver página anterior de produtos"
-          className="absolute -left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-left-3 sm:h-11 sm:w-11"
+          className="absolute -left-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-left-3 sm:flex sm:h-11 sm:w-11"
         >
           <ArrowLeft className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
         </button>
@@ -138,7 +138,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
             onClick={() => scrollToPage(activePage + 1)}
             disabled={!canScrollRight}
             aria-label="Ver próxima página de produtos"
-            className="absolute -right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-right-3 sm:h-11 sm:w-11"
+            className="absolute -right-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-right-3 sm:flex sm:h-11 sm:w-11"
           >
             <ArrowRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
           </button>
