@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { type NextRequest, type NextResponse } from "next/server"
 import { getSupabaseBrowserConfig } from "./config.ts"
+import { CUSTOMER_AUTH_COOKIE_NAME } from "./auth-scope.ts"
 
 type PendingCookie = {
   name: string
@@ -14,6 +15,9 @@ export function createSupabaseRouteClient(request: NextRequest) {
   const pendingHeaders: Record<string, string> = {}
 
   const supabase = createServerClient(env.url, env.publishableKey, {
+    cookieOptions: {
+      name: CUSTOMER_AUTH_COOKIE_NAME,
+    },
     auth: {
       experimental: { appendPkceFlowIdToRedirects: true },
     },
