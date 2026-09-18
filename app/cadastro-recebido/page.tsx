@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { MailCheck } from "lucide-react"
+import { ConfirmationResendForm } from "@/components/account/confirmation-resend-form"
 
 export const metadata: Metadata = {
   title: "Confira seu e-mail",
@@ -27,6 +28,8 @@ export default function SignupReceivedPage() {
             Aguarde alguns instantes e confira também as pastas de spam ou lixo eletrônico.
           </p>
         </div>
+
+        <ConfirmationResendForm />
 
         <Link
           href="/entrar"
