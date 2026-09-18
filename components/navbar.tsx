@@ -9,7 +9,9 @@ import { useCart } from "@/contexts/cart-context"
 import { productHref } from "@/lib/products/product-url"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
-type AccountState = "loading" | "guest" | "authenticated"\n\nfunction normalizeSearch(value: string) {
+type AccountState = "loading" | "guest" | "authenticated"
+
+function normalizeSearch(value: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
