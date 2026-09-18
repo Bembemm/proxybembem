@@ -75,6 +75,15 @@ export default async function OrderDetailPage({
 
 Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
   )
+  const canRequestCancellation = !["shipped", "completed", "canceled"].includes(
+    order.fulfillmentStatus,
+  )
+  const cancellationUrl = canRequestCancellation
+    ? buildWhatsAppOrderUrl(
+        storeSettings.contactWhatsappE164,
+        `Olá! Gostaria de solicitar o cancelamento do pedido ${order.orderNumber}. Poderia me orientar sobre os próximos passos?`,
+      )
+    : null
   const address = order.address
   const hasAddress = Boolean(
     address.street || address.number || address.neighborhood || address.city || address.state,
@@ -121,6 +130,26 @@ Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
             <p className="mt-3 text-xs leading-5 text-slate-500 sm:text-sm">
               Você também pode mandar preferências de idioma, versões das cartas e outras observações importantes.
             </p>
+          </section>
+        ) : null}
+
+        {cancellationUrl ? (
+          <section className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-semibold text-slate-950">Precisa cancelar?</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Envie uma solicitação pelo WhatsApp. O pedido não é cancelado automaticamente e,
+                se houver pagamento, o reembolso é tratado separadamente.
+              </p>
+            </div>
+            <a
+              href={cancellationUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border border-rose-300 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
+            >
+              Solicitar cancelamento
+            </a>
           </section>
         ) : null}
 
