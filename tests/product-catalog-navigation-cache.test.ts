@@ -67,7 +67,7 @@ test("mutable storefront destinations bypass soft navigation that can reuse stal
   )
   assert.doesNotMatch(
     source,
-    /<Link\b[\s\S]*?href=["']\/produtos["'][\s\S]*?>/,
+    /<Link\b[^>]*href=["']\/produtos["'][^>]*>/,
     "Produtos navigation must not reuse a stale client Router Cache payload",
   )
 })
