@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { ProductsPage } from "@/components/pages/products-page"
 import { getPublishedProductSummaries } from "@/lib/server/product-catalog-cache"
-import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
 export const dynamic = "force-dynamic"
 
@@ -25,7 +24,6 @@ export default async function ProdutosPage({
     busca?: string | string[]
   }>
 }) {
-  const storeSettings = await getPublicStoreSettings()
   const params = await searchParams
   let products: Awaited<ReturnType<typeof getPublishedProductSummaries>> = []
   let unavailable = false
@@ -49,7 +47,6 @@ export default async function ProdutosPage({
       key={`${initialCategory ?? "all-products"}:${initialSearch ?? "all-search"}`}
       products={products}
       unavailable={unavailable}
-      productionLeadTimeBusinessDays={storeSettings.productionLeadTimeBusinessDays}
       initialCategory={initialCategory}
       initialSearch={initialSearch}
     />
