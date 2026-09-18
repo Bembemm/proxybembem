@@ -145,7 +145,7 @@ export function Navbar() {
     )
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 shadow-sm">
       <nav
         className="mx-auto grid h-16 w-full max-w-[1180px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:px-5 lg:h-[72px] lg:gap-7 lg:px-8"
         aria-label="Navegação principal"
