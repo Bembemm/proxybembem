@@ -30,7 +30,7 @@ export function HomeHighlightProductCard({
   return (
     <article
       className={
-        "group grid grid-cols-[44%_minmax(0,1fr)] items-stretch gap-4 bg-white sm:block " +
+        "group grid grid-cols-[44%_minmax(0,1fr)] items-stretch gap-[14px] bg-white sm:block " +
         className
       }
     >
@@ -49,7 +49,7 @@ export function HomeHighlightProductCard({
       </Link>
 
       <div className="flex min-w-0 flex-col sm:p-3 sm:pt-4">
-        <h3 className="line-clamp-3 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base sm:leading-snug sm:tracking-normal">
+        <h3 className="line-clamp-2 font-serif text-[14px] font-semibold leading-[1.12] tracking-[-0.015em] text-slate-950 sm:min-h-[3rem] sm:text-base sm:leading-snug sm:tracking-normal">
           <Link
             href={productHref(product)}
             className="transition-colors hover:text-[#7C3AED]"
@@ -58,30 +58,31 @@ export function HomeHighlightProductCard({
           </Link>
         </h3>
 
-        <div className="mt-2.5 sm:mt-3">
+        <div className="mt-2 sm:mt-3">
           {hasDiscount ? (
-            <span className="block text-[13px] leading-none text-slate-500 line-through sm:text-sm">
+            <span className="block text-[11px] leading-none text-slate-500 line-through sm:text-sm">
               {formatPrice(product.originalPrice)}
             </span>
           ) : null}
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 sm:mt-1">
-            <span className="font-serif text-[25px] font-semibold leading-none tracking-[-0.03em] text-[#7C3AED] sm:text-2xl sm:font-bold sm:tracking-normal">
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 sm:mt-1 sm:gap-x-2">
+            <span className="font-serif text-[20px] font-semibold leading-none tracking-[-0.025em] text-[#7C3AED] sm:text-2xl sm:font-bold sm:tracking-normal">
               {formatPrice(product.discountPrice)}
             </span>
             {hasDiscount ? (
-              <span className="rounded-[5px] bg-[#F1EAFE] px-2 py-1 text-[11px] font-semibold uppercase leading-none tracking-[0.01em] text-[#7C3AED] sm:text-xs">
+              <span className="rounded-[5px] bg-[#F1EAFE] px-1.5 py-1 text-[9px] font-semibold uppercase leading-none tracking-[0.01em] text-[#7C3AED] sm:px-2 sm:text-xs">
                 {discount}% OFF
               </span>
             ) : null}
           </div>
         </div>
 
-        <div className="mt-auto pt-3 sm:mt-4 sm:pt-0">
+        <div className="mt-auto pt-2.5 sm:mt-4 sm:pt-0">
           <AddToCartButton
             product={product}
             label="Adicionar ao carrinho"
             variant="solid"
+            compact
           />
         </div>
       </div>

@@ -13,13 +13,13 @@ export function HomePage({
   return (
     <section className="bg-white pb-10 pt-6 lg:pb-12 lg:pt-8">
       <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-end justify-between gap-4 lg:mb-6">
-          <h1 className="font-serif text-[38px] font-bold leading-none tracking-[-0.035em] text-slate-950 sm:text-4xl lg:text-[40px]">
+        <div className="mb-5 flex items-end justify-between gap-4 lg:mb-6">
+          <h1 className="font-serif text-[30px] font-bold leading-none tracking-[-0.03em] text-slate-950 sm:text-4xl lg:text-[40px]">
             Destaques
           </h1>
           <Link
             href="/produtos"
-            className="inline-flex shrink-0 items-center gap-1 font-serif text-[17px] font-medium leading-none text-[#7C3AED] transition-colors hover:text-[#6D28D9] sm:text-lg"
+            className="inline-flex shrink-0 items-center gap-1 font-serif text-[14px] font-medium leading-none text-[#7C3AED] transition-colors hover:text-[#6D28D9] sm:text-lg"
           >
             Ver todos <span aria-hidden="true">→</span>
           </Link>

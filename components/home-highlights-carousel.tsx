@@ -65,10 +65,11 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    setActivePage(0)
+
     const carousel = carouselRef.current
     if (!carousel) return
 
-    setActivePage(0)
     carousel.scrollTo({ left: 0, behavior: "auto" })
 
     const observer =
@@ -92,75 +93,98 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
     })
   }
 
+  const goToPage = (page: number) => {
+    const nextPage = Math.min(pageCount - 1, Math.max(0, page))
+
+    if (itemsPerPage === 1) {
+      setActivePage(nextPage)
+      return
+    }
+
+    scrollToPage(nextPage)
+  }
+
   const canScrollLeft = activePage > 0
   const canScrollRight = activePage < pageCount - 1
+  const activeMobileItem = pages[activePage]?.[0] ?? pages[0]?.[0] ?? null
 
   return (
     <div className="relative">
-      {pageCount > 1 ? (
+      {pageCount > 1 && itemsPerPage > 1 ? (
         <button
           type="button"
-          onClick={() => scrollToPage(activePage - 1)}
+          onClick={() => goToPage(activePage - 1)}
           disabled={!canScrollLeft}
           aria-label="Ver página anterior de produtos"
-          className="absolute -left-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-left-3 sm:flex sm:h-11 sm:w-11"
+          className="absolute -left-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
         >
           <ArrowLeft className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
         </button>
       ) : null}
 
-      <div
-        ref={carouselRef}
-        onScroll={updateScrollState}
-        aria-label="Produtos em destaque"
-        className="-mx-4 snap-x snap-mandatory overflow-x-auto scroll-smooth px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0"
-      >
-        <div className="flex">
-          {pages.map((page, pageIndex) => (
-            <div
-              key={pageIndex}
-              data-carousel-page
-              aria-label={`Página ${pageIndex + 1} de ${pageCount}`}
-              className="w-full shrink-0 snap-start"
-            >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {page}
-              </div>
-            </div>
-          ))}
+      {itemsPerPage === 1 ? (
+        <div aria-label="Produto em destaque" className="w-full overflow-hidden">
+          <div data-carousel-page className="w-full">
+            {activeMobileItem}
+          </div>
         </div>
-      </div>
-
-      {pageCount > 1 ? (
-        <>
-          <button
-            type="button"
-            onClick={() => scrollToPage(activePage + 1)}
-            disabled={!canScrollRight}
-            aria-label="Ver próxima página de produtos"
-            className="absolute -right-2 top-1/2 z-20 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:-right-3 sm:flex sm:h-11 sm:w-11"
-          >
-            <ArrowRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-          </button>
-
-          <div className="mt-5 flex items-center justify-center gap-2.5 sm:mt-4 sm:gap-2" aria-label="Páginas dos produtos em destaque">
-            {pages.map((_, pageIndex) => (
-              <button
+      ) : (
+        <div
+          ref={carouselRef}
+          onScroll={updateScrollState}
+          aria-label="Produtos em destaque"
+          className="-mx-6 snap-x snap-mandatory overflow-x-auto scroll-smooth px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:px-0"
+        >
+          <div className="flex">
+            {pages.map((page, pageIndex) => (
+              <div
                 key={pageIndex}
-                type="button"
-                onClick={() => scrollToPage(pageIndex)}
-                aria-label={`Ir para página ${pageIndex + 1}`}
-                aria-current={activePage === pageIndex ? "true" : undefined}
-                className={
-                  "rounded-full transition-all " +
-                  (activePage === pageIndex
-                    ? "h-2.5 w-2.5 bg-[#7C3AED]"
-                    : "h-2.5 w-2.5 bg-slate-200 hover:bg-slate-300 sm:h-2 sm:w-2")
-                }
-              />
+                data-carousel-page
+                aria-label={`Página ${pageIndex + 1} de ${pageCount}`}
+                className="w-full shrink-0 snap-start"
+              >
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  {page}
+                </div>
+              </div>
             ))}
           </div>
-        </>
+        </div>
+      )}
+
+      {pageCount > 1 && itemsPerPage > 1 ? (
+        <button
+          type="button"
+          onClick={() => goToPage(activePage + 1)}
+          disabled={!canScrollRight}
+          aria-label="Ver próxima página de produtos"
+          className="absolute -right-3 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-violet-100 bg-white/95 text-slate-900 shadow-md transition hover:bg-violet-50 disabled:pointer-events-none disabled:opacity-0 sm:flex"
+        >
+          <ArrowRight className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
+        </button>
+      ) : null}
+
+      {pageCount > 1 ? (
+        <div
+          className="mt-4 flex items-center justify-center gap-2 sm:mt-4"
+          aria-label="Páginas dos produtos em destaque"
+        >
+          {pages.map((_, pageIndex) => (
+            <button
+              key={pageIndex}
+              type="button"
+              onClick={() => goToPage(pageIndex)}
+              aria-label={`Ir para página ${pageIndex + 1}`}
+              aria-current={activePage === pageIndex ? "true" : undefined}
+              className={
+                "h-2 w-2 rounded-full transition-all sm:h-2 sm:w-2 " +
+                (activePage === pageIndex
+                  ? "bg-[#7C3AED]"
+                  : "bg-slate-200 hover:bg-slate-300")
+              }
+            />
+          ))}
+        </div>
       ) : null}
     </div>
   )
