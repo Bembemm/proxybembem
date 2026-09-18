@@ -4,9 +4,6 @@ import { createBrowserClient } from "@supabase/ssr"
 import { getSupabaseBrowserConfig } from "./config.ts"
 import { authCookieName, type SupabaseAuthScope } from "./auth-scope.ts"
 
-let customerClient: ReturnType<typeof createBrowserClient> | null = null
-let adminClient: ReturnType<typeof createBrowserClient> | null = null
-
 function createScopedBrowserClient(scope: SupabaseAuthScope) {
   const env = getSupabaseBrowserConfig()
   return createBrowserClient(env.url, env.publishableKey, {
@@ -21,6 +18,11 @@ function createScopedBrowserClient(scope: SupabaseAuthScope) {
     isSingleton: false,
   })
 }
+
+type ScopedBrowserClient = ReturnType<typeof createScopedBrowserClient>
+
+let customerClient: ScopedBrowserClient | null = null
+let adminClient: ScopedBrowserClient | null = null
 
 export function createSupabaseBrowserClient() {
   customerClient ??= createScopedBrowserClient("customer")
