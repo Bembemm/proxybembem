@@ -17,7 +17,7 @@ export interface ProductShipping {
   heightCm: number
 }
 
-export interface Product {
+export interface StorefrontProduct {
   id: number
   title: string
   image: string
@@ -25,8 +25,11 @@ export interface Product {
   discountPrice: number
   tag: string | null
   category: string
-  colors?: string[]
   featured?: boolean
+}
+
+export interface Product extends StorefrontProduct {
+  colors?: string[]
   notice?: string
   highlights?: string[]
   description: string
@@ -76,6 +79,38 @@ function isIsoTimestamp(value: unknown): value is string {
 
 export function isProductStatus(value: unknown): value is ProductStatus {
   return value === "draft" || value === "published" || value === "archived"
+}
+
+export function parsePublishedProductSummaryRow(
+  value: unknown,
+  supabaseUrl: string,
+): StorefrontProduct {
+  if (!isRecord(value)) throw new Error("Invalid product catalog response")
+
+  if (
+    !isPositiveSafeInteger(value.id) ||
+    value.status !== "published" ||
+    !isBoundedString(value.title, 1, 160) ||
+    !isBoundedString(value.category, 1, 80) ||
+    !isNullableBoundedString(value.tag, 80) ||
+    typeof value.featured !== "boolean" ||
+    !isBoundedString(value.image_path, 1, 500) ||
+    !isPositiveSafeInteger(value.original_price_cents) ||
+    !isPositiveSafeInteger(value.price_cents)
+  ) {
+    throw new Error("Invalid product catalog response")
+  }
+
+  return {
+    id: value.id,
+    title: value.title,
+    image: publicImageUrl(value.image_path, supabaseUrl),
+    originalPrice: value.original_price_cents / 100,
+    discountPrice: value.price_cents / 100,
+    tag: value.tag,
+    category: value.category,
+    featured: value.featured,
+  }
 }
 
 function parseStringArray(value: unknown, maxItems: number, maxLength: number): string[] {
