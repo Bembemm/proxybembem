@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Check, Eye, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useCart, type Product } from "@/contexts/cart-context"
+import { useCart, type StorefrontProduct } from "@/contexts/cart-context"
 import { productHref } from "@/lib/products/product-url"
 
 function formatPrice(value: number) {
@@ -19,7 +19,7 @@ export function StorefrontProductCard({
   product,
   className = "",
 }: {
-  product: Product
+  product: StorefrontProduct
   className?: string
 }) {
   const { addToCart, items } = useCart()
