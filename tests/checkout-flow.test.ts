@@ -284,6 +284,8 @@ test("new checkout reserves trusted ownership and returns Mercado Pago to privat
   assert.equal(reserved.shipping?.amountCents, 1842)
   assert.equal(reserved.totalCents, 13832)
   assert.equal(preferenceInput.shipping.amountCents, 1842)
+  assert.equal(preferenceInput.expirationDateFrom, "1970-01-01T00:00:02.000Z")
+  assert.equal(preferenceInput.expirationDateTo, "1970-01-04T00:00:02.000Z")
   assert.equal(
     preferenceInput.returnUrl,
     `https://preview.example.com/minha-conta/pedidos/${ORDER_ID}`,
