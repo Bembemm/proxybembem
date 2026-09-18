@@ -34,21 +34,8 @@ export function ProductsPage({
     initialCategory ? [initialCategory] : [],
   )
   const [showFilters, setShowFilters] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-
   const categories = Array.from(new Set(products.map((product) => product.category)))
   const normalizedSearch = normalizeSearch(initialSearch ?? "")
-
-  const openProductModal = (product: Product) => {
-    setSelectedProduct(product)
-    setIsModalOpen(true)
-  }
-
-  const closeProductModal = () => {
-    setIsModalOpen(false)
-    setSelectedProduct(null)
-  }
 
   const toggleCategory = (category: string) => {
     setSelectedCategories((previousCategories) =>
@@ -150,7 +137,6 @@ export function ProductsPage({
                 <StorefrontProductCard
                   key={product.id}
                   product={product}
-                  onViewDetails={openProductModal}
                   className="animate-fade-in-up"
                 />
               ))}
@@ -166,15 +152,6 @@ export function ProductsPage({
           </div>
         </div>
       </div>
-
-      {selectedProduct ? (
-        <ProductDetailModal
-          product={selectedProduct}
-          isOpen={isModalOpen}
-          onClose={closeProductModal}
-          productionLeadTimeBusinessDays={productionLeadTimeBusinessDays}
-        />
-      ) : null}
     </section>
   )
 }
