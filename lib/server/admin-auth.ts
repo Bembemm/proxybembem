@@ -186,8 +186,8 @@ export async function revokeCurrentAdminSessionWithDependencies(
 }
 
 async function createProductionDependencies(): Promise<AdminAuthDependencies> {
-  const { createSupabaseServerClient } = await import("../supabase/server.ts")
-  const supabase = await createSupabaseServerClient()
+  const { createAdminSupabaseServerClient } = await import("../supabase/server.ts")
+  const supabase = await createAdminSupabaseServerClient()
   const { adminUserId } = getAdminAuthEnv()
 
   return {
