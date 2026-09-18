@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { getSupabaseBrowserConfig } from "./config.ts"
+import { authCookieName } from "./auth-scope.ts"
+import { supabaseAuthScopeForPath } from "../security/proxy-routing.ts"
 
 const AUTH_FLOW_PATHS = new Set([
   "/admin/login",
@@ -76,8 +78,13 @@ export async function updateSupabaseSession(
     request: { headers: buildUpstreamHeaders(request, security) },
   })
   const env = getSupabaseBrowserConfig()
+  const pathname = request.nextUrl.pathname
+  const authScope = supabaseAuthScopeForPath(pathname)
 
   const supabase = createServerClient(env.url, env.publishableKey, {
+    cookieOptions: {
+      name: authCookieName(authScope),
+    },
     cookies: {
       encode: "tokens-only",
       getAll() {
@@ -108,8 +115,6 @@ export async function updateSupabaseSession(
   } catch {
     claims = undefined
   }
-  const pathname = request.nextUrl.pathname
-
   if (
     pathname.startsWith("/admin") &&
     !AUTH_FLOW_PATHS.has(pathname) &&
