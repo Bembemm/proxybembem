@@ -59,4 +59,15 @@ test("mutable storefront destinations bypass soft navigation that can reuse stal
     source,
     /<Link\b[^>]*href=\{`\/produtos\?categoria=\$\{encodeURIComponent\(category\)\}`\}[^>]*>/,
   )
+
+  const hardProductsLinks = source.match(/<a\s+[\s\S]*?href=["']\/produtos["'][\s\S]*?>/g) ?? []
+  assert.ok(
+    hardProductsLinks.length >= 2,
+    "desktop and mobile Produtos navigation must force a fresh document request",
+  )
+  assert.doesNotMatch(
+    source,
+    /<Link\b[\s\S]*?href=["']\/produtos["'][\s\S]*?>/,
+    "Produtos navigation must not reuse a stale client Router Cache payload",
+  )
 })
