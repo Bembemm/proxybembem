@@ -60,8 +60,10 @@ test("checkout is a dedicated page with delivery form, order summary, secure pay
 
 test("checkout route uses a focused shell instead of the regular storefront chrome", () => {
   const shell = source("components/site-shell.tsx")
+  const router = source("components/site-shell-router.tsx")
 
-  assert.match(shell, /isCheckoutRoute/)
-  assert.match(shell, /pathname === ["']\/checkout["']/)
-  assert.match(shell, /isCheckoutRoute[\s\S]*<CartProvider>[\s\S]*\{children\}[\s\S]*<\/CartProvider>/)
+  assert.match(shell, /SiteShellRouter/)
+  assert.match(router, /isCheckoutRoute/)
+  assert.match(router, /pathname === ["']\/checkout["']/)
+  assert.match(router, /isCheckoutRoute[\s\S]*<CartProvider>[\s\S]*\{children\}[\s\S]*<\/CartProvider>/)
 })
