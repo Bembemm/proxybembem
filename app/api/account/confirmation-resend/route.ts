@@ -2,11 +2,11 @@ import { type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
   parseAccountResetInput,
-} from "../../../../../lib/server/customer-account-actions.ts"
-import { resolvePublicSiteUrl } from "../../../../../lib/server/env.ts"
-import { consumeRateLimit } from "../../../../../lib/server/rate-limit.ts"
-import { readJsonBody } from "../../../../../lib/server/request-body.ts"
-import { createSupabaseAuthServerClient } from "../../../../../lib/supabase/auth-server.ts"
+} from "../../../../lib/server/customer-account-actions.ts"
+import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
+import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
+import { readJsonBody } from "../../../../lib/server/request-body.ts"
+import { createSupabaseAuthServerClient } from "../../../../lib/supabase/auth-server.ts"
 
 const NEUTRAL_MESSAGE =
   "Se existir um cadastro pendente para esse e-mail, enviaremos uma nova confirmação."
