@@ -33,6 +33,7 @@ export function StorefrontProductCard({
       >
         <Image
           src={product.image}
+          unoptimized={product.image.startsWith("/")}
           alt={product.title}
           fill
           sizes="(max-width: 640px) 82vw, (max-width: 1024px) 33vw, 25vw"
