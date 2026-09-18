@@ -86,7 +86,8 @@ test("navbar exposes only a dynamic Categorias storefront menu alongside account
   const navbar = source("components/navbar.tsx")
 
   assert.match(navbar, /Categorias/)
-  assert.match(navbar, /fetch\(["']\/api\/catalog["']/)
+  assert.doesNotMatch(navbar, /fetch\(["']\/api\/catalog["']/)
+  assert.match(navbar, /catalogProducts/)
   assert.match(navbar, /product\.category/)
   assert.match(navbar, /\/produtos\?categoria=/)
   assert.doesNotMatch(navbar, /label:\s*["']Produtos["']/)
