@@ -33,11 +33,11 @@ test("public content flows directly into the global FAQ without viewport-height 
 })
 
 test("global shell still owns the page-height floor while admin and checkout remain independent", () => {
-  const siteShell = source("components/site-shell.tsx")
+  const siteShellRouter = source("components/site-shell-router.tsx")
   const adminShell = source("components/admin/admin-shell.tsx")
   const checkout = source("components/checkout-page.tsx")
 
-  assert.match(siteShell, /min-h-screen/)
+  assert.match(siteShellRouter, /min-h-screen/)
   assert.match(adminShell, /min-h-screen/)
   assert.match(checkout, /min-h-screen/)
 })
