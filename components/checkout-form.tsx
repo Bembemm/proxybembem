@@ -7,11 +7,14 @@ import {
   formatWhatsapp,
   type CheckoutData,
   type CheckoutErrors,
+  type CheckoutSavedAddress,
 } from "@/lib/checkout"
 
 interface CheckoutFormProps {
   data: CheckoutData
   errors: CheckoutErrors
+  savedAddresses?: CheckoutSavedAddress[]
+  onSelectSavedAddress?: (address: CheckoutSavedAddress) => void
   onChange: (field: keyof CheckoutData, value: string) => void
 }
 
@@ -24,7 +27,13 @@ function errorText(id: string, message?: string) {
   )
 }
 
-export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
+export function CheckoutForm({
+  data,
+  errors,
+  savedAddresses = [],
+  onSelectSavedAddress,
+  onChange,
+}: CheckoutFormProps) {
   const inputClass =
     "mt-1.5 h-12 rounded-lg border-slate-300 bg-white text-base text-slate-950 placeholder:text-slate-400 focus-visible:border-[#8B5CF6] focus-visible:ring-[#8B5CF6]/20"
   const labelClass = "text-sm font-medium text-slate-700"
@@ -142,6 +151,37 @@ export function CheckoutForm({ data, errors, onChange }: CheckoutFormProps) {
           <MapPin className="h-5 w-5" />
           <h2 className="text-xl font-semibold">Entrega</h2>
         </div>
+
+        {savedAddresses.length > 0 && onSelectSavedAddress ? (
+          <div className="mb-5 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+            <p className="text-sm font-semibold text-slate-900">Endereços salvos</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Selecione um endereço para preencher os campos abaixo. Você ainda pode editar qualquer dado antes de pagar.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {savedAddresses.map((address) => (
+                <button
+                  key={address.id}
+                  type="button"
+                  onClick={() => onSelectSavedAddress(address)}
+                  className="rounded-lg border border-violet-200 bg-white p-3 text-left text-sm transition hover:border-violet-300 hover:bg-violet-50"
+                >
+                  <span className="flex items-center justify-between gap-2 font-semibold text-slate-900">
+                    <span>{address.label}</span>
+                    {address.isDefault ? (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-violet-700">
+                        Padrão
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-1 block leading-5 text-slate-600">
+                    {address.street}, {address.number} — {address.city}/{address.state}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <div>
           <Label htmlFor="checkout-cep" className={labelClass}>
