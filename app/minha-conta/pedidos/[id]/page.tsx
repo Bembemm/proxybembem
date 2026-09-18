@@ -1,7 +1,12 @@
 import type { Metadata } from "next"
-import { notFound } from "next/navigation"
+import Link from "next/link"
 import { AccountPage } from "@/components/account/account-page"
 import { buildWhatsAppOrderUrl } from "@/lib/checkout"
+import {
+  canResumeCheckout,
+  checkoutExpiresAt,
+  isCheckoutExpired,
+} from "@/lib/checkout-expiration"
 import { fulfillmentStatusLabel, paymentStatusLabel } from "@/lib/order-status-labels"
 import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import {
@@ -60,24 +65,59 @@ export default async function OrderDetailPage({
   try {
     order = await getOwnOrderById(id)
   } catch {
-    notFound()
+    console.error("Customer order detail load failed", { orderId: id })
+    return (
+      <AccountPage
+        title="Não foi possível carregar este pedido"
+        description="Tente novamente. Se o problema continuar, acesse sua lista de pedidos."
+      >
+        <Link
+          href="/minha-conta/pedidos"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
+        >
+          Ver meus pedidos
+        </Link>
+      </AccountPage>
+    )
   }
-  if (!order) notFound()
+
+  if (!order) {
+    return (
+      <AccountPage
+        title="Pedido não encontrado"
+        description="Este pedido não existe ou não está vinculado à sua conta."
+      >
+        <Link
+          href="/minha-conta/pedidos"
+          className="inline-flex min-h-11 items-center justify-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-700"
+        >
+          Ver meus pedidos
+        </Link>
+      </AccountPage>
+    )
+  }
+
+  const checkoutExpired = isCheckoutExpired(order)
+  const checkoutResumable = canResumeCheckout(order)
+  const checkoutExpiration = checkoutExpiresAt(order.createdAt)
 
   const storeSettings = await getPublicStoreSettings()
   const supportUrl = buildWhatsAppOrderUrl(
     storeSettings.contactWhatsappE164,
     `Olá, gostaria de falar sobre o pedido ${order.orderNumber}`,
   )
-  const listWhatsappUrl = buildWhatsAppOrderUrl(
-    storeSettings.contactWhatsappE164,
-    `Olá! Quero enviar a lista e as artes do pedido ${order.orderNumber}.
+  const listWhatsappUrl =
+    order.paymentStatus === "approved" && order.fulfillmentStatus !== "canceled"
+      ? buildWhatsAppOrderUrl(
+          storeSettings.contactWhatsappE164,
+          `Olá! Quero enviar a lista e as artes do pedido ${order.orderNumber}.
 
 Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
-  )
-  const canRequestCancellation = !["shipped", "completed", "canceled"].includes(
-    order.fulfillmentStatus,
-  )
+        )
+      : null
+  const canRequestCancellation =
+    !checkoutExpired &&
+    !["shipped", "completed", "canceled"].includes(order.fulfillmentStatus)
   const cancellationUrl = canRequestCancellation
     ? buildWhatsAppOrderUrl(
         storeSettings.contactWhatsappE164,
@@ -105,6 +145,42 @@ Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
       ) : undefined}
     >
       <div className="space-y-6">
+        {checkoutResumable ? (
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
+              Pagamento pendente
+            </p>
+            <h2 className="mt-2 text-xl font-bold text-slate-950">Finalize o pagamento deste pedido</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
+              O pedido já foi reservado, mas o pagamento ainda não foi concluído. Você pode continuar
+              no Mercado Pago até {checkoutExpiration.toLocaleString("pt-BR")}.
+            </p>
+            <a
+              href={`/api/orders/${order.id}/resume-payment`}
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto"
+            >
+              Continuar pagamento
+            </a>
+          </section>
+        ) : checkoutExpired ? (
+          <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-600">
+              Checkout expirado
+            </p>
+            <h2 className="mt-2 text-xl font-bold text-slate-950">Pagamento não concluído</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              O prazo deste checkout terminou sem confirmação de pagamento. O registro fica apenas
+              no histórico da sua conta e não entra em produção.
+            </p>
+            <Link
+              href="/produtos"
+              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-violet-300 hover:text-violet-700"
+            >
+              Fazer um novo pedido
+            </Link>
+          </section>
+        ) : null}
+
         {listWhatsappUrl ? (
           <section
             aria-labelledby="order-list-title"
@@ -156,11 +232,15 @@ Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
         <section aria-label="Status do pedido" className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pagamento</p>
-            <p className="mt-1 font-semibold text-slate-950">{paymentStatusLabel(order.paymentStatus)}</p>
+            <p className="mt-1 font-semibold text-slate-950">
+              {checkoutExpired ? "Expirado — não pago" : paymentStatusLabel(order.paymentStatus)}
+            </p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Produção</p>
-            <p className="mt-1 font-semibold text-slate-950">{fulfillmentStatusLabel(order.fulfillmentStatus)}</p>
+            <p className="mt-1 font-semibold text-slate-950">
+              {checkoutExpired ? "Não iniciada" : fulfillmentStatusLabel(order.fulfillmentStatus)}
+            </p>
           </div>
         </section>
 
