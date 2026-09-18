@@ -26,9 +26,9 @@ test("checkout draft takes precedence over default saved address", async () => {
   assert.match(checkout, /savedAddresses/)
   assert.match(checkout, /defaultSavedAddress/)
   assert.match(checkout, /applySavedAddress/)
-  assert.match(checkout, /<CheckoutForm[^>]*savedAddresses/s)
+  assert.match(checkout, /<CheckoutForm[^>]*savedAddresses/)
   assert.match(checkout, /customer:\s*checkout/)
-  assert.doesNotMatch(checkout, /customer:\s*\{[^}]*addressId/s)
+  assert.doesNotMatch(checkout, /customer:\s*\{[^}]*addressId/)
 })
 
 test("checkout form exposes a saved address selector without replacing editable fields", async () => {
