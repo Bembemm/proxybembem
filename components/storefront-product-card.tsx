@@ -25,8 +25,6 @@ export function StorefrontProductCard({
   const { addToCart, items } = useCart()
   const [justAdded, setJustAdded] = useState(false)
   const itemInCart = items.find((item) => item.product.id === product.id)
-  const href = productHref(product)
-
   const handleAddToCart = () => {
     addToCart(product)
     setJustAdded(true)
@@ -41,7 +39,7 @@ export function StorefrontProductCard({
       }
     >
       <Link
-        href={href}
+        href={productHref(product)}
         className="relative block aspect-[4/3] w-full overflow-hidden bg-slate-100"
         aria-label={"Ver detalhes de " + product.title}
       >
@@ -71,7 +69,7 @@ export function StorefrontProductCard({
 
       <div className="relative p-2 sm:p-3">
         <h3 className="mb-1.5 min-h-[2.5rem] line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:mb-2 sm:min-h-[3rem] sm:text-base">
-          <Link href={href} className="transition-colors hover:text-[#7C3AED]">
+          <Link href={productHref(product)} className="transition-colors hover:text-[#7C3AED]">
             {product.title}
           </Link>
         </h3>
@@ -116,7 +114,7 @@ export function StorefrontProductCard({
             size="sm"
             className="h-9 w-full text-xs text-slate-500 active:scale-[0.98] hover:bg-[#8B5CF6]/5 hover:text-[#8B5CF6] sm:text-sm"
           >
-            <Link href={href}>
+            <Link href={productHref(product)}>
               <Eye className="mr-1 h-3 w-3" aria-hidden="true" />
               Ver Detalhes
             </Link>
