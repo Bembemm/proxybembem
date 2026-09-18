@@ -246,7 +246,7 @@ export function Navbar() {
             Início
           </Link>
 
-          <Link
+          <a
             href="/produtos"
             aria-current={isActive("/produtos") ? "page" : undefined}
             className={
@@ -255,7 +255,7 @@ export function Navbar() {
             }
           >
             Produtos
-          </Link>
+          </a>
 
           <div className="relative">
             <button
@@ -433,13 +433,13 @@ export function Navbar() {
             >
               Início
             </Link>
-            <Link
+            <a
               href="/produtos"
               onClick={closeOverlays}
               className="flex min-h-12 items-center border-b border-slate-100 px-1 text-base font-medium text-slate-900"
             >
               Produtos
-            </Link>
+            </a>
             <Link
               href="/contato"
               onClick={closeOverlays}
