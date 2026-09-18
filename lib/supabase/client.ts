@@ -2,20 +2,16 @@
 
 import { createBrowserClient } from "@supabase/ssr"
 import { getSupabaseBrowserConfig } from "./config.ts"
-
-export const CUSTOMER_AUTH_COOKIE_NAME = "pb-customer-auth"
-export const ADMIN_AUTH_COOKIE_NAME = "pb-admin-auth"
-
-type BrowserAuthScope = "customer" | "admin"
+import { authCookieName, type SupabaseAuthScope } from "./auth-scope.ts"
 
 let customerClient: ReturnType<typeof createBrowserClient> | null = null
 let adminClient: ReturnType<typeof createBrowserClient> | null = null
 
-function createScopedBrowserClient(scope: BrowserAuthScope) {
+function createScopedBrowserClient(scope: SupabaseAuthScope) {
   const env = getSupabaseBrowserConfig()
   return createBrowserClient(env.url, env.publishableKey, {
     cookieOptions: {
-      name: scope === "admin" ? ADMIN_AUTH_COOKIE_NAME : CUSTOMER_AUTH_COOKIE_NAME,
+      name: authCookieName(scope),
     },
     cookies: {
       encode: "tokens-only",
