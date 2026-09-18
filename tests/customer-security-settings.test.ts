@@ -7,7 +7,7 @@ async function source(path: string) {
 }
 
 test("email change requires new email and current password", async () => {
-  const actions = await import("../lib/server/customer-account-actions.ts")
+  const actions = await import("../lib/erver/customer-account-actions.ts")
   assert.equal(typeof actions.parseAccountEmailChangeInput, "function")
 
   const parse = actions.parseAccountEmailChangeInput as (value: unknown) => {
@@ -24,7 +24,7 @@ test("email change requires new email and current password", async () => {
 
 test("email change route verifies the current credential before requesting provider email change", async () => {
   const route = await source("../app/api/account/email/route.ts")
-  const limits = await source("../lib/server/rate-limit.ts")
+  const limits = await source("../lib/erver/rate-limit.ts")
 
   assert.match(route, /isSameOriginAccountRequest/)
   assert.match(route, /account-email-change/)
@@ -34,7 +34,7 @@ test("email change route verifies the current credential before requesting provi
   assert.match(route, /signInWithPassword/)
   assert.match(route, /identity\.email/)
   assert.match(route, /input\.currentPassword/)
-  assert.match(route, /auth\.updateUser\s*\(\s*\{\s*email:\s*input\.email/s)
+  assert.match(route, /auth\.updateUser\s*\(\s*\{\s*email:\s*input\.email/)
   assert.match(route, /private,\s*no-store/i)
   assert.doesNotMatch(route, /orders|customer_email/)
 
@@ -45,7 +45,7 @@ test("email change route verifies the current credential before requesting provi
 })
 
 test("security page exposes email change, password change and a non-destructive privacy request", async () => {
-  const page = await source("../app/minha-conta/seguranca/page.tsx")
+  const page = await source("../app/minha-conta/eguranca/page.tsx")
   const emailForm = await source("../components/account/email-change-form.tsx")
   const privacy = await source("../components/account/privacy-request-card.tsx")
 
