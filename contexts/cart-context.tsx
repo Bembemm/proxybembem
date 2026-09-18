@@ -7,7 +7,7 @@ import {
   serializeCart,
   type StoredCartLine,
 } from "@/lib/cart-storage"
-import type { Product, StorefrontProduct } from "@/lib/products/product"
+import type { StorefrontProduct } from "@/lib/products/product"
 
 export type {
   Product,
@@ -26,7 +26,7 @@ type CatalogStatus = "loading" | "ready" | "unavailable"
 
 interface CartContextType {
   items: CartItem[]
-  addToCart: (product: Product) => void
+  addToCart: (product: StorefrontProduct) => void
   removeFromCart: (productId: number) => void
   updateQuantity: (productId: number, quantity: number) => void
   clearCart: () => void
