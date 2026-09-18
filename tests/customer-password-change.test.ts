@@ -7,7 +7,7 @@ async function source(path: string) {
 }
 
 test("normal password change requires the current password while recovery stays separate", async () => {
-  const actions = await import("../lib/server/customer-account-actions.ts")
+  const actions = await import("../lib/erver/customer-account-actions.ts")
   assert.equal(typeof actions.parseAccountPasswordChangeInput, "function")
 
   const parseChange = actions.parseAccountPasswordChangeInput as (value: unknown) => {
@@ -52,7 +52,7 @@ test("password form asks for current password only outside recovery mode", async
   assert.match(form, /currentPassword/)
   assert.match(form, /Senha atual/)
   assert.match(form, /autoComplete=["']current-password["']/)
-  assert.match(form, /recovery\s*\?/s)
-  assert.match(form, /JSON\.stringify\([^)]*currentPassword/s)
-  assert.match(form, /JSON\.stringify\([^)]*password/s)
+  assert.match(form, /recovery\s*\?/)
+  assert.match(form, /JSON\.stringify\([^)]*currentPassword/)
+  assert.match(form, /JSON\.stringify\([^)]*password/)
 })
