@@ -1,37 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronDown, Menu, Search, ShoppingCart, UserRound, X } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
-import type { Product } from "@/lib/products/product"
 import { productHref } from "@/lib/products/product-url"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
-type AccountState = "loading" | "guest" | "authenticated"
-type CatalogSearchProduct = Pick<Product, "id" | "title" | "image" | "discountPrice" | "category">
-
-function isCatalogSearchProduct(value: unknown): value is CatalogSearchProduct {
-  if (typeof value !== "object" || value === null) return false
-
-  const candidate = value as Partial<CatalogSearchProduct>
-  return (
-    Number.isSafeInteger(candidate.id) &&
-    (candidate.id ?? 0) > 0 &&
-    typeof candidate.title === "string" &&
-    candidate.title.length > 0 &&
-    typeof candidate.image === "string" &&
-    candidate.image.length > 0 &&
-    typeof candidate.discountPrice === "number" &&
-    Number.isFinite(candidate.discountPrice) &&
-    typeof candidate.category === "string" &&
-    candidate.category.length > 0
-  )
-}
-
-function normalizeSearch(value: string) {
+type AccountState = "loading" | "guest" | "authenticated"\n\nfunction normalizeSearch(value: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -48,14 +26,12 @@ function formatPrice(value: number) {
 
 export function Navbar() {
   const [accountState, setAccountState] = useState<AccountState>("loading")
-  const [catalogProducts, setCatalogProducts] = useState<CatalogSearchProduct[]>([])
-  const [categories, setCategories] = useState<string[]>([])
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const pathname = usePathname()
-  const { totalItems, setIsCartOpen } = useCart()
+  const { totalItems, setIsCartOpen, catalogProducts } = useCart()
 
   useEffect(() => {
     let cancelled = false
@@ -75,43 +51,17 @@ export function Navbar() {
     }
   }, [pathname])
 
-  useEffect(() => {
-    let cancelled = false
-
-    void fetch("/api/catalog", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) return null
-        return (await response.json()) as unknown
-      })
-      .then((payload) => {
-        if (cancelled || typeof payload !== "object" || payload === null) return
-
-        const rawProducts = (payload as { products?: unknown }).products
-        if (!Array.isArray(rawProducts)) return
-
-        const products = rawProducts.filter(isCatalogSearchProduct)
-        const nextCategories = Array.from(
-          new Set(
-            products
-              .map((product) => product.category.trim())
-              .filter((category) => category.length > 0 && category.length <= 100),
-          ),
-        ).sort((left, right) => left.localeCompare(right, "pt-BR"))
-
-        setCatalogProducts(products)
-        setCategories(nextCategories)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCatalogProducts([])
-          setCategories([])
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          catalogProducts
+            .map((product) => product.category.trim())
+            .filter((category) => category.length > 0 && category.length <= 100),
+        ),
+      ).sort((left, right) => left.localeCompare(right, "pt-BR")),
+    [catalogProducts],
+  )
 
   const accountItem =
     accountState === "loading"
