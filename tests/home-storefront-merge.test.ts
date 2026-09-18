@@ -31,6 +31,7 @@ test("home and products share one storefront product-card presentation", () => {
   assert.match(card, /Adicionar/)
   assert.match(card, /Ver Detalhes/)
   assert.match(card, /addToCart\(product\)/)
+  assert.match(card, /productHref\(product\)/)
 })
 
 test("home renders the approved responsive multi-card highlights carousel", () => {
@@ -121,7 +122,8 @@ test("dedicated ProductsPage applies and resynchronizes category and search rece
   assert.match(route, /initialSearch=\{initialSearch\}/)
   assert.doesNotMatch(page, /setSelectedCategories\(initialCategory \? \[initialCategory\] : \[\]\)/)
   assert.match(page, /filteredProducts\.map\s*\(/)
-  assert.match(page, /ProductDetailModal/)
+  assert.match(page, /StorefrontProductCard/)
+  assert.doesNotMatch(page, /ProductDetailModal/)
 })
 
 test("/produtos accepts a bounded busca query and passes it to ProductsPage", () => {
