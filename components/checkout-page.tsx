@@ -12,7 +12,6 @@ import { useCart } from "@/contexts/cart-context"
 import {
   applyCheckoutSavedAddress,
   digitsOnly,
-  formatCep,
   formatPrice,
   resolveCheckoutAddressPrefill,
   validateCheckout,
