@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { createSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
+import { createAdminSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
 
 async function activateAdminSession() {
   return fetch("/api/admin/session/activate", {
@@ -23,7 +23,7 @@ export function MfaForm({
   const [busy, setBusy] = useState(false)
 
   async function finishActivation() {
-    const supabase = createSupabaseBrowserClient()
+    const supabase = createAdminSupabaseBrowserClient()
     const response = await activateAdminSession()
     if (response.status !== 204) {
       await supabase.auth.signOut({ scope: "local" })
@@ -59,7 +59,7 @@ export function MfaForm({
 
     setMessage(null)
     setBusy(true)
-    const supabase = createSupabaseBrowserClient()
+    const supabase = createAdminSupabaseBrowserClient()
 
     try {
       const challenge = await supabase.auth.mfa.challenge({ factorId })
