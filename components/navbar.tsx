@@ -1,29 +1,59 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronDown, Menu, Search, ShoppingCart, UserRound, X } from "lucide-react"
 import { useCart } from "@/contexts/cart-context"
+import type { Product } from "@/lib/products/product"
+import { productHref } from "@/lib/products/product-url"
 import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 type AccountState = "loading" | "guest" | "authenticated"
-type CatalogCategoryProduct = { category: string }
+type CatalogSearchProduct = Pick<Product, "id" | "title" | "image" | "discountPrice" | "category">
 
-function isCatalogCategoryProduct(value: unknown): value is CatalogCategoryProduct {
+function isCatalogSearchProduct(value: unknown): value is CatalogSearchProduct {
+  if (typeof value !== "object" || value === null) return false
+
+  const candidate = value as Partial<CatalogSearchProduct>
   return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { category?: unknown }).category === "string"
+    Number.isSafeInteger(candidate.id) &&
+    (candidate.id ?? 0) > 0 &&
+    typeof candidate.title === "string" &&
+    candidate.title.length > 0 &&
+    typeof candidate.image === "string" &&
+    candidate.image.length > 0 &&
+    typeof candidate.discountPrice === "number" &&
+    Number.isFinite(candidate.discountPrice) &&
+    typeof candidate.category === "string" &&
+    candidate.category.length > 0
   )
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim()
+}
+
+function formatPrice(value: number) {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  })
 }
 
 export function Navbar() {
   const [accountState, setAccountState] = useState<AccountState>("loading")
+  const [catalogProducts, setCatalogProducts] = useState<CatalogSearchProduct[]>([])
   const [categories, setCategories] = useState<string[]>([])
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
   const pathname = usePathname()
   const { totalItems, setIsCartOpen } = useCart()
 
@@ -59,7 +89,7 @@ export function Navbar() {
         const rawProducts = (payload as { products?: unknown }).products
         if (!Array.isArray(rawProducts)) return
 
-        const products = rawProducts.filter(isCatalogCategoryProduct)
+        const products = rawProducts.filter(isCatalogSearchProduct)
         const nextCategories = Array.from(
           new Set(
             products
@@ -68,10 +98,14 @@ export function Navbar() {
           ),
         ).sort((left, right) => left.localeCompare(right, "pt-BR"))
 
+        setCatalogProducts(products)
         setCategories(nextCategories)
       })
       .catch(() => {
-        if (!cancelled) setCategories([])
+        if (!cancelled) {
+          setCatalogProducts([])
+          setCategories([])
+        }
       })
 
     return () => {
@@ -87,16 +121,30 @@ export function Navbar() {
         : { label: "Entrar", href: "/entrar" }
 
   const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`)
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
+
+  const closeOverlays = () => {
+    setIsCategoriesOpen(false)
+    setIsMobileMenuOpen(false)
+    setIsSearchOpen(false)
+  }
+
+  const normalizedQuery = normalizeSearch(searchQuery)
+  const searchSuggestions =
+    normalizedQuery.length === 0
+      ? []
+      : catalogProducts
+          .filter((product) => normalizeSearch(product.title).includes(normalizedQuery))
+          .slice(0, 5)
 
   const cartButton = (
     <button
       type="button"
       onClick={() => setIsCartOpen(true)}
-      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-800 transition-colors hover:bg-slate-100 hover:text-[#8B5CF6]"
+      className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-800 transition-colors hover:bg-violet-50 hover:text-[#7C3AED]"
       aria-label="Abrir carrinho"
     >
-      <ShoppingCart className="h-5 w-5" />
+      <ShoppingCart className="h-5 w-5" aria-hidden="true" />
       {totalItems > 0 ? (
         <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#8B5CF6] px-1 text-[11px] font-bold leading-none text-white">
           {totalItems > 99 ? "99+" : totalItems}
@@ -108,38 +156,35 @@ export function Navbar() {
   const accountButton = accountItem ? (
     <Link
       href={accountItem.href}
-      onClick={() => {
-        setIsCategoriesOpen(false)
-        setIsMobileMenuOpen(false)
-        setIsMobileSearchOpen(false)
-      }}
+      onClick={closeOverlays}
       aria-current={isActive(accountItem.href) ? "page" : undefined}
       aria-label={accountItem.label}
       title={accountItem.label}
-      className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
-        isActive(accountItem.href)
-          ? "bg-[#8B5CF6]/10 text-[#8B5CF6]"
-          : "text-slate-800 hover:bg-slate-100 hover:text-[#8B5CF6]"
-      }`}
+      className={
+        "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors " +
+        (isActive(accountItem.href)
+          ? "bg-violet-50 text-[#7C3AED]"
+          : "text-slate-800 hover:bg-violet-50 hover:text-[#7C3AED]")
+      }
     >
-      <UserRound className="h-5 w-5" />
+      <UserRound className="h-5 w-5" aria-hidden="true" />
     </Link>
   ) : (
-    <span className="h-10 w-10" aria-hidden="true" />
+    <span className="h-10 w-10 shrink-0" aria-hidden="true" />
   )
 
   const categoryItems =
     categories.length > 0 ? (
       categories.map((category) => (
-        <a
+        <Link
           key={category}
-          href={`/produtos?categoria=${encodeURIComponent(category)}`}
+          href={"/produtos?categoria=" + encodeURIComponent(category)}
           role="menuitem"
-          onClick={() => setIsCategoriesOpen(false)}
-          className="block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
+          onClick={closeOverlays}
+          className="block rounded-lg px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-violet-50 hover:text-[#7C3AED]"
         >
           {category}
-        </a>
+        </Link>
       ))
     ) : (
       <span className="block px-3 py-2.5 text-sm text-slate-500">
@@ -148,148 +193,88 @@ export function Navbar() {
     )
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 shadow-sm backdrop-blur-xl">
-      <div className="border-b border-slate-200/80">
-        <nav
-          className="mx-auto grid h-16 w-full max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 lg:h-[72px] lg:grid-cols-[auto_minmax(280px,1fr)_auto] lg:gap-8 lg:px-8"
-          aria-label="Navegação principal"
-        >
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-xl">
+      <nav
+        className="mx-auto grid h-16 w-full max-w-[1180px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-3 sm:px-5 lg:h-[72px] lg:gap-7 lg:px-8"
+        aria-label="Navegação principal"
+      >
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => {
               setIsMobileMenuOpen((current) => !current)
-              setIsMobileSearchOpen(false)
+              setIsSearchOpen(false)
+              setIsCategoriesOpen(false)
             }}
-            className="col-start-1 row-start-1 inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-900 transition-colors hover:bg-slate-100 lg:hidden"
-            aria-label="Abrir menu"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-900 transition hover:bg-slate-100 lg:hidden"
+            aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
             aria-expanded={isMobileMenuOpen}
             aria-controls="mobile-store-menu"
           >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {isMobileMenuOpen ? <X className="h-5.5 w-5.5" /> : <Menu className="h-5.5 w-5.5" />}
           </button>
 
-          <a
+          <Link
             href="/"
-            className="col-start-2 row-start-1 flex min-w-0 items-center justify-self-center gap-2.5 lg:col-start-1 lg:justify-self-start"
+            onClick={closeOverlays}
+            className="flex min-w-0 items-center gap-2.5"
             aria-label="ProxyBembem - Início"
           >
-            <img
+            <Image
               src="/brand/pb"
               alt=""
               aria-hidden="true"
-              className="h-10 w-auto shrink-0 object-contain lg:h-11"
+              width={48}
+              height={48}
+              className="h-9 w-auto shrink-0 object-contain sm:h-10 lg:h-11"
             />
             <span className="hidden truncate text-2xl tracking-wide text-black lg:inline font-[family-name:var(--font-display)]">
               ProxyBembem
             </span>
-          </a>
-
-          <form
-            id="desktop-store-search"
-            action="/produtos"
-            method="get"
-            role="search"
-            className="hidden min-w-0 max-w-[460px] items-center justify-self-center rounded-full border border-slate-200 bg-slate-50/80 px-4 shadow-sm transition focus-within:border-[#8B5CF6]/60 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#8B5CF6]/10 lg:flex lg:w-full"
-          >
-            <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-            <input
-              type="search"
-              name="busca"
-              maxLength={100}
-              placeholder="Buscar produtos..."
-              aria-label="Buscar produtos"
-              className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm text-slate-900 outline-none placeholder:text-slate-400"
-            />
-            <button
-              type="submit"
-              aria-label="Buscar produtos"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          </form>
-
-          <div className="col-start-3 row-start-1 flex items-center justify-self-end gap-0.5 lg:gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setIsMobileSearchOpen((current) => !current)
-                setIsMobileMenuOpen(false)
-              }}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-800 transition-colors hover:bg-slate-100 hover:text-[#8B5CF6] lg:hidden"
-              aria-label="Buscar produtos"
-              aria-expanded={isMobileSearchOpen}
-              aria-controls="mobile-store-search"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-
-            <a
-              href="/contato"
-              className={`hidden h-10 items-center px-3 text-sm font-medium transition-colors lg:inline-flex ${
-                isActive("/contato") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]"
-              }`}
-            >
-              Contato
-            </a>
-            <div className="hidden h-5 w-px bg-slate-200 lg:block" aria-hidden="true" />
-            <div className="hidden lg:block">{accountButton}</div>
-            {cartButton}
-          </div>
-        </nav>
-      </div>
-
-      {isMobileSearchOpen ? (
-        <div className="border-b border-slate-200 bg-white px-4 py-3 shadow-sm lg:hidden">
-          <form
-            id="mobile-store-search"
-            action="/produtos"
-            method="get"
-            role="search"
-            className="mx-auto flex max-w-lg items-center rounded-full border border-slate-200 bg-slate-50 px-4 focus-within:border-[#8B5CF6]/60 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#8B5CF6]/10"
-          >
-            <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-            <input
-              type="search"
-              name="busca"
-              maxLength={100}
-              autoFocus
-              placeholder="Buscar produtos..."
-              aria-label="Buscar produtos"
-              className="h-11 min-w-0 flex-1 bg-transparent px-3 text-base text-slate-900 outline-none placeholder:text-slate-400"
-            />
-            <button
-              type="submit"
-              aria-label="Buscar produtos"
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-[#8B5CF6]/10 hover:text-[#7C3AED]"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          </form>
+          </Link>
         </div>
-      ) : null}
 
-      <div className="hidden border-b border-slate-200/80 bg-white lg:block">
-        <nav
-          className="mx-auto flex h-11 w-full max-w-[1180px] items-center gap-8 px-8 text-sm"
-          aria-label="Navegação da loja"
-        >
+        <div className="hidden min-w-0 items-center justify-center gap-7 lg:flex">
+          <Link
+            href="/"
+            aria-current={isActive("/") ? "page" : undefined}
+            className={
+              "text-sm font-medium transition-colors " +
+              (isActive("/") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]")
+            }
+          >
+            Início
+          </Link>
+
+          <Link
+            href="/produtos"
+            aria-current={isActive("/produtos") ? "page" : undefined}
+            className={
+              "text-sm font-medium transition-colors " +
+              (isActive("/produtos") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]")
+            }
+          >
+            Produtos
+          </Link>
+
           <div className="relative">
             <button
               type="button"
-              onClick={() => setIsCategoriesOpen((current) => !current)}
-              className={`inline-flex h-9 items-center gap-1.5 font-medium transition-colors ${
-                pathname.startsWith("/produtos") || isCategoriesOpen
-                  ? "text-[#7C3AED]"
-                  : "text-slate-700 hover:text-[#7C3AED]"
-              }`}
+              onClick={() => {
+                setIsCategoriesOpen((current) => !current)
+                setIsSearchOpen(false)
+              }}
+              className={
+                "inline-flex h-10 items-center gap-1 text-sm font-medium transition-colors " +
+                (isCategoriesOpen ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]")
+              }
               aria-expanded={isCategoriesOpen}
               aria-controls="store-category-menu"
               aria-haspopup="menu"
             >
               Categorias
               <ChevronDown
-                className={`h-4 w-4 transition-transform ${isCategoriesOpen ? "rotate-180" : ""}`}
+                className={"h-4 w-4 transition-transform " + (isCategoriesOpen ? "rotate-180" : "")}
                 aria-hidden="true"
               />
             </button>
@@ -298,58 +283,170 @@ export function Navbar() {
               <div
                 id="store-category-menu"
                 role="menu"
-                className="absolute left-0 top-[calc(100%+0.35rem)] w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl"
+                className="absolute left-1/2 top-[calc(100%+0.6rem)] w-64 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl"
               >
                 {categoryItems}
               </div>
             ) : null}
           </div>
 
-          <a
-            href="/"
-            aria-current={isActive("/") ? "page" : undefined}
-            className={`font-medium transition-colors ${
-              isActive("/") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]"
-            }`}
+          <Link
+            href="/contato"
+            aria-current={isActive("/contato") ? "page" : undefined}
+            className={
+              "text-sm font-medium transition-colors " +
+              (isActive("/contato") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]")
+            }
           >
-            Início
-          </a>
-          <a
-            href="/produtos"
-            aria-current={isActive("/produtos") ? "page" : undefined}
-            className={`font-medium transition-colors ${
-              isActive("/produtos") ? "text-[#7C3AED]" : "text-slate-700 hover:text-[#7C3AED]"
-            }`}
+            Contato
+          </Link>
+        </div>
+
+        <div className="flex items-center justify-self-end gap-0.5 sm:gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchOpen((current) => !current)
+              setIsMobileMenuOpen(false)
+              setIsCategoriesOpen(false)
+            }}
+            className={
+              "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors " +
+              (isSearchOpen
+                ? "bg-violet-50 text-[#7C3AED]"
+                : "text-slate-800 hover:bg-violet-50 hover:text-[#7C3AED]")
+            }
+            aria-label="Buscar produtos"
+            aria-expanded={isSearchOpen}
+            aria-controls="store-search-panel"
           >
-            Produtos
-          </a>
-        </nav>
-      </div>
+            {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+          </button>
+          {accountButton}
+          {cartButton}
+        </div>
+      </nav>
+
+      {isSearchOpen ? (
+        <div id="store-search-panel" className="border-t border-slate-100 bg-white px-3 py-3 shadow-lg sm:px-5">
+          <div className="mx-auto w-full max-w-2xl">
+            <form
+              id="store-search"
+              action="/produtos"
+              method="get"
+              role="search"
+              className="flex items-center rounded-xl border border-violet-200 bg-slate-50 px-3 shadow-sm focus-within:border-[#8B5CF6] focus-within:bg-white focus-within:ring-2 focus-within:ring-violet-100"
+            >
+              <Search className="h-4 w-4 shrink-0 text-[#8B5CF6]" aria-hidden="true" />
+              <input
+                type="search"
+                name="busca"
+                maxLength={100}
+                autoFocus
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Buscar produtos..."
+                aria-label="Buscar produtos"
+                className="h-11 min-w-0 flex-1 bg-transparent px-3 text-base text-slate-900 outline-none placeholder:text-slate-400 sm:text-sm"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  aria-label="Limpar busca"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </form>
+
+            {normalizedQuery.length > 0 ? (
+              <div className="mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-950">Produtos sugeridos</p>
+                  <span className="text-xs text-slate-400">
+                    {searchSuggestions.length} resultado{searchSuggestions.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                {searchSuggestions.length > 0 ? (
+                  <div>
+                    {searchSuggestions.map((product) => (
+                      <Link
+                        key={product.id}
+                        href={productHref(product)}
+                        onClick={closeOverlays}
+                        className="flex items-center gap-3 border-b border-slate-100 px-3 py-2.5 transition last:border-0 hover:bg-violet-50/60 sm:px-4"
+                      >
+                        <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                          <Image
+                            src={product.image}
+                            alt=""
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                          />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-slate-900">
+                            {product.title}
+                          </span>
+                          <span className="mt-0.5 block text-sm font-bold text-[#7C3AED]">
+                            {formatPrice(product.discountPrice)}
+                          </span>
+                        </span>
+                        <ChevronDown className="-rotate-90 h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-4 py-5 text-center text-sm text-slate-500">
+                    Nenhum produto encontrado com esse nome.
+                  </p>
+                )}
+
+                <Link
+                  href={"/produtos?busca=" + encodeURIComponent(searchQuery.trim())}
+                  onClick={closeOverlays}
+                  className="flex min-h-11 items-center justify-between gap-3 border-t border-slate-100 bg-violet-50/50 px-4 text-sm font-semibold text-[#7C3AED] transition hover:bg-violet-50"
+                >
+                  <span>Ver todos os resultados</span>
+                  <span aria-hidden="true">→</span>
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {isMobileMenuOpen ? (
         <div
           id="mobile-store-menu"
-          className="border-b border-slate-200 bg-white px-4 py-2 shadow-lg lg:hidden"
+          className="border-t border-slate-100 bg-white px-4 py-2 shadow-lg lg:hidden"
         >
           <nav className="mx-auto flex max-w-lg flex-col" aria-label="Menu móvel da loja">
-            <a
+            <Link
               href="/"
+              onClick={closeOverlays}
               className="flex min-h-12 items-center border-b border-slate-100 px-1 text-base font-medium text-slate-900"
             >
               Início
-            </a>
-            <a
+            </Link>
+            <Link
               href="/produtos"
+              onClick={closeOverlays}
               className="flex min-h-12 items-center border-b border-slate-100 px-1 text-base font-medium text-slate-900"
             >
               Produtos
-            </a>
-            <a
+            </Link>
+            <Link
               href="/contato"
+              onClick={closeOverlays}
               className="flex min-h-12 items-center px-1 text-base font-medium text-slate-900"
             >
               Contato
-            </a>
+            </Link>
           </nav>
         </div>
       ) : null}
