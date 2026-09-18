@@ -12,6 +12,7 @@ test("legacy static product rollback catalog is retired after Stage 2 acceptance
 
 test("public storefront components receive products and never import the static runtime catalog", () => {
   const productsPage = source("components/pages/products-page.tsx")
+  const productsBrowser = source("components/products-browser.tsx")
   const homePage = source("components/pages/home-page.tsx")
 
   assert.doesNotMatch(productsPage, /@\/data\/products/)
@@ -58,7 +59,8 @@ test("catalog repository failure renders a controlled storefront unavailable sta
   assert.match(productsRoute, /unavailable/)
   assert.match(homeRoute, /catch\s*\{/)
   assert.match(homeRoute, /unavailable/)
-  assert.match(productsPage, /Catálogo temporariamente indisponível/)
+  assert.match(productsPage, /ProductsBrowser/)
+  assert.match(productsBrowser, /Catálogo temporariamente indisponível/)
   assert.match(homePage, /Catálogo temporariamente indisponível/)
 })
 
