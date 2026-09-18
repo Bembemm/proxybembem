@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { ProductsPage } from "@/components/pages/products-page"
-import { listPublishedProducts } from "@/lib/server/product-catalog"
+import { getPublishedProductSummaries } from "@/lib/server/product-catalog-cache"
 import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
 export const dynamic = "force-dynamic"
@@ -27,11 +27,11 @@ export default async function ProdutosPage({
 }) {
   const storeSettings = await getPublicStoreSettings()
   const params = await searchParams
-  let products: Awaited<ReturnType<typeof listPublishedProducts>> = []
+  let products: Awaited<ReturnType<typeof getPublishedProductSummaries>> = []
   let unavailable = false
 
   try {
-    products = await listPublishedProducts()
+    products = await getPublishedProductSummaries()
   } catch {
     unavailable = true
   }
