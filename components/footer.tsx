@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import { Instagram, Lock, Mail } from "lucide-react"
 
@@ -42,7 +40,7 @@ export function Footer({ contactEmail, contactWhatsappE164 }: FooterProps) {
     : null
 
   return (
-    <footer className="relative bg-white/60 backdrop-blur-md border-t border-slate-200/50 shadow-sm">
+    <footer className="relative border-t border-slate-200/70 bg-white/90 shadow-sm">
       <div className="container mx-auto px-3 sm:px-4 py-8 sm:py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
           <div>
