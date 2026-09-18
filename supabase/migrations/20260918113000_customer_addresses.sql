@@ -79,7 +79,7 @@ create or replace function public.normalize_customer_address_default()
 returns trigger
 language plpgsql
 set search_path = ''
-as $
+as $$
 begin
   if tg_op = 'INSERT'
      and not exists (
@@ -100,7 +100,7 @@ begin
 
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists normalize_customer_address_default on public.customer_addresses;
 create trigger normalize_customer_address_default
