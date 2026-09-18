@@ -1,6 +1,14 @@
 "use client"
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 import {
   parseStoredCart,
   reconcileStoredCartWithCatalog,
@@ -22,7 +30,7 @@ export interface CartItem {
   quantity: number
 }
 
-type CatalogStatus = "loading" | "ready" | "unavailable"
+type CatalogStatus = "idle" | "loading" | "ready" | "unavailable"
 
 interface CartContextType {
   items: CartItem[]
@@ -35,6 +43,7 @@ interface CartContextType {
   isCartOpen: boolean
   setIsCartOpen: (open: boolean) => void
   catalogStatus: CatalogStatus
+  ensureCatalog: () => Promise<void>
   retryCatalog: () => void
   cartNotice: string | null
   dismissCartNotice: () => void
@@ -106,42 +115,19 @@ function mergeHydratedItems(restoredItems: CartItem[], currentItems: CartItem[])
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>("loading")
-  const [catalogRetryKey, setCatalogRetryKey] = useState(0)
+  const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>("idle")
   const [cartNotice, setCartNotice] = useState<string | null>(null)
   const [catalogProducts, setCatalogProducts] = useState<StorefrontProduct[]>([])
   const storedLinesRef = useRef<StoredCartLine[] | null>(null)
   const hasReadStoredCartRef = useRef(false)
+  const catalogRequestRef = useRef<Promise<void> | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
+  const ensureCatalog = useCallback(async () => {
+    if (catalogStatus === "ready") return
+    if (catalogRequestRef.current) return catalogRequestRef.current
 
-    const hydrateCart = async () => {
+    const request = (async () => {
       setCatalogStatus("loading")
-
-      if (!hasReadStoredCartRef.current) {
-        hasReadStoredCartRef.current = true
-
-        try {
-          const storedCart = window.localStorage.getItem(CART_STORAGE_KEY)
-          if (!storedCart) {
-            storedLinesRef.current = []
-          } else {
-            const parsedCart = parseStoredCart(JSON.parse(storedCart))
-            if (parsedCart) {
-              storedLinesRef.current = parsedCart
-            } else {
-              window.localStorage.removeItem(CART_STORAGE_KEY)
-              storedLinesRef.current = []
-            }
-          }
-        } catch {
-          window.localStorage.removeItem(CART_STORAGE_KEY)
-          storedLinesRef.current = []
-        }
-      }
-
-      const storedLines = storedLinesRef.current ?? []
 
       try {
         const response = await fetch("/api/catalog", { cache: "no-store" })
@@ -150,8 +136,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const catalog = parseCatalogProducts(await response.json().catch(() => null))
         if (!catalog) throw new Error("Invalid catalog response")
 
+        const storedLines = storedLinesRef.current ?? []
         const reconciliation = reconcileStoredCartWithCatalog(storedLines, catalog)
-        if (cancelled) return
 
         setCatalogProducts(catalog)
         setItems((currentItems) => mergeHydratedItems(reconciliation.items, currentItems))
@@ -160,23 +146,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
         setCatalogStatus("ready")
       } catch {
-        if (!cancelled) setCatalogStatus("unavailable")
+        setCatalogStatus("unavailable")
+      } finally {
+        catalogRequestRef.current = null
       }
-    }
+    })()
 
-    void hydrateCart()
-
-    return () => {
-      cancelled = true
-    }
-  }, [catalogRetryKey])
+    catalogRequestRef.current = request
+    return request
+  }, [catalogStatus])
 
   useEffect(() => {
-    if (catalogStatus !== "ready") return
+    if (hasReadStoredCartRef.current) return
+    hasReadStoredCartRef.current = true
+
+    let storedLines: StoredCartLine[] = []
+
+    try {
+      const storedCart = window.localStorage.getItem(CART_STORAGE_KEY)
+      if (storedCart) {
+        const parsedCart = parseStoredCart(JSON.parse(storedCart))
+        if (parsedCart) {
+          storedLines = parsedCart
+        } else {
+          window.localStorage.removeItem(CART_STORAGE_KEY)
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(CART_STORAGE_KEY)
+    }
+
+    storedLinesRef.current = storedLines
+    if (storedLines.length > 0) {
+      void ensureCatalog()
+    }
+  }, [ensureCatalog])
+
+  useEffect(() => {
+    if (!hasReadStoredCartRef.current || catalogStatus === "loading") return
+    if (catalogStatus === "unavailable") return
+
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
   }, [items, catalogStatus])
 
-  const retryCatalog = () => setCatalogRetryKey((current) => current + 1)
+  const retryCatalog = () => {
+    catalogRequestRef.current = null
+    void ensureCatalog()
+  }
+
   const dismissCartNotice = () => setCartNotice(null)
 
   const addToCart = (product: StorefrontProduct) => {
@@ -231,6 +248,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         isCartOpen,
         setIsCartOpen,
         catalogStatus,
+        ensureCatalog,
         retryCatalog,
         cartNotice,
         dismissCartNotice,
