@@ -14,6 +14,9 @@ export type RateLimitScope =
   | "account-password-reset"
   | "account-password-recovery"
   | "account-profile"
+  | "account-confirmation-resend"
+  | "account-email-change"
+  | "account-address"
 
 const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   "shipping-quote": { limit: 60, windowSeconds: 600 },
@@ -27,6 +30,9 @@ const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> =
   "account-password-reset": { limit: 5, windowSeconds: 900 },
   "account-password-recovery": { limit: 5, windowSeconds: 900 },
   "account-profile": { limit: 20, windowSeconds: 600 },
+  "account-confirmation-resend": { limit: 5, windowSeconds: 900 },
+  "account-email-change": { limit: 5, windowSeconds: 900 },
+  "account-address": { limit: 30, windowSeconds: 600 },
 }
 
 export async function consumeRateLimit(input: {
