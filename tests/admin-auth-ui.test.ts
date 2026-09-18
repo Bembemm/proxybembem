@@ -140,6 +140,7 @@ test("CSP permits browser auth only to the configured Supabase origin", () => {
 test("admin routes use a dedicated protected shell instead of storefront chrome", async () => {
   const rootLayout = await source("../app/layout.tsx")
   const siteShell = await source("../components/site-shell.tsx")
+  const shellRouter = await source("../components/site-shell-router.tsx")
   const adminPage = await source("../app/admin/page.tsx")
   const adminShell = await source("../components/admin/admin-shell.tsx")
   const adminNav = await source("../components/admin/admin-nav.tsx")
@@ -148,13 +149,15 @@ test("admin routes use a dedicated protected shell instead of storefront chrome"
   assert.match(rootLayout, /SiteShell/)
   assert.doesNotMatch(rootLayout, /FaqSection|WhatsAppFloatingButton|CartPanel|Navbar/)
 
-  assert.match(siteShell, /usePathname/)
-  assert.match(siteShell, /pathname\s*===\s*["']\/admin["']/)
-  assert.match(siteShell, /pathname\.startsWith\(\s*["']\/admin\/["']\s*\)/)
+  assert.doesNotMatch(siteShell, /usePathname/)
   assert.match(siteShell, /Navbar/)
   assert.match(siteShell, /FaqSection/)
   assert.match(siteShell, /WhatsAppFloatingButton/)
-  assert.match(siteShell, /CartPanel/)
+  assert.match(siteShell, /SiteShellRouter/)
+  assert.match(shellRouter, /usePathname/)
+  assert.match(shellRouter, /pathname\s*===\s*["']\/admin["']/)
+  assert.match(shellRouter, /pathname\.startsWith\(\s*["']\/admin\/["']\s*\)/)
+  assert.match(shellRouter, /LazyCartPanel/)
 
   assert.match(adminPage, /AdminShell/)
   assert.match(adminPage, /Painel administrativo/)
