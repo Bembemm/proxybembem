@@ -4,7 +4,7 @@ import { digitsOnly } from "./checkout.ts"
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export type AccountFieldErrors = Partial<
-  Record<"name" | "email" | "whatsapp" | "password" | "confirmPassword", string>
+  Record<"name" | "email" | "whatsapp" | "currentPassword" | "password" | "confirmPassword", string>
 >
 
 export function validateAccountName(value: string) {
