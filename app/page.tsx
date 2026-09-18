@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { HomePage } from "@/components/pages/home-page"
 import { getPublishedProductSummaries } from "@/lib/server/product-catalog-cache"
-import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
 export const dynamic = "force-dynamic"
 
@@ -12,7 +11,6 @@ export const metadata: Metadata = {
 }
 
 export default async function Home() {
-  const storeSettings = await getPublicStoreSettings()
   let products: Awaited<ReturnType<typeof getPublishedProductSummaries>> = []
   let unavailable = false
 
@@ -22,11 +20,5 @@ export default async function Home() {
     unavailable = true
   }
 
-  return (
-    <HomePage
-      products={products}
-      unavailable={unavailable}
-      productionLeadTimeBusinessDays={storeSettings.productionLeadTimeBusinessDays}
-    />
-  )
+  return <HomePage products={products} unavailable={unavailable} />
 }
