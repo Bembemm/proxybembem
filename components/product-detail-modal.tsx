@@ -116,6 +116,7 @@ export function ProductDetailModal({
               <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-slate-100">
                 <Image
                   src={product.image}
+                  unoptimized={product.image.startsWith("/")}
                   alt={product.title}
                   fill
                   priority
