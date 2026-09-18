@@ -2,7 +2,7 @@
 
 import { ImagePlus, Loader2 } from "lucide-react"
 import { useState, type ChangeEvent } from "react"
-import { createSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
+import { createAdminSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
 
 const PRODUCT_IMAGE_BUCKET = "product-images"
 const PRODUCT_IMAGE_MAX_BYTES = 8 * 1024 * 1024
@@ -69,7 +69,7 @@ export function ProductImageField({
         throw new Error("authorization_failed")
       }
 
-      const supabase = createSupabaseBrowserClient()
+      const supabase = createAdminSupabaseBrowserClient()
       const { error: uploadError } = await supabase.storage
         .from(PRODUCT_IMAGE_BUCKET)
         .uploadToSignedUrl(authorization.path, authorization.token, file, {
