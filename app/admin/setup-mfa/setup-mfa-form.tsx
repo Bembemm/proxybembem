@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type FormEvent } from "react"
-import { createSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
+import { createAdminSupabaseBrowserClient } from "../../../lib/supabase/client.ts"
 
 async function activateAdminSession() {
   return fetch("/api/admin/session/activate", {
@@ -24,7 +24,7 @@ export function SetupMfaForm() {
     setBusy(true)
 
     try {
-      const supabase = createSupabaseBrowserClient()
+      const supabase = createAdminSupabaseBrowserClient()
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
         friendlyName: "ProxyBembem Admin",
@@ -56,7 +56,7 @@ export function SetupMfaForm() {
     setMessage(null)
     setBusy(true)
 
-    const supabase = createSupabaseBrowserClient()
+    const supabase = createAdminSupabaseBrowserClient()
     try {
       const challenge = await supabase.auth.mfa.challenge({ factorId })
       if (challenge.error) {
