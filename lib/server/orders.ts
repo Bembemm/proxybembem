@@ -287,6 +287,28 @@ export async function getOrderByNumber(orderNumber: string): Promise<OrderRecord
   return rows[0] ?? null
 }
 
+export async function getOrderByIdForCustomer(
+  orderId: string,
+  customerId: string,
+): Promise<OrderRecord | null> {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId) ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(customerId)
+  ) {
+    throw new Error("Invalid customer order lookup")
+  }
+
+  const params = new URLSearchParams({
+    id: `eq.${orderId}`,
+    customer_id: `eq.${customerId}`,
+    select: ORDER_SELECT,
+    limit: "1",
+  })
+  const response = await supabaseRequest(`orders?${params.toString()}`)
+  const rows = (await response.json()) as OrderRecord[]
+  return rows[0] ?? null
+}
+
 export async function getOrderByCheckoutAttemptId(
   attemptId: string,
 ): Promise<OrderRecord | null> {
