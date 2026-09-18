@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { LayoutDashboard, PackageSearch, ShieldCheck, UserRound } from "lucide-react"
+import { LayoutDashboard, MapPinned, PackageSearch, ShieldCheck, UserRound } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 const NAV_ITEMS = [
   { href: "/minha-conta", label: "Visão geral", icon: LayoutDashboard },
   { href: "/minha-conta/pedidos", label: "Pedidos", icon: PackageSearch },
   { href: "/minha-conta/perfil", label: "Perfil", icon: UserRound },
+  { href: "/minha-conta/enderecos", label: "Endereços", icon: MapPinned },
   { href: "/minha-conta/seguranca", label: "Segurança", icon: ShieldCheck },
 ] as const
 
