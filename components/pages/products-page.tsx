@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { StorefrontProductCard } from "@/components/storefront-product-card"
-import type { Product } from "@/contexts/cart-context"
+import type { StorefrontProduct } from "@/contexts/cart-context"
 
 function normalizeSearch(value: string) {
   return value
@@ -22,7 +22,7 @@ export function ProductsPage({
   initialCategory,
   initialSearch,
 }: {
-  products: Product[]
+  products: StorefrontProduct[]
   unavailable?: boolean
   productionLeadTimeBusinessDays: number
   initialCategory?: string
