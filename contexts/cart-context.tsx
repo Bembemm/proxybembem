@@ -183,9 +183,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [ensureCatalog])
 
   useEffect(() => {
-    if (!hasReadStoredCartRef.current || catalogStatus === "loading") return
-    if (catalogStatus === "unavailable") return
-
+    if (catalogStatus !== "ready") return
     window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
   }, [items, catalogStatus])
 
@@ -197,6 +195,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const dismissCartNotice = () => setCartNotice(null)
 
   const addToCart = (product: StorefrontProduct) => {
+    void ensureCatalog()
     setItems((previousItems) => {
       const existingItem = previousItems.find((item) => item.product.id === product.id)
       if (existingItem) {
