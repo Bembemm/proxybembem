@@ -15,6 +15,7 @@ test("storefront has a dedicated dynamic product page with breadcrumb and approv
 
   const route = readFileSync(routeUrl, "utf8")
   const page = readFileSync(pageUrl, "utf8")
+  const purchaseActions = source("components/product-purchase-actions.tsx")
 
   assert.match(route, /notFound/)
   assert.match(route, /getPublishedProductsByIds/)
@@ -24,8 +25,9 @@ test("storefront has a dedicated dynamic product page with breadcrumb and approv
   assert.match(page, /Produtos/)
   assert.match(page, /Informações importantes/)
   assert.match(page, /Descrição/)
-  assert.match(page, /Adicionar ao carrinho/i)
-  assert.match(page, /Comprar agora/i)
+  assert.match(page, /ProductPurchaseActions/)
+  assert.match(purchaseActions, /Adicionar ao carrinho/i)
+  assert.match(purchaseActions, /Comprar agora/i)
   assert.match(page, /product\.details/)
   assert.match(page, /product\.sections/)
   assert.match(page, /productionLeadTimeBusinessDays/)
