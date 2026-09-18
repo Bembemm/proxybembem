@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!(await consumeRateLimit({ request, scope: "account-profile" }))) {
+    if (!(await consumeRateLimit({ request, scope: "account-password-change" }))) {
       return json(429, { ok: false, message: "Tente novamente em alguns minutos." })
     }
   } catch {
