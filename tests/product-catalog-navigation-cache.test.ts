@@ -27,6 +27,7 @@ test("public catalog revalidation is a Server Action covering home and products"
   assert.match(source, /from\s+["']next\/cache["']/)
   assert.match(source, /revalidatePath\(\s*["']\/["']\s*\)/)
   assert.match(source, /revalidatePath\(\s*["']\/produtos["']\s*\)/)
+  assert.match(source, /revalidatePath\(\s*["']\/produtos\/\[produto\]["']\s*,\s*["']page["']\s*\)/)
 })
 
 test("successful admin product saves and lifecycle mutations invalidate client navigation cache", () => {
