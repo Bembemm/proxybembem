@@ -23,7 +23,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StorefrontProductCard } from "@/components/storefront-product-card"
-import { useCart, type Product } from "@/contexts/cart-context"
+import { useCart, type Product, type StorefrontProduct } from "@/contexts/cart-context"
 
 const PRODUCTION_LEAD_TIME_HIGHLIGHT =
   /^produção\s+em\s+até\s+\d+\s+(?:dia\s+útil|dias\s+úteis)\.?$/i
@@ -62,7 +62,7 @@ export function ProductPage({
   productionLeadTimeBusinessDays,
 }: {
   product: Product
-  relatedProducts: Product[]
+  relatedProducts: StorefrontProduct[]
   productionLeadTimeBusinessDays: number
 }) {
   const { addToCart, items, setIsCartOpen } = useCart()
