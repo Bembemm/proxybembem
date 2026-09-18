@@ -220,6 +220,17 @@ test("detail strictly maps customer-safe immutable order data and timeline", asy
   })
 })
 
+test("detail accepts empty optional address complement from checkout storage", async () => {
+  const result = await getOwnOrderByIdWithDependencies(
+    ORDER_ID,
+    dependencies({
+      detailResult: detail({ address_complement: "" }),
+    }),
+  )
+
+  assert.equal(result?.address.complement, null)
+})
+
 test("malformed or overbroad RPC data is rejected instead of leaking internals", async () => {
   for (const listResult of [
     { orders: [summary({ public_token: "secret" })], total: 1 },
