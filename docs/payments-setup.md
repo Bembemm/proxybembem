@@ -51,7 +51,10 @@ Use `.env.example` como lista canônica de nomes. `NEXT_PUBLIC_*` contém soment
 6. frete é validado/recotado;
 7. o pedido é criado no Supabase antes do redirecionamento;
 8. a preferência Mercado Pago usa somente valores reconstruídos no servidor;
-9. `back_urls` retornam para `/minha-conta/pedidos/{order-id}`.
+9. `back_urls` retornam para `/minha-conta/pedidos/{order-id}`;
+10. cada preferência Checkout Pro expira em 72 horas;
+11. enquanto o pedido permanece `pending + awaiting_payment` e dentro desse prazo, a página privada oferece **Continuar pagamento** por uma rota server-side owner-scoped;
+12. depois de 72 horas sem confirmação financeira, o checkout é tratado como **expirado** na aplicação: não pode mais ser retomado, não entra em produção e permanece apenas como histórico. O `payment_status` não é falsificado para representar essa expiração local.
 
 Se um produto for arquivado antes do pagamento, deixar de existir ou não estiver publicado, o checkout deve falhar fechado em vez de usar dados antigos do carrinho. Se o preço atual mudar, o servidor usa o preço atual.
 
@@ -64,6 +67,8 @@ https://www.proxybembem.com.br/api/mercadopago/webhook
 ```
 
 O webhook valida HMAC, consulta o pagamento diretamente no provedor, valida a referência `PB-...`, compara moeda/valor com a verdade armazenada e aplica a transição via RPC atômico. Divergências vão para revisão; retorno de navegador nunca é autoridade financeira.
+
+A expiração de 72 horas é uma regra de checkout, não um status financeiro inventado. Pedidos abandonados continuam auditáveis no histórico, mas a aplicação deixa de tratá-los como checkouts retomáveis depois do prazo. Não existe hard delete automático de pedido nesse fluxo.
 
 ## Domínio e retorno privado
 
