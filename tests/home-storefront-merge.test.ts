@@ -13,7 +13,7 @@ test("home sends every published product to the storefront without a featured-on
   assert.doesNotMatch(route, /featuredProducts\s*=\s*products\.filter/)
   assert.match(route, /<HomePage\s+products=\{products\}/)
   assert.match(home, /HomePage\s*\(\s*\{\s*products/)
-  assert.match(home, /products\.map\s*\(/)
+  assert.match(home, /products\.slice\s*\(/)
 })
 
 test("home and products share one storefront product-card presentation", () => {
