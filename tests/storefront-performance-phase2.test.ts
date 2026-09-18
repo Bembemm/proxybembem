@@ -45,6 +45,21 @@ test("home and products render server cards through small client interaction she
   assert.match(browser, /card:\s*ReactNode/)
 })
 
+test("individual product page hydrates only purchase controls so related cards stay server rendered", () => {
+  const page = source("components/product-page.tsx")
+  const actionsPath = new URL("../components/product-purchase-actions.tsx", import.meta.url)
+
+  assert.equal(existsSync(actionsPath), true, "product purchase interaction island must exist")
+  const actions = readFileSync(actionsPath, "utf8")
+
+  assert.doesNotMatch(page, /^["']use client["']/m)
+  assert.match(page, /ProductPurchaseActions/)
+  assert.doesNotMatch(page, /useState|useCart/)
+  assert.match(actions, /^["']use client["']/m)
+  assert.match(actions, /useCart/)
+  assert.match(actions, /setIsCartOpen\(true\)/)
+})
+
 test("public shell keeps static chrome on the server and only route switching in a client boundary", () => {
   const shell = source("components/site-shell.tsx")
   const routerPath = new URL("../components/site-shell-router.tsx", import.meta.url)
