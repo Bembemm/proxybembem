@@ -1,10 +1,10 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import dynamic from "next/dynamic"
 import { Loader2, ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CartItems } from "@/components/cart-items"
-import { ShippingOptions } from "@/components/shipping-options"
 import { useCart } from "@/contexts/cart-context"
 import { digitsOnly, formatCep, formatPrice } from "@/lib/checkout"
 import {
@@ -13,6 +13,11 @@ import {
   type ShippingClientState,
 } from "@/lib/shipping-client"
 import type { PublicShippingOption } from "@/lib/server/shipping-quote"
+
+const ShippingOptions = dynamic(
+  () => import("@/components/shipping-options").then((module) => module.ShippingOptions),
+  { ssr: false, loading: () => null },
+)
 
 const CHECKOUT_PREVIEW_KEY = "proxybembem-checkout-preview-v1"
 
@@ -69,6 +74,7 @@ export function CartPanel() {
     retryCatalog,
     cartNotice,
     dismissCartNotice,
+    ensureCatalog,
   } = useCart()
 
   const [cep, setCep] = useState("")
@@ -89,6 +95,10 @@ export function CartPanel() {
     ? shipping.selectedShipping.priceCents / 100
     : 0
   const finalTotal = totalPrice + shippingPrice
+
+  useEffect(() => {
+    if (isCartOpen) void ensureCatalog()
+  }, [isCartOpen, ensureCatalog])
 
   useEffect(() => {
     if (!isCartOpen) return
@@ -303,14 +313,20 @@ export function CartPanel() {
                 </div>
 
                 <div className="mt-4">
-                  <ShippingOptions
-                    options={shipping.shippingOptions}
-                    selected={shipping.selectedShipping}
-                    isLoading={isQuoting}
-                    error={shipping.shippingError}
-                    hasValidCep={hasValidCep}
-                    onSelect={handleShippingSelect}
-                  />
+                  {hasValidCep ? (
+                    <ShippingOptions
+                      options={shipping.shippingOptions}
+                      selected={shipping.selectedShipping}
+                      isLoading={isQuoting}
+                      error={shipping.shippingError}
+                      hasValidCep={hasValidCep}
+                      onSelect={handleShippingSelect}
+                    />
+                  ) : (
+                    <p className="text-sm text-slate-500">
+                      Informe um CEP válido para consultar preço e prazo de entrega.
+                    </p>
+                  )}
                 </div>
               </div>
 
