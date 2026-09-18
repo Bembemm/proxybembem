@@ -38,7 +38,7 @@ test("home uses a dedicated highlight card while products keep the shared storef
   assert.match(highlight, /Ver produto/)
   assert.match(highlight, /ArrowRight/)
   assert.match(highlight, /Eye/)
-  assert.match(highlight, /w-\[90%\]/)
+  assert.match(highlight, /w-\[92%\]/)
   assert.match(highlight, /grid-cols-\[44%_minmax\(0,1fr\)\]/)
   assert.match(highlight, /font-serif/)
   assert.match(highlight, /text-\[17px\]/)
