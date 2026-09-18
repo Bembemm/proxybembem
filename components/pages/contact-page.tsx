@@ -49,7 +49,7 @@ export function ContactPage({ contactEmail, contactWhatsappE164 }: ContactPagePr
         {hasContactChannel ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto px-2">
             {whatsappUrl ? (
-              <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-6 sm:p-8 md:p-10 text-center rounded-lg flex flex-col">
+              <div className="border border-slate-200 bg-white shadow-lg p-6 sm:p-8 md:p-10 text-center rounded-lg flex flex-col">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-[#8B5CF6]/20 border-2 border-[#8B5CF6]/50 flex items-center justify-center rounded-lg">
                   <WhatsAppIcon className="w-8 h-8 sm:w-10 sm:h-10 text-[#8B5CF6]" />
                 </div>
@@ -73,7 +73,7 @@ export function ContactPage({ contactEmail, contactWhatsappE164 }: ContactPagePr
             ) : null}
 
             {contactEmail ? (
-              <div className="bg-white/60 backdrop-blur-md border border-white/50 shadow-lg p-6 sm:p-8 md:p-10 text-center rounded-lg flex flex-col">
+              <div className="border border-slate-200 bg-white shadow-lg p-6 sm:p-8 md:p-10 text-center rounded-lg flex flex-col">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-[#8B5CF6]/20 border-2 border-[#8B5CF6]/50 flex items-center justify-center rounded-lg">
                   <Mail className="w-8 h-8 sm:w-10 sm:h-10 text-[#8B5CF6]" />
                 </div>
