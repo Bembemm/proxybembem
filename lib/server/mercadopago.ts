@@ -15,6 +15,8 @@ interface MercadoPagoPreferenceInput {
   notificationUrl: string
   returnUrl: string
   payerName: string
+  expirationDateFrom: string
+  expirationDateTo: string
 }
 
 export interface MercadoPagoPreference {
@@ -73,6 +75,16 @@ function webhooksOnlyNotificationUrl(value: string) {
 export async function createMercadoPagoPreference(
   input: MercadoPagoPreferenceInput,
 ): Promise<MercadoPagoPreference> {
+  const expirationFromMs = Date.parse(input.expirationDateFrom)
+  const expirationToMs = Date.parse(input.expirationDateTo)
+  if (
+    !Number.isFinite(expirationFromMs) ||
+    !Number.isFinite(expirationToMs) ||
+    expirationToMs <= expirationFromMs
+  ) {
+    throw new Error("Invalid checkout expiration window")
+  }
+
   let shippingItem: {
     id: string
     title: string
@@ -126,6 +138,9 @@ export async function createMercadoPagoPreference(
         failure: input.returnUrl,
       },
       auto_return: "approved",
+      expires: true,
+      expiration_date_from: input.expirationDateFrom,
+      expiration_date_to: input.expirationDateTo,
     }),
   })
 
