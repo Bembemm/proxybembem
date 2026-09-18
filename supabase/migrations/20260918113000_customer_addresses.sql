@@ -50,6 +50,12 @@ begin
     raise exception 'customer address owner required';
   end if;
 
+  -- Serialize inserts for the same customer so concurrent requests cannot
+  -- both observe the same count and exceed the five-address limit.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(new.customer_id::text, 0)
+  );
+
   select count(*)
     into v_count
     from public.customer_addresses
