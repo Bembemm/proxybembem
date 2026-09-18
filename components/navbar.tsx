@@ -33,7 +33,7 @@ export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const pathname = usePathname()
-  const { totalItems, setIsCartOpen, catalogProducts } = useCart()
+  const { totalItems, setIsCartOpen, catalogProducts, catalogStatus, ensureCatalog } = useCart()
 
   useEffect(() => {
     let cancelled = false
@@ -48,10 +48,19 @@ export function Navbar() {
       setAccountState(data.user ? "authenticated" : "guest")
     })
 
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled) {
+        setAccountState(session?.user ? "authenticated" : "guest")
+      }
+    })
+
     return () => {
       cancelled = true
+      subscription.unsubscribe()
     }
-  }, [pathname])
+  }, [])
 
   const categories = useMemo(
     () =>
@@ -92,7 +101,10 @@ export function Navbar() {
   const cartButton = (
     <button
       type="button"
-      onClick={() => setIsCartOpen(true)}
+      onClick={() => {
+        void ensureCatalog()
+        setIsCartOpen(true)
+      }}
       className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-800 transition-colors hover:bg-violet-50 hover:text-[#7C3AED]"
       aria-label="Abrir carrinho"
     >
@@ -140,7 +152,7 @@ export function Navbar() {
       ))
     ) : (
       <span className="block px-3 py-2.5 text-sm text-slate-500">
-        Categorias indisponíveis no momento.
+        {catalogStatus === "loading" ? "Carregando categorias..." : "Categorias indisponíveis no momento."}
       </span>
     )
 
@@ -213,8 +225,10 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => {
-                setIsCategoriesOpen((current) => !current)
+                const nextOpen = !isCategoriesOpen
+                setIsCategoriesOpen(nextOpen)
                 setIsSearchOpen(false)
+                if (nextOpen) void ensureCatalog()
               }}
               className={
                 "inline-flex h-10 items-center gap-1 text-sm font-medium transition-colors " +
@@ -258,9 +272,11 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => {
-              setIsSearchOpen((current) => !current)
+              const nextOpen = !isSearchOpen
+              setIsSearchOpen(nextOpen)
               setIsMobileMenuOpen(false)
               setIsCategoriesOpen(false)
+              if (nextOpen) void ensureCatalog()
             }}
             className={
               "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors " +
@@ -354,7 +370,9 @@ export function Navbar() {
                   </div>
                 ) : (
                   <p className="px-4 py-5 text-center text-sm text-slate-500">
-                    Nenhum produto encontrado com esse nome.
+                    {catalogStatus === "loading"
+                      ? "Carregando produtos..."
+                      : "Nenhum produto encontrado com esse nome."}
                   </p>
                 )}
 
