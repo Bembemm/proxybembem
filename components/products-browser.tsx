@@ -1,0 +1,155 @@
+"use client"
+
+import { useState, type ReactNode } from "react"
+import { ChevronDown, Filter } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+
+export interface ProductBrowserEntry {
+  id: number
+  title: string
+  category: string
+  card: ReactNode
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim()
+}
+
+export function ProductsBrowser({
+  entries,
+  unavailable = false,
+  initialCategory,
+  initialSearch,
+}: {
+  entries: ProductBrowserEntry[]
+  unavailable?: boolean
+  initialCategory?: string
+  initialSearch?: string
+}) {
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    initialCategory ? [initialCategory] : [],
+  )
+  const [showFilters, setShowFilters] = useState(false)
+  const categories = Array.from(new Set(entries.map((entry) => entry.category)))
+  const normalizedSearch = normalizeSearch(initialSearch ?? "")
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories((previous) =>
+      previous.includes(category)
+        ? previous.filter((item) => item !== category)
+        : [...previous, category],
+    )
+  }
+
+  const filteredEntries = entries.filter((entry) => {
+    const matchesCategory =
+      selectedCategories.length === 0 || selectedCategories.includes(entry.category)
+    const searchableText = normalizeSearch(entry.title + " " + entry.category)
+    const matchesSearch =
+      normalizedSearch.length === 0 || searchableText.includes(normalizedSearch)
+    return matchesSearch && matchesCategory
+  })
+
+  return (
+    <section className="relative pb-8 pt-16 sm:pb-12 sm:pt-20">
+      <div className="container relative z-10 mx-auto px-3 sm:px-4">
+        <div className="mb-3 sm:mb-4 lg:hidden">
+          <Button
+            onClick={() => setShowFilters((current) => !current)}
+            type="button"
+            aria-expanded={showFilters}
+            aria-controls="product-filters"
+            className="h-12 w-full border border-[#8B5CF6] bg-transparent text-base text-[#8B5CF6] transition-colors duration-300 active:scale-[0.98] hover:border-[#8B5CF6] hover:bg-[#8B5CF6] hover:text-white"
+          >
+            <Filter className="mr-2 h-4 w-4" />
+            Filtros
+            <ChevronDown
+              className={"ml-auto h-4 w-4 transition-transform " + (showFilters ? "rotate-180" : "")}
+            />
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row">
+          <aside
+            id="product-filters"
+            className={"shrink-0 lg:w-56 xl:w-64 " + (showFilters ? "block" : "hidden lg:block")}
+          >
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-md sm:p-5 lg:sticky lg:top-20">
+              <h2 className="mb-3 text-lg tracking-wide text-slate-900 font-[family-name:var(--font-display)] sm:mb-4 sm:text-xl">
+                Filtros
+              </h2>
+              <div>
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-900 sm:mb-3 sm:text-base">
+                  Categorias
+                </h3>
+                <div className="space-y-2">
+                  {categories.map((category) => (
+                    <div key={category} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={"cat-" + category}
+                        checked={selectedCategories.includes(category)}
+                        onCheckedChange={() => toggleCategory(category)}
+                        className="border-slate-400 data-[state=checked]:border-[#8B5CF6] data-[state=checked]:bg-[#8B5CF6]"
+                      />
+                      <Label
+                        htmlFor={"cat-" + category}
+                        className="cursor-pointer text-base text-slate-700 transition-colors hover:text-slate-900"
+                      >
+                        {category}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <div className="min-w-0 flex-1">
+            {unavailable ? (
+              <div
+                className="mb-4 rounded-lg border border-slate-200 bg-white p-6 text-center shadow-md sm:mb-6 sm:p-8"
+                role="status"
+              >
+                <p className="text-base font-medium text-slate-700 sm:text-lg">
+                  Catálogo temporariamente indisponível.
+                </p>
+                <p className="mt-2 text-sm text-slate-500 sm:text-base">
+                  Tente novamente em alguns instantes.
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mb-4 sm:mb-6" aria-live="polite">
+              <p className="text-sm text-slate-700 sm:text-base">
+                {filteredEntries.length} produto{filteredEntries.length !== 1 ? "s" : ""} encontrado
+                {filteredEntries.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4">
+              {filteredEntries.map((entry) => (
+                <div key={entry.id} className="animate-fade-in-up">
+                  {entry.card}
+                </div>
+              ))}
+            </div>
+
+            {!unavailable && filteredEntries.length === 0 ? (
+              <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-md sm:p-12">
+                <p className="text-base text-slate-700 sm:text-lg">
+                  Nenhum produto encontrado com os filtros selecionados.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
