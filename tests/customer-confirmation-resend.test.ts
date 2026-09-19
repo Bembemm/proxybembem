@@ -12,11 +12,12 @@ test("signup confirmation resend is same-origin, bounded and rate limited", asyn
 
   assert.match(route, /isSameOriginAccountRequest/)
   assert.match(route, /readJsonBody\s*\(\s*request\s*,\s*4_096\s*\)/)
-  assert.match(route, /parseAccountResetInput/)
+  assert.match(route, /parseAccountConfirmationResendInput/)
   assert.match(route, /account-confirmation-resend/)
   assert.match(route, /auth\.resend\s*\(/)
   assert.match(route, /type\s*:\s*["']signup["']/)
   assert.match(route, /emailRedirectTo/)
+  assert.match(route, /encodeURIComponent\(input\.next\)/)
   assert.match(route, /private,\s*no-store/i)
   assert.doesNotMatch(route, /registeredEmailExists|listUsers/)
 
@@ -31,7 +32,10 @@ test("signup received page lets the customer request another confirmation email"
   const form = await source("../components/account/confirmation-resend-form.tsx")
 
   assert.match(page, /ConfirmationResendForm/)
+  assert.match(page, /sanitizeCustomerLoginNext/)
+  assert.match(page, /next=\{next\}/)
   assert.match(form, /\/api\/account\/confirmation-resend/)
+  assert.match(form, /JSON\.stringify\(\{ email, next \}\)/)
   assert.match(form, /htmlFor=["']confirmation-email["']/)
   assert.match(form, /Reenviar e-mail de confirmação/)
   assert.match(
