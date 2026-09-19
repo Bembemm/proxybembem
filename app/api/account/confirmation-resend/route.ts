@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
-  parseAccountResetInput,
+  parseAccountConfirmationResendInput,
 } from "../../../../lib/server/customer-account-actions.ts"
 import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
     return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
   }
 
-  let input: ReturnType<typeof parseAccountResetInput>
+  let input: ReturnType<typeof parseAccountConfirmationResendInput>
   try {
-    input = parseAccountResetInput(await readJsonBody(request, 4_096))
+    input = parseAccountConfirmationResendInput(await readJsonBody(request, 4_096))
   } catch {
     return json(400, { ok: false, message: "Informe um e-mail válido." })
   }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
     const emailRedirectTo = new URL(
-      "/auth/callback?next=/minha-conta",
+      `/auth/callback?next=${encodeURIComponent(input.next)}`,
       siteUrl,
     ).toString()
     const supabase = createSupabaseAuthServerClient()
