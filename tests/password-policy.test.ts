@@ -39,6 +39,7 @@ test("signup and password updates reject weak passwords with a specific policy e
           email: "cliente@example.com",
           whatsapp: "44999999999",
           password,
+          next: "/minha-conta",
         }),
       CustomerPasswordPolicyError,
     )
@@ -54,6 +55,7 @@ test("signup and password updates reject weak passwords with a specific policy e
       email: "cliente@example.com",
       whatsapp: "44999999999",
       password: "ProxyBembem9!",
+      next: "/minha-conta",
     }).password,
     "ProxyBembem9!",
   )
