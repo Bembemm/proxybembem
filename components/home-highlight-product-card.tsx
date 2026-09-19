@@ -51,7 +51,7 @@ export function HomeHighlightProductCard({
       </Link>
 
       <div className="flex min-w-0 flex-col pb-2 pt-0.5 sm:p-3 sm:pt-4 lg:flex-1 lg:p-4 lg:pt-4">
-        <h3 className="line-clamp-3 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base sm:leading-snug sm:tracking-normal lg:min-h-[3.25rem]">
+        <h3 className="line-clamp-3 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base sm:leading-snug sm:tracking-normal lg:min-h-[2.75rem]">
           <Link
             href={href}
             className="transition-colors hover:text-[#7C3AED]"
@@ -60,7 +60,7 @@ export function HomeHighlightProductCard({
           </Link>
         </h3>
 
-        <div className="mt-2.5 sm:mt-3">
+        <div className="mt-2.5 sm:mt-3 lg:mt-1.5">
           {hasDiscount ? (
             <span className="block text-[12px] leading-none text-slate-500 line-through sm:text-sm">
               {formatPrice(product.originalPrice)}
@@ -79,7 +79,7 @@ export function HomeHighlightProductCard({
           </div>
         </div>
 
-        <div className="mt-auto">
+        <div className="mt-auto lg:pt-4">
           <Link
             href={href}
             className="inline-flex h-9 w-[92%] items-center justify-center gap-2 rounded-[8px] border border-[#C4A5FF] bg-white px-2 font-serif text-[12px] font-medium text-[#7C3AED] transition-colors hover:border-[#A78BFA] hover:bg-[#F8F5FF] hover:text-[#6D28D9] active:bg-[#F3EDFF] sm:h-10 sm:w-full sm:text-sm lg:h-11 lg:rounded-xl"
