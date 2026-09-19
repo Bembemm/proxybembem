@@ -11,10 +11,10 @@ test("successful signup routes to a dedicated check-your-email step", async () =
   const page = await source("../app/cadastro-recebido/page.tsx")
 
   assert.match(form, /useRouter\s*\(/)
-  assert.match(form, /router\.push\(\s*["']\/cadastro-recebido["']\s*\)/)
+  assert.match(form, /router\.push\(`\/cadastro-recebido\?next=/)
 
   assert.ok(page.length > 0, "missing /cadastro-recebido page")
   assert.match(page, /Confira seu e-mail/i)
   assert.match(page, /spam|lixo eletr[oô]nico/i)
-  assert.match(page, /href=["']\/entrar["']/)
+  assert.match(page, /\/entrar\?next=/)
 })
