@@ -31,13 +31,13 @@ export function HomeHighlightProductCard({
   return (
     <article
       className={
-        "group grid grid-cols-[44%_minmax(0,1fr)] items-stretch gap-4 bg-white sm:block " +
+        "group grid grid-cols-[44%_minmax(0,1fr)] items-stretch gap-4 bg-white sm:block lg:flex lg:h-full lg:flex-col lg:gap-0 lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-200 lg:shadow-sm lg:transition-[border-color,box-shadow,transform] lg:duration-200 lg:hover:-translate-y-0.5 lg:hover:border-violet-200 lg:hover:shadow-md " +
         className
       }
     >
       <Link
         href={href}
-        className="relative block aspect-square w-full overflow-hidden rounded-[6px] bg-slate-100 sm:aspect-[4/3] sm:rounded-lg"
+        className="relative block aspect-square w-full overflow-hidden rounded-[6px] bg-slate-100 sm:aspect-[4/3] sm:rounded-lg lg:shrink-0 lg:rounded-none"
         aria-label={"Ver produto " + product.title}
       >
         <Image
@@ -50,8 +50,8 @@ export function HomeHighlightProductCard({
         />
       </Link>
 
-      <div className="flex min-w-0 flex-col pb-2 pt-0.5 sm:p-3 sm:pt-4">
-        <h3 className="line-clamp-3 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base sm:leading-snug sm:tracking-normal">
+      <div className="flex min-w-0 flex-col pb-2 pt-0.5 sm:p-3 sm:pt-4 lg:flex-1 lg:p-4 lg:pt-4">
+        <h3 className="line-clamp-3 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.02em] text-slate-950 sm:min-h-[3rem] sm:line-clamp-2 sm:text-base sm:leading-snug sm:tracking-normal lg:min-h-[3.25rem]">
           <Link
             href={href}
             className="transition-colors hover:text-[#7C3AED]"
@@ -82,7 +82,7 @@ export function HomeHighlightProductCard({
         <div className="mt-auto">
           <Link
             href={href}
-            className="inline-flex h-9 w-[92%] items-center justify-center gap-2 rounded-[8px] border border-[#C4A5FF] bg-white px-2 font-serif text-[12px] font-medium text-[#7C3AED] transition-colors hover:border-[#A78BFA] hover:bg-[#F8F5FF] hover:text-[#6D28D9] active:bg-[#F3EDFF] sm:h-10 sm:w-full sm:text-sm"
+            className="inline-flex h-9 w-[92%] items-center justify-center gap-2 rounded-[8px] border border-[#C4A5FF] bg-white px-2 font-serif text-[12px] font-medium text-[#7C3AED] transition-colors hover:border-[#A78BFA] hover:bg-[#F8F5FF] hover:text-[#6D28D9] active:bg-[#F3EDFF] sm:h-10 sm:w-full sm:text-sm lg:h-11 lg:rounded-xl"
             aria-label={"Ver produto " + product.title}
           >
             <Eye className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} aria-hidden="true" />
