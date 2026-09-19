@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   try {
     const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
     emailRedirectTo = new URL(
-      "/auth/callback?next=/minha-conta",
+      `/auth/callback?next=${encodeURIComponent(input.next)}`,
       siteUrl,
     ).toString()
   } catch {
