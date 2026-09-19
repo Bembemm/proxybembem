@@ -35,16 +35,18 @@ test("checkout requires customer authentication before rendering delivery fields
   assert.doesNotMatch(page, /getOptionalCustomerIdentity/)
 })
 
-test("cart stores only CEP and selected freight before entering authenticated checkout", async () => {
+test("cart stores only a short-lived CEP and selected freight preview before authenticated checkout", async () => {
   const cart = await source("../components/cart-panel.tsx")
   const checkout = await source("../components/checkout-page.tsx")
 
-  assert.match(cart, /proxybembem-checkout-preview-v1/)
+  assert.match(cart, /proxybembem-checkout-preview-v2/)
+  assert.match(cart, /savedAt:\s*Date\.now\(\)/)
   assert.match(cart, /cep:\s*destinationCep/)
   assert.match(cart, /shippingServiceId:\s*shipping\.selectedShipping\.serviceId/)
   assert.match(cart, /window\.location\.assign\(["']\/checkout["']\)/)
 
-  assert.match(checkout, /readCheckoutPreview\(window\.sessionStorage\)/)
+  assert.match(checkout, /readCheckoutPreview\(window\\.localStorage\)/)
+  assert.match(checkout, /CHECKOUT_PREVIEW_TTL_MS/)
   assert.match(checkout, /formatCep\(preview\.cep\)/)
   assert.match(checkout, /restoredShippingServiceIdRef/)
   assert.doesNotMatch(checkout, /checkout-login-draft|saveCheckoutLoginDraft|readCheckoutLoginDraft/)
