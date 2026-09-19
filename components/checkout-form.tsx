@@ -384,7 +384,6 @@ export function CheckoutForm({
           </>
         )}
       </div>
-      </div>
     </div>
   )
 }
