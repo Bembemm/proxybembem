@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import {
   isSameOriginAccountRequest,
   parseAccountLoginInput,
+  parseAccountProfileMetadata,
 } from "../../../../lib/server/customer-account-actions.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
@@ -50,6 +51,22 @@ export async function POST(request: NextRequest) {
     )
     if (userError || !verified.user?.email_confirmed_at) {
       return json(401, { ok: false, message: "E-mail ou senha inválidos." })
+    }
+
+    try {
+      const metadata = parseAccountProfileMetadata(verified.user.user_metadata)
+      await supabase
+        .from("customer_profiles")
+        .upsert(
+          {
+            id: verified.user.id,
+            name: metadata.name,
+            whatsapp: metadata.whatsapp,
+          },
+          { onConflict: "id", ignoreDuplicates: true },
+        )
+    } catch {
+      // Profile convenience must never block an otherwise valid login.
     }
 
     return applyToResponse(
