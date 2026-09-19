@@ -19,7 +19,7 @@ const ShippingOptions = dynamic(
   { ssr: false, loading: () => null },
 )
 
-const CHECKOUT_PREVIEW_KEY = "proxybembem-checkout-preview-v1"
+const CHECKOUT_PREVIEW_KEY = "proxybembem-checkout-preview-v2"
 
 const EMPTY_SHIPPING: ShippingClientState = {
   shippingOptions: [],
@@ -200,9 +200,11 @@ export function CartPanel() {
       return
     }
 
-    window.sessionStorage.setItem(
+    window.localStorage.setItem(
       CHECKOUT_PREVIEW_KEY,
       JSON.stringify({
+        version: 2,
+        savedAt: Date.now(),
         cep: destinationCep,
         shippingServiceId: shipping.selectedShipping.serviceId,
       }),
