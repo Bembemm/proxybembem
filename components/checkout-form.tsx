@@ -14,7 +14,12 @@ interface CheckoutFormProps {
   data: CheckoutData
   errors: CheckoutErrors
   savedAddresses?: CheckoutSavedAddress[]
+  selectedSavedAddressId?: string | null
+  saveNewAddress?: boolean
+  canSaveNewAddress?: boolean
   onSelectSavedAddress?: (address: CheckoutSavedAddress) => void
+  onUseNewAddress?: () => void
+  onSaveNewAddressChange?: (value: boolean) => void
   onChange: (field: keyof CheckoutData, value: string) => void
 }
 
@@ -31,12 +36,19 @@ export function CheckoutForm({
   data,
   errors,
   savedAddresses = [],
+  selectedSavedAddressId = null,
+  saveNewAddress = true,
+  canSaveNewAddress = false,
   onSelectSavedAddress,
+  onUseNewAddress,
+  onSaveNewAddressChange,
   onChange,
 }: CheckoutFormProps) {
   const inputClass =
     "mt-1.5 h-12 rounded-lg border-slate-300 bg-white text-base text-slate-950 placeholder:text-slate-400 focus-visible:border-[#8B5CF6] focus-visible:ring-[#8B5CF6]/20"
   const labelClass = "text-sm font-medium text-slate-700"
+  const selectedSavedAddress =
+    savedAddresses.find((address) => address.id === selectedSavedAddressId) ?? null
 
   return (
     <div className="space-y-5">
@@ -75,19 +87,19 @@ export function CheckoutForm({
             autoComplete="email"
             maxLength={254}
             required
+            readOnly
             value={data.email}
-            onChange={(event) => onChange("email", event.target.value)}
             placeholder="voce@exemplo.com"
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? "checkout-email-error" : "checkout-email-help"}
-            className={`${inputClass} pl-10 ${errors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
+            className={`${inputClass} bg-slate-50 pl-10 text-slate-600 ${errors.email ? "border-red-500 focus-visible:border-red-500" : ""}`}
           />
         </div>
         {errors.email ? (
           errorText("checkout-email-error", errors.email)
         ) : (
           <p id="checkout-email-help" className="mt-1 text-sm text-slate-500">
-            Usaremos este e-mail para identificar seu pedido e sua conta.
+            Este é o e-mail confirmado da sua conta.
           </p>
         )}
       </div>
@@ -146,6 +158,7 @@ export function CheckoutForm({
         )}
       </div>
 
+
       <div className="border-t border-slate-200 pt-6">
         <div className="mb-3 flex items-center gap-2 text-slate-950">
           <MapPin className="h-5 w-5" />
@@ -153,158 +166,224 @@ export function CheckoutForm({
         </div>
 
         {savedAddresses.length > 0 && onSelectSavedAddress ? (
-          <div className="mb-5 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
-            <p className="text-sm font-semibold text-slate-900">Endereços salvos</p>
+          <div className="mb-5">
+            <p className="text-sm font-semibold text-slate-900">Onde você quer receber?</p>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Selecione um endereço para preencher os campos abaixo. Você ainda pode editar qualquer dado antes de pagar.
+              Escolha um endereço salvo ou use outro endereço para este pedido.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {savedAddresses.map((address) => (
-                <button
-                  key={address.id}
-                  type="button"
-                  onClick={() => onSelectSavedAddress(address)}
-                  className="rounded-lg border border-violet-200 bg-white p-3 text-left text-sm transition hover:border-violet-300 hover:bg-violet-50"
-                >
-                  <span className="flex items-center justify-between gap-2 font-semibold text-slate-900">
-                    <span>{address.label}</span>
-                    {address.isDefault ? (
-                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-violet-700">
-                        Padrão
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="mt-1 block leading-5 text-slate-600">
-                    {address.street}, {address.number} — {address.city}/{address.state}
-                  </span>
-                </button>
-              ))}
+              {savedAddresses.map((address) => {
+                const selected = address.id === selectedSavedAddressId
+                return (
+                  <button
+                    key={address.id}
+                    type="button"
+                    onClick={() => onSelectSavedAddress(address)}
+                    aria-pressed={selected}
+                    className={
+                      "rounded-xl border p-3 text-left text-sm transition " +
+                      (selected
+                        ? "border-violet-500 bg-violet-50 ring-1 ring-violet-200"
+                        : "border-slate-200 bg-white hover:border-violet-300 hover:bg-violet-50/50")
+                    }
+                  >
+                    <span className="flex items-center justify-between gap-2 font-semibold text-slate-900">
+                      <span>{address.label}</span>
+                      {address.isDefault ? (
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-violet-700">
+                          Padrão
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="mt-1 block leading-5 text-slate-600">
+                      {address.street}, {address.number} — {address.city}/{address.state}
+                    </span>
+                    <span className="mt-1 block text-xs text-slate-500">
+                      CEP {formatCep(address.cep)}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
+
+            {onUseNewAddress ? (
+              <button
+                type="button"
+                onClick={onUseNewAddress}
+                className={
+                  "mt-3 inline-flex min-h-10 items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition " +
+                  (selectedSavedAddress
+                    ? "border-slate-200 bg-white text-slate-700 hover:border-violet-300 hover:text-violet-700"
+                    : "border-violet-300 bg-violet-50 text-violet-700")
+                }
+              >
+                + Usar outro endereço
+              </button>
+            ) : null}
           </div>
         ) : null}
 
-        <div>
-          <Label htmlFor="checkout-cep" className={labelClass}>
-            CEP *
-          </Label>
-          <Input
-            id="checkout-cep"
-            autoComplete="postal-code"
-            inputMode="numeric"
-            value={data.cep}
-            onChange={(event) => onChange("cep", formatCep(event.target.value))}
-            placeholder="00000-000"
-            aria-invalid={Boolean(errors.cep)}
-            aria-describedby={errors.cep ? "checkout-cep-error" : "checkout-cep-help"}
-            className={`${inputClass} ${errors.cep ? "border-red-500 focus-visible:border-red-500" : ""}`}
-          />
-          {errors.cep ? (
-            errorText("checkout-cep-error", errors.cep)
-          ) : (
-            <p id="checkout-cep-help" className="mt-1 text-sm text-slate-500">
-              O frete é recalculado e validado antes do pagamento.
+        {selectedSavedAddress ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-900">Endereço selecionado</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              {selectedSavedAddress.street}, {selectedSavedAddress.number}
+              {selectedSavedAddress.complement ? " — " + selectedSavedAddress.complement : ""}
+              <br />
+              {selectedSavedAddress.neighborhood} — {selectedSavedAddress.city}/{selectedSavedAddress.state}
+              <br />
+              CEP {formatCep(selectedSavedAddress.cep)}
             </p>
-          )}
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_110px]">
-          <div>
-            <Label htmlFor="checkout-rua" className={labelClass}>Rua / Avenida *</Label>
-            <Input
-              id="checkout-rua"
-              autoComplete="street-address"
-              maxLength={120}
-              value={data.rua}
-              onChange={(event) => onChange("rua", event.target.value)}
-              placeholder="Nome da rua"
-              aria-invalid={Boolean(errors.rua)}
-              aria-describedby={errors.rua ? "checkout-rua-error" : undefined}
-              className={`${inputClass} ${errors.rua ? "border-red-500 focus-visible:border-red-500" : ""}`}
-            />
-            {errorText("checkout-rua-error", errors.rua)}
+            <p className="mt-2 text-xs text-slate-500">
+              O frete será validado novamente antes do pagamento.
+            </p>
           </div>
+        ) : (
+          <>
+            <div>
+              <Label htmlFor="checkout-cep" className={labelClass}>
+                CEP *
+              </Label>
+              <Input
+                id="checkout-cep"
+                autoComplete="postal-code"
+                inputMode="numeric"
+                value={data.cep}
+                onChange={(event) => onChange("cep", formatCep(event.target.value))}
+                placeholder="00000-000"
+                aria-invalid={Boolean(errors.cep)}
+                aria-describedby={errors.cep ? "checkout-cep-error" : "checkout-cep-help"}
+                className={inputClass + " " + (errors.cep ? "border-red-500 focus-visible:border-red-500" : "")}
+              />
+              {errors.cep ? (
+                errorText("checkout-cep-error", errors.cep)
+              ) : (
+                <p id="checkout-cep-help" className="mt-1 text-sm text-slate-500">
+                  O CEP informado no carrinho já aparece aqui automaticamente.
+                </p>
+              )}
+            </div>
 
-          <div>
-            <Label htmlFor="checkout-numero" className={labelClass}>Número *</Label>
-            <Input
-              id="checkout-numero"
-              maxLength={20}
-              value={data.numero}
-              onChange={(event) => onChange("numero", event.target.value)}
-              placeholder="123"
-              aria-invalid={Boolean(errors.numero)}
-              aria-describedby={errors.numero ? "checkout-numero-error" : undefined}
-              className={`${inputClass} ${errors.numero ? "border-red-500 focus-visible:border-red-500" : ""}`}
-            />
-            {errorText("checkout-numero-error", errors.numero)}
-          </div>
-        </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_110px]">
+              <div>
+                <Label htmlFor="checkout-rua" className={labelClass}>Rua / Avenida *</Label>
+                <Input
+                  id="checkout-rua"
+                  autoComplete="street-address"
+                  maxLength={120}
+                  value={data.rua}
+                  onChange={(event) => onChange("rua", event.target.value)}
+                  placeholder="Nome da rua"
+                  aria-invalid={Boolean(errors.rua)}
+                  aria-describedby={errors.rua ? "checkout-rua-error" : undefined}
+                  className={inputClass + " " + (errors.rua ? "border-red-500 focus-visible:border-red-500" : "")}
+                />
+                {errorText("checkout-rua-error", errors.rua)}
+              </div>
 
-        <div className="mt-4">
-          <Label htmlFor="checkout-complemento" className={labelClass}>Complemento</Label>
-          <Input
-            id="checkout-complemento"
-            autoComplete="address-line2"
-            maxLength={80}
-            value={data.complemento}
-            onChange={(event) => onChange("complemento", event.target.value)}
-            placeholder="Apto, bloco, referência..."
-            aria-invalid={Boolean(errors.complemento)}
-            aria-describedby={errors.complemento ? "checkout-complemento-error" : undefined}
-            className={`${inputClass} ${errors.complemento ? "border-red-500 focus-visible:border-red-500" : ""}`}
-          />
-          {errorText("checkout-complemento-error", errors.complemento)}
-        </div>
+              <div>
+                <Label htmlFor="checkout-numero" className={labelClass}>Número *</Label>
+                <Input
+                  id="checkout-numero"
+                  maxLength={20}
+                  value={data.numero}
+                  onChange={(event) => onChange("numero", event.target.value)}
+                  placeholder="123"
+                  aria-invalid={Boolean(errors.numero)}
+                  aria-describedby={errors.numero ? "checkout-numero-error" : undefined}
+                  className={inputClass + " " + (errors.numero ? "border-red-500 focus-visible:border-red-500" : "")}
+                />
+                {errorText("checkout-numero-error", errors.numero)}
+              </div>
+            </div>
 
-        <div className="mt-4">
-          <Label htmlFor="checkout-bairro" className={labelClass}>Bairro *</Label>
-          <Input
-            id="checkout-bairro"
-            autoComplete="address-level3"
-            maxLength={80}
-            value={data.bairro}
-            onChange={(event) => onChange("bairro", event.target.value)}
-            placeholder="Bairro"
-            aria-invalid={Boolean(errors.bairro)}
-            aria-describedby={errors.bairro ? "checkout-bairro-error" : undefined}
-            className={`${inputClass} ${errors.bairro ? "border-red-500 focus-visible:border-red-500" : ""}`}
-          />
-          {errorText("checkout-bairro-error", errors.bairro)}
-        </div>
+            <div className="mt-4">
+              <Label htmlFor="checkout-complemento" className={labelClass}>Complemento</Label>
+              <Input
+                id="checkout-complemento"
+                autoComplete="address-line2"
+                maxLength={80}
+                value={data.complemento}
+                onChange={(event) => onChange("complemento", event.target.value)}
+                placeholder="Apto, bloco, referência..."
+                aria-invalid={Boolean(errors.complemento)}
+                aria-describedby={errors.complemento ? "checkout-complemento-error" : undefined}
+                className={inputClass + " " + (errors.complemento ? "border-red-500 focus-visible:border-red-500" : "")}
+              />
+              {errorText("checkout-complemento-error", errors.complemento)}
+            </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_90px]">
-          <div>
-            <Label htmlFor="checkout-cidade" className={labelClass}>Cidade *</Label>
-            <Input
-              id="checkout-cidade"
-              autoComplete="address-level2"
-              maxLength={80}
-              value={data.cidade}
-              onChange={(event) => onChange("cidade", event.target.value)}
-              placeholder="Cidade"
-              aria-invalid={Boolean(errors.cidade)}
-              aria-describedby={errors.cidade ? "checkout-cidade-error" : undefined}
-              className={`${inputClass} ${errors.cidade ? "border-red-500 focus-visible:border-red-500" : ""}`}
-            />
-            {errorText("checkout-cidade-error", errors.cidade)}
-          </div>
+            <div className="mt-4">
+              <Label htmlFor="checkout-bairro" className={labelClass}>Bairro *</Label>
+              <Input
+                id="checkout-bairro"
+                autoComplete="address-level3"
+                maxLength={80}
+                value={data.bairro}
+                onChange={(event) => onChange("bairro", event.target.value)}
+                placeholder="Bairro"
+                aria-invalid={Boolean(errors.bairro)}
+                aria-describedby={errors.bairro ? "checkout-bairro-error" : undefined}
+                className={inputClass + " " + (errors.bairro ? "border-red-500 focus-visible:border-red-500" : "")}
+              />
+              {errorText("checkout-bairro-error", errors.bairro)}
+            </div>
 
-          <div>
-            <Label htmlFor="checkout-uf" className={labelClass}>UF *</Label>
-            <Input
-              id="checkout-uf"
-              autoComplete="address-level1"
-              maxLength={2}
-              value={data.uf}
-              onChange={(event) => onChange("uf", event.target.value.toUpperCase())}
-              placeholder="PR"
-              aria-invalid={Boolean(errors.uf)}
-              aria-describedby={errors.uf ? "checkout-uf-error" : undefined}
-              className={`${inputClass} uppercase ${errors.uf ? "border-red-500 focus-visible:border-red-500" : ""}`}
-            />
-            {errorText("checkout-uf-error", errors.uf)}
-          </div>
-        </div>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-[1fr_90px]">
+              <div>
+                <Label htmlFor="checkout-cidade" className={labelClass}>Cidade *</Label>
+                <Input
+                  id="checkout-cidade"
+                  autoComplete="address-level2"
+                  maxLength={80}
+                  value={data.cidade}
+                  onChange={(event) => onChange("cidade", event.target.value)}
+                  placeholder="Cidade"
+                  aria-invalid={Boolean(errors.cidade)}
+                  aria-describedby={errors.cidade ? "checkout-cidade-error" : undefined}
+                  className={inputClass + " " + (errors.cidade ? "border-red-500 focus-visible:border-red-500" : "")}
+                />
+                {errorText("checkout-cidade-error", errors.cidade)}
+              </div>
+
+              <div>
+                <Label htmlFor="checkout-uf" className={labelClass}>UF *</Label>
+                <Input
+                  id="checkout-uf"
+                  autoComplete="address-level1"
+                  maxLength={2}
+                  value={data.uf}
+                  onChange={(event) => onChange("uf", event.target.value.toUpperCase())}
+                  placeholder="PR"
+                  aria-invalid={Boolean(errors.uf)}
+                  aria-describedby={errors.uf ? "checkout-uf-error" : undefined}
+                  className={inputClass + " uppercase " + (errors.uf ? "border-red-500 focus-visible:border-red-500" : "")}
+                />
+                {errorText("checkout-uf-error", errors.uf)}
+              </div>
+            </div>
+
+            {canSaveNewAddress && onSaveNewAddressChange ? (
+              <label className="mt-5 flex items-start gap-3 rounded-xl border border-violet-100 bg-violet-50/50 p-3 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={saveNewAddress}
+                  onChange={(event) => onSaveNewAddressChange(event.target.checked)}
+                  className="mt-0.5 size-4 rounded border-slate-300 text-violet-600"
+                />
+                <span>
+                  <span className="block font-semibold text-slate-900">
+                    Salvar este endereço para próximas compras
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                    Você poderá editar, excluir ou trocar o endereço padrão em Minha conta.
+                  </span>
+                </span>
+              </label>
+            ) : null}
+          </>
+        )}
+      </div>
       </div>
     </div>
   )
