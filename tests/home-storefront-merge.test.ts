@@ -43,6 +43,9 @@ test("home uses a dedicated highlight card while products keep the shared storef
   assert.match(highlight, /font-serif/)
   assert.match(highlight, /text-\[17px\]/)
   assert.match(highlight, /text-\[23px\]/)
+  assert.match(highlight, /lg:min-h-\[2\.75rem\]/)
+  assert.match(highlight, /lg:mt-1\.5/)
+  assert.match(highlight, /lg:pt-4/)
   assert.doesNotMatch(highlight, /Pix/i)
   assert.doesNotMatch(highlight, /sem juros/i)
   assert.match(addButton, /label = "Adicionar"/)
@@ -50,7 +53,7 @@ test("home uses a dedicated highlight card while products keep the shared storef
   assert.match(highlight, /productHref\(product\)/)
 })
 
-test("home keeps the carousel on smaller screens and uses a stable product grid on desktop", () => {
+test("home keeps the paged carousel on every viewport without a visible scrollbar", () => {
   const home = source("components/pages/home-page.tsx")
   const carousel = source("components/home-highlights-carousel.tsx")
 
@@ -68,9 +71,10 @@ test("home keeps the carousel on smaller screens and uses a stable product grid 
   assert.match(carousel, /itemsPerPage/)
   assert.match(carousel, /innerWidth\s*>=\s*1024\s*\?\s*4/)
   assert.match(carousel, /innerWidth\s*>=\s*640\s*\?\s*2\s*:\s*1/)
-  assert.match(home, /className="lg:hidden"/)
-  assert.match(home, /hidden lg:grid/)
-  assert.match(home, /repeat\(auto-fit,minmax\(200px,1fr\)\)/)
+  assert.doesNotMatch(home, /className="lg:hidden"/)
+  assert.doesNotMatch(home, /hidden lg:grid/)
+  assert.match(carousel, /\[scrollbar-width:none\]/)
+  assert.match(carousel, /\[&::\-webkit-scrollbar\]:hidden/)
   assert.match(carousel, /Math\.ceil\(items\.length\s*\/\s*itemsPerPage\)/)
   assert.match(carousel, /data-carousel-page/)
   assert.match(carousel, /slice\(pageIndex \* itemsPerPage/)
