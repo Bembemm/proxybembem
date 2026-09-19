@@ -8,7 +8,7 @@ import { validateAccountEmail } from "@/lib/account-form"
 const SUCCESS_MESSAGE =
   "Se existir um cadastro pendente para esse e-mail, enviaremos uma nova confirmação."
 
-export function ConfirmationResendForm() {
+export function ConfirmationResendForm({ next }: { next: string }) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | undefined>()
@@ -29,7 +29,7 @@ export function ConfirmationResendForm() {
       const response = await fetch("/api/account/confirmation-resend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, next }),
       })
       const payload = (await response.json().catch(() => null)) as
         | { message?: unknown }
