@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
-import { sanitizeAccountNext } from "../../../lib/server/customer-account-actions.ts"
+import {
+  sanitizeAccountNext,
+  sanitizeCustomerLoginNext,
+} from "../../../lib/server/customer-account-actions.ts"
 import { resolvePublicSiteUrl } from "../../../lib/server/env.ts"
 import { createSupabaseAuthServerClient } from "../../../lib/supabase/auth-server.ts"
 import { createSupabaseRouteClient } from "../../../lib/supabase/route.ts"
@@ -17,7 +20,9 @@ export async function GET(request: NextRequest) {
   const flowId = request.nextUrl.searchParams.get("sb_flow_id")
   const tokenHash = request.nextUrl.searchParams.get("token_hash")
   const type = request.nextUrl.searchParams.get("type")
-  const next = sanitizeAccountNext(request.nextUrl.searchParams.get("next"))
+  const rawNext = request.nextUrl.searchParams.get("next")
+  const next = sanitizeCustomerLoginNext(rawNext)
+  const accountNext = sanitizeAccountNext(rawNext)
 
   const canVerifyTokenHash =
     tokenHash !== null &&
@@ -53,7 +58,9 @@ export async function GET(request: NextRequest) {
       // to transport the large Supabase Set-Cookie response on this GET.
       return redirect(
         request,
-        type === "email_change" ? "/entrar?email=alterado" : "/entrar?confirmado=1",
+        type === "email_change"
+          ? "/entrar?email=alterado"
+          : `/entrar?confirmado=1&next=${encodeURIComponent(next)}`,
       )
     } catch {
       return redirect(request, "/entrar?erro=confirmacao")
@@ -83,7 +90,9 @@ export async function GET(request: NextRequest) {
       return applyToResponse(redirect(request, "/entrar?erro=callback"))
     }
 
-    return applyToResponse(redirect(request, next))
+    return applyToResponse(
+      redirect(request, next === "/minha-conta" ? accountNext : next),
+    )
   } catch {
     return applyToResponse(redirect(request, "/entrar?erro=callback"))
   }
