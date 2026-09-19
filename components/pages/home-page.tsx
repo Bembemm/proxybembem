@@ -39,15 +39,29 @@ export function HomePage({
         ) : null}
 
         {!unavailable && products.length > 0 ? (
-          <HomeHighlightsCarousel>
-            {products.map((product) => (
-              <HomeHighlightProductCard
-                key={product.id}
-                product={product}
-                className="h-full w-full"
-              />
-            ))}
-          </HomeHighlightsCarousel>
+          <>
+            <div className="lg:hidden">
+              <HomeHighlightsCarousel>
+                {products.map((product) => (
+                  <HomeHighlightProductCard
+                    key={product.id}
+                    product={product}
+                    className="h-full w-full"
+                  />
+                ))}
+              </HomeHighlightsCarousel>
+            </div>
+
+            <div className="hidden lg:grid lg:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] lg:gap-5 xl:gap-6">
+              {products.map((product) => (
+                <HomeHighlightProductCard
+                  key={product.id}
+                  product={product}
+                  className="h-full min-w-0"
+                />
+              ))}
+            </div>
+          </>
         ) : null}
       </div>
     </section>
