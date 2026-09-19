@@ -14,6 +14,12 @@ export interface CheckoutData {
   uf: string
 }
 
+export interface CheckoutCustomerPrefill {
+  name: string
+  email: string
+  whatsapp: string
+}
+
 export interface CheckoutSavedAddress {
   id: string
   label: string
@@ -61,6 +67,38 @@ export function applyCheckoutSavedAddress(
     cidade: address.city,
     uf: address.state,
   }
+}
+
+export function selectCheckoutSavedAddress(
+  savedAddresses: CheckoutSavedAddress[],
+  previewCep: string | null,
+): CheckoutSavedAddress | null {
+  const normalizedPreviewCep = previewCep ? digitsOnly(previewCep) : ""
+
+  if (/^\d{8}$/.test(normalizedPreviewCep)) {
+    const matches = savedAddresses.filter(
+      (address) => digitsOnly(address.cep) === normalizedPreviewCep,
+    )
+    return matches.find((address) => address.isDefault) ?? matches[0] ?? null
+  }
+
+  return savedAddresses.find((address) => address.isDefault) ?? null
+}
+
+export function checkoutMatchesSavedAddress(
+  checkout: CheckoutData,
+  address: CheckoutSavedAddress,
+): boolean {
+  const normalized = normalizeCheckoutData(checkout)
+  return (
+    normalized.cep === digitsOnly(address.cep) &&
+    normalized.rua === normalizeText(address.street) &&
+    normalized.numero === normalizeText(address.number) &&
+    normalized.complemento === normalizeText(address.complement) &&
+    normalized.bairro === normalizeText(address.neighborhood) &&
+    normalized.cidade === normalizeText(address.city) &&
+    normalized.uf === normalizeText(address.state).toUpperCase()
+  )
 }
 
 export function resolveCheckoutAddressPrefill(
