@@ -19,7 +19,7 @@ import { formatWhatsapp } from "@/lib/checkout"
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
 
-export function AccountSignupForm() {
+export function AccountSignupForm({ next }: { next: string }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -51,7 +51,7 @@ export function AccountSignupForm() {
     setMessage(null)
     if (hasAccountFieldErrors(nextErrors)) return
 
-    const input = { name, email, whatsapp, password }
+    const input = { name, email, whatsapp, password, next }
 
     setPending(true)
     try {
@@ -68,7 +68,7 @@ export function AccountSignupForm() {
         formElement.reset()
         setWhatsapp("")
         setErrors({})
-        router.push("/cadastro-recebido")
+        router.push(`/cadastro-recebido?next=${encodeURIComponent(next)}`)
         return
       }
 
@@ -172,7 +172,7 @@ export function AccountSignupForm() {
         {pending ? "Criando..." : "Criar conta"}
       </button>
       <p className="text-center text-sm text-slate-600">
-        Já tem uma conta? <Link href="/entrar" className="text-violet-700 hover:underline">Entrar</Link>
+        Já tem uma conta? <Link href={`/entrar?next=${encodeURIComponent(next)}`} className="text-violet-700 hover:underline">Entrar</Link>
       </p>
     </form>
   )
