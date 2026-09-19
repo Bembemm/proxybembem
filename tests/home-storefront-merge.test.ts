@@ -50,7 +50,7 @@ test("home uses a dedicated highlight card while products keep the shared storef
   assert.match(highlight, /productHref\(product\)/)
 })
 
-test("home carousel paginates highlights by viewport: 1 mobile, 2 tablet, 4 desktop", () => {
+test("home keeps the carousel on smaller screens and uses a stable product grid on desktop", () => {
   const home = source("components/pages/home-page.tsx")
   const carousel = source("components/home-highlights-carousel.tsx")
 
@@ -68,6 +68,9 @@ test("home carousel paginates highlights by viewport: 1 mobile, 2 tablet, 4 desk
   assert.match(carousel, /itemsPerPage/)
   assert.match(carousel, /innerWidth\s*>=\s*1024\s*\?\s*4/)
   assert.match(carousel, /innerWidth\s*>=\s*640\s*\?\s*2\s*:\s*1/)
+  assert.match(home, /className="lg:hidden"/)
+  assert.match(home, /hidden lg:grid/)
+  assert.match(home, /repeat\(auto-fit,minmax\(200px,1fr\)\)/)
   assert.match(carousel, /Math\.ceil\(items\.length\s*\/\s*itemsPerPage\)/)
   assert.match(carousel, /data-carousel-page/)
   assert.match(carousel, /slice\(pageIndex \* itemsPerPage/)
