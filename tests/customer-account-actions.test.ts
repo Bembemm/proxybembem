@@ -17,6 +17,7 @@ test("signup input is exact bounded normalized customer data", async () => {
     email: " Cliente+Deck@Example.COM ",
     whatsapp: "(44) 99999-9999",
     password: "SenhaSegura9!",
+    next: "/checkout",
   })
 
   assert.deepEqual(input, {
@@ -24,19 +25,21 @@ test("signup input is exact bounded normalized customer data", async () => {
     email: "cliente+deck@example.com",
     whatsapp: "44999999999",
     password: "SenhaSegura9!",
+    next: "/checkout",
   })
 
   for (const invalid of [
-    { name: "ab", email: "cliente@example.com", whatsapp: "44999999999", password: "SenhaSegura9!" },
-    { name: "Cliente Teste", email: "invalido", whatsapp: "44999999999", password: "SenhaSegura9!" },
-    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "123", password: "SenhaSegura9!" },
-    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "1234567" },
-    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "A1!" + "x".repeat(126) },
+    { name: "ab", email: "cliente@example.com", whatsapp: "44999999999", password: "SenhaSegura9!", next: "/checkout" },
+    { name: "Cliente Teste", email: "invalido", whatsapp: "44999999999", password: "SenhaSegura9!", next: "/checkout" },
+    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "123", password: "SenhaSegura9!", next: "/checkout" },
+    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "1234567", next: "/checkout" },
+    { name: "Cliente Teste", email: "cliente@example.com", whatsapp: "44999999999", password: "A1!" + "x".repeat(126), next: "/checkout" },
     {
       name: "Cliente Teste",
       email: "cliente@example.com",
       whatsapp: "44999999999",
       password: "SenhaSegura9!",
+      next: "/checkout",
       id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     },
   ]) {
