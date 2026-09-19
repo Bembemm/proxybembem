@@ -13,6 +13,12 @@ interface AccountSignupInput {
   email: string
   whatsapp: string
   password: string
+  next: string
+}
+
+interface AccountConfirmationResendInput {
+  email: string
+  next: string
 }
 
 interface AccountLoginInput {
@@ -121,12 +127,23 @@ function validateNewPassword(value: unknown) {
 }
 
 export function parseAccountSignupInput(value: unknown): AccountSignupInput {
-  const input = requireExactKeys(value, ["name", "email", "whatsapp", "password"])
+  const input = requireExactKeys(value, ["name", "email", "whatsapp", "password", "next"])
   return {
     name: normalizeName(input.name),
     email: normalizeEmail(input.email),
     whatsapp: normalizeWhatsapp(input.whatsapp),
     password: validateNewPassword(input.password),
+    next: sanitizeCustomerLoginNext(typeof input.next === "string" ? input.next : undefined),
+  }
+}
+
+export function parseAccountConfirmationResendInput(
+  value: unknown,
+): AccountConfirmationResendInput {
+  const input = requireExactKeys(value, ["email", "next"])
+  return {
+    email: normalizeEmail(input.email),
+    next: sanitizeCustomerLoginNext(typeof input.next === "string" ? input.next : undefined),
   }
 }
 
