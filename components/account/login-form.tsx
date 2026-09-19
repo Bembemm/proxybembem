@@ -125,7 +125,7 @@ export function AccountLoginForm({ next }: { next: string }) {
         <Link href="/esqueci-a-senha" className="text-violet-700 hover:underline">
           Esqueci minha senha
         </Link>
-        <Link href="/criar-conta" className="text-violet-700 hover:underline">
+        <Link href={`/criar-conta?next=${encodeURIComponent(next)}`} className="text-violet-700 hover:underline">
           Criar conta
         </Link>
       </div>
