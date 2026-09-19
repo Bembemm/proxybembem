@@ -3,7 +3,9 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 import {
+  checkoutMatchesSavedAddress,
   resolveCheckoutAddressPrefill,
+  selectCheckoutSavedAddress,
   type CheckoutData,
   type CheckoutSavedAddress,
 } from "../lib/checkout.ts"
@@ -39,6 +41,28 @@ const defaultAddress: CheckoutSavedAddress = {
   isDefault: true,
 }
 
+const secondAddress: CheckoutSavedAddress = {
+  ...defaultAddress,
+  id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  label: "Trabalho",
+  cep: "87000000",
+  street: "Rua Trabalho",
+  number: "20",
+  city: "Maringá",
+  isDefault: false,
+}
+
+test("cart CEP chooses a matching saved address instead of mixing different addresses", () => {
+  assert.equal(
+    selectCheckoutSavedAddress([defaultAddress, secondAddress], "87000-000")?.id,
+    secondAddress.id,
+  )
+  assert.equal(
+    selectCheckoutSavedAddress([defaultAddress, secondAddress], "86000-000")?.id,
+    defaultAddress.id,
+  )
+})
+
 test("checkout prefill never mixes a cart CEP with a different saved address", () => {
   assert.deepEqual(
     resolveCheckoutAddressPrefill(emptyCheckout, defaultAddress, "87000-000"),
@@ -49,55 +73,34 @@ test("checkout prefill never mixes a cart CEP with a different saved address", (
   )
 })
 
-test("checkout prefill can use the full default address when the preview CEP agrees", () => {
-  assert.deepEqual(
-    resolveCheckoutAddressPrefill(emptyCheckout, defaultAddress, "86000-000"),
-    {
-      ...emptyCheckout,
-      cep: "86000-000",
-      rua: "Rua Salva",
-      numero: "10",
-      complemento: "",
-      bairro: "Centro",
-      cidade: "Londrina",
-      uf: "PR",
-    },
+test("checkout can recognize an already-saved delivery address", () => {
+  const checkout = resolveCheckoutAddressPrefill(
+    emptyCheckout,
+    defaultAddress,
+    "86000-000",
   )
+  assert.equal(checkoutMatchesSavedAddress(checkout, defaultAddress), true)
+  assert.equal(checkoutMatchesSavedAddress(checkout, secondAddress), false)
 })
 
-test("checkout server page supplies saved addresses only for an authenticated customer", async () => {
+test("checkout server page requires authentication and supplies profile plus saved addresses", async () => {
   const page = await source("../app/checkout/page.tsx")
 
-  assert.match(page, /getOptionalCustomerIdentity/)
+  assert.match(page, /requireCustomerPageAccess\(["']\/checkout["']\)/)
   assert.match(page, /listOwnCustomerAddresses/)
+  assert.match(page, /getOwnCustomerProfile/)
+  assert.match(page, /customerPrefill/)
   assert.match(page, /savedAddresses/)
-  assert.match(page, /CheckoutPage/)
 })
 
-test("checkout draft takes precedence over default saved address", async () => {
-  const checkout = await source("../components/checkout-page.tsx")
-
-  const draftRead = checkout.indexOf("readCheckoutLoginDraft")
-  const defaultApply = checkout.indexOf("defaultSavedAddress")
-  assert.ok(draftRead >= 0)
-  assert.ok(defaultApply >= 0)
-
-  assert.match(checkout, /savedAddresses/)
-  assert.match(checkout, /defaultSavedAddress/)
-  assert.match(checkout, /resolveCheckoutAddressPrefill/)
-  assert.match(checkout, /handleSavedAddressSelect/)
-  assert.match(checkout, /<CheckoutForm[^>]*savedAddresses/)
-  assert.match(checkout, /customer:\s*checkout/)
-  assert.doesNotMatch(checkout, /customer:\s*\{[^}]*addressId/)
-})
-
-test("checkout form exposes a saved address selector without replacing editable fields", async () => {
+test("checkout form selects a saved address or exposes editable fields for a new one", async () => {
   const form = await source("../components/checkout-form.tsx")
 
-  assert.match(form, /savedAddresses/)
-  assert.match(form, /Endereços salvos/)
-  assert.match(form, /onSelectSavedAddress/)
+  assert.match(form, /selectedSavedAddressId/)
+  assert.match(form, /Onde você quer receber\?/)
+  assert.match(form, /\+ Usar outro endereço/)
   assert.match(form, /checkout-cep/)
   assert.match(form, /checkout-rua/)
   assert.match(form, /checkout-numero/)
+  assert.match(form, /Salvar este endereço para próximas compras/)
 })
