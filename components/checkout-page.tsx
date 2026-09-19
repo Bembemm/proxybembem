@@ -11,19 +11,18 @@ import { ShippingOptions } from "@/components/shipping-options"
 import { useCart } from "@/contexts/cart-context"
 import {
   applyCheckoutSavedAddress,
+  checkoutMatchesSavedAddress,
   digitsOnly,
+  formatCep,
   formatPrice,
-  resolveCheckoutAddressPrefill,
+  formatWhatsapp,
+  selectCheckoutSavedAddress,
   validateCheckout,
+  type CheckoutCustomerPrefill,
   type CheckoutData,
   type CheckoutErrors,
   type CheckoutSavedAddress,
 } from "@/lib/checkout"
-import {
-  clearCheckoutLoginDraft,
-  readCheckoutLoginDraft,
-  saveCheckoutLoginDraft,
-} from "@/lib/checkout-login-draft"
 import {
   applyShippingChanged,
   invalidateCheckoutSelection,
@@ -103,6 +102,23 @@ function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
   return options
 }
 
+function writeCheckoutPreview(
+  storage: Storage,
+  cep: string,
+  shippingServiceId: string | null,
+) {
+  const normalizedCep = digitsOnly(cep)
+  if (!/^\d{8}$/.test(normalizedCep)) return
+  try {
+    storage.setItem(
+      CHECKOUT_PREVIEW_KEY,
+      JSON.stringify({ cep: normalizedCep, shippingServiceId }),
+    )
+  } catch {
+    // Checkout can continue even if browser storage is unavailable.
+  }
+}
+
 function readCheckoutPreview(storage: Storage): CheckoutPreview | null {
   try {
     const raw = storage.getItem(CHECKOUT_PREVIEW_KEY)
@@ -123,8 +139,10 @@ function readCheckoutPreview(storage: Storage): CheckoutPreview | null {
 
 export function CheckoutPage({
   savedAddresses = [],
+  customerPrefill,
 }: {
   savedAddresses?: CheckoutSavedAddress[]
+  customerPrefill: CheckoutCustomerPrefill
 }) {
   const {
     items,
@@ -132,16 +150,22 @@ export function CheckoutPage({
     catalogStatus,
     retryCatalog,
   } = useCart()
-  const [checkout, setCheckout] = useState<CheckoutData>(EMPTY_CHECKOUT)
+  const [checkout, setCheckout] = useState<CheckoutData>({
+    ...EMPTY_CHECKOUT,
+    nome: customerPrefill.name,
+    email: customerPrefill.email,
+    whatsapp: formatWhatsapp(customerPrefill.whatsapp),
+  })
   const [errors, setErrors] = useState<CheckoutErrors>({})
   const [shipping, setShipping] = useState<ShippingClientState>(EMPTY_SHIPPING)
   const [isQuoting, setIsQuoting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const restoredShippingServiceIdRef = useRef<string | null>(null)
-  const restoredDraftRef = useRef(false)
-  const defaultSavedAddress =
-    savedAddresses.find((address) => address.isDefault) ?? null
+  const initializedRef = useRef(false)
+  const previewCepRef = useRef<string | null>(null)
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState<string | null>(null)
+  const [saveNewAddress, setSaveNewAddress] = useState(savedAddresses.length < 5)
 
   const destinationCep = digitsOnly(checkout.cep)
   const hasValidCep = /^\d{8}$/.test(destinationCep)
@@ -155,32 +179,28 @@ export function CheckoutPage({
   )
 
   useEffect(() => {
-    if (restoredDraftRef.current) return
-    restoredDraftRef.current = true
-
-    const loginDraft = readCheckoutLoginDraft(window.sessionStorage)
-    if (loginDraft) {
-      restoredShippingServiceIdRef.current = loginDraft.shippingServiceId
-      setCheckout(loginDraft.checkout)
-      return
-    }
+    if (initializedRef.current) return
+    initializedRef.current = true
 
     const preview = readCheckoutPreview(window.sessionStorage)
+    previewCepRef.current = preview?.cep ?? null
 
-    if (defaultSavedAddress || preview) {
-      setCheckout((current) =>
-        resolveCheckoutAddressPrefill(
-          current,
-          defaultSavedAddress,
-          preview?.cep ?? null,
-        ),
-      )
+    const selectedAddress = selectCheckoutSavedAddress(
+      savedAddresses,
+      preview?.cep ?? null,
+    )
+
+    if (selectedAddress) {
+      setSelectedSavedAddressId(selectedAddress.id)
+      setCheckout((current) => applyCheckoutSavedAddress(current, selectedAddress))
+    } else if (preview) {
+      setCheckout((current) => ({ ...current, cep: formatCep(preview.cep) }))
     }
 
     if (preview) {
       restoredShippingServiceIdRef.current = preview.shippingServiceId
     }
-  }, [defaultSavedAddress])
+  }, [savedAddresses])
 
   useEffect(() => {
     setShipping((current) => invalidateCheckoutSelection(current))
@@ -260,7 +280,16 @@ export function CheckoutPage({
     setErrors((current) => ({ ...current, [field]: undefined }))
     setCheckoutError(null)
 
-    if (field === "cep") restoredShippingServiceIdRef.current = null
+    if (field === "cep") {
+      restoredShippingServiceIdRef.current = null
+      setSelectedSavedAddressId(null)
+      const normalizedCep = digitsOnly(value)
+      if (/^\d{8}$/.test(normalizedCep)) {
+        previewCepRef.current = normalizedCep
+        writeCheckoutPreview(window.sessionStorage, normalizedCep, null)
+      }
+    }
+
     setShipping((current) =>
       field === "cep"
         ? invalidateCheckoutSelection(current)
@@ -270,6 +299,7 @@ export function CheckoutPage({
 
   const handleSavedAddressSelect = (address: CheckoutSavedAddress) => {
     restoredShippingServiceIdRef.current = null
+    setSelectedSavedAddressId(address.id)
     setCheckout((current) => applyCheckoutSavedAddress(current, address))
     setErrors((current) => ({
       ...current,
@@ -282,13 +312,78 @@ export function CheckoutPage({
       uf: undefined,
     }))
     setShipping((current) => invalidateCheckoutSelection(current))
+    writeCheckoutPreview(window.sessionStorage, address.cep, null)
+    setCheckoutError(null)
+  }
+
+  const handleUseNewAddress = () => {
+    restoredShippingServiceIdRef.current = null
+    setSelectedSavedAddressId(null)
+    const preservedCep = previewCepRef.current ?? digitsOnly(checkout.cep)
+
+    setCheckout((current) => ({
+      ...current,
+      cep: /^\d{8}$/.test(preservedCep) ? formatCep(preservedCep) : "",
+      rua: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      cidade: "",
+      uf: "",
+    }))
+    setErrors((current) => ({
+      ...current,
+      cep: undefined,
+      rua: undefined,
+      numero: undefined,
+      complemento: undefined,
+      bairro: undefined,
+      cidade: undefined,
+      uf: undefined,
+    }))
+    setShipping((current) => invalidateCheckoutSelection(current))
+    if (/^\d{8}$/.test(preservedCep)) {
+      writeCheckoutPreview(window.sessionStorage, preservedCep, null)
+    }
     setCheckoutError(null)
   }
 
   const handleShippingSelect = (option: PublicShippingOption) => {
     restoredShippingServiceIdRef.current = null
     setShipping((current) => selectShippingOption(current, option))
+    writeCheckoutPreview(window.sessionStorage, checkout.cep, option.serviceId)
     setCheckoutError(null)
+  }
+
+  const saveCheckoutAddressForFuture = async () => {
+    if (
+      !saveNewAddress ||
+      selectedSavedAddressId ||
+      savedAddresses.length >= 5 ||
+      savedAddresses.some((address) => checkoutMatchesSavedAddress(checkout, address))
+    ) {
+      return
+    }
+
+    try {
+      await fetch("/api/account/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: savedAddresses.length === 0 ? "Principal" : `Endereço ${savedAddresses.length + 1}`,
+          cep: digitsOnly(checkout.cep),
+          street: checkout.rua,
+          number: checkout.numero,
+          complement: checkout.complemento,
+          neighborhood: checkout.bairro,
+          city: checkout.cidade,
+          state: checkout.uf,
+          isDefault: savedAddresses.length === 0,
+        }),
+      })
+    } catch {
+      // Saving the reusable address is a convenience and must not block payment.
+    }
   }
 
   const handleCheckout = async () => {
@@ -330,9 +425,9 @@ export function CheckoutPage({
 
       if (!response.ok) {
         if (result?.code === "authentication_required") {
-          saveCheckoutLoginDraft(
+          writeCheckoutPreview(
             window.sessionStorage,
-            checkout,
+            checkout.cep,
             shipping.selectedShipping.serviceId,
           )
           window.location.assign("/entrar?next=%2Fcheckout")
@@ -367,7 +462,7 @@ export function CheckoutPage({
         throw new Error("Unsafe checkout URL")
       }
 
-      clearCheckoutLoginDraft(window.sessionStorage)
+      await saveCheckoutAddressForFuture()
       window.sessionStorage.removeItem(CHECKOUT_PREVIEW_KEY)
       window.location.assign(result.checkoutUrl)
     } catch {
@@ -443,7 +538,12 @@ export function CheckoutPage({
                 data={checkout}
                 errors={errors}
                 savedAddresses={savedAddresses}
+                selectedSavedAddressId={selectedSavedAddressId}
+                saveNewAddress={saveNewAddress}
+                canSaveNewAddress={savedAddresses.length < 5}
                 onSelectSavedAddress={handleSavedAddressSelect}
+                onUseNewAddress={handleUseNewAddress}
+                onSaveNewAddressChange={setSaveNewAddress}
                 onChange={handleCheckoutChange}
               />
 
