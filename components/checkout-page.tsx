@@ -32,7 +32,8 @@ import {
 import { isAllowedMercadoPagoCheckoutUrl } from "@/lib/server/checkout-url"
 import type { PublicShippingOption } from "@/lib/server/shipping-quote"
 
-const CHECKOUT_PREVIEW_KEY = "proxybembem-checkout-preview-v1"
+const CHECKOUT_PREVIEW_KEY = "proxybembem-checkout-preview-v2"
+const CHECKOUT_PREVIEW_TTL_MS = 2 * 60 * 60 * 1000
 
 const EMPTY_CHECKOUT: CheckoutData = {
   nome: "",
@@ -69,6 +70,8 @@ interface ShippingQuoteResponse {
 }
 
 interface CheckoutPreview {
+  version: 2
+  savedAt: number
   cep: string
   shippingServiceId: string | null
 }
@@ -112,7 +115,12 @@ function writeCheckoutPreview(
   try {
     storage.setItem(
       CHECKOUT_PREVIEW_KEY,
-      JSON.stringify({ cep: normalizedCep, shippingServiceId }),
+      JSON.stringify({
+        version: 2,
+        savedAt: Date.now(),
+        cep: normalizedCep,
+        shippingServiceId,
+      }),
     )
   } catch {
     // Checkout can continue even if browser storage is unavailable.
@@ -125,13 +133,24 @@ function readCheckoutPreview(storage: Storage): CheckoutPreview | null {
     if (!raw) return null
     const value = JSON.parse(raw) as Partial<CheckoutPreview>
     const cep = typeof value.cep === "string" ? digitsOnly(value.cep) : ""
+    const now = Date.now()
     const shippingServiceId =
       typeof value.shippingServiceId === "string" && value.shippingServiceId
         ? value.shippingServiceId
         : null
 
-    if (!/^\d{8}$/.test(cep)) return null
-    return { cep, shippingServiceId }
+    if (
+      value.version !== 2 ||
+      typeof value.savedAt !== "number" ||
+      !Number.isFinite(value.savedAt) ||
+      value.savedAt > now + 60_000 ||
+      now - value.savedAt > CHECKOUT_PREVIEW_TTL_MS ||
+      !/^\d{8}$/.test(cep)
+    ) {
+      storage.removeItem(CHECKOUT_PREVIEW_KEY)
+      return null
+    }
+    return { version: 2, savedAt: value.savedAt, cep, shippingServiceId }
   } catch {
     return null
   }
@@ -182,7 +201,7 @@ export function CheckoutPage({
     if (initializedRef.current) return
     initializedRef.current = true
 
-    const preview = readCheckoutPreview(window.sessionStorage)
+    const preview = readCheckoutPreview(window.localStorage)
     previewCepRef.current = preview?.cep ?? null
 
     const selectedAddress = selectCheckoutSavedAddress(
@@ -286,7 +305,7 @@ export function CheckoutPage({
       const normalizedCep = digitsOnly(value)
       if (/^\d{8}$/.test(normalizedCep)) {
         previewCepRef.current = normalizedCep
-        writeCheckoutPreview(window.sessionStorage, normalizedCep, null)
+        writeCheckoutPreview(window.localStorage, normalizedCep, null)
       }
     }
 
@@ -312,7 +331,7 @@ export function CheckoutPage({
       uf: undefined,
     }))
     setShipping((current) => invalidateCheckoutSelection(current))
-    writeCheckoutPreview(window.sessionStorage, address.cep, null)
+    writeCheckoutPreview(window.localStorage, address.cep, null)
     setCheckoutError(null)
   }
 
@@ -343,7 +362,7 @@ export function CheckoutPage({
     }))
     setShipping((current) => invalidateCheckoutSelection(current))
     if (/^\d{8}$/.test(preservedCep)) {
-      writeCheckoutPreview(window.sessionStorage, preservedCep, null)
+      writeCheckoutPreview(window.localStorage, preservedCep, null)
     }
     setCheckoutError(null)
   }
@@ -351,7 +370,7 @@ export function CheckoutPage({
   const handleShippingSelect = (option: PublicShippingOption) => {
     restoredShippingServiceIdRef.current = null
     setShipping((current) => selectShippingOption(current, option))
-    writeCheckoutPreview(window.sessionStorage, checkout.cep, option.serviceId)
+    writeCheckoutPreview(window.localStorage, checkout.cep, option.serviceId)
     setCheckoutError(null)
   }
 
@@ -426,7 +445,7 @@ export function CheckoutPage({
       if (!response.ok) {
         if (result?.code === "authentication_required") {
           writeCheckoutPreview(
-            window.sessionStorage,
+            window.localStorage,
             checkout.cep,
             shipping.selectedShipping.serviceId,
           )
@@ -463,7 +482,7 @@ export function CheckoutPage({
       }
 
       await saveCheckoutAddressForFuture()
-      window.sessionStorage.removeItem(CHECKOUT_PREVIEW_KEY)
+      window.localStorage.removeItem(CHECKOUT_PREVIEW_KEY)
       window.location.assign(result.checkoutUrl)
     } catch {
       setCheckoutError("Não foi possível iniciar o pagamento. Tente novamente.")
