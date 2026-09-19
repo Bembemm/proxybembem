@@ -45,7 +45,7 @@ test("cart stores only a short-lived CEP and selected freight preview before aut
   assert.match(cart, /shippingServiceId:\s*shipping\.selectedShipping\.serviceId/)
   assert.match(cart, /window\.location\.assign\(["']\/checkout["']\)/)
 
-  assert.match(checkout, /readCheckoutPreview\(window\\.localStorage\)/)
+  assert.ok(checkout.includes("readCheckoutPreview(window.localStorage)"))
   assert.match(checkout, /CHECKOUT_PREVIEW_TTL_MS/)
   assert.match(checkout, /formatCep\(preview\.cep\)/)
   assert.match(checkout, /restoredShippingServiceIdRef/)
