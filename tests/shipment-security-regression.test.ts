@@ -33,57 +33,68 @@ function assertOrdered(sourceText: string, labels: Array<[string, RegExp]>) {
   }
 }
 
-test("prepare purchase generate post and cancel remain AAL2 active-admin server mutations", async () => {
-  const routes = [
-    ["prepare", "app/api/internal/admin/orders/[id]/shipment/prepare/route.ts", /prepareAdminShipment/],
-    ["purchase", "app/api/internal/admin/shipments/[id]/purchase/route.ts", /purchaseAdminShipment/],
-    ["generate", "app/api/internal/admin/shipments/[id]/generate/route.ts", /generateAdminShipment/],
-    ["post", "app/api/internal/admin/shipments/[id]/post/route.ts", /postAdminShipment/],
-    ["cancel", "app/api/internal/admin/shipments/[id]/cancel/route.ts", /cancelAdminShipment/],
-  ] as const
+test("preparation remains the only active Melhor Envio shipment mutation", async () => {
+  const prepare = await source(
+    "app/api/internal/admin/orders/[id]/shipment/prepare/route.ts",
+  )
 
-  for (const [label, file, operation] of routes) {
-    const text = await source(file)
-    assert.match(text, /authorizeAdminAccess\(\{ touch: true \}\)/, `${label} must require touched admin auth`)
-    assert.match(text, operation, `${label} must wire only its explicit operation`)
-    assert.doesNotMatch(text, /getOptionalCustomerIdentity|requireCustomerPageAccess/, `${label} cannot use customer auth`)
+  assert.match(prepare, /authorizeAdminAccess\(\{ touch: true \}\)/)
+  assert.match(prepare, /prepareAdminShipment/)
+  assert.match(prepare, /admin-shipping-mutation/)
+  assert.doesNotMatch(prepare, /getOptionalCustomerIdentity|requireCustomerPageAccess/)
+
+  for (const retired of [
+    "app/api/internal/admin/shipments/[id]/purchase/route.ts",
+    "app/api/internal/admin/shipments/[id]/generate/route.ts",
+    "app/api/internal/admin/shipments/[id]/post/route.ts",
+    "app/api/internal/admin/shipments/[id]/cancel/route.ts",
+    "app/api/internal/admin/shipments/[id]/reconcile/route.ts",
+    "app/api/internal/admin/shipments/[id]/print-label/route.ts",
+    "app/api/internal/admin/shipments/[id]/print-dace/route.ts",
+    "app/api/internal/melhor-envio/tracking/route.ts",
+  ]) {
+    await assert.rejects(() => source(retired), /ENOENT/)
   }
 })
 
-test("same-origin and rate-limit boundaries precede auth and mutation work", async () => {
+test("same-origin and rate-limit boundaries precede admin auth and preparation", async () => {
   const sharedActions = await source("lib/server/admin-shipment-actions.ts")
   assertOrdered(sharedActions, [
     ["origin guard", /isAllowedCheckoutOrigin\(\{/],
     ["rate limit", /consumeRateLimit\(input\.request\)/],
     ["admin auth", /input\.authorizeAdmin\(\)/],
   ])
-  assert.ok(sharedActions.indexOf("prepareShipment({") > sharedActions.indexOf("input.authorizeAdmin()"))
-  assert.ok(sharedActions.indexOf("purchaseShipment({") > sharedActions.indexOf("input.authorizeAdmin()"))
-
-  for (const [file, operation] of [
-    ["app/api/internal/admin/shipments/[id]/generate/route.ts", "generateAdminShipment({"],
-    ["app/api/internal/admin/shipments/[id]/post/route.ts", "postAdminShipment({"],
-    ["app/api/internal/admin/shipments/[id]/cancel/route.ts", "cancelAdminShipment({"],
-  ] as const) {
-    const text = await source(file)
-    assertOrdered(text, [
-      ["origin guard", /isAllowedCheckoutOrigin\(\{/],
-      ["rate limit", /consumeRateLimit\(\{/],
-      ["admin auth", /authorizeAdminAccess\(\{ touch: true \}\)/],
-      ["shipment mutation", new RegExp(operation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))],
-    ])
-  }
+  assert.ok(
+    sharedActions.indexOf("prepareShipment({") >
+      sharedActions.indexOf("input.authorizeAdmin()"),
+  )
+  assert.doesNotMatch(
+    sharedActions,
+    /purchaseShipment|generateShipment|cancelShipment|postShipment/,
+  )
 })
 
-test("purchase keeps an independent spend rate-limit bucket", async () => {
-  const [purchase, prepare] = await Promise.all([
-    source("app/api/internal/admin/shipments/[id]/purchase/route.ts"),
-    source("app/api/internal/admin/orders/[id]/shipment/prepare/route.ts"),
-  ])
+test("shipment runtime contains no provider spend generation print cancel or tracking client", async () => {
+  const client = await source("lib/server/melhor-envio-shipment-client.ts")
+  const lifecycle = await source("lib/server/shipment-lifecycle-service.ts")
 
-  assert.match(purchase, /scope:\s*"admin-shipping-spend"/)
-  assert.doesNotMatch(purchase, /scope:\s*"admin-shipping-mutation"/)
-  assert.match(prepare, /scope:\s*"admin-shipping-mutation"/)
+  assert.match(client, /\/api\/v2\/me\/cart/)
+  assert.match(lifecycle, /prepareAdminShipment/)
+  for (const retired of [
+    "shipping-checkout",
+    "shipping-generate",
+    "shipping-print",
+    "shipping-tracking",
+    "shipping-cancel",
+    "purchaseMelhorEnvioShipment",
+    "generateMelhorEnvioShipment",
+    "getMelhorEnvioPrintResource",
+    "cancelMelhorEnvioShipment",
+    "trackMelhorEnvioShipments",
+  ]) {
+    assert.doesNotMatch(client, new RegExp(retired))
+    assert.doesNotMatch(lifecycle, new RegExp(retired))
+  }
 })
 
 test("customer shipment projection is an exact allowlist with no private shipment fields", async () => {
@@ -110,9 +121,6 @@ test("customer shipment projection is an exact allowlist with no private shipmen
 test("shipment runtime errors and logs never carry raw secret or sender metadata", async () => {
   const files = [
     "lib/server/shipment-lifecycle-service.ts",
-    "lib/server/shipment-generation.ts",
-    "lib/server/shipment-post-cancel.ts",
-    "lib/server/shipment-tracking.ts",
     "lib/server/melhor-envio-shipment-client.ts",
     "lib/server/admin-shipment-actions.ts",
   ]
