@@ -173,7 +173,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch {
-      window.localStorage.removeItem(CART_STORAGE_KEY)
+      try {
+        window.localStorage.removeItem(CART_STORAGE_KEY)
+      } catch {
+        // Browser storage may be unavailable; keep the in-memory cart usable.
+      }
     }
 
     storedLinesRef.current = storedLines
@@ -184,7 +188,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (catalogStatus !== "ready") return
-    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
+
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
+    } catch {
+      // Persistence is optional; cart state must remain usable in memory.
+    }
   }, [items, catalogStatus])
 
   const retryCatalog = () => {
