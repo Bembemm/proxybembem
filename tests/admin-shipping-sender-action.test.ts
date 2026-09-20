@@ -348,7 +348,7 @@ test("production route wires touched admin auth and the admin-shipping-config ra
   ).catch(() => "")
   assert.match(route, /authorizeAdminAccess\(\{\s*touch:\s*true\s*\}\)/)
   assert.match(route, /scope:\s*["']admin-shipping-config["']/)
-  assert.match(route, /getMelhorEnvioShipmentEnv/)
+  assert.match(route, /getMelhorEnvioOAuthEnv/)
 })
 
 test("admin integration UI shows environment connection and both masked sender modes without embedding full documents", async () => {
