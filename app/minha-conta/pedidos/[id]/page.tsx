@@ -46,27 +46,6 @@ const SHIPMENT_TIMELINE_LABELS: Record<CustomerShipmentTimelineEntry["kind"], st
   delivered: "Entregue",
 }
 
-const PAYMENT_SYNC_MESSAGES = {
-  approved: "Pagamento confirmado pelo Mercado Pago.",
-  updated: "Status do pagamento atualizado com os dados atuais do Mercado Pago.",
-  unchanged: "O Mercado Pago confirmou o mesmo status que já estava salvo.",
-  "not-found": "Ainda não encontramos um pagamento vinculado a este pedido no Mercado Pago.",
-  "manual-review": "O pagamento foi localizado, mas precisa de verificação antes de liberar a produção.",
-  "rate-limited": "Aguarde alguns minutos antes de consultar o pagamento novamente.",
-  error: "Não foi possível consultar o Mercado Pago agora. Tente novamente em instantes.",
-} as const
-
-type PaymentSyncStatus = keyof typeof PAYMENT_SYNC_MESSAGES
-type PageSearchParams = Promise<{ payment?: string | string[] }>
-
-function firstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
-}
-
-function paymentSyncMessage(value: string | undefined) {
-  if (!value || !(value in PAYMENT_SYNC_MESSAGES)) return null
-  return PAYMENT_SYNC_MESSAGES[value as PaymentSyncStatus]
-}
 
 function formatMoney(cents: number | null) {
   if (cents === null) return "—"
@@ -78,10 +57,8 @@ function formatMoney(cents: number | null) {
 
 export default async function OrderDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: PageSearchParams
 }) {
   const { id } = await params
   await requireCustomerPageAccess(`/minha-conta/pedidos/${id}`)
@@ -120,9 +97,6 @@ export default async function OrderDetailPage({
       </AccountPage>
     )
   }
-
-  const query = await searchParams
-  const paymentFeedback = paymentSyncMessage(firstParam(query.payment))
 
   const checkoutExpired = isCheckoutExpired(order)
   const checkoutResumable = canResumeCheckout(order)
@@ -172,15 +146,6 @@ Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
       ) : undefined}
     >
       <div className="space-y-6">
-        {paymentFeedback ? (
-          <p
-            role="status"
-            className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-medium text-violet-800"
-          >
-            {paymentFeedback}
-          </p>
-        ) : null}
-
         {checkoutResumable ? (
           <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
@@ -191,22 +156,12 @@ Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
               O pedido já foi reservado, mas o pagamento ainda não foi concluído. Você pode continuar
               no Mercado Pago até {checkoutExpiration.toLocaleString("pt-BR")}.
             </p>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <a
-                href={`/api/orders/${order.id}/resume-payment`}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto"
-              >
-                Continuar pagamento
-              </a>
-              <form method="post" action={`/api/orders/${order.id}/reconcile-payment`}>
-                <button
-                  type="submit"
-                  className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-violet-300 bg-white px-5 py-3 text-center text-sm font-bold text-violet-700 transition hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto"
-                >
-                  Já paguei — atualizar status
-                </button>
-              </form>
-            </div>
+            <a
+              href={`/api/orders/${order.id}/resume-payment`}
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto"
+            >
+              Continuar pagamento
+            </a>
           </section>
         ) : checkoutExpired ? (
           <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
