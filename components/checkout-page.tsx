@@ -661,6 +661,7 @@ export function CheckoutPage({
                 selectedSavedAddressId={selectedSavedAddressId}
                 saveNewAddress={saveNewAddress}
                 canSaveNewAddress={savedAddresses.length < 5}
+                cepLookupStatus={cepLookupStatus}
                 onSelectSavedAddress={handleSavedAddressSelect}
                 onUseNewAddress={handleUseNewAddress}
                 onSaveNewAddressChange={setSaveNewAddress}
