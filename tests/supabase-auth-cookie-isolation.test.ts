@@ -32,6 +32,7 @@ test("protected routes select the correct Supabase auth scope", () => {
     "/criar-conta",
     "/minha-conta",
     "/api/account/login",
+    "/checkout",
     "/api/checkout",
   ]) {
     assert.equal(supabaseAuthScopeForPath(path), "customer", path)
@@ -50,6 +51,8 @@ test("browser, server, route and proxy clients preserve cookie isolation", async
   assert.match(client, /createSupabaseBrowserClient/)
   assert.match(client, /authCookieName\(scope\)/)
   assert.match(client, /isSingleton:\s*false/)
+  assert.match(client, /parseCookieHeader\(document\.cookie\)/)
+  assert.match(client, /serializeCookieHeader\(name, value, options\)/)
 
   assert.match(server, /createAdminSupabaseServerClient/)
   assert.match(server, /createScopedSupabaseServerClient\("customer"\)/)
