@@ -7,6 +7,7 @@ const EXACT_SESSION_PATHS = new Set([
   "/redefinir-senha",
   "/auth/callback",
   "/auth/confirm",
+  "/checkout",
   "/api/checkout",
   "/api/internal/melhor-envio/oauth/start",
 ])
