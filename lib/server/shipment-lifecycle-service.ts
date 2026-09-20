@@ -87,10 +87,6 @@ function assertUuid(value: string, label: string) {
   if (!UUID_RE.test(value)) throw new Error(`Invalid shipment ${label}`)
 }
 
-function isPositiveSafeInteger(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value > 0
-}
-
 function senderSnapshot(sender: ShippingSenderProfile) {
   return {
     personType: sender.personType,
