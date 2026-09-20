@@ -72,7 +72,6 @@ interface PreferenceInput {
     carrierName: string
     amountCents: number
   }
-  notificationUrl: string
   returnUrl: string
   payerName: string
   expirationDateFrom: string
@@ -482,7 +481,6 @@ export async function executeCheckoutFlow(
         carrierName: selectedShipping.carrierName,
         amountCents: selectedShipping.priceCents,
       },
-      notificationUrl: `${input.siteUrl}/api/mercadopago/webhook`,
       returnUrl,
       payerName: customer.nome,
       ...expirationWindow,
