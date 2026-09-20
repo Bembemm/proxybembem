@@ -1,6 +1,10 @@
 "use client"
 
-import { createBrowserClient } from "@supabase/ssr"
+import {
+  createBrowserClient,
+  parseCookieHeader,
+  serializeCookieHeader,
+} from "@supabase/ssr"
 import { getSupabaseBrowserConfig } from "./config.ts"
 import { authCookieName, type SupabaseAuthScope } from "./auth-scope.ts"
 
@@ -12,6 +16,14 @@ function createScopedBrowserClient(scope: SupabaseAuthScope) {
     },
     cookies: {
       encode: "tokens-only",
+      getAll() {
+        return parseCookieHeader(document.cookie)
+      },
+      setAll(cookiesToSet) {
+        for (const { name, value, options } of cookiesToSet) {
+          document.cookie = serializeCookieHeader(name, value, options)
+        }
+      },
     },
     // @supabase/ssr otherwise caches one global browser client regardless of
     // cookieOptions. Each auth scope must own an independent client instance.
