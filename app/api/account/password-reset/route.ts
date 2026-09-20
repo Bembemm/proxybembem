@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
     )
     recoveryUrl.searchParams.set("token_hash", recoveryToken)
     recoveryUrl.searchParams.set("type", "recovery")
+    recoveryUrl.searchParams.set("next", input.next)
 
     await sendPasswordRecoveryEmail({
       to: input.email,
