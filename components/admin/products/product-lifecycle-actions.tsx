@@ -3,7 +3,6 @@
 import { Archive, Loader2, RotateCcw, Send } from "lucide-react"
 import { useState } from "react"
 import type { CatalogProduct, ProductStatus } from "../../../lib/products/product.ts"
-import { revalidatePublicProductCatalog } from "../../../lib/server/product-catalog-revalidation.ts"
 import {
   Dialog,
   DialogClose,
@@ -72,18 +71,8 @@ export function ProductLifecycleActions({
         return
       }
 
-      let refreshFailed = false
-      try {
-        await revalidatePublicProductCatalog()
-      } catch {
-        refreshFailed = true
-      }
-
       onUpdated(payload.product as unknown as CatalogProduct)
       if (operation === "archive") setArchiveOpen(false)
-      if (refreshFailed) {
-        setError("Status atualizado, mas a vitrine pode precisar ser recarregada.")
-      }
     } catch {
       setError("Não foi possível atualizar a publicação do produto.")
     } finally {
