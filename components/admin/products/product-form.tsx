@@ -4,7 +4,6 @@ import { Loader2, Save } from "lucide-react"
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import type { ProductMutationInput } from "../../../lib/products/product-form.ts"
 import type { CatalogProduct, ProductDetail, ProductSection } from "../../../lib/products/product.ts"
-import { revalidatePublicProductCatalog } from "../../../lib/server/product-catalog-revalidation.ts"
 import {
   Accordion,
   AccordionContent,
@@ -204,24 +203,12 @@ export function ProductForm({ product }: ProductFormProps) {
       }
 
       const saved = payload.product as unknown as CatalogProduct
-      let refreshFailed = false
-      try {
-        await revalidatePublicProductCatalog()
-      } catch {
-        refreshFailed = true
-      }
 
       setCurrentProduct(saved)
       setExpectedUpdatedAt(saved.updatedAt)
       setValues(initialState(saved))
       setDirty(false)
-      setSuccess(
-        refreshFailed
-          ? "Produto salvo. A vitrine pode precisar ser recarregada."
-          : editing
-            ? "Alterações salvas."
-            : "Produto criado como rascunho.",
-      )
+      setSuccess(editing ? "Alterações salvas." : "Produto criado como rascunho.")
 
       if (!editing) {
         window.history.replaceState(null, "", `/admin/produtos/${saved.id}`)
