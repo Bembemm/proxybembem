@@ -136,7 +136,7 @@ test("reconciliation rechecks an already approved payment for later reversals", 
     t.mock.method(
       globalThis,
       "fetch",
-      async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      async (input: Parameters<typeof fetch>[0], _init?: Parameters<typeof fetch>[1]) => {
         const url = new URL(String(input))
 
         if (url.pathname === "/v1/payments/search") {
