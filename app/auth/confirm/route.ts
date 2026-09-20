@@ -24,19 +24,22 @@ export async function GET(request: NextRequest) {
     request.nextUrl.searchParams.get("next"),
   )
 
+  const recoveryErrorPath =
+    `/entrar?erro=recovery&next=${encodeURIComponent(next)}`
+
   if (type !== "recovery" || !isValidRecoveryTokenHash(tokenHash)) {
-    return redirect(request, "/entrar?erro=recovery")
+    return redirect(request, recoveryErrorPath)
   }
 
   let active = false
   try {
     active = await isPasswordRecoveryGrantActive(tokenHash)
   } catch {
-    return redirect(request, "/entrar?erro=recovery")
+    return redirect(request, recoveryErrorPath)
   }
 
   if (!active) {
-    return redirect(request, "/entrar?erro=recovery")
+    return redirect(request, recoveryErrorPath)
   }
 
   const response = redirect(
