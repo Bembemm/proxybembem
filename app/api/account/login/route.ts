@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   try {
     input = parseAccountLoginInput(await readJsonBody(request, 4_096))
   } catch {
-    return json(400, { ok: false, message: "Credenciais inválidas." })
+    return json(400, { ok: false, message: "E-mail ou senha incorretos." })
   }
 
   try {
@@ -43,14 +43,14 @@ export async function POST(request: NextRequest) {
     })
     const session = data.session
     if (error || !session?.access_token) {
-      return json(401, { ok: false, message: "E-mail ou senha inválidos." })
+      return json(401, { ok: false, message: "E-mail ou senha incorretos." })
     }
 
     const { data: verified, error: userError } = await supabase.auth.getUser(
       session.access_token,
     )
     if (userError || !verified.user?.email_confirmed_at) {
-      return json(401, { ok: false, message: "E-mail ou senha inválidos." })
+      return json(401, { ok: false, message: "E-mail ou senha incorretos." })
     }
 
     try {
