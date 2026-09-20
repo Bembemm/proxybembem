@@ -121,3 +121,27 @@ test("provider webhooks use signature replay-dedupe controls instead of naive IP
   assert.match(resend, /Cache-Control["']?\s*:\s*["']no-store["']/i)
   assert.doesNotMatch(resend, /consumeRateLimit/)
 })
+
+
+test("customer identity and checkout data never use shared server caches", async () => {
+  const privateSources = await Promise.all([
+    source("../lib/server/customer-auth.ts"),
+    source("../lib/server/customer-profiles.ts"),
+    source("../lib/server/customer-addresses.ts"),
+    source("../lib/server/customer-orders.ts"),
+    source("../app/checkout/page.tsx"),
+  ])
+
+  for (const text of privateSources) {
+    assert.doesNotMatch(text, /unstable_cache|force-cache|stale-while-revalidate|s-maxage/i)
+  }
+
+  const accountLayout = await source("../app/minha-conta/layout.tsx")
+  const checkoutLayout = await source("../app/checkout/layout.tsx")
+  const proxy = await source("../lib/supabase/proxy.ts")
+
+  assert.match(accountLayout, /dynamic\s*=\s*["']force-dynamic["']/)
+  assert.match(checkoutLayout, /dynamic\s*=\s*["']force-dynamic["']/)
+  assert.match(proxy, /CUSTOMER_AUTH_SENSITIVE_PATHS/)
+  assert.match(proxy, /private, no-cache, no-store, max-age=0, must-revalidate/)
+})
