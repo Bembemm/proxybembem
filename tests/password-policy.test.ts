@@ -61,13 +61,22 @@ test("signup and password updates reject weak passwords with a specific policy e
   )
 })
 
-test("login does not reject an existing credential only because it predates the stronger policy", () => {
-  assert.equal(
+test("login does not apply signup password policy to an existing credential", () => {
+  for (const password of ["x", "senhafraca", "1234567"]) {
+    assert.equal(
+      parseAccountLoginInput({
+        email: "cliente@example.com",
+        password,
+      }).password,
+      password,
+    )
+  }
+
+  assert.throws(() =>
     parseAccountLoginInput({
       email: "cliente@example.com",
-      password: "senhafraca",
-    }).password,
-    "senhafraca",
+      password: "",
+    }),
   )
 })
 
