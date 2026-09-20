@@ -32,7 +32,10 @@ export async function GET(request: NextRequest) {
   const canExchangeCode = code !== null && code.length > 0 && code.length <= 2_048
 
   if (!canVerifyTokenHash && !canExchangeCode) {
-    return redirect(request, "/entrar?erro=callback")
+    return redirect(
+      request,
+      `/entrar?erro=callback&next=${encodeURIComponent(next)}`,
+    )
   }
 
   if (canVerifyTokenHash) {
@@ -50,7 +53,10 @@ export async function GET(request: NextRequest) {
             })
 
       if (error || !data.user?.email_confirmed_at) {
-        return redirect(request, "/entrar?erro=confirmacao")
+        return redirect(
+          request,
+          `/entrar?erro=confirmacao&next=${encodeURIComponent(next)}`,
+        )
       }
 
       // Verification is intentionally stateless here. Successful auth sessions
@@ -59,16 +65,22 @@ export async function GET(request: NextRequest) {
       return redirect(
         request,
         type === "email_change"
-          ? "/entrar?email=alterado"
+          ? `/entrar?email=alterado&next=${encodeURIComponent(next)}`
           : `/entrar?confirmado=1&next=${encodeURIComponent(next)}`,
       )
     } catch {
-      return redirect(request, "/entrar?erro=confirmacao")
+      return redirect(
+          request,
+          `/entrar?erro=confirmacao&next=${encodeURIComponent(next)}`,
+        )
     }
   }
 
   if (!code) {
-    return redirect(request, "/entrar?erro=callback")
+    return redirect(
+      request,
+      `/entrar?erro=callback&next=${encodeURIComponent(next)}`,
+    )
   }
 
   // Legacy compatibility for already-issued PKCE confirmation emails.
@@ -82,18 +94,27 @@ export async function GET(request: NextRequest) {
       flowId ? { flowId } : undefined,
     )
     if (error) {
-      return applyToResponse(redirect(request, "/entrar?erro=callback"))
+      return applyToResponse(redirect(
+      request,
+      `/entrar?erro=callback&next=${encodeURIComponent(next)}`,
+    ))
     }
 
     const { data, error: userError } = await routeClient.supabase.auth.getUser()
     if (userError || !data.user?.email_confirmed_at) {
-      return applyToResponse(redirect(request, "/entrar?erro=callback"))
+      return applyToResponse(redirect(
+      request,
+      `/entrar?erro=callback&next=${encodeURIComponent(next)}`,
+    ))
     }
 
     return applyToResponse(
       redirect(request, next === "/minha-conta" ? accountNext : next),
     )
   } catch {
-    return applyToResponse(redirect(request, "/entrar?erro=callback"))
+    return applyToResponse(redirect(
+      request,
+      `/entrar?erro=callback&next=${encodeURIComponent(next)}`,
+    ))
   }
 }
