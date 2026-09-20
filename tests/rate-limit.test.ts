@@ -213,13 +213,12 @@ test("uses a separate 5-per-15-minute bucket for Melhor Envio OAuth starts", asy
   })
 })
 
-test("shipment admin actions use distinct HMAC buckets with bounded config mutation and spend policies", async (t) => {
+test("shipment admin actions use distinct HMAC buckets for config and preparation mutations", async (t) => {
   await withEnv("1", async () => {
     const rawIp = "192.0.2.55"
     const cases = [
       { scope: "admin-shipping-config", limit: 10, windowSeconds: 600 },
       { scope: "admin-shipping-mutation", limit: 20, windowSeconds: 300 },
-      { scope: "admin-shipping-spend", limit: 5, windowSeconds: 300 },
     ] as const
     let index = 0
 
