@@ -17,6 +17,7 @@ interface CheckoutFormProps {
   selectedSavedAddressId?: string | null
   saveNewAddress?: boolean
   canSaveNewAddress?: boolean
+  cepLookupStatus?: "idle" | "loading" | "found" | "unavailable"
   onSelectSavedAddress?: (address: CheckoutSavedAddress) => void
   onUseNewAddress?: () => void
   onSaveNewAddressChange?: (value: boolean) => void
@@ -39,6 +40,7 @@ export function CheckoutForm({
   selectedSavedAddressId = null,
   saveNewAddress = true,
   canSaveNewAddress = false,
+  cepLookupStatus = "idle",
   onSelectSavedAddress,
   onUseNewAddress,
   onSaveNewAddressChange,
@@ -258,8 +260,18 @@ export function CheckoutForm({
               {errors.cep ? (
                 errorText("checkout-cep-error", errors.cep)
               ) : (
-                <p id="checkout-cep-help" className="mt-1 text-sm text-slate-500">
-                  O CEP informado no carrinho já aparece aqui automaticamente.
+                <p
+                  id="checkout-cep-help"
+                  className="mt-1 text-sm text-slate-500"
+                  aria-live="polite"
+                >
+                  {cepLookupStatus === "loading"
+                    ? "Buscando endereço pelo CEP..."
+                    : cepLookupStatus === "found"
+                      ? "Rua, bairro, cidade e UF foram preenchidos automaticamente quando disponíveis."
+                      : cepLookupStatus === "unavailable"
+                        ? "Não foi possível preencher automaticamente. Complete o endereço normalmente."
+                        : "O CEP informado no carrinho já aparece aqui automaticamente."}
                 </p>
               )}
             </div>
