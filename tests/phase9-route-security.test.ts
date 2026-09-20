@@ -8,7 +8,6 @@ async function source(path: string) {
 
 test("customer account mutations stay same-origin rate-limited bounded and private", async () => {
   const routes = [
-    "../app/api/account/login/route.ts",
     "../app/api/account/signup/route.ts",
     "../app/api/account/profile/route.ts",
     "../app/api/account/password/route.ts",
@@ -23,6 +22,13 @@ test("customer account mutations stay same-origin rate-limited bounded and priva
     assert.match(route, /readJsonBody\(request,\s*4_096\)/)
     assert.match(route, /private,\s*no-store/i)
   }
+
+  const login = await source("../app/api/account/login/route.ts")
+  assert.match(login, /isSameOriginAccountRequest/)
+  assert.match(login, /consumeRateLimit/)
+  assert.match(login, /readUrlEncodedBody\(request,\s*4_096\)/)
+  assert.match(login, /keys\.length\s*!==\s*3/)
+  assert.match(login, /private,\s*no-store/i)
 })
 
 test("checkout keeps origin authenticated-customer abuse and cache boundaries", async () => {
