@@ -26,6 +26,7 @@ import {
 import {
   applyShippingChanged,
   invalidateCheckoutSelection,
+  parseShippingOptions,
   selectShippingOption,
   type ShippingClientState,
 } from "@/lib/shipping-client"
@@ -74,35 +75,6 @@ interface CheckoutPreview {
   savedAt: number
   cep: string
   shippingServiceId: string | null
-}
-
-function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
-  if (!Array.isArray(value)) return null
-
-  const options: PublicShippingOption[] = []
-  for (const entry of value) {
-    if (!entry || typeof entry !== "object") return null
-    const candidate = entry as Partial<PublicShippingOption>
-    if (
-      typeof candidate.serviceId !== "string" ||
-      !candidate.serviceId ||
-      typeof candidate.serviceName !== "string" ||
-      !candidate.serviceName ||
-      typeof candidate.carrierName !== "string" ||
-      !candidate.carrierName ||
-      !Number.isSafeInteger(candidate.priceCents) ||
-      (candidate.priceCents ?? 0) <= 0 ||
-      !Number.isSafeInteger(candidate.deliveryDays) ||
-      (candidate.deliveryDays ?? -1) < 0 ||
-      typeof candidate.quoteToken !== "string" ||
-      !candidate.quoteToken
-    ) {
-      return null
-    }
-    options.push(candidate as PublicShippingOption)
-  }
-
-  return options
 }
 
 function writeCheckoutPreview(
@@ -482,7 +454,11 @@ export function CheckoutPage({
       }
 
       await saveCheckoutAddressForFuture()
-      window.localStorage.removeItem(CHECKOUT_PREVIEW_KEY)
+      try {
+        window.localStorage.removeItem(CHECKOUT_PREVIEW_KEY)
+      } catch {
+        // Browser storage cleanup must never prevent the payment redirect.
+      }
       window.location.assign(result.checkoutUrl)
     } catch {
       setCheckoutError("Não foi possível iniciar o pagamento. Tente novamente.")
