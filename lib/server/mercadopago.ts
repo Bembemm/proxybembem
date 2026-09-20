@@ -34,6 +34,11 @@ export interface MercadoPagoPayment {
   currencyId: string
 }
 
+export interface MercadoPagoPaymentSearchResult {
+  id: string
+  status: string
+}
+
 interface WebhookSignatureInput {
   xSignature: string | null | undefined
   xRequestId: string | null | undefined
@@ -64,6 +69,20 @@ async function mercadoPagoFetch(path: string, accessToken: string, init?: Reques
   }
 
   return response
+}
+
+export function mercadoPagoAmountToCents(value: number) {
+  const scaled = value * 100
+  const rounded = Math.round(scaled)
+  if (
+    !Number.isFinite(scaled) ||
+    !Number.isSafeInteger(rounded) ||
+    rounded < 0 ||
+    Math.abs(scaled - rounded) > 1e-6
+  ) {
+    throw new Error("Invalid Mercado Pago transaction amount")
+  }
+  return rounded
 }
 
 function webhooksOnlyNotificationUrl(value: string) {
@@ -254,4 +273,53 @@ export function validateMercadoPagoWebhookSignature({
   const received = Buffer.from(v1, "hex")
 
   return expected.length === received.length && timingSafeEqual(expected, received)
+}
+
+
+export async function searchMercadoPagoPaymentsByExternalReference(
+  externalReference: string,
+  accessToken: string,
+): Promise<MercadoPagoPaymentSearchResult[]> {
+  if (!/^PB-[A-F0-9]{12}$/.test(externalReference)) {
+    throw new Error("Invalid Mercado Pago external reference")
+  }
+
+  const params = new URLSearchParams({
+    sort: "date_last_updated",
+    criteria: "desc",
+    external_reference: externalReference,
+    limit: "10",
+  })
+  const response = await mercadoPagoFetch(
+    `/v1/payments/search?${params.toString()}`,
+    accessToken,
+  )
+  const payload = (await response.json()) as { results?: unknown }
+
+  if (!Array.isArray(payload.results) || payload.results.length > 10) {
+    throw new Error("Payment provider returned an invalid search response")
+  }
+
+  return payload.results.map((entry) => {
+    if (!entry || typeof entry !== "object") {
+      throw new Error("Payment provider returned an invalid search result")
+    }
+
+    const candidate = entry as { id?: unknown; status?: unknown }
+    const id =
+      typeof candidate.id === "number" || typeof candidate.id === "string"
+        ? parseMercadoPagoPaymentId(String(candidate.id))
+        : null
+
+    if (
+      !id ||
+      typeof candidate.status !== "string" ||
+      !candidate.status ||
+      candidate.status.length > 100
+    ) {
+      throw new Error("Payment provider returned an invalid search result")
+    }
+
+    return { id, status: candidate.status }
+  })
 }
