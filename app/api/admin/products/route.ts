@@ -1,5 +1,6 @@
 import { authorizeAdminAccess } from "../../../../lib/server/admin-auth.ts"
 import { createAdminProductRouteHandlers } from "../../../../lib/server/admin-product-actions.ts"
+import { invalidatePublicProductCatalog } from "../../../../lib/server/product-catalog-revalidation.ts"
 import {
   archiveProduct,
   createDraftProduct,
@@ -17,6 +18,7 @@ const handlers = createAdminProductRouteHandlers({
   publishProduct,
   archiveProduct,
   reactivateProduct,
+  invalidatePublicProductCatalog,
 })
 
 export const POST = handlers.create
