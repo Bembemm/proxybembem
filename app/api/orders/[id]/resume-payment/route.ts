@@ -7,6 +7,17 @@ import { getOrderByIdForCustomer } from "@/lib/server/orders"
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
+const PRIVATE_CACHE_CONTROL =
+  "private, no-cache, no-store, max-age=0, must-revalidate"
+
+function privateRedirect(url: URL | string) {
+  const response = NextResponse.redirect(url, 303)
+  response.headers.set("Cache-Control", PRIVATE_CACHE_CONTROL)
+  response.headers.set("Pragma", "no-cache")
+  response.headers.set("Expires", "0")
+  return response
+}
+
 function orderDetailUrl(request: NextRequest, orderId: string) {
   return new URL(`/minha-conta/pedidos/${orderId}`, request.nextUrl.origin)
 }
@@ -21,7 +32,7 @@ export async function GET(
   if (!identity) {
     const loginUrl = new URL("/entrar", request.nextUrl.origin)
     loginUrl.searchParams.set("next", `/minha-conta/pedidos/${id}`)
-    return NextResponse.redirect(loginUrl, 303)
+    return privateRedirect(loginUrl)
   }
 
   let order: Awaited<ReturnType<typeof getOrderByIdForCustomer>>
@@ -29,7 +40,7 @@ export async function GET(
     order = await getOrderByIdForCustomer(id, identity.userId)
   } catch {
     console.error("Customer checkout resume lookup failed", { orderId: id })
-    return NextResponse.redirect(orderDetailUrl(request, id), 303)
+    return privateRedirect(orderDetailUrl(request, id))
   }
 
   if (
@@ -42,8 +53,8 @@ export async function GET(
     }) ||
     !isAllowedMercadoPagoCheckoutUrl(order.checkout_url)
   ) {
-    return NextResponse.redirect(orderDetailUrl(request, id), 303)
+    return privateRedirect(orderDetailUrl(request, id))
   }
 
-  return NextResponse.redirect(order.checkout_url, 303)
+  return privateRedirect(order.checkout_url)
 }
