@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server.js"
 import { getMercadoPagoEnv } from "../../../../lib/server/env.ts"
 import {
   getMercadoPagoPayment,
+  mercadoPagoAmountToCents,
   parseMercadoPagoPaymentId,
   validateMercadoPagoWebhookSignature,
 } from "../../../../lib/server/mercadopago.ts"
@@ -9,20 +10,6 @@ import { applyMercadoPagoPaymentEvent } from "../../../../lib/server/orders.ts"
 import { readJsonBody } from "../../../../lib/server/request-body.ts"
 
 export const runtime = "nodejs"
-
-function paymentAmountToCents(value: number) {
-  const scaled = value * 100
-  const rounded = Math.round(scaled)
-  if (
-    !Number.isFinite(scaled) ||
-    !Number.isSafeInteger(rounded) ||
-    rounded < 0 ||
-    Math.abs(scaled - rounded) > 1e-6
-  ) {
-    throw new Error("Invalid Mercado Pago transaction amount")
-  }
-  return rounded
-}
 
 function topicFromBody(body: unknown) {
   if (!body || typeof body !== "object") return null
@@ -77,7 +64,7 @@ export async function POST(request: NextRequest) {
       return new NextResponse(null, { status: 200 })
     }
 
-    const paidCents = paymentAmountToCents(payment.transactionAmount)
+    const paidCents = mercadoPagoAmountToCents(payment.transactionAmount)
     const result = await applyMercadoPagoPaymentEvent({
       orderNumber,
       paymentId: payment.id,
