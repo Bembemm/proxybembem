@@ -14,14 +14,7 @@ const ENV_KEYS = [
 
 const EXPECTED_SCOPES = [
   "shipping-calculate",
-  "cart-read",
   "cart-write",
-  "orders-read",
-  "shipping-checkout",
-  "shipping-generate",
-  "shipping-print",
-  "shipping-tracking",
-  "shipping-cancel",
 ]
 
 async function withOAuthEnv(run: () => Promise<void>) {
@@ -49,7 +42,7 @@ async function withOAuthEnv(run: () => Promise<void>) {
   }
 }
 
-test("authorization URL requests exactly the approved Phase 5 least-privilege scopes", async () => {
+test("authorization URL requests only the active prepare-only Melhor Envio scopes", async () => {
   await withOAuthEnv(async () => {
     const { buildMelhorEnvioAuthorizationUrl } = await import(
       "../lib/server/melhor-envio-oauth-client.ts"
