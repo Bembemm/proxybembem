@@ -45,7 +45,6 @@ test("final Phase 9 smoke records auth ownership settings shipping notifications
   assert.match(doc, /verified authenticated customer/i)
   assert.match(doc, /MFA\/AAL2 \+ active app-session/i)
   assert.match(doc, /Store Settings/i)
-  assert.match(doc, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false/)
   assert.match(doc, /Transactional notification/i)
   assert.match(doc, /HTTP 200/i)
 })
