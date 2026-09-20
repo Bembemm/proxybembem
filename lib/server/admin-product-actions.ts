@@ -35,6 +35,7 @@ export interface AdminProductRouteDependencies {
   publishProduct(id: number, expectedUpdatedAt: string): Promise<CatalogProduct>
   archiveProduct(id: number, expectedUpdatedAt: string): Promise<CatalogProduct>
   reactivateProduct(id: number, expectedUpdatedAt: string): Promise<CatalogProduct>
+  invalidatePublicProductCatalog(): void | Promise<void>
 }
 
 type ProductMutationOperation =
@@ -166,6 +167,14 @@ function validateExpectedUpdatedAt(value: unknown) {
   return value
 }
 
+async function invalidateCatalog(deps: AdminProductRouteDependencies) {
+  try {
+    await deps.invalidatePublicProductCatalog()
+  } catch {
+    console.error("Public product catalog invalidation failed")
+  }
+}
+
 function productErrorResponse(error: unknown) {
   if (error instanceof ProductConflictError) {
     return jsonResponse(409, { error: "product_conflict" })
@@ -289,6 +298,7 @@ async function runLifecycleMutation(
 
   try {
     const product = await deps[`${operation}Product`](id, revision.expectedUpdatedAt)
+    await invalidateCatalog(deps)
     return jsonResponse(200, { product })
   } catch (error) {
     return productErrorResponse(error)
@@ -311,6 +321,7 @@ export function createAdminProductRouteHandlers(
 
       try {
         const product = await deps.createDraftProduct(validated.input)
+        await invalidateCatalog(deps)
         return jsonResponse(201, { product })
       } catch (error) {
         return productErrorResponse(error)
@@ -336,6 +347,7 @@ export function createAdminProductRouteHandlers(
           validated.expectedUpdatedAt,
           validated.input,
         )
+        await invalidateCatalog(deps)
         return jsonResponse(200, { product })
       } catch (error) {
         return productErrorResponse(error)
