@@ -1,11 +1,9 @@
 import assert from "node:assert/strict"
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import test from "node:test"
 
-const REVALIDATION = new URL(
-  "../lib/server/product-catalog-revalidation.ts",
-  import.meta.url,
-)
+const CACHE = new URL("../lib/server/product-catalog-cache.ts", import.meta.url)
+const ACTIONS = new URL("../lib/server/admin-product-actions.ts", import.meta.url)
 const PRODUCT_FORM = new URL(
   "../components/admin/products/product-form.tsx",
   import.meta.url,
@@ -16,35 +14,58 @@ const LIFECYCLE_ACTIONS = new URL(
 )
 const NAVBAR = new URL("../components/navbar.tsx", import.meta.url)
 
-test("public catalog revalidation is a Server Action covering home and products", () => {
-  assert.equal(
-    existsSync(REVALIDATION),
-    true,
-    "public product catalog revalidation Server Action must exist",
-  )
-  const source = readFileSync(REVALIDATION, "utf8")
-  assert.match(source, /^["']use server["']/m)
-  assert.match(source, /from\s+["']next\/cache["']/)
+const ROUTES = [
+  "../app/api/admin/products/route.ts",
+  "../app/api/admin/products/[id]/route.ts",
+  "../app/api/admin/products/[id]/publish/route.ts",
+  "../app/api/admin/products/[id]/archive/route.ts",
+  "../app/api/admin/products/[id]/reactivate/route.ts",
+] as const
+
+test("public catalog cache owns immediate tag and route invalidation", () => {
+  const source = readFileSync(CACHE, "utf8")
+  assert.match(source, /unstable_cache/)
+  assert.match(source, /revalidateTag\(\s*["']product-catalog["']/)
   assert.match(source, /revalidatePath\(\s*["']\/["']\s*\)/)
   assert.match(source, /revalidatePath\(\s*["']\/produtos["']\s*\)/)
-  assert.match(source, /revalidatePath\(\s*["']\/produtos\/\[produto\]["']\s*,\s*["']page["']\s*\)/)
+  assert.match(
+    source,
+    /revalidatePath\(\s*["']\/produtos\/\[produto\]["']\s*,\s*["']page["']\s*\)/,
+  )
 })
 
-test("successful admin product saves and lifecycle mutations invalidate client navigation cache", () => {
+test("successful admin product mutations invalidate from the server write flow", () => {
+  const actions = readFileSync(ACTIONS, "utf8")
+  assert.match(actions, /invalidateCatalogAfterMutation/)
+  assert.match(
+    actions,
+    /createDraftProduct[\s\S]*invalidateCatalogAfterMutation\(deps\)/,
+  )
+  assert.match(
+    actions,
+    /updateProduct[\s\S]*invalidateCatalogAfterMutation\(deps\)/,
+  )
+  assert.match(
+    actions,
+    /\[\x60\$\{operation\}Product\x60\][\s\S]*invalidateCatalogAfterMutation\(deps\)/,
+  )
+
+  for (const relativePath of ROUTES) {
+    const source = readFileSync(new URL(relativePath, import.meta.url), "utf8")
+    assert.match(source, /invalidatePublishedProductCatalog/)
+    assert.match(
+      source,
+      /invalidatePublicProductCatalog:\s*invalidatePublishedProductCatalog/,
+    )
+  }
+})
+
+test("admin browser no longer performs a second post-save cache mutation", () => {
   const formSource = readFileSync(PRODUCT_FORM, "utf8")
   const lifecycleSource = readFileSync(LIFECYCLE_ACTIONS, "utf8")
 
-  assert.match(formSource, /revalidatePublicProductCatalog/)
-  assert.match(
-    formSource,
-    /const saved = payload\.product[\s\S]*await revalidatePublicProductCatalog\(\)/,
-  )
-
-  assert.match(lifecycleSource, /revalidatePublicProductCatalog/)
-  assert.match(
-    lifecycleSource,
-    /!response\.ok[\s\S]*await revalidatePublicProductCatalog\(\)[\s\S]*onUpdated/,
-  )
+  assert.doesNotMatch(formSource, /revalidatePublicProductCatalog|product-catalog-revalidation/)
+  assert.doesNotMatch(lifecycleSource, /revalidatePublicProductCatalog|product-catalog-revalidation/)
 })
 
 test("mutable storefront destinations bypass soft navigation that can reuse stale RSC payloads", () => {
