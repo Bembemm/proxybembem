@@ -12,7 +12,6 @@ interface MercadoPagoPreferenceInput {
     carrierName: string
     amountCents: number
   }
-  notificationUrl: string
   returnUrl: string
   payerName: string
   expirationDateFrom: string
@@ -85,11 +84,6 @@ export function mercadoPagoAmountToCents(value: number) {
   return rounded
 }
 
-function webhooksOnlyNotificationUrl(value: string) {
-  const url = new URL(value)
-  url.searchParams.set("source_news", "webhooks")
-  return url.toString()
-}
 
 export async function createMercadoPagoPreference(
   input: MercadoPagoPreferenceInput,
@@ -150,7 +144,6 @@ export async function createMercadoPagoPreference(
         name: input.payerName,
       },
       external_reference: input.orderNumber,
-      notification_url: webhooksOnlyNotificationUrl(input.notificationUrl),
       back_urls: {
         success: input.returnUrl,
         pending: input.returnUrl,
