@@ -231,7 +231,7 @@ test("planned account routes are bounded POST surfaces and callback is GET-only"
   assert.match(logout, /signOut\s*\(\s*\{\s*scope:\s*["']local["']/)
   assert.match(logout, /applyToResponse\(redirectToLogin\(request\)\)/)
   assert.match(logout, /NextResponse\.redirect/)
-  assert.match(logout, /Clear-Site-Data/)
+  assert.doesNotMatch(logout, /Clear-Site-Data/)
   assert.doesNotMatch(logout, /readJsonBody\s*\(/)
 
   const callback = await source("../app/auth/callback/route.ts")
