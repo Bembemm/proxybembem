@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
-  MELHOR_ENVIO_PHASE5_SCOPES,
+  MELHOR_ENVIO_ACTIVE_SCOPES,
   type MelhorEnvioOAuthScope,
 } from "../lib/server/melhor-envio-oauth-scopes.ts"
 
@@ -221,18 +221,18 @@ test("rejects a shipment operation when required scopes are absent before decryp
   assert.equal(calls.refreshTokens.length, 0)
 })
 
-test("accepts required shipment scopes only when the persisted grant contains them", async () => {
+test("accepts active shipment scopes only when the persisted grant contains them", async () => {
   const module = await loadManagerModule()
   const { deps, calls, setRow } = makeDeps()
-  setRow(credential({ authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES] }))
+  setRow(credential({ authorizedScopes: [...MELHOR_ENVIO_ACTIVE_SCOPES] }))
   const getToken = module.createMelhorEnvioTokenManager(deps)
 
   assert.deepEqual(
-    await getToken({ requiredScopes: ["cart-write", "shipping-checkout"] }),
+    await getToken({ requiredScopes: ["cart-write"] }),
     {
       accessToken: "old-access",
       tokenVersion: 4,
-      authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES],
+      authorizedScopes: [...MELHOR_ENVIO_ACTIVE_SCOPES],
     },
   )
   assert.equal(calls.claims.length, 0)
@@ -245,17 +245,17 @@ test("proactively refreshes at seven days, rotates both encrypted tokens and pre
   setRow(
     credential({
       accessTokenExpiresAt: new Date(NOW + 7 * DAY_MS).toISOString(),
-      authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES],
+      authorizedScopes: [...MELHOR_ENVIO_ACTIVE_SCOPES],
     }),
   )
   const getToken = module.createMelhorEnvioTokenManager(deps)
 
   assert.deepEqual(
-    await getToken({ requiredScopes: ["shipping-generate"] }),
+    await getToken({ requiredScopes: ["cart-write"] }),
     {
       accessToken: "new-access",
       tokenVersion: 5,
-      authorizedScopes: [...MELHOR_ENVIO_PHASE5_SCOPES],
+      authorizedScopes: [...MELHOR_ENVIO_ACTIVE_SCOPES],
     },
   )
   assert.deepEqual(calls.refreshTokens, ["old-refresh"])
