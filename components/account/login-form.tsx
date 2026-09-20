@@ -9,8 +9,9 @@ import {
   hasAccountFieldErrors,
   type AccountFieldErrors,
   validateAccountEmail,
-  validateAccountPassword,
+  validateAccountLoginPassword,
 } from "@/lib/account-form"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
@@ -30,7 +31,7 @@ export function AccountLoginForm({ next }: { next: string }) {
     const password = String(form.get("password") ?? "")
     const nextErrors: AccountFieldErrors = {
       email: validateAccountEmail(email),
-      password: validateAccountPassword(password),
+      password: validateAccountLoginPassword(password),
     }
 
     setErrors(nextErrors)
@@ -56,14 +57,35 @@ export function AccountLoginForm({ next }: { next: string }) {
         const invalidCredentials = response.status === 400 || response.status === 401
         setAuthInvalid(invalidCredentials)
 
-        if (typeof payload?.message === "string") {
+        if (invalidCredentials) {
+          setMessage("E-mail ou senha incorretos.")
+        } else if (typeof payload?.message === "string") {
           setMessage(payload.message)
-        } else if (invalidCredentials) {
-          setMessage("E-mail ou senha inválidos.")
         } else {
           setMessage("Não foi possível entrar agora. Tente novamente.")
         }
         return
+      }
+
+      // KingHost/reverse proxies may not reliably preserve a large SSR auth
+      // Set-Cookie header returned through fetch. Verify that the browser can
+      // actually see the authenticated customer before navigating. If not,
+      // persist the same validated login directly with the browser-scoped
+      // Supabase client.
+      const browserSupabase = createSupabaseBrowserClient()
+      const normalizedEmail = email.trim().toLowerCase()
+      const { data: currentUserData } = await browserSupabase.auth.getUser()
+      const currentEmail = currentUserData.user?.email?.trim().toLowerCase() ?? null
+
+      if (currentEmail !== normalizedEmail) {
+        const { data: browserLogin, error: browserLoginError } =
+          await browserSupabase.auth.signInWithPassword({ email, password })
+
+        if (browserLoginError || !browserLogin.session) {
+          setAuthInvalid(true)
+          setMessage("E-mail ou senha incorretos.")
+          return
+        }
       }
 
       window.location.assign(next)
@@ -87,7 +109,10 @@ export function AccountLoginForm({ next }: { next: string }) {
           autoComplete="email"
           required
           maxLength={254}
-          onChange={() => setAuthInvalid(false)}
+          onChange={() => {
+            setAuthInvalid(false)
+            setMessage(null)
+          }}
           aria-invalid={Boolean(errors.email) || authInvalid}
           aria-describedby={errors.email ? "login-email-error" : undefined}
           className={inputClass}
@@ -104,7 +129,6 @@ export function AccountLoginForm({ next }: { next: string }) {
           type="password"
           autoComplete="current-password"
           required
-          minLength={8}
           maxLength={128}
           onChange={() => setAuthInvalid(false)}
           aria-invalid={Boolean(errors.password) || authInvalid}
