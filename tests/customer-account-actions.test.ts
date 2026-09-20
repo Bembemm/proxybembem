@@ -54,11 +54,19 @@ test("login reset and password-update inputs accept only exact bounded credentia
     actions.parseAccountLoginInput({
       email: " CLIENTE@EXAMPLE.COM ",
       password: "senha-segura-123",
+      next: "/checkout",
     }),
-    { email: "cliente@example.com", password: "senha-segura-123" },
+    {
+      email: "cliente@example.com",
+      password: "senha-segura-123",
+      next: "/checkout",
+    },
   )
   assert.equal(
-    actions.parseAccountResetInput({ email: " CLIENTE@EXAMPLE.COM " }).email,
+    actions.parseAccountResetInput({
+      email: " CLIENTE@EXAMPLE.COM ",
+      next: "/checkout",
+    }).email,
     "cliente@example.com",
   )
   assert.deepEqual(
@@ -66,19 +74,25 @@ test("login reset and password-update inputs accept only exact bounded credentia
     { password: "NovaSenha9!" },
   )
 
-  assert.throws(() => actions.parseAccountLoginInput({ email: "x", password: "12345678" }))
-  assert.throws(() => actions.parseAccountResetInput({ email: "x" }))
+  assert.throws(() => actions.parseAccountLoginInput({
+      email: "x",
+      password: "12345678",
+      next: "/checkout",
+    }))
+  assert.throws(() => actions.parseAccountResetInput({ email: "x", next: "/checkout" }))
   assert.throws(() => actions.parseAccountPasswordUpdateInput({ password: "curta" }))
   assert.throws(() =>
     actions.parseAccountLoginInput({
       email: "cliente@example.com",
       password: "senha-segura-123",
+      next: "/checkout",
       customerId: "browser-must-not-control-this",
     }),
   )
   assert.throws(() =>
     actions.parseAccountResetInput({
       email: "cliente@example.com",
+      next: "/checkout",
       customerId: "browser-must-not-control-this",
     }),
   )
@@ -183,7 +197,6 @@ test("checkout API participates in Supabase session refresh", async () => {
 test("planned account routes are bounded POST surfaces and callback is GET-only", async () => {
   const jsonRoutes = [
     "../app/api/account/signup/route.ts",
-    "../app/api/account/login/route.ts",
     "../app/api/account/password-reset/route.ts",
     "../app/api/account/password/route.ts",
   ]
@@ -198,6 +211,15 @@ test("planned account routes are bounded POST surfaces and callback is GET-only"
     assert.match(route, /consumeRateLimit/)
     assert.doesNotMatch(route, /console\.(?:log|error)\([^\n]*(?:password|senha)/i)
   }
+
+  const login = await source("../app/api/account/login/route.ts")
+  assert.match(login, /export\s+async\s+function\s+POST/)
+  assert.match(login, /request\.formData\s*\(\s*\)/)
+  assert.match(login, /parseAccountLoginInput/)
+  assert.match(login, /consumeRateLimit/)
+  assert.match(login, /signInWithPassword\s*\(/)
+  assert.match(login, /applyToResponse\s*\(\s*redirect/)
+  assert.doesNotMatch(login, /readJsonBody/)
 
   const logout = await source("../app/api/account/logout/route.ts")
   assert.ok(logout.length > 0, "missing logout route")
