@@ -29,44 +29,48 @@ test("environment example documents the prepare-only OAuth contract without obso
   assert.doesNotMatch(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED/)
 })
 
-test("shipping setup documents authorization, automatic refresh and MFA admin handling", async () => {
+test("shipping setup documents prepare-only OAuth and direct handoff to Melhor Envio", async () => {
   const source = await readFile(new URL("../docs/shipping-setup.md", import.meta.url), "utf8")
 
   for (const expected of [
     "shipping-calculate",
-    "/admin/login",
+    "cart-write",
     "/admin/integrations/melhor-envio",
     "/api/melhor-envio/oauth/callback",
-    "Authenticator",
-    "30 minutos",
-    "refresh_token",
     "CRON_SECRET",
-    "openssl rand -hex 32",
     "Sandbox",
     "Production",
-    "Supabase",
+    "Preparar remessa",
+    "Marcar enviado",
   ]) {
     assert.ok(source.includes(expected), `shipping setup must include ${expected}`)
   }
 
   assert.equal(source.includes(LEGACY_TOKEN_NAME), false)
   assert.equal(source.includes(OBSOLETE_ADMIN_SECRET), false)
-  assert.match(source, /recupera[^\n]*Supabase|Supabase[^\n]*recupera/i)
-  assert.match(source, /nunca.*chat/i)
-  assert.match(source, /reauthor/i)
+  assert.doesNotMatch(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED/)
+  assert.doesNotMatch(
+    source,
+    /shipping-checkout|shipping-generate|shipping-print|shipping-tracking|shipping-cancel/,
+  )
+  assert.match(source, /reautoriz/i)
+  assert.match(source, /n[aã]o compra etiquetas/i)
 })
 
-test("production rollout pins the canonical callback and keeps provider credentials isolated", async () => {
+test("production rollout pins the canonical callback and isolates sandbox and production credentials", async () => {
   const source = await readFile(new URL("../docs/shipping-setup.md", import.meta.url), "utf8")
 
   assert.ok(
     source.includes("https://www.proxybembem.com.br/api/melhor-envio/oauth/callback"),
     "Production callback must be documented exactly",
   )
-  assert.match(source, /aplicativo[^\n]*Production[^\n]*separad|Production[^\n]*aplicativo[^\n]*separad/i)
-  assert.match(source, /segredos?[^\n]*Production[^\n]*(pr[oó]pri|independent)|Production[^\n]*segredos?[^\n]*(pr[oó]pri|independent)/i)
-  assert.match(source, /(?:IDs?|servi[cç]os?)[^\n]*1[^\n]*2[^\n]*(?:PAC|SEDEX)|(?:PAC|SEDEX)[^\n]*1[^\n]*2/i)
-  assert.match(source, /n[aã]o (?:reutilize|copie)[^\n]*(?:Client ID|Client Secret|segredo|credencial)/i)
+  assert.match(source, /Sandbox[^
+]*Production[^
+]*credenciais pr[oó]prias|Production[^
+]*Sandbox[^
+]*credenciais pr[oó]prias/i)
+  assert.match(source, /MELHOR_ENVIO_ENVIRONMENT=production/)
+  assert.match(source, /SHIPPING_ORIGIN_CEP/)
 })
 
 test("KingHost sandbox runbook isolates provider credentials and production data", async () => {
@@ -87,7 +91,13 @@ test("KingHost sandbox runbook isolates provider credentials and production data
     assert.ok(source.includes(expected), `sandbox runbook must include ${expected}`)
   }
 
-  assert.match(source, /n[aã]o use[^\n]*Supabase[^\n]*Production/i)
-  assert.match(source, /n[aã]o copie[^\n]*(?:credenciais|segredos)[^\n]*Production/i)
-  assert.match(source, /aplica[cç][aã]o[^\n]*KingHost[^\n]*separad/i)
+  assert.match(source, /n[aã]o use[^
+]*Supabase[^
+]*Production/i)
+  assert.match(source, /n[aã]o copie[^
+]*(?:credenciais|segredos)[^
+]*Production/i)
+  assert.match(source, /aplica[cç][aã]o[^
+]*KingHost[^
+]*separad/i)
 })
