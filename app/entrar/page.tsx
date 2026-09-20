@@ -29,6 +29,10 @@ export default async function LoginPage({
   const callbackError = params.erro === "callback"
   const confirmationError = params.erro === "confirmacao"
   const recoveryError = params.erro === "recovery"
+  const credentialError = params.erro === "credenciais"
+  const rateLimitError = params.erro === "limite"
+  const serviceError = params.erro === "servico"
+  const requestError = params.erro === "requisicao"
 
   return (
     <section className="px-4 pb-16 pt-24 sm:pt-28">
@@ -66,6 +70,21 @@ export default async function LoginPage({
         {callbackError ? (
           <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
             Não foi possível confirmar este link. Solicite um novo cadastro ou tente novamente com um e-mail recente.
+          </p>
+        ) : null}
+        {credentialError ? (
+          <p role="alert" className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-800">
+            E-mail ou senha incorretos.
+          </p>
+        ) : null}
+        {rateLimitError ? (
+          <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            Muitas tentativas de login. Aguarde alguns minutos e tente novamente.
+          </p>
+        ) : null}
+        {serviceError || requestError ? (
+          <p role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+            Não foi possível entrar agora. Tente novamente.
           </p>
         ) : null}
         <AccountLoginForm next={next} />
