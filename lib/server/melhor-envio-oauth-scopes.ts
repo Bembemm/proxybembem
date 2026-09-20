@@ -1,4 +1,4 @@
-export const MELHOR_ENVIO_PHASE5_SCOPES = [
+export const MELHOR_ENVIO_KNOWN_SCOPES = [
   "shipping-calculate",
   "cart-read",
   "cart-write",
@@ -11,9 +11,14 @@ export const MELHOR_ENVIO_PHASE5_SCOPES = [
 ] as const
 
 export type MelhorEnvioOAuthScope =
-  (typeof MELHOR_ENVIO_PHASE5_SCOPES)[number]
+  (typeof MELHOR_ENVIO_KNOWN_SCOPES)[number]
 
-const SCOPE_SET = new Set<string>(MELHOR_ENVIO_PHASE5_SCOPES)
+export const MELHOR_ENVIO_ACTIVE_SCOPES = [
+  "shipping-calculate",
+  "cart-write",
+] as const satisfies readonly MelhorEnvioOAuthScope[]
+
+const SCOPE_SET = new Set<string>(MELHOR_ENVIO_KNOWN_SCOPES)
 
 export function isMelhorEnvioOAuthScope(
   value: unknown,
@@ -48,6 +53,6 @@ export function hasMelhorEnvioScopes(
   return required.every((scope) => grantedSet.has(scope))
 }
 
-export function melhorEnvioPhase5ScopeParameter(): string {
-  return MELHOR_ENVIO_PHASE5_SCOPES.join(" ")
+export function melhorEnvioActiveScopeParameter(): string {
+  return MELHOR_ENVIO_ACTIVE_SCOPES.join(" ")
 }
