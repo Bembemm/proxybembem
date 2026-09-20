@@ -5,6 +5,7 @@ import { getRateLimitEnv } from "./env.ts"
 export type RateLimitScope =
   | "shipping-quote"
   | "address-lookup"
+  | "payment-reconcile"
   | "checkout"
   | "melhor-envio-oauth-start"
   | "admin-shipping-config"
@@ -23,6 +24,7 @@ export type RateLimitScope =
 const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> = {
   "shipping-quote": { limit: 60, windowSeconds: 600 },
   "address-lookup": { limit: 60, windowSeconds: 600 },
+  "payment-reconcile": { limit: 20, windowSeconds: 600 },
   checkout: { limit: 10, windowSeconds: 600 },
   "melhor-envio-oauth-start": { limit: 5, windowSeconds: 900 },
   "admin-shipping-config": { limit: 10, windowSeconds: 600 },
