@@ -9,6 +9,7 @@ import { useCart } from "@/contexts/cart-context"
 import { digitsOnly, formatCep, formatPrice } from "@/lib/checkout"
 import {
   invalidateCheckoutSelection,
+  parsePublicShippingOptions,
   selectShippingOption,
   type ShippingClientState,
 } from "@/lib/shipping-client"
@@ -31,35 +32,6 @@ const EMPTY_SHIPPING: ShippingClientState = {
 interface ShippingQuoteResponse {
   options?: unknown
   error?: unknown
-}
-
-function parseShippingOptions(value: unknown): PublicShippingOption[] | null {
-  if (!Array.isArray(value)) return null
-
-  const options: PublicShippingOption[] = []
-  for (const entry of value) {
-    if (!entry || typeof entry !== "object") return null
-    const candidate = entry as Partial<PublicShippingOption>
-    if (
-      typeof candidate.serviceId !== "string" ||
-      !candidate.serviceId ||
-      typeof candidate.serviceName !== "string" ||
-      !candidate.serviceName ||
-      typeof candidate.carrierName !== "string" ||
-      !candidate.carrierName ||
-      !Number.isSafeInteger(candidate.priceCents) ||
-      (candidate.priceCents ?? 0) <= 0 ||
-      !Number.isSafeInteger(candidate.deliveryDays) ||
-      (candidate.deliveryDays ?? -1) < 0 ||
-      typeof candidate.quoteToken !== "string" ||
-      !candidate.quoteToken
-    ) {
-      return null
-    }
-    options.push(candidate as PublicShippingOption)
-  }
-
-  return options
 }
 
 export function CartPanel() {
@@ -163,7 +135,7 @@ export function CartPanel() {
         )
       }
 
-      const options = parseShippingOptions(result?.options)
+      const options = parsePublicShippingOptions(result?.options)
       if (!options || options.length === 0) {
         throw new Error("Nenhuma opção de frete disponível para este CEP.")
       }
@@ -200,15 +172,20 @@ export function CartPanel() {
       return
     }
 
-    window.localStorage.setItem(
-      CHECKOUT_PREVIEW_KEY,
-      JSON.stringify({
-        version: 2,
-        savedAt: Date.now(),
-        cep: destinationCep,
-        shippingServiceId: shipping.selectedShipping.serviceId,
-      }),
-    )
+    try {
+      window.localStorage.setItem(
+        CHECKOUT_PREVIEW_KEY,
+        JSON.stringify({
+          version: 2,
+          savedAt: Date.now(),
+          cep: destinationCep,
+          shippingServiceId: shipping.selectedShipping.serviceId,
+        }),
+      )
+    } catch {
+      // Browser storage is only a convenience; it must never block checkout.
+    }
+
     setIsCartOpen(false)
     window.location.assign("/checkout")
   }
