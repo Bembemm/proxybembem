@@ -57,6 +57,14 @@ interface CatalogResponse {
 const CART_STORAGE_KEY = "proxybembem-cart-v1"
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
+function removeStoredCartSafely() {
+  try {
+    removeStoredCartSafely()
+  } catch {
+    // The in-memory cart remains usable when browser storage is unavailable.
+  }
+}
+
 function parseCatalogProducts(value: unknown): StorefrontProduct[] | null {
   if (!value || typeof value !== "object") return null
 
@@ -169,11 +177,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (parsedCart) {
           storedLines = parsedCart
         } else {
-          window.localStorage.removeItem(CART_STORAGE_KEY)
+          removeStoredCartSafely()
         }
       }
     } catch {
-      window.localStorage.removeItem(CART_STORAGE_KEY)
+      removeStoredCartSafely()
     }
 
     storedLinesRef.current = storedLines
@@ -184,7 +192,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (catalogStatus !== "ready") return
-    window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(serializeCart(items)))
+    } catch {
+      // Persistence is optional; keep the current cart usable in memory.
+    }
   }, [items, catalogStatus])
 
   const retryCatalog = () => {
