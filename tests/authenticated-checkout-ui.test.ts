@@ -88,3 +88,18 @@ test("signup and confirmation preserve checkout continuation until the customer 
   assert.match(callback, /sanitizeCustomerLoginNext/)
   assert.match(callback, /confirmado=1&next=/)
 })
+
+
+test("checkout and login are dynamic and checkout bypasses prefetch cache", async () => {
+  const checkoutLayout = await source("../app/checkout/layout.tsx")
+  const loginLayout = await source("../app/entrar/layout.tsx")
+  const proxy = await source("../proxy.ts")
+  const supabaseProxy = await source("../lib/supabase/proxy.ts")
+
+  assert.match(checkoutLayout, /dynamic\s*=\s*["']force-dynamic["']/)
+  assert.match(loginLayout, /dynamic\s*=\s*["']force-dynamic["']/)
+  assert.match(proxy, /["']\/checkout["']/)
+  assert.match(supabaseProxy, /CUSTOMER_AUTH_SENSITIVE_PATHS/)
+  assert.match(supabaseProxy, /["']\/checkout["']/)
+  assert.match(supabaseProxy, /private, no-cache, no-store, max-age=0, must-revalidate/)
+})
