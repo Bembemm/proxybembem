@@ -10,7 +10,6 @@ export type RateLimitScope =
   | "melhor-envio-oauth-start"
   | "admin-shipping-config"
   | "admin-shipping-mutation"
-  | "admin-shipping-spend"
   | "account-signup"
   | "account-login"
   | "account-password-reset"
@@ -29,7 +28,6 @@ const LIMITS: Record<RateLimitScope, { limit: number; windowSeconds: number }> =
   "melhor-envio-oauth-start": { limit: 5, windowSeconds: 900 },
   "admin-shipping-config": { limit: 10, windowSeconds: 600 },
   "admin-shipping-mutation": { limit: 20, windowSeconds: 300 },
-  "admin-shipping-spend": { limit: 5, windowSeconds: 300 },
   "account-signup": { limit: 5, windowSeconds: 900 },
   "account-login": { limit: 10, windowSeconds: 600 },
   "account-password-reset": { limit: 5, windowSeconds: 900 },
