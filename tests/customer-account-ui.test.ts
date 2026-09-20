@@ -52,6 +52,8 @@ test("public auth pages use storefront account forms without admin UI", async ()
 
   assert.match(login, /AccountLoginForm/)
   assert.match(login, /sanitizeCustomerLoginNext/)
+  assert.match(login, /getOptionalCustomerIdentity/)
+  assert.match(login, /redirect\(next\)/)
   assert.match(signup, /AccountSignupForm/)
   assert.match(signup, /verific/i)
   assert.match(reset, /AccountPasswordResetForm/)
