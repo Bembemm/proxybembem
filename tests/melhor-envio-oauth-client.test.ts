@@ -13,16 +13,9 @@ const ENV_KEYS = [
   "SHIPPING_QUOTE_SECRET",
 ] as const
 
-const PHASE5_SCOPE = [
+const ACTIVE_SCOPE = [
   "shipping-calculate",
-  "cart-read",
   "cart-write",
-  "orders-read",
-  "shipping-checkout",
-  "shipping-generate",
-  "shipping-print",
-  "shipping-tracking",
-  "shipping-cancel",
 ].join(" ")
 
 type OAuthTokens = {
@@ -86,7 +79,7 @@ function successfulTokenResponse() {
   })
 }
 
-test("builds a least-privilege Phase 5 sandbox authorization URL without the client secret", async () => {
+test("builds a least-privilege prepare-only sandbox authorization URL without the client secret", async () => {
   await withOAuthEnv("sandbox", async () => {
     const oauth = await loadOAuth()
     const state = "state-value-with-256-bits-of-randomness-placeholder"
@@ -101,13 +94,13 @@ test("builds a least-privilege Phase 5 sandbox authorization URL without the cli
     )
     assert.equal(url.searchParams.get("response_type"), "code")
     assert.equal(url.searchParams.get("state"), state)
-    assert.equal(url.searchParams.get("scope"), PHASE5_SCOPE)
+    assert.equal(url.searchParams.get("scope"), ACTIVE_SCOPE)
     assert.equal(url.searchParams.getAll("scope").length, 1)
     assert.doesNotMatch(url.toString(), /client-secret-never-leak/)
   })
 })
 
-test("uses the production OAuth host without changing Phase 5 scope or callback", async () => {
+test("uses the production OAuth host without changing prepare-only scope or callback", async () => {
   await withOAuthEnv("production", async () => {
     const oauth = await loadOAuth()
     const url = new URL(oauth.buildMelhorEnvioAuthorizationUrl({ state: "state-value" }))
@@ -117,7 +110,7 @@ test("uses the production OAuth host without changing Phase 5 scope or callback"
       url.searchParams.get("redirect_uri"),
       "https://www.proxybembem.com.br/api/melhor-envio/oauth/callback",
     )
-    assert.equal(url.searchParams.get("scope"), PHASE5_SCOPE)
+    assert.equal(url.searchParams.get("scope"), ACTIVE_SCOPE)
   })
 })
 
