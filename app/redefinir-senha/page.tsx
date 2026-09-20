@@ -9,6 +9,7 @@ import {
   isValidPasswordRecoveryToken,
 } from "@/lib/server/password-recovery-grant"
 import { RECOVERY_TOKEN_COOKIE } from "@/lib/server/password-recovery"
+import { sanitizeCustomerLoginNext } from "@/lib/server/customer-account-actions"
 
 export const metadata: Metadata = {
   title: "Redefinir senha",
@@ -17,7 +18,15 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic"
 
-export default async function ResetPasswordPage() {
+export default async function ResetPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>
+}) {
+  const params = await searchParams
+  const next = sanitizeCustomerLoginNext(
+    typeof params.next === "string" ? params.next : undefined,
+  )
   const token = (await cookies()).get(RECOVERY_TOKEN_COOKIE)?.value
   if (!isValidPasswordRecoveryToken(token)) {
     redirect("/entrar?erro=recovery")
@@ -44,10 +53,10 @@ export default async function ResetPasswordPage() {
           </p>
         </div>
 
-        <PasswordForm recovery />
+        <PasswordForm recovery next={next} />
 
         <p className="mt-6 text-center text-sm text-slate-600">
-          <Link href="/entrar" className="font-semibold text-violet-700 hover:underline">
+          <Link href={`/entrar?next=${encodeURIComponent(next)}`} className="font-semibold text-violet-700 hover:underline">
             Voltar para entrar
           </Link>
         </p>
