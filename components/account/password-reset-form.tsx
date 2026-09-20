@@ -9,7 +9,7 @@ import {
   validateAccountEmail,
 } from "@/lib/account-form"
 
-export function AccountPasswordResetForm() {
+export function AccountPasswordResetForm({ next }: { next: string }) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<AccountFieldErrors>({})
@@ -31,7 +31,7 @@ export function AccountPasswordResetForm() {
       const response = await fetch("/api/account/password-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, next }),
       })
       const payload = (await response.json().catch(() => null)) as
         | { message?: unknown }
@@ -78,7 +78,7 @@ export function AccountPasswordResetForm() {
         {pending ? "Enviando..." : "Enviar instruções"}
       </button>
       <p className="text-center text-sm">
-        <Link href="/entrar" className="text-violet-700 hover:underline">Voltar para entrar</Link>
+        <Link href={`/entrar?next=${encodeURIComponent(next)}`} className="text-violet-700 hover:underline">Voltar para entrar</Link>
       </p>
     </form>
   )
