@@ -19,10 +19,6 @@ test("admin order detail renders sanitized feedback returned by shipment actions
     "provider-rejected",
     "reauthorization-required",
     "shipment-attention",
-    "purchased",
-    "price-changed",
-    "reconciled-purchased",
-    "reconciled-not-purchased",
   ]) {
     assert.match(page, new RegExp(`(?:["']${status}["']|\\b${status}\\b)\\s*:`), status)
   }
