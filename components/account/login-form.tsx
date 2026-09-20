@@ -17,9 +17,7 @@ const inputClass =
 
 export function AccountLoginForm({ next }: { next: string }) {
   const [pending, setPending] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<AccountFieldErrors>({})
-  const [authInvalid, setAuthInvalid] = useState(false)
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (pending) {
@@ -36,8 +34,6 @@ export function AccountLoginForm({ next }: { next: string }) {
     }
 
     setErrors(nextErrors)
-    setAuthInvalid(false)
-    setMessage(null)
 
     if (hasAccountFieldErrors(nextErrors)) {
       event.preventDefault()
@@ -67,11 +63,10 @@ export function AccountLoginForm({ next }: { next: string }) {
           autoComplete="email"
           required
           maxLength={254}
-          onChange={() => {
-            setAuthInvalid(false)
-            setMessage(null)
-          }}
-          aria-invalid={Boolean(errors.email) || authInvalid}
+          onChange={() =>
+            setErrors((current) => ({ ...current, email: undefined }))
+          }
+          aria-invalid={Boolean(errors.email)}
           aria-describedby={errors.email ? "login-email-error" : undefined}
           className={inputClass}
         />
@@ -88,17 +83,15 @@ export function AccountLoginForm({ next }: { next: string }) {
           autoComplete="current-password"
           required
           maxLength={128}
-          onChange={() => {
-            setAuthInvalid(false)
-            setMessage(null)
-          }}
-          aria-invalid={Boolean(errors.password) || authInvalid}
+          onChange={() =>
+            setErrors((current) => ({ ...current, password: undefined }))
+          }
+          aria-invalid={Boolean(errors.password)}
           aria-describedby={errors.password ? "login-password-error" : undefined}
           className={inputClass}
         />
         <FieldError id="login-password-error" message={errors.password} />
       </div>
-      {message ? <p role="status" className="text-sm text-slate-600">{message}</p> : null}
       <button
         type="submit"
         disabled={pending}
