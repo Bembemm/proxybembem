@@ -63,6 +63,7 @@ export const config = {
     "/redefinir-senha",
     "/auth/callback",
     "/auth/confirm",
+    "/checkout",
     "/minha-conta/:path*",
     "/api/account/:path*",
     "/api/checkout",
