@@ -118,7 +118,7 @@ export function buildMelhorEnvioAuthorizationUrl(input: { state: string }) {
   url.searchParams.set("redirect_uri", env.redirectUri)
   url.searchParams.set("response_type", "code")
   url.searchParams.set("state", input.state)
-  url.searchParams.set("scope", melhorEnvioPhase5ScopeParameter())
+  url.searchParams.set("scope", melhorEnvioActiveScopeParameter())
   return url.toString()
 }
 
