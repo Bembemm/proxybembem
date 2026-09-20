@@ -4,6 +4,7 @@ import {
   applyShippingChanged,
   calculateCheckoutTotalCents,
   invalidateCheckoutSelection,
+  parsePublicShippingOptions,
   selectShippingOption,
   type ShippingClientState,
 } from "../lib/shipping-client.ts"
@@ -54,4 +55,18 @@ test("shipping_changed replaces options, clears selection and does not keep retr
 test("displayed total equals trusted product subtotal plus selected freight", () => {
   assert.equal(calculateCheckoutTotalCents(11990, option), 13832)
   assert.equal(calculateCheckoutTotalCents(11990, null), 11990)
+})
+
+
+test("shipping option parsing rejects malformed client payloads consistently", () => {
+  assert.deepEqual(parsePublicShippingOptions([option]), [option])
+  assert.equal(parsePublicShippingOptions(null), null)
+  assert.equal(
+    parsePublicShippingOptions([{ ...option, priceCents: 0 }]),
+    null,
+  )
+  assert.equal(
+    parsePublicShippingOptions([{ ...option, quoteToken: "" }]),
+    null,
+  )
 })
