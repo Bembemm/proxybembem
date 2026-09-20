@@ -12,11 +12,6 @@ import { hasValidCnpjChecksum, hasValidCpfChecksum } from "./shipping-sender.ts"
 const REQUEST_TIMEOUT_MS = 10_000
 const MAX_RESPONSE_BYTES = 64 * 1024
 const MAX_PROVIDER_ID = 256
-const MAX_STATUS = 128
-const MAX_TRACKING_CODE = 128
-const MAX_URL = 4096
-const MAX_DESCRIPTION = 255
-const MAX_TRACKING_BATCH = 20
 const PROVIDER_ID_RE = /^[A-Za-z0-9._:-]{1,256}$/
 const PHONE_RE = /^\d{10,15}$/
 const POSTAL_CODE_RE = /^\d{8}$/
@@ -99,30 +94,6 @@ export interface MelhorEnvioShipmentSnapshot {
   declarationValueCents: number
 }
 
-export interface ProviderShipmentState {
-  providerShipmentId: string
-  status: string | null
-  priceCents: number | null
-  trackingCode: string | null
-  trackingUrl: string | null
-}
-
-export interface ProviderPrintResource {
-  url: string
-}
-
-export interface ProviderTrackingResult {
-  providerShipmentId: string
-  status: string
-  trackingCode: string | null
-  trackingUrl: string | null
-}
-
-export interface ProviderCancellationResult {
-  providerShipmentId: string
-  canceled: true
-}
-
 interface AccessTokenOptions {
   forceRefresh?: boolean
   rejectedTokenVersion?: number
@@ -170,12 +141,6 @@ function positiveFinite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0
 }
 
-function assertProviderId(value: string) {
-  if (!PROVIDER_ID_RE.test(value) || value.length > MAX_PROVIDER_ID) {
-    throw new Error("Invalid Melhor Envio shipment identifier")
-  }
-}
-
 function parseProviderId(value: unknown, status: number): string {
   if (
     typeof value !== "string" ||
@@ -210,37 +175,6 @@ function parseMoneyCents(value: unknown, status: number): number {
   const cents = whole * 100 + fraction
   if (!Number.isSafeInteger(cents) || cents <= 0) providerError("invalid_response", status)
   return cents
-}
-
-function parseOptionalMoneyCents(value: unknown, status: number): number | null {
-  return value === undefined || value === null ? null : parseMoneyCents(value, status)
-}
-
-function parseOptionalString(value: unknown, status: number, max: number): string | null {
-  if (value === undefined || value === null) return null
-  if (!boundedString(value, 1, max)) providerError("invalid_response", status)
-  return value
-}
-
-function parseHttpsUrl(value: unknown, status: number): string {
-  if (typeof value !== "string" || value.length < 1 || value.length > MAX_URL) {
-    providerError("invalid_response", status)
-  }
-
-  try {
-    const url = new URL(value)
-    if (url.protocol !== "https:" || url.username || url.password) {
-      providerError("invalid_response", status)
-    }
-    return url.toString()
-  } catch (error) {
-    if (error instanceof MelhorEnvioShipmentProviderError) throw error
-    providerError("invalid_response", status)
-  }
-}
-
-function parseOptionalHttpsUrl(value: unknown, status: number): string | null {
-  return value === undefined || value === null ? null : parseHttpsUrl(value, status)
 }
 
 function baseUrl(environment: MelhorEnvioEnvironment) {
@@ -433,8 +367,8 @@ function reais(cents: number) {
 export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies) {
   async function request(input: {
     path: string
-    method: "GET" | "POST"
-    body?: unknown
+    method: "POST"
+    body: unknown
     requiredScopes: readonly MelhorEnvioOAuthScope[]
   }): Promise<ProviderResponse> {
     const config = deps.getConfig()
@@ -452,7 +386,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
             "Content-Type": "application/json",
             "User-Agent": config.userAgent,
           },
-          ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
+          body: JSON.stringify(input.body),
           cache: "no-store",
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         })
@@ -580,192 +514,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
     }
   }
 
-  async function purchaseMelhorEnvioShipment(input: {
-    providerShipmentId: string
-    currentCostCents: number
-  }) {
-    assertProviderId(input.providerShipmentId)
-    if (!positiveSafeInteger(input.currentCostCents)) {
-      throw new Error("Invalid Melhor Envio shipment confirmed cost")
-    }
-
-    const result = await request({
-      path: "/api/v2/me/shipment/checkout",
-      method: "POST",
-      requiredScopes: ["shipping-checkout"],
-      body: { orders: [input.providerShipmentId] },
-    })
-    if (!isRecord(result.payload)) providerError("invalid_response", result.status)
-
-    return {
-      providerOrderId: input.providerShipmentId,
-      purchasedCostCents: input.currentCostCents,
-    }
-  }
-
-  async function generateMelhorEnvioShipment(input: { providerShipmentId: string }) {
-    assertProviderId(input.providerShipmentId)
-    const result = await request({
-      path: "/api/v2/me/shipment/generate",
-      method: "POST",
-      requiredScopes: ["shipping-generate"],
-      body: { orders: [input.providerShipmentId] },
-    })
-    if (!isRecord(result.payload)) providerError("invalid_response", result.status)
-    return { accepted: true as const }
-  }
-
-  async function readMelhorEnvioShipment(input: {
-    providerShipmentId: string
-    source: "cart" | "order"
-  }): Promise<ProviderShipmentState> {
-    assertProviderId(input.providerShipmentId)
-    if (input.source !== "cart" && input.source !== "order") {
-      throw new Error("Invalid Melhor Envio shipment read source")
-    }
-
-    const result = await request({
-      path:
-        input.source === "cart"
-          ? `/api/v2/me/cart/${encodeURIComponent(input.providerShipmentId)}`
-          : `/api/v2/me/orders/${encodeURIComponent(input.providerShipmentId)}`,
-      method: "GET",
-      requiredScopes: [input.source === "cart" ? "cart-read" : "orders-read"],
-    })
-    if (!isRecord(result.payload)) providerError("invalid_response", result.status)
-
-    const id = parseProviderId(result.payload.id, result.status)
-    if (id !== input.providerShipmentId) providerError("invalid_response", result.status)
-
-    return {
-      providerShipmentId: id,
-      status: parseOptionalString(result.payload.status, result.status, MAX_STATUS),
-      priceCents: parseOptionalMoneyCents(result.payload.price, result.status),
-      trackingCode: parseOptionalString(result.payload.tracking, result.status, MAX_TRACKING_CODE),
-      trackingUrl: parseOptionalHttpsUrl(result.payload.tracking_url, result.status),
-    }
-  }
-
-  async function getMelhorEnvioPrintResource(input: {
-    providerShipmentId: string
-  }): Promise<ProviderPrintResource> {
-    assertProviderId(input.providerShipmentId)
-    const result = await request({
-      path: "/api/v2/me/shipment/print",
-      method: "POST",
-      requiredScopes: ["shipping-print"],
-      body: { mode: "private", orders: [input.providerShipmentId] },
-    })
-    if (!isRecord(result.payload)) providerError("invalid_response", result.status)
-    return { url: parseHttpsUrl(result.payload.url, result.status) }
-  }
-
-  async function getMelhorEnvioDaceResource(input: {
-    providerShipmentId: string
-    format: "pdf" | "jpeg" | "zpl"
-  }): Promise<ProviderPrintResource> {
-    assertProviderId(input.providerShipmentId)
-    if (input.format !== "pdf" && input.format !== "jpeg" && input.format !== "zpl") {
-      throw new Error("Invalid Melhor Envio DACE format")
-    }
-
-    const result = await request({
-      path: `/api/v2/me/imprimir/dace/${input.format}/${encodeURIComponent(input.providerShipmentId)}`,
-      method: "GET",
-      requiredScopes: ["shipping-print"],
-    })
-    if (!isRecord(result.payload)) providerError("invalid_response", result.status)
-    return { url: parseHttpsUrl(result.payload.url, result.status) }
-  }
-
-  async function trackMelhorEnvioShipments(input: {
-    providerShipmentIds: string[]
-  }): Promise<ProviderTrackingResult[]> {
-    if (
-      !Array.isArray(input.providerShipmentIds) ||
-      input.providerShipmentIds.length < 1 ||
-      input.providerShipmentIds.length > MAX_TRACKING_BATCH
-    ) {
-      throw new Error("Invalid Melhor Envio tracking batch")
-    }
-
-    const seen = new Set<string>()
-    for (const id of input.providerShipmentIds) {
-      assertProviderId(id)
-      if (seen.has(id)) throw new Error("Invalid Melhor Envio tracking batch")
-      seen.add(id)
-    }
-
-    const result = await request({
-      path: "/api/v2/me/shipment/tracking",
-      method: "POST",
-      requiredScopes: ["shipping-tracking"],
-      body: { orders: input.providerShipmentIds },
-    })
-    if (!isRecord(result.payload)) providerError("invalid_response", result.status)
-    const trackingPayload = result.payload
-
-    const payloadKeys = Object.keys(trackingPayload)
-    if (
-      payloadKeys.length !== input.providerShipmentIds.length ||
-      payloadKeys.some((key) => !seen.has(key))
-    ) {
-      providerError("invalid_response", result.status)
-    }
-
-    return input.providerShipmentIds.map((id) => {
-      const raw = trackingPayload[id]
-      if (!isRecord(raw)) providerError("invalid_response", result.status)
-      const parsedId = parseProviderId(raw.id, result.status)
-      if (parsedId !== id || !boundedString(raw.status, 1, MAX_STATUS)) {
-        providerError("invalid_response", result.status)
-      }
-      return {
-        providerShipmentId: id,
-        status: raw.status,
-        trackingCode: parseOptionalString(raw.tracking, result.status, MAX_TRACKING_CODE),
-        trackingUrl: parseOptionalHttpsUrl(raw.tracking_url, result.status),
-      }
-    })
-  }
-
-  async function cancelMelhorEnvioShipment(input: {
-    providerShipmentId: string
-    description: string
-  }): Promise<ProviderCancellationResult> {
-    assertProviderId(input.providerShipmentId)
-    if (!boundedString(input.description, 3, MAX_DESCRIPTION)) {
-      throw new Error("Invalid Melhor Envio cancellation description")
-    }
-
-    const result = await request({
-      path: "/api/v2/me/shipment/cancel",
-      method: "POST",
-      requiredScopes: ["shipping-cancel"],
-      body: {
-        order: {
-          id: input.providerShipmentId,
-          reason_id: 2,
-          description: input.description,
-        },
-      },
-    })
-    if (!isRecord(result.payload) || result.payload.status !== "canceled") {
-      providerError("invalid_response", result.status)
-    }
-    return { providerShipmentId: input.providerShipmentId, canceled: true }
-  }
-
-  return {
-    addShipmentToMelhorEnvioCart,
-    purchaseMelhorEnvioShipment,
-    generateMelhorEnvioShipment,
-    readMelhorEnvioShipment,
-    getMelhorEnvioPrintResource,
-    getMelhorEnvioDaceResource,
-    trackMelhorEnvioShipments,
-    cancelMelhorEnvioShipment,
-  }
+  return { addShipmentToMelhorEnvioCart }
 }
 
 const defaultClient = createMelhorEnvioShipmentClient({
@@ -777,10 +526,3 @@ const defaultClient = createMelhorEnvioShipmentClient({
 })
 
 export const addShipmentToMelhorEnvioCart = defaultClient.addShipmentToMelhorEnvioCart
-export const purchaseMelhorEnvioShipment = defaultClient.purchaseMelhorEnvioShipment
-export const generateMelhorEnvioShipment = defaultClient.generateMelhorEnvioShipment
-export const readMelhorEnvioShipment = defaultClient.readMelhorEnvioShipment
-export const getMelhorEnvioPrintResource = defaultClient.getMelhorEnvioPrintResource
-export const getMelhorEnvioDaceResource = defaultClient.getMelhorEnvioDaceResource
-export const trackMelhorEnvioShipments = defaultClient.trackMelhorEnvioShipments
-export const cancelMelhorEnvioShipment = defaultClient.cancelMelhorEnvioShipment
