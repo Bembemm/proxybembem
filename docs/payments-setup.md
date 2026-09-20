@@ -66,6 +66,8 @@ Endpoint:
 https://www.proxybembem.com.br/api/mercadopago/webhook
 ```
 
+A URL de produção deve ser configurada em **Suas integrações > Webhooks** na aplicação Mercado Pago. O Checkout Pro não sobrescreve essa configuração com `notification_url` por preferência; assim pagamentos reais e a simulação do painel usam a mesma superfície de Webhook configurada e testada.
+
 O webhook valida HMAC, consulta o pagamento diretamente no provedor, valida a referência `PB-...`, compara moeda/valor com a verdade armazenada e aplica a transição via RPC atômico. Divergências vão para revisão; retorno de navegador nunca é autoridade financeira.
 
 A expiração de 72 horas é uma regra de checkout, não um status financeiro inventado. Pedidos abandonados continuam auditáveis no histórico, mas a aplicação deixa de tratá-los como checkouts retomáveis depois do prazo. Não existe hard delete automático de pedido nesse fluxo.
