@@ -70,6 +70,35 @@ interface ShippingQuoteResponse {
   error?: unknown
 }
 
+type CepLookupStatus = "idle" | "loading" | "found" | "unavailable"
+
+interface CepLookupAddress {
+  cep: string
+  street: string
+  neighborhood: string
+  city: string
+  state: string
+}
+
+function parseCepLookupAddress(value: unknown, expectedCep: string): CepLookupAddress | null {
+  if (!value || typeof value !== "object") return null
+  const candidate = value as Partial<CepLookupAddress>
+  if (
+    candidate.cep !== expectedCep ||
+    typeof candidate.street !== "string" ||
+    typeof candidate.neighborhood !== "string" ||
+    typeof candidate.city !== "string" ||
+    candidate.city.length < 2 ||
+    candidate.city.length > 80 ||
+    typeof candidate.state !== "string" ||
+    !/^[A-Z]{2}$/.test(candidate.state)
+  ) {
+    return null
+  }
+
+  return candidate as CepLookupAddress
+}
+
 interface CheckoutPreview {
   version: 2
   savedAt: number
@@ -150,6 +179,8 @@ export function CheckoutPage({
   const [errors, setErrors] = useState<CheckoutErrors>({})
   const [shipping, setShipping] = useState<ShippingClientState>(EMPTY_SHIPPING)
   const [isQuoting, setIsQuoting] = useState(false)
+  const [shippingQuoteRevision, setShippingQuoteRevision] = useState(0)
+  const [cepLookupStatus, setCepLookupStatus] = useState<CepLookupStatus>("idle")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const restoredShippingServiceIdRef = useRef<string | null>(null)
@@ -264,32 +295,123 @@ export function CheckoutPage({
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [cartQuoteKey, catalogStatus, destinationCep, hasValidCep, items])
+  }, [
+    cartQuoteKey,
+    catalogStatus,
+    destinationCep,
+    hasValidCep,
+    items,
+    shippingQuoteRevision,
+  ])
+
+  useEffect(() => {
+    if (selectedSavedAddressId !== null || !hasValidCep) {
+      setCepLookupStatus("idle")
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      setCepLookupStatus("loading")
+
+      try {
+        const response = await fetch("/api/address/lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cep: destinationCep }),
+          signal: controller.signal,
+        })
+        const payload = (await response.json().catch(() => null)) as {
+          address?: unknown
+        } | null
+        const address = parseCepLookupAddress(payload?.address, destinationCep)
+
+        if (!response.ok || !address) {
+          setCepLookupStatus("unavailable")
+          return
+        }
+
+        setCheckout((current) => {
+          if (digitsOnly(current.cep) !== destinationCep) return current
+          return {
+            ...current,
+            rua: address.street,
+            bairro: address.neighborhood,
+            cidade: address.city,
+            uf: address.state,
+          }
+        })
+        setErrors((current) => ({
+          ...current,
+          rua: address.street ? undefined : current.rua,
+          bairro: address.neighborhood ? undefined : current.bairro,
+          cidade: undefined,
+          uf: undefined,
+        }))
+        setCepLookupStatus("found")
+      } catch {
+        if (!controller.signal.aborted) setCepLookupStatus("unavailable")
+      }
+    }, 250)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [destinationCep, hasValidCep, selectedSavedAddressId])
 
   const handleCheckoutChange = (field: keyof CheckoutData, value: string) => {
+    if (field === "cep") {
+      const normalizedCep = digitsOnly(value)
+
+      setCheckout((current) => {
+        const cepChanged = digitsOnly(current.cep) !== normalizedCep
+        return {
+          ...current,
+          cep: value,
+          ...(cepChanged
+            ? {
+                rua: "",
+                bairro: "",
+                cidade: "",
+                uf: "",
+              }
+            : {}),
+        }
+      })
+      setErrors((current) => ({
+        ...current,
+        cep: undefined,
+        rua: undefined,
+        bairro: undefined,
+        cidade: undefined,
+        uf: undefined,
+      }))
+      setCheckoutError(null)
+      setCepLookupStatus("idle")
+      restoredShippingServiceIdRef.current = null
+      setSelectedSavedAddressId(null)
+      previewCepRef.current = /^\d{8}$/.test(normalizedCep) ? normalizedCep : null
+
+      if (/^\d{8}$/.test(normalizedCep)) {
+        writeCheckoutPreview(window.localStorage, normalizedCep, null)
+      }
+
+      setShipping((current) => invalidateCheckoutSelection(current))
+      return
+    }
+
     setCheckout((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
     setCheckoutError(null)
-
-    if (field === "cep") {
-      restoredShippingServiceIdRef.current = null
-      setSelectedSavedAddressId(null)
-      const normalizedCep = digitsOnly(value)
-      if (/^\d{8}$/.test(normalizedCep)) {
-        previewCepRef.current = normalizedCep
-        writeCheckoutPreview(window.localStorage, normalizedCep, null)
-      }
-    }
-
-    setShipping((current) =>
-      field === "cep"
-        ? invalidateCheckoutSelection(current)
-        : { ...current, checkoutAttemptId: null },
-    )
+    setShipping((current) => ({ ...current, checkoutAttemptId: null }))
   }
 
   const handleSavedAddressSelect = (address: CheckoutSavedAddress) => {
     restoredShippingServiceIdRef.current = null
+    const selectedCep = digitsOnly(address.cep)
+    previewCepRef.current = selectedCep
+    setCepLookupStatus("idle")
     setSelectedSavedAddressId(address.id)
     setCheckout((current) => applyCheckoutSavedAddress(current, address))
     setErrors((current) => ({
@@ -303,12 +425,14 @@ export function CheckoutPage({
       uf: undefined,
     }))
     setShipping((current) => invalidateCheckoutSelection(current))
+    setShippingQuoteRevision((current) => current + 1)
     writeCheckoutPreview(window.localStorage, address.cep, null)
     setCheckoutError(null)
   }
 
   const handleUseNewAddress = () => {
     restoredShippingServiceIdRef.current = null
+    setCepLookupStatus("idle")
     setSelectedSavedAddressId(null)
     const preservedCep = previewCepRef.current ?? digitsOnly(checkout.cep)
 
@@ -333,6 +457,7 @@ export function CheckoutPage({
       uf: undefined,
     }))
     setShipping((current) => invalidateCheckoutSelection(current))
+    setShippingQuoteRevision((current) => current + 1)
     if (/^\d{8}$/.test(preservedCep)) {
       writeCheckoutPreview(window.localStorage, preservedCep, null)
     }
