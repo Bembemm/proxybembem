@@ -98,6 +98,7 @@ function dependencies(overrides: Record<string, unknown> = {}) {
     publishProduct: async () => storedProduct({ status: "published" }),
     archiveProduct: async () => storedProduct({ status: "archived" }),
     reactivateProduct: async () => storedProduct({ status: "draft" }),
+    invalidatePublicProductCatalog: async () => {},
     ...overrides,
   }
 }
@@ -389,5 +390,55 @@ test("malformed JSON and unexpected storage failures stay bounded and non-cachea
     assert.equal(storageFailure.status, 503)
     assert.deepEqual(await json(storageFailure), { error: "product_unavailable" })
     assert.equal(storageFailure.headers.get("Cache-Control"), "private, no-store")
+  })
+})
+
+
+test("successful product mutations invalidate the public catalog after storage succeeds", async () => {
+  const actions = await loadActions()
+  let invalidations = 0
+  const handlers = actions.createAdminProductRouteHandlers(
+    dependencies({
+      invalidatePublicProductCatalog: async () => {
+        invalidations += 1
+      },
+    }),
+  )
+
+  await withRouteEnv(async () => {
+    const response = await handlers.create(
+      allowedRequest("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify(validProduct()),
+      }),
+    )
+    assert.equal(response.status, 201)
+    assert.equal(invalidations, 1)
+  })
+})
+
+test("failed product mutations do not invalidate the public catalog", async () => {
+  const actions = await loadActions()
+  let invalidations = 0
+  const handlers = actions.createAdminProductRouteHandlers(
+    dependencies({
+      createDraftProduct: async () => {
+        throw new Error("storage unavailable")
+      },
+      invalidatePublicProductCatalog: async () => {
+        invalidations += 1
+      },
+    }),
+  )
+
+  await withRouteEnv(async () => {
+    const response = await handlers.create(
+      allowedRequest("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify(validProduct()),
+      }),
+    )
+    assert.equal(response.status, 503)
+    assert.equal(invalidations, 0)
   })
 })
