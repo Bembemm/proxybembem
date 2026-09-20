@@ -76,6 +76,24 @@ test("temporary catalog failure defers localStorage persistence instead of erasi
   assert.match(context, /localStorage\.setItem\s*\(\s*CART_STORAGE_KEY/)
 })
 
+test("browser storage failures cannot break the in-memory cart", () => {
+  const context = source("contexts/cart-context.tsx")
+
+  assert.match(context, /function removeStoredCartSafely\(\)/)
+  assert.match(
+    context,
+    /try\s*\{\s*window\.localStorage\.removeItem\(CART_STORAGE_KEY\)[\s\S]*?\}\s*catch/,
+  )
+  assert.match(
+    context,
+    /try\s*\{\s*window\.localStorage\.setItem\(CART_STORAGE_KEY,[\s\S]*?\}\s*catch/,
+  )
+  assert.doesNotMatch(
+    context,
+    /function removeStoredCartSafely\(\)\s*\{\s*try\s*\{\s*removeStoredCartSafely\(\)/,
+  )
+})
+
 test("cart panel exposes retry-safe catalog failure and one-time removed-product feedback", () => {
   const context = source("contexts/cart-context.tsx")
   const panel = source("components/cart-panel.tsx")
