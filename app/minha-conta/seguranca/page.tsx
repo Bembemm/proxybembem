@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 
 export default async function SecurityPage() {
-  const identity = await requireCustomerPageAccess()
+  const identity = await requireCustomerPageAccess("/minha-conta/seguranca")
   const storeSettings = await getPublicStoreSettings()
 
   return (
@@ -48,7 +48,7 @@ export default async function SecurityPage() {
           <PasswordForm />
           <p className="mt-5 border-t border-slate-100 pt-4 text-sm text-slate-600">
             Sem acesso à senha atual?{" "}
-            <Link href="/esqueci-a-senha" className="font-semibold text-violet-700 hover:underline">
+            <Link href="/esqueci-a-senha?next=%2Fminha-conta%2Fseguranca" className="font-semibold text-violet-700 hover:underline">
               Iniciar recuperação
             </Link>
           </p>
