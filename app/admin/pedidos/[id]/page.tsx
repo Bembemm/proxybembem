@@ -39,10 +39,6 @@ const SHIPMENT_FEEDBACK_MESSAGES = {
   "provider-rejected": "O Melhor Envio recusou esta operação. Revise os dados da remessa antes de tentar novamente.",
   "reauthorization-required": "A integração com o Melhor Envio precisa ser reautorizada antes de continuar.",
   "shipment-attention": "A remessa precisa de verificação manual antes de continuar.",
-  purchased: "Compra da etiqueta confirmada pelo Melhor Envio.",
-  "price-changed": "O custo atual da etiqueta mudou. Revise o novo valor antes de confirmar a compra.",
-  "reconciled-purchased": "A reconciliação confirmou que a etiqueta foi comprada.",
-  "reconciled-not-purchased": "A reconciliação confirmou que a etiqueta não foi comprada e a remessa voltou a um estado seguro.",
 } as const
 
 const NOTIFICATION_FEEDBACK_MESSAGES = {
@@ -314,7 +310,6 @@ export default async function AdminOrderDetailPage({
                 )
               }
               if (target === "shipped") {
-                if (order.shipping_provider === "melhor_envio") return null
                 return (
                   <ActionForm
                     key={target}
