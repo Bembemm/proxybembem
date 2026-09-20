@@ -29,6 +29,7 @@ interface AccountLoginInput {
 
 interface AccountResetInput {
   email: string
+  next: string
 }
 
 interface AccountPasswordUpdateInput {
@@ -160,8 +161,13 @@ export function parseAccountLoginInput(value: unknown): AccountLoginInput {
 }
 
 export function parseAccountResetInput(value: unknown): AccountResetInput {
-  const input = requireExactKeys(value, ["email"])
-  return { email: normalizeEmail(input.email) }
+  const input = requireExactKeys(value, ["email", "next"])
+  return {
+    email: normalizeEmail(input.email),
+    next: sanitizeCustomerLoginNext(
+      typeof input.next === "string" ? input.next : undefined,
+    ),
+  }
 }
 
 export function parseAccountPasswordUpdateInput(
