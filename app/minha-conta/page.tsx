@@ -19,7 +19,7 @@ function formatMoney(cents: number | null) {
 }
 
 export default async function AccountOverviewPage() {
-  await requireCustomerPageAccess()
+  await requireCustomerPageAccess("/minha-conta")
   const [profile, recent] = await Promise.all([
     getOwnCustomerProfile(),
     listOwnOrders({ page: 1, pageSize: 5 }),
