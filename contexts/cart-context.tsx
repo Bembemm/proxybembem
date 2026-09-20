@@ -59,7 +59,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined)
 
 function removeStoredCartSafely() {
   try {
-    removeStoredCartSafely()
+    window.localStorage.removeItem(CART_STORAGE_KEY)
   } catch {
     // The in-memory cart remains usable when browser storage is unavailable.
   }
