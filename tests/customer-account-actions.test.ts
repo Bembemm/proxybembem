@@ -189,9 +189,10 @@ test("proxy keeps every existing admin matcher while adding account auth surface
   }
 })
 
-test("checkout API participates in Supabase session refresh", async () => {
+test("checkout page and API always participate in Supabase session refresh", async () => {
   const proxy = await source("../proxy.ts")
-  assert.ok(proxy.includes('"/api/checkout"'), "missing checkout session-refresh matcher")
+  assert.ok(proxy.includes('"/checkout"'), "missing checkout page matcher")
+  assert.ok(proxy.includes('"/api/checkout"'), "missing checkout API matcher")
 })
 
 test("planned account routes are bounded POST surfaces and callback is GET-only", async () => {
@@ -226,7 +227,11 @@ test("planned account routes are bounded POST surfaces and callback is GET-only"
   assert.match(logout, /export\s+async\s+function\s+POST|export\s+const\s+POST/)
   assert.doesNotMatch(logout, /export\s+(?:async\s+function|const)\s+GET/)
   assert.match(logout, /isSameOriginAccountRequest/)
-  assert.match(logout, /signOut\s*\(/)
+  assert.match(logout, /createSupabaseRouteClient/)
+  assert.match(logout, /signOut\s*\(\s*\{\s*scope:\s*["']local["']/)
+  assert.match(logout, /applyToResponse\(redirectToLogin\(request\)\)/)
+  assert.match(logout, /NextResponse\.redirect/)
+  assert.match(logout, /Clear-Site-Data/)
   assert.doesNotMatch(logout, /readJsonBody\s*\(/)
 
   const callback = await source("../app/auth/callback/route.ts")
