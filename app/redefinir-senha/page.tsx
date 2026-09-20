@@ -29,7 +29,7 @@ export default async function ResetPasswordPage({
   )
   const token = (await cookies()).get(RECOVERY_TOKEN_COOKIE)?.value
   if (!isValidPasswordRecoveryToken(token)) {
-    redirect("/entrar?erro=recovery")
+    redirect(`/entrar?erro=recovery&next=${encodeURIComponent(next)}`)
   }
 
   let active = false
@@ -40,7 +40,7 @@ export default async function ResetPasswordPage({
   }
 
   if (!active) {
-    redirect("/entrar?erro=recovery")
+    redirect(`/entrar?erro=recovery&next=${encodeURIComponent(next)}`)
   }
 
   return (
