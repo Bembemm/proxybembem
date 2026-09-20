@@ -6,45 +6,38 @@ const REVALIDATION = new URL(
   "../lib/server/product-catalog-revalidation.ts",
   import.meta.url,
 )
-const PRODUCT_FORM = new URL(
-  "../components/admin/products/product-form.tsx",
+const PRODUCT_ROUTE = new URL("../app/api/admin/products/route.ts", import.meta.url)
+const PRODUCT_UPDATE_ROUTE = new URL(
+  "../app/api/admin/products/[id]/route.ts",
   import.meta.url,
 )
-const LIFECYCLE_ACTIONS = new URL(
-  "../components/admin/products/product-lifecycle-actions.tsx",
+const PRODUCT_LIFECYCLE_ROUTE = new URL(
+  "../app/api/admin/products/[id]/publish/route.ts",
   import.meta.url,
 )
 const NAVBAR = new URL("../components/navbar.tsx", import.meta.url)
 
-test("public catalog revalidation is a Server Action covering home and products", () => {
+test("public catalog invalidation covers home and product destinations", () => {
   assert.equal(
     existsSync(REVALIDATION),
     true,
-    "public product catalog revalidation Server Action must exist",
+    "public product catalog invalidation module must exist",
   )
   const source = readFileSync(REVALIDATION, "utf8")
-  assert.match(source, /^["']use server["']/m)
   assert.match(source, /from\s+["']next\/cache["']/)
+  assert.match(source, /invalidatePublicProductCatalog/)
+  assert.match(source, /revalidateTag\(\s*["']product-catalog["']/)
   assert.match(source, /revalidatePath\(\s*["']\/["']\s*\)/)
   assert.match(source, /revalidatePath\(\s*["']\/produtos["']\s*\)/)
   assert.match(source, /revalidatePath\(\s*["']\/produtos\/\[produto\]["']\s*,\s*["']page["']\s*\)/)
 })
 
-test("successful admin product saves and lifecycle mutations invalidate client navigation cache", () => {
-  const formSource = readFileSync(PRODUCT_FORM, "utf8")
-  const lifecycleSource = readFileSync(LIFECYCLE_ACTIONS, "utf8")
-
-  assert.match(formSource, /revalidatePublicProductCatalog/)
-  assert.match(
-    formSource,
-    /const saved = payload\.product[\s\S]*await revalidatePublicProductCatalog\(\)/,
-  )
-
-  assert.match(lifecycleSource, /revalidatePublicProductCatalog/)
-  assert.match(
-    lifecycleSource,
-    /!response\.ok[\s\S]*await revalidatePublicProductCatalog\(\)[\s\S]*onUpdated/,
-  )
+test("admin product routes wire cache invalidation on the server", () => {
+  for (const route of [PRODUCT_ROUTE, PRODUCT_UPDATE_ROUTE, PRODUCT_LIFECYCLE_ROUTE]) {
+    const source = readFileSync(route, "utf8")
+    assert.match(source, /invalidatePublicProductCatalog/)
+    assert.match(source, /createAdminProductRouteHandlers/)
+  }
 })
 
 test("mutable storefront destinations bypass soft navigation that can reuse stale RSC payloads", () => {
