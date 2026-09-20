@@ -28,7 +28,7 @@ test("reconciliation prefers an approved payment over newer failed attempts", as
     t.mock.method(
       globalThis,
       "fetch",
-      async (input: Parameters<typeof fetch>[0], _init?: Parameters<typeof fetch>[1]) => {
+      async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
         const url = new URL(String(input))
 
         if (url.hostname === "api.mercadopago.com" && url.pathname === "/v1/payments/search") {
