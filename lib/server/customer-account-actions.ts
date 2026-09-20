@@ -110,7 +110,7 @@ function normalizeWhatsapp(value: unknown) {
 }
 
 function validateCredentialPassword(value: unknown) {
-  if (typeof value !== "string" || value.length < 8 || value.length > 128) {
+  if (typeof value !== "string" || value.length === 0 || value.length > 128) {
     throw new Error("Invalid account request")
   }
   return value
