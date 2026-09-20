@@ -51,6 +51,16 @@ const NOTIFICATION_FEEDBACK_MESSAGES = {
   "resend-not-ready": "Esse e-mail ainda está em processamento ou aguardando nova tentativa.",
 } as const
 
+const PAYMENT_SYNC_MESSAGES = {
+  approved: "Pagamento confirmado diretamente pela API do Mercado Pago.",
+  updated: "Status financeiro sincronizado com o Mercado Pago.",
+  unchanged: "O Mercado Pago confirmou o mesmo status financeiro já salvo.",
+  "not-found": "Nenhum pagamento foi encontrado no Mercado Pago para este pedido.",
+  "manual-review": "O pagamento foi localizado, mas valor ou moeda exigem revisão manual.",
+  "rate-limited": "Aguarde alguns minutos antes de sincronizar novamente.",
+  error: "Não foi possível consultar o Mercado Pago agora.",
+} as const
+
 const PAYMENT_REQUIRED_COPY =
   "O pagamento aprovado é necessário para iniciar a produção. Verifique o status confirmado pelo Mercado Pago antes de continuar."
 const CANCELLATION_COPY =
@@ -59,12 +69,14 @@ const CANCELLATION_COPY =
 type FeedbackStatus = keyof typeof FEEDBACK_MESSAGES
 type ShipmentFeedbackStatus = keyof typeof SHIPMENT_FEEDBACK_MESSAGES
 type NotificationFeedbackStatus = keyof typeof NOTIFICATION_FEEDBACK_MESSAGES
+type PaymentSyncStatus = keyof typeof PAYMENT_SYNC_MESSAGES
 
 type PageParams = Promise<{ id: string }>
 type PageSearchParams = Promise<{
   status?: string | string[]
   shipment?: string | string[]
   notification?: string | string[]
+  payment?: string | string[]
 }>
 
 export const dynamic = "force-dynamic"
@@ -86,6 +98,11 @@ function shipmentFeedbackMessage(value: string | undefined) {
 function notificationFeedbackMessage(value: string | undefined) {
   if (!value || !(value in NOTIFICATION_FEEDBACK_MESSAGES)) return null
   return NOTIFICATION_FEEDBACK_MESSAGES[value as NotificationFeedbackStatus]
+}
+
+function paymentSyncMessage(value: string | undefined) {
+  if (!value || !(value in PAYMENT_SYNC_MESSAGES)) return null
+  return PAYMENT_SYNC_MESSAGES[value as PaymentSyncStatus]
 }
 
 function formatMoney(cents: number) {
@@ -209,6 +226,7 @@ export default async function AdminOrderDetailPage({
 
   const query = await searchParams
   const feedback =
+    paymentSyncMessage(firstParam(query.payment)) ??
     notificationFeedbackMessage(firstParam(query.notification)) ??
     shipmentFeedbackMessage(firstParam(query.shipment)) ??
     feedbackMessage(firstParam(query.status))
@@ -454,7 +472,10 @@ export default async function AdminOrderDetailPage({
             </dl>
           </Section>
 
-          <Section title="Mercado Pago" description="Informações financeiras somente para consulta.">
+          <Section
+            title="Mercado Pago"
+            description="A sincronização consulta a API oficial e mantém as validações de referência, valor e moeda; não marca pagamento manualmente."
+          >
             <dl className="grid gap-4 sm:grid-cols-2">
               <DetailField label="Provedor" value={order.payment_provider} />
               <DetailField label="Status" value={<PaymentStatusBadge value={order.payment_status} />} />
@@ -462,6 +483,14 @@ export default async function AdminOrderDetailPage({
               <DetailField label="Preferência" value={displayValue(order.preference_id)} />
               <DetailField label="Detalhe" value={displayValue(order.payment_status_detail)} />
             </dl>
+            {order.payment_provider === "mercadopago" ? (
+              <div className="mt-4">
+                <ActionForm
+                  action={`/api/internal/admin/orders/${order.id}/reconcile-payment`}
+                  label="Sincronizar com Mercado Pago"
+                />
+              </div>
+            ) : null}
           </Section>
         </div>
 
