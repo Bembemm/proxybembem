@@ -1,5 +1,5 @@
 import { getMelhorEnvioOAuthEnv } from "./env.ts"
-import { melhorEnvioPhase5ScopeParameter } from "./melhor-envio-oauth-scopes.ts"
+import { melhorEnvioActiveScopeParameter } from "./melhor-envio-oauth-scopes.ts"
 
 export interface MelhorEnvioOAuthTokens {
   tokenType: "Bearer"
