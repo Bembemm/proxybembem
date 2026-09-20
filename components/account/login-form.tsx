@@ -11,7 +11,6 @@ import {
   validateAccountEmail,
   validateAccountLoginPassword,
 } from "@/lib/account-form"
-import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
@@ -22,9 +21,11 @@ export function AccountLoginForm({ next }: { next: string }) {
   const [errors, setErrors] = useState<AccountFieldErrors>({})
   const [authInvalid, setAuthInvalid] = useState(false)
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (pending) return
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (pending) {
+      event.preventDefault()
+      return
+    }
 
     const form = new FormData(event.currentTarget)
     const email = String(form.get("email") ?? "")
@@ -37,67 +38,24 @@ export function AccountLoginForm({ next }: { next: string }) {
     setErrors(nextErrors)
     setAuthInvalid(false)
     setMessage(null)
-    if (hasAccountFieldErrors(nextErrors)) return
+
+    if (hasAccountFieldErrors(nextErrors)) {
+      event.preventDefault()
+      return
+    }
 
     setPending(true)
-    try {
-      const response = await fetch("/api/account/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-      const payload = (await response.json().catch(() => null)) as
-        | {
-            ok?: unknown
-            message?: unknown
-          }
-        | null
-
-      if (!response.ok || payload?.ok !== true) {
-        const invalidCredentials = response.status === 400 || response.status === 401
-        setAuthInvalid(invalidCredentials)
-
-        if (invalidCredentials) {
-          setMessage("E-mail ou senha incorretos.")
-        } else if (typeof payload?.message === "string") {
-          setMessage(payload.message)
-        } else {
-          setMessage("Não foi possível entrar agora. Tente novamente.")
-        }
-        return
-      }
-
-      // KingHost/reverse proxies may not reliably preserve a large SSR auth
-      // Set-Cookie header returned through fetch. Verify that the browser can
-      // actually see the authenticated customer before navigating. If not,
-      // persist the same validated login directly with the browser-scoped
-      // Supabase client.
-      const browserSupabase = createSupabaseBrowserClient()
-      const normalizedEmail = email.trim().toLowerCase()
-      const { data: currentUserData } = await browserSupabase.auth.getUser()
-      const currentEmail = currentUserData.user?.email?.trim().toLowerCase() ?? null
-
-      if (currentEmail !== normalizedEmail) {
-        const { data: browserLogin, error: browserLoginError } =
-          await browserSupabase.auth.signInWithPassword({ email, password })
-
-        if (browserLoginError || !browserLogin.session) {
-          setAuthInvalid(true)
-          setMessage("E-mail ou senha incorretos.")
-          return
-        }
-      }
-
-      window.location.assign(next)
-    } catch {
-      setMessage("Não foi possível entrar agora. Tente novamente.")
-    } finally {
-      setPending(false)
-    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+    <form
+      action="/api/account/login"
+      method="post"
+      onSubmit={handleSubmit}
+      className="space-y-4"
+      noValidate
+    >
+      <input type="hidden" name="next" value={next} />
       <div className="space-y-1.5">
         <label htmlFor="email" className="text-sm font-semibold text-slate-800">
           E-mail
@@ -149,7 +107,7 @@ export function AccountLoginForm({ next }: { next: string }) {
         {pending ? "Entrando..." : "Entrar"}
       </button>
       <div className="flex flex-wrap justify-between gap-3 text-sm">
-        <Link href="/esqueci-a-senha" className="text-violet-700 hover:underline">
+        <Link href={`/esqueci-a-senha?next=${encodeURIComponent(next)}`} className="text-violet-700 hover:underline">
           Esqueci minha senha
         </Link>
         <Link href={`/criar-conta?next=${encodeURIComponent(next)}`} className="text-violet-700 hover:underline">
