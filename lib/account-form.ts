@@ -29,6 +29,12 @@ export function validateAccountPassword(value: string) {
   return validateCustomerPassword(value) ?? undefined
 }
 
+export function validateAccountLoginPassword(value: string) {
+  if (value.length === 0) return "Informe sua senha."
+  if (value.length > 128) return "E-mail ou senha incorretos."
+  return undefined
+}
+
 export function validateAccountPasswordConfirmation(
   password: string,
   confirmPassword: string,
