@@ -2,16 +2,9 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const PHASE5_SCOPES = [
+const ACTIVE_SCOPES = [
   "shipping-calculate",
-  "cart-read",
   "cart-write",
-  "orders-read",
-  "shipping-checkout",
-  "shipping-generate",
-  "shipping-print",
-  "shipping-tracking",
-  "shipping-cancel",
 ] as const
 
 const PHASE5_MIGRATIONS = [
@@ -27,40 +20,39 @@ async function read(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8")
 }
 
-test("shipping setup documents the live Phase 5 PF/DC-e flow and staged spending controls", async () => {
+test("shipping setup documents the prepare-only Melhor Envio flow", async () => {
   const source = await read("../docs/shipping-setup.md")
 
   for (const expected of [
     "PF/CPF",
-    "DC-e",
-    "DACE",
-    "MELHOR_ENVIO_LABEL_PURCHASE_ENABLED",
     "Preparar remessa",
-    "Comprar etiqueta",
-    "Gerar etiqueta",
-    "/api/internal/melhor-envio/tracking",
-    "/minha-conta/pedidos/",
+    "Marcar enviado",
+    "POST /api/v2/me/cart",
     "docs/deployment/kinghost.md",
   ]) {
     assert.ok(source.includes(expected), `shipping setup must include ${expected}`)
   }
 
-  for (const scope of PHASE5_SCOPES) {
+  for (const scope of ACTIVE_SCOPES) {
     assert.ok(source.includes(scope), `shipping setup must include OAuth scope ${scope}`)
   }
 
-  assert.match(source, /remetente[^\n]*(fix|cadast)|(?:fix|cadast)[^\n]*remetente/i)
-  assert.match(source, /compra[^\n]*(expl[ií]cit|manual)[^\n]*(?:gera|gera[cç][aã]o)|gera[cç][aã]o[^\n]*separad/i)
-  assert.match(source, /n[aã]o[^\n]*compra[^\n]*autom[aá]tic/i)
-  assert.match(source, /rastreamento[^\n]*(?:hora|hour)|(?:hora|hour)[^\n]*rastreamento/i)
-  assert.match(source, /03:17/)
-  assert.match(source, /cancel[^\n]*confirma/i)
-  assert.match(source, /(?:um|uma|1)[^\n]*(?:pacote|volume)[^\n]*(?:etiqueta|label)|(?:etiqueta|label)[^\n]*(?:um|uma|1)[^\n]*(?:pacote|volume)/i)
-  assert.match(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false/)
-  assert.match(source, /MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=true/)
+  for (const retired of [
+    "MELHOR_ENVIO_LABEL_PURCHASE_ENABLED",
+    "shipping-checkout",
+    "shipping-generate",
+    "shipping-print",
+    "shipping-tracking",
+    "shipping-cancel",
+    "/api/internal/melhor-envio/tracking",
+  ]) {
+    assert.equal(source.includes(retired), false, `shipping setup must retire ${retired}`)
+  }
 
-  assert.doesNotMatch(source, /somente para cota[cç][aã]o/i)
-  assert.doesNotMatch(source, /compra, gera[cç][aã]o e impress[aã]o de etiqueta continuam manuais/i)
+  assert.match(source, /n[aã]o compra etiquetas/i)
+  assert.match(source, /adiciona[^\n]*carrinho do Melhor Envio/i)
+  assert.match(source, /compra feita diretamente no Melhor Envio/i)
+  assert.match(source, /reautorizada[^\n]*reduzir os scopes/i)
 })
 
 test("operational status preserves Phase 5 acceptance evidence and closes Task 20", async () => {
