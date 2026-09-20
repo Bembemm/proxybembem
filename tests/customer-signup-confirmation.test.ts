@@ -89,7 +89,7 @@ test("password signup sends the exact strongly validated password to Supabase", 
   assert.match(signupRoute, /password:\s*input\.password/)
 })
 
-test("successful password login persists the SSR session in response cookies without exposing auth tokens", async () => {
+test("successful password login persists SSR cookies on a top-level redirect without exposing auth tokens", async () => {
   const loginRoute = await source("../app/api/account/login/route.ts")
   const loginForm = await source("../components/account/login-form.tsx")
 
@@ -100,19 +100,23 @@ test("successful password login persists the SSR session in response cookies wit
   assert.doesNotMatch(loginRoute, /createSupabaseAuthServerClient/)
   assert.doesNotMatch(loginRoute, /accessToken|refreshToken/)
 
+  assert.match(loginRoute, /NextResponse\.redirect/)
+  assert.match(loginRoute, /status|303/)
+  assert.match(loginForm, /action=["']\/api\/account\/login["']/)
+  assert.match(loginForm, /method=["']post["']/)
   assert.doesNotMatch(loginForm, /auth\.setSession\s*\(/)
   assert.doesNotMatch(loginForm, /accessToken|refreshToken/)
 })
 
-test("login UI does not misreport gateway or server failures as bad credentials", async () => {
+test("login page distinguishes bad credentials, rate limits and service failures", async () => {
+  const loginPage = await source("../app/entrar/page.tsx")
   const loginForm = await source("../components/account/login-form.tsx")
 
-  assert.match(loginForm, /response\.status\s*===\s*400\s*\|\|\s*response\.status\s*===\s*401/)
-  assert.match(loginForm, /Não foi possível entrar agora/)
-  assert.match(loginForm, /E-mail ou senha incorretos\./)
-  assert.match(loginForm, /createSupabaseBrowserClient/)
-  assert.doesNotMatch(
-    loginForm,
-    /typeof payload\?\.message === "string"[\s\S]{0,240}: "E-mail ou senha inválidos\."/,
-  )
+  assert.match(loginPage, /params\.erro\s*===\s*["']credenciais["']/)
+  assert.match(loginPage, /E-mail ou senha incorretos\./)
+  assert.match(loginPage, /params\.erro\s*===\s*["']limite["']/)
+  assert.match(loginPage, /Muitas tentativas de login/)
+  assert.match(loginPage, /params\.erro\s*===\s*["']servico["']/)
+  assert.match(loginPage, /Não foi possível entrar agora/)
+  assert.doesNotMatch(loginForm, /createSupabaseBrowserClient/)
 })
