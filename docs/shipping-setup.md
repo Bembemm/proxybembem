@@ -69,7 +69,7 @@ SHIPPING_QUOTE_SECRET=
 CRON_SECRET=
 ```
 
-Não existe mais `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED`, porque a aplicação não possui uma operação de compra de etiqueta.
+A aplicação não possui nenhuma operação de compra de etiqueta nem flag de habilitação de gasto.
 
 ## Remetente
 
