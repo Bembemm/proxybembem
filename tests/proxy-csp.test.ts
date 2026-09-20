@@ -78,6 +78,7 @@ test("existing protected and auth routes keep Supabase session handling", () => 
     "/minha-conta",
     "/minha-conta/pedidos",
     "/api/account/login",
+    "/checkout",
     "/api/checkout",
     "/api/admin/orders",
     "/api/internal/melhor-envio/oauth/start",
@@ -145,6 +146,7 @@ test("root Proxy matches pages broadly while skipping static assets and prefetch
   assert.match(source, /prefetch/)
   assert.match(source, /["']\/api\/admin\/:path\*["']/)
   assert.match(source, /["']\/api\/account\/:path\*["']/)
+  assert.match(source, /["']\/checkout["']/)
   assert.match(source, /["']\/api\/checkout["']/)
   assert.match(source, /["']\/api\/internal\/melhor-envio\/oauth\/start["']/)
 })
@@ -166,4 +168,25 @@ test("static config yields CSP ownership to Proxy and root layout opts into requ
   assert.match(layout, /from\s+["']next\/headers["']/)
   assert.match(layout, /headers\s*\(\s*\)/)
   assert.match(layout, /await\s+Promise\.all/)
+})
+
+
+test("customer identity-sensitive pages receive private no-store headers", async () => {
+  const source = await readFile(SUPABASE_PROXY, "utf8")
+
+  assert.match(source, /CUSTOMER_AUTH_SENSITIVE_PATHS/)
+  for (const pathname of [
+    "/entrar",
+    "/criar-conta",
+    "/esqueci-a-senha",
+    "/redefinir-senha",
+    "/checkout",
+    "/auth/callback",
+    "/auth/confirm",
+  ]) {
+    assert.ok(source.includes(`"${pathname}"`), `missing no-store auth surface ${pathname}`)
+  }
+  assert.match(source, /private, no-cache, no-store, max-age=0, must-revalidate/)
+  assert.match(source, /Pragma/)
+  assert.match(source, /Expires/)
 })
