@@ -1,5 +1,5 @@
 import {
-  getMelhorEnvioShipmentEnv,
+  getMelhorEnvioOAuthEnv,
   type MelhorEnvioEnvironment,
 } from "./env.ts"
 import type { MelhorEnvioOAuthScope } from "./melhor-envio-oauth-scopes.ts"
@@ -770,7 +770,7 @@ export function createMelhorEnvioShipmentClient(deps: ShipmentClientDependencies
 
 const defaultClient = createMelhorEnvioShipmentClient({
   getConfig: () => {
-    const env = getMelhorEnvioShipmentEnv()
+    const env = getMelhorEnvioOAuthEnv()
     return { environment: env.environment, userAgent: env.userAgent }
   },
   getAccessToken: getMelhorEnvioAccessToken,
