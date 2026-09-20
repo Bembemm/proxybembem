@@ -26,7 +26,13 @@ function recoveryFallbackMessage(status: number) {
   return "Não foi possível redefinir a senha agora."
 }
 
-export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) {
+export function PasswordForm({
+  recovery = false,
+  next = "/minha-conta",
+}: {
+  recovery?: boolean
+  next?: string
+} = {}) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [errors, setErrors] = useState<AccountFieldErrors>({})
@@ -84,7 +90,9 @@ export function PasswordForm({ recovery = false }: { recovery?: boolean } = {}) 
       formElement.reset()
       setErrors({})
       if (recovery) {
-        window.location.assign("/entrar?senha=alterada")
+        window.location.assign(
+          `/entrar?senha=alterada&next=${encodeURIComponent(next)}`,
+        )
         return
       }
       setMessage("Senha alterada.")
