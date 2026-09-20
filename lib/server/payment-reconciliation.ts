@@ -22,20 +22,16 @@ export interface PaymentReconciliationResult {
 
 function preferredSearchPayment(
   results: Awaited<ReturnType<typeof searchMercadoPagoPaymentsByExternalReference>>,
-  currentPaymentId: string | null,
 ) {
   const approved = results.find((payment) => payment.status === "approved")
   if (approved) return approved
 
-  if (currentPaymentId) {
-    const current = results.find((payment) => payment.id === currentPaymentId)
-    if (current) return current
-  }
-
-  const reversal = results.find(
-    (payment) => payment.status === "refunded" || payment.status === "charged_back",
+  return (
+    results.find(
+      (payment) =>
+        payment.status === "refunded" || payment.status === "charged_back",
+    ) ?? null
   )
-  return reversal ?? results[0] ?? null
 }
 
 function toResult(result: PaymentEventResult): PaymentReconciliationResult {
@@ -64,7 +60,16 @@ export async function reconcileMercadoPagoOrderPayment(input: {
       input.orderNumber,
       input.accessToken,
     )
-    paymentId = preferredSearchPayment(results, input.currentPaymentId)?.id ?? null
+    const preferred = preferredSearchPayment(results)
+    if (!preferred) {
+      const latest = results[0] ?? null
+      return {
+        outcome: latest ? "ignored" : "not_found",
+        paymentStatus: latest?.status ?? null,
+        paymentId: latest?.id ?? null,
+      }
+    }
+    paymentId = preferred.id
   }
 
   if (!paymentId) {
