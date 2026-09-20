@@ -76,14 +76,15 @@ test("public auth forms are accessible and call only the intended account APIs",
   assert.match(login, /htmlFor=["']password["']/)
   assert.match(login, /type=["']email["']/)
   assert.match(login, /type=["']password["']/)
-  assert.match(login, /window\.location\.assign\(next\)/)
+  assert.match(login, /action=["']\/api\/account\/login["']/)
+  assert.match(login, /method=["']post["']/)
+  assert.match(login, /name=["']next["']/)
   assert.match(login, /validateAccountLoginPassword/)
   assert.doesNotMatch(login, /validateAccountPassword\(password\)/)
   assert.doesNotMatch(login, /minLength=\{8\}/)
-  assert.match(login, /createSupabaseBrowserClient/)
-  assert.match(login, /browserSupabase\.auth\.getUser\(\)/)
-  assert.match(login, /browserSupabase\.auth\.signInWithPassword/)
-  assert.match(login, /E-mail ou senha incorretos\./)
+  assert.doesNotMatch(login, /fetch\s*\(/)
+  assert.doesNotMatch(login, /createSupabaseBrowserClient/)
+  assert.match(login, /\/esqueci-a-senha\?next=/)
 
   assert.match(signup, /\/api\/account\/signup/)
   for (const field of ["name", "email", "whatsapp", "password"]) {
@@ -95,6 +96,8 @@ test("public auth forms are accessible and call only the intended account APIs",
   assert.match(reset, /\/api\/account\/password-reset/)
   assert.match(reset, /htmlFor=["']email["']/)
   assert.match(reset, /type=["']email["']/)
+  assert.match(reset, /JSON\.stringify\(\{ email, next \}\)/)
+  assert.match(reset, /\/entrar\?next=/)
 
   for (const form of [login, signup, reset]) {
     assert.doesNotMatch(form, /customerId|customer_id|ADMIN_USER_ID/)
