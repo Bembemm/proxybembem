@@ -23,7 +23,6 @@ function redirectToLogin(request: NextRequest) {
   )
   response.headers.set("Pragma", "no-cache")
   response.headers.set("Expires", "0")
-  response.headers.set("Clear-Site-Data", '"cache"')
   response.headers.set("Referrer-Policy", "no-referrer")
   return response
 }
