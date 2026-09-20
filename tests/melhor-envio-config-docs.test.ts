@@ -64,11 +64,7 @@ test("production rollout pins the canonical callback and isolates sandbox and pr
     source.includes("https://www.proxybembem.com.br/api/melhor-envio/oauth/callback"),
     "Production callback must be documented exactly",
   )
-  assert.match(source, /Sandbox[^
-]*Production[^
-]*credenciais pr[oó]prias|Production[^
-]*Sandbox[^
-]*credenciais pr[oó]prias/i)
+  assert.match(source, /Sandbox.*Production.*credenciais pr[oó]prias|Production.*Sandbox.*credenciais pr[oó]prias/i)
   assert.match(source, /MELHOR_ENVIO_ENVIRONMENT=production/)
   assert.match(source, /SHIPPING_ORIGIN_CEP/)
 })
