@@ -12,7 +12,7 @@ test("resume-payment route is owner-scoped, expiry-aware, and redirects only to 
 
   const auth = route.indexOf("getOptionalCustomerIdentity()")
   const lookup = route.indexOf("getOrderByIdForCustomer(id, identity.userId)")
-  const redirect = route.indexOf("NextResponse.redirect(order.checkout_url")
+  const redirect = route.indexOf("privateRedirect(order.checkout_url")
 
   assert.ok(auth >= 0)
   assert.ok(lookup > auth)
