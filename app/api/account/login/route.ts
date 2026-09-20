@@ -4,35 +4,52 @@ import {
   parseAccountLoginInput,
   parseAccountProfileMetadata,
 } from "../../../../lib/server/customer-account-actions.ts"
+import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
-import { readJsonBody } from "../../../../lib/server/request-body.ts"
 import { createSupabaseRouteClient } from "../../../../lib/supabase/route.ts"
 
-function json(status: number, body: Record<string, unknown>) {
-  return NextResponse.json(body, {
-    status,
-    headers: { "Cache-Control": "private, no-store" },
-  })
+function redirect(request: NextRequest, path: string) {
+  const siteUrl = resolvePublicSiteUrl(request.nextUrl.origin)
+  const response = NextResponse.redirect(new URL(path, siteUrl), 303)
+  response.headers.set("Cache-Control", "private, no-store")
+  response.headers.set("Referrer-Policy", "no-referrer")
+  return response
+}
+
+function loginErrorPath(next: string, error: "credenciais" | "limite" | "servico" | "requisicao") {
+  const search = new URLSearchParams({ erro: error, next })
+  return `/entrar?${search.toString()}`
 }
 
 export async function POST(request: NextRequest) {
   if (!isSameOriginAccountRequest(request)) {
-    return json(403, { ok: false, message: "Requisição inválida." })
+    return redirect(request, loginErrorPath("/minha-conta", "requisicao"))
   }
 
+  let raw: FormData
   try {
-    if (!(await consumeRateLimit({ request, scope: "account-login" }))) {
-      return json(429, { ok: false, message: "Tente novamente em alguns minutos." })
-    }
+    raw = await request.formData()
   } catch {
-    return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+    return redirect(request, loginErrorPath("/minha-conta", "credenciais"))
   }
 
   let input: ReturnType<typeof parseAccountLoginInput>
   try {
-    input = parseAccountLoginInput(await readJsonBody(request, 4_096))
+    input = parseAccountLoginInput({
+      email: raw.get("email"),
+      password: raw.get("password"),
+      next: raw.get("next"),
+    })
   } catch {
-    return json(400, { ok: false, message: "E-mail ou senha incorretos." })
+    return redirect(request, loginErrorPath("/minha-conta", "credenciais"))
+  }
+
+  try {
+    if (!(await consumeRateLimit({ request, scope: "account-login" }))) {
+      return redirect(request, loginErrorPath(input.next, "limite"))
+    }
+  } catch {
+    return redirect(request, loginErrorPath(input.next, "servico"))
   }
 
   try {
@@ -42,15 +59,21 @@ export async function POST(request: NextRequest) {
       password: input.password,
     })
     const session = data.session
+
     if (error || !session?.access_token) {
-      return json(401, { ok: false, message: "E-mail ou senha incorretos." })
+      return applyToResponse(
+        redirect(request, loginErrorPath(input.next, "credenciais")),
+      )
     }
 
     const { data: verified, error: userError } = await supabase.auth.getUser(
       session.access_token,
     )
     if (userError || !verified.user?.email_confirmed_at) {
-      return json(401, { ok: false, message: "E-mail ou senha incorretos." })
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined)
+      return applyToResponse(
+        redirect(request, loginErrorPath(input.next, "credenciais")),
+      )
     }
 
     try {
@@ -69,13 +92,8 @@ export async function POST(request: NextRequest) {
       // Profile convenience must never block an otherwise valid login.
     }
 
-    return applyToResponse(
-      json(200, {
-        ok: true,
-        next: "/minha-conta",
-      }),
-    )
+    return applyToResponse(redirect(request, input.next))
   } catch {
-    return json(503, { ok: false, message: "Serviço temporariamente indisponível." })
+    return redirect(request, loginErrorPath(input.next, "servico"))
   }
 }
