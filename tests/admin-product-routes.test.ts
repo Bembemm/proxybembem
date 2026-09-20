@@ -98,6 +98,7 @@ function dependencies(overrides: Record<string, unknown> = {}) {
     publishProduct: async () => storedProduct({ status: "published" }),
     archiveProduct: async () => storedProduct({ status: "archived" }),
     reactivateProduct: async () => storedProduct({ status: "draft" }),
+    invalidatePublicProductCatalog: async () => {},
     ...overrides,
   }
 }
@@ -141,6 +142,8 @@ test("all product mutation routes wire the existing touched admin authorization 
     const source = readFileSync(new URL(relativePath, import.meta.url), "utf8")
     assert.match(source, /authorizeAdminAccess\(\{\s*touch:\s*true\s*\}\)/)
     assert.match(source, /admin-product-actions\.ts/)
+    assert.match(source, /invalidatePublishedProductCatalog/)
+    assert.match(source, /invalidatePublicProductCatalog:\s*invalidatePublishedProductCatalog/)
     assert.match(source, new RegExp(operation, "i"))
     assert.doesNotMatch(source, /\bDELETE\b/)
   }
@@ -298,6 +301,54 @@ test("create returns 201 and update requires exact expectedUpdatedAt with a vali
       context("nope"),
     )
     assert.equal(badId.status, 404)
+  })
+})
+
+test("successful product writes invalidate the public catalog after storage", async () => {
+  const actions = await loadActions()
+  const events: string[] = []
+  const handlers = actions.createAdminProductRouteHandlers(
+    dependencies({
+      createDraftProduct: async () => {
+        events.push("stored")
+        return storedProduct()
+      },
+      invalidatePublicProductCatalog: async () => {
+        events.push("invalidated")
+      },
+    }),
+  )
+
+  await withRouteEnv(async () => {
+    const response = await handlers.create(
+      allowedRequest("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify(validProduct()),
+      }),
+    )
+    assert.equal(response.status, 201)
+    assert.deepEqual(events, ["stored", "invalidated"])
+  })
+})
+
+test("cache invalidation failure does not turn a durable product write into a retryable failure", async () => {
+  const actions = await loadActions()
+  const handlers = actions.createAdminProductRouteHandlers(
+    dependencies({
+      invalidatePublicProductCatalog: async () => {
+        throw new Error("cache unavailable")
+      },
+    }),
+  )
+
+  await withRouteEnv(async () => {
+    const response = await handlers.create(
+      allowedRequest("/api/admin/products", {
+        method: "POST",
+        body: JSON.stringify(validProduct()),
+      }),
+    )
+    assert.equal(response.status, 201)
   })
 })
 
