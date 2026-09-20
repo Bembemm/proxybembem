@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache"
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache"
 import { listPublishedProductSummaries } from "./product-catalog"
 
 const getCachedPublishedProductSummaries = unstable_cache(
@@ -12,4 +12,12 @@ const getCachedPublishedProductSummaries = unstable_cache(
 
 export async function getPublishedProductSummaries() {
   return getCachedPublishedProductSummaries()
+}
+
+
+export function invalidatePublishedProductCatalog() {
+  revalidateTag("product-catalog", { expire: 0 })
+  revalidatePath("/")
+  revalidatePath("/produtos")
+  revalidatePath("/produtos/[produto]", "page")
 }
