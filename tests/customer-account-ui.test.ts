@@ -143,8 +143,10 @@ test("customer account shell stays structural while leaf pages own server protec
   assert.match(nav, /Pedidos/)
   assert.match(nav, /Perfil/)
   assert.match(nav, /Segurança/)
-  assert.match(logout, /\/api\/account\/logout/)
-  assert.match(logout, /method:\s*["']POST["']/)
+  assert.match(logout, /action=["']\/api\/account\/logout["']/)
+  assert.match(logout, /method=["']post["']/)
+  assert.doesNotMatch(logout, /fetch\s*\(/)
+  assert.doesNotMatch(logout, /router\.(?:push|replace|refresh)/)
 
   for (const value of [layout, shell, nav, logout]) {
     assert.doesNotMatch(value, /components\/admin|AdminShell|requireAdminPageAccess|ADMIN_USER_ID/)
