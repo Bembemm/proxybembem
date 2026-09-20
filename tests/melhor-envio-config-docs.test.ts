@@ -87,13 +87,7 @@ test("KingHost sandbox runbook isolates provider credentials and production data
     assert.ok(source.includes(expected), `sandbox runbook must include ${expected}`)
   }
 
-  assert.match(source, /n[aã]o use[^
-]*Supabase[^
-]*Production/i)
-  assert.match(source, /n[aã]o copie[^
-]*(?:credenciais|segredos)[^
-]*Production/i)
-  assert.match(source, /aplica[cç][aã]o[^
-]*KingHost[^
-]*separad/i)
+  assert.match(source, /n[aã]o use.*Supabase.*Production/i)
+  assert.match(source, /n[aã]o copie.*(?:credenciais|segredos).*Production/i)
+  assert.match(source, /aplica[cç][aã]o.*KingHost.*separad/i)
 })
