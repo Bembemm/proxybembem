@@ -94,23 +94,6 @@ type ShipmentOperationKind = (typeof OPERATION_KINDS)[number]
 type StableShipmentState = (typeof STABLE_STATES)[number]
 export type AdminShipmentHistoryKind = (typeof ADMIN_SHIPMENT_EVENT_KIND)[keyof typeof ADMIN_SHIPMENT_EVENT_KIND]
 export type AdminShipmentHistorySource = (typeof ADMIN_SHIPMENT_EVENT_SOURCES)[number]
-export type AdminShipmentPanelAction =
-  | "prepare"
-  | "purchase"
-  | "reconcile_purchase"
-  | "reconcile_cancel"
-  | "generate"
-  | "refresh_generation"
-  | "print_label"
-  | "print_dace"
-  | "post"
-  | "cancel"
-
-export type AdminShipmentPriceDifference =
-  | { kind: "store_pays"; cents: number }
-  | { kind: "margin"; cents: number }
-  | { kind: "even"; cents: 0 }
-  | null
 
 export interface ShipmentRecord {
   id: string
@@ -435,69 +418,6 @@ function assertUuid(value: string) {
   if (!UUID_RE.test(value)) throw new Error("Invalid shipment identifier")
 }
 
-export function deriveAdminShipmentPanelState(input: {
-  orderFulfillmentStatus: string
-  shipment: Pick<
-    AdminShipmentProjection,
-    "state" | "documentMode" | "customerShippingCents" | "providerCostCents" | "attentionReason"
-  > | null
-}): { actions: AdminShipmentPanelAction[]; difference: AdminShipmentPriceDifference } {
-  const shipment = input.shipment
-  let difference: AdminShipmentPriceDifference = null
-  if (shipment?.providerCostCents !== null && shipment?.providerCostCents !== undefined) {
-    const delta = shipment.customerShippingCents - shipment.providerCostCents
-    difference = delta === 0
-      ? { kind: "even", cents: 0 }
-      : delta > 0
-        ? { kind: "margin", cents: delta }
-        : { kind: "store_pays", cents: Math.abs(delta) }
-  }
-
-  if (!shipment) {
-    return {
-      actions: input.orderFulfillmentStatus === "ready_to_ship" ? ["prepare"] : [],
-      difference,
-    }
-  }
-
-  if (shipment.state === "canceled") {
-    return {
-      actions: input.orderFulfillmentStatus === "ready_to_ship" ? ["prepare"] : [],
-      difference,
-    }
-  }
-
-  let actions: AdminShipmentPanelAction[] = []
-  switch (shipment.state) {
-    case "in_cart":
-      actions = ["purchase"]
-      break
-    case "purchase_pending":
-      actions = ["reconcile_purchase"]
-      break
-    case "attention_required":
-      if (shipment.attentionReason === "purchase_outcome_unknown") actions = ["reconcile_purchase"]
-      if (shipment.attentionReason === "cancel_outcome_unknown") actions = ["reconcile_cancel"]
-      break
-    case "cancel_pending":
-      actions = ["reconcile_cancel"]
-      break
-    case "purchased":
-      actions = ["generate"]
-      break
-    case "generation_pending":
-      actions = ["refresh_generation"]
-      break
-    case "generated":
-      actions = shipment.documentMode === "declaration_content"
-        ? ["print_label", "print_dace", "post", "cancel"]
-        : ["print_label", "post", "cancel"]
-      break
-  }
-
-  return { actions, difference }
-}
-
 export async function getAdminShipmentProjectionForOrder(
   orderId: string,
 ): Promise<AdminShipmentProjection | null> {
@@ -540,18 +460,4 @@ export async function getActiveShipmentForOrder(orderId: string): Promise<Shipme
     state: "neq.canceled",
     order: "created_at.desc",
   }))
-}
-
-export async function listActiveShipmentsForTracking(limit: number): Promise<ShipmentRecord[]> {
-  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 20) {
-    throw new Error("Invalid shipment tracking limit")
-  }
-  const trackingStateFilter = "state=in.(purchased,generated,posted,in_transit)"
-  const providerShipmentFilter = "provider_shipment_id=not.is.null"
-  const response = await shipmentRequest(
-    `shipments?select=${encodeURIComponent(SHIPMENT_SELECT)}&${trackingStateFilter}&${providerShipmentFilter}&operation_kind=is.null&order=updated_at.asc&limit=${limit}`,
-  )
-  const payload = (await response.json()) as unknown
-  if (!Array.isArray(payload) || payload.length > limit) invalid()
-  return payload.map(parseShipment)
 }
