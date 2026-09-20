@@ -4,7 +4,7 @@ import {
   type MelhorEnvioSenderFormProfile,
 } from "../../../../components/admin/melhor-envio-sender-form"
 import { requireAdminPageAccess } from "../../../../lib/server/admin-auth.ts"
-import { getMelhorEnvioShipmentEnv } from "../../../../lib/server/env.ts"
+import { getMelhorEnvioOAuthEnv } from "../../../../lib/server/env.ts"
 import { loadCredential } from "../../../../lib/server/melhor-envio-oauth-repository.ts"
 import {
   getShippingSenderProfile,
@@ -72,7 +72,7 @@ export default async function MelhorEnvioIntegrationPage({
 }) {
   await requireAdminPageAccess({ touch: true })
 
-  const config = getMelhorEnvioShipmentEnv()
+  const config = getMelhorEnvioOAuthEnv()
   const [credential, pfSender, pjSender] = await Promise.all([
     loadCredential(config.environment),
     getShippingSenderProfile(config.environment, "pf"),
@@ -126,10 +126,10 @@ export default async function MelhorEnvioIntegrationPage({
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Compra de etiqueta
+                Operação da integração
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
-                {config.labelPurchaseEnabled ? "Habilitada" : "Desabilitada"}
+                Cotação + adicionar ao carrinho
               </p>
             </div>
           </div>
