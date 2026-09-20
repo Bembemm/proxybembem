@@ -26,7 +26,6 @@ const baseInput = {
     carrierName: "Correios",
     amountCents: 1842,
   },
-  notificationUrl: "https://store.test/api/mercadopago/webhook",
   returnUrl: "https://store.test/pedido/token",
   payerName: "Breno Bembem",
   expirationDateFrom: "2026-09-18T12:00:00.000Z",
@@ -93,22 +92,21 @@ test("adds trusted mixed products and freight as explicit Mercado Pago preferenc
   assert.equal(result.id, "pref-1")
 })
 
-test("forces Mercado Pago preference notifications to Webhooks only", async (t) => {
+test("does not override the application-level Mercado Pago Webhook URL per preference", async (t) => {
   t.mock.method(
     globalThis,
     "fetch",
     async (_input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-      const payload = JSON.parse(String(init?.body)) as { notification_url?: unknown }
-      assert.equal(
-        payload.notification_url,
-        "https://store.test/api/mercadopago/webhook?source_news=webhooks",
-      )
+      const payload = JSON.parse(String(init?.body)) as {
+        notification_url?: unknown
+      }
+      assert.equal("notification_url" in payload, false)
 
       return new Response(
         JSON.stringify({
-          id: "pref-webhooks-only",
+          id: "pref-app-webhook",
           init_point:
-            "https://www.mercadopago.com/checkout/v1/redirect?pref_id=pref-webhooks-only",
+            "https://www.mercadopago.com/checkout/v1/redirect?pref_id=pref-app-webhook",
         }),
         { status: 201, headers: { "Content-Type": "application/json" } },
       )
@@ -116,7 +114,7 @@ test("forces Mercado Pago preference notifications to Webhooks only", async (t) 
   )
 
   const result = await createMercadoPagoPreference(baseInput)
-  assert.equal(result.id, "pref-webhooks-only")
+  assert.equal(result.id, "pref-app-webhook")
 })
 
 test("rejects invalid freight amounts before calling Mercado Pago", async (t) => {
