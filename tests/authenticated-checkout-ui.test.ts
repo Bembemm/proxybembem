@@ -72,6 +72,26 @@ test("checkout reuses account identity and saved addresses, and can save a new a
   assert.match(form, /selectedSavedAddress/)
 })
 
+test("switching saved or new addresses requotes freight and new CEPs autofill address fields", async () => {
+  const checkout = await source("../components/checkout-page.tsx")
+  const form = await source("../components/checkout-form.tsx")
+
+  assert.match(checkout, /shippingQuoteRevision/)
+  assert.ok(
+    (checkout.match(/setShippingQuoteRevision\(\(current\) => current \+ 1\)/g) ?? []).length >= 2,
+  )
+  assert.match(checkout, /previewCepRef\.current = selectedCep/)
+  assert.match(checkout, /fetch\(["']\/api\/address\/lookup["']/)
+  assert.match(checkout, /rua:\s*address\.street/)
+  assert.match(checkout, /bairro:\s*address\.neighborhood/)
+  assert.match(checkout, /cidade:\s*address\.city/)
+  assert.match(checkout, /uf:\s*address\.state/)
+
+  assert.match(form, /cepLookupStatus/)
+  assert.match(form, /Buscando endereço pelo CEP/)
+  assert.match(form, /cidade e UF foram preenchidos automaticamente/)
+})
+
 test("signup and confirmation preserve checkout continuation until the customer can log in", async () => {
   const loginForm = await source("../components/account/login-form.tsx")
   const signupPage = await source("../app/criar-conta/page.tsx")
