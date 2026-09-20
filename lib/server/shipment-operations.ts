@@ -3,15 +3,11 @@ import { isShipmentEnvironment, isShipmentState, type ShipmentState } from "../s
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const INVOICE_KEY_RE = /^\d{44}$/
-const ATTENTION_REASONS = ["purchase_outcome_unknown", "cart_outcome_unknown", "cancel_outcome_unknown"] as const
-const RECONCILIATIONS = ["purchased", "not_purchased", "canceled", "not_canceled"] as const
-const TRACKING_STATES = ["posted", "in_transit", "delivered"] as const
+const ATTENTION_REASONS = ["cart_outcome_unknown"] as const
 const OUTCOMES = ["created", "transitioned", "not_found", "conflict", "invalid_state", "operation_mismatch", "active_exists"] as const
 
 type ShipmentOutcome = (typeof OUTCOMES)[number]
 type AttentionReason = (typeof ATTENTION_REASONS)[number]
-type Reconciliation = (typeof RECONCILIATIONS)[number]
-type TrackingState = (typeof TRACKING_STATES)[number]
 
 export interface ShipmentOperationResult {
   outcome: ShipmentOutcome
@@ -214,115 +210,9 @@ export async function revertShipmentPrepare(input: CommonMutation) {
   return callRpc("admin_revert_shipment_prepare", commonBody(input))
 }
 
-export async function claimShipmentPurchase(input: CommonMutation) {
-  return callRpc("admin_claim_shipment_purchase", commonBody(input))
-}
-
-export async function commitShipmentPurchase(input: CommonMutation & { providerOrderId: string; purchasedCostCents: number }) {
-  const body = commonBody(input)
-  assertUuid(input.providerOrderId, "provider order")
-  if (!isNonnegativeInteger(input.purchasedCostCents)) throw new Error("Invalid shipment cost")
-  return callRpc("admin_commit_shipment_purchase", {
-    ...body,
-    p_provider_order_id: input.providerOrderId,
-    p_purchased_cost_cents: input.purchasedCostCents,
-  })
-}
-
-export async function revertShipmentPurchase(input: CommonMutation) {
-  return callRpc("admin_revert_shipment_purchase", commonBody(input))
-}
-
 export async function markShipmentAttention(input: CommonMutation & { reason: AttentionReason }) {
   const body = commonBody(input)
   if (!isOneOf(input.reason, ATTENTION_REASONS)) throw new Error("Invalid shipment attention reason")
   return callRpc("admin_mark_shipment_attention", { ...body, p_reason: input.reason })
 }
 
-export async function resolveShipmentReconciliation(input: {
-  shipmentId: string
-  adminUserId: string
-  expectedVersion: number
-  resolution: Reconciliation
-  providerOrderId?: string | null
-  purchasedCostCents?: number | null
-}) {
-  assertUuid(input.shipmentId)
-  assertUuid(input.adminUserId, "administrator")
-  if (!isPositiveInteger(input.expectedVersion)) throw new Error("Invalid shipment version")
-  if (!isOneOf(input.resolution, RECONCILIATIONS)) throw new Error("Invalid shipment reconciliation")
-  if (input.resolution === "purchased") {
-    assertUuid(input.providerOrderId, "provider order")
-    if (!isNonnegativeInteger(input.purchasedCostCents)) throw new Error("Invalid shipment cost")
-    return callRpc("admin_resolve_shipment_reconciliation", {
-      p_shipment_id: input.shipmentId,
-      p_admin_user_id: input.adminUserId,
-      p_expected_version: input.expectedVersion,
-      p_resolution: "purchased",
-      p_provider_order_id: input.providerOrderId,
-      p_purchased_cost_cents: input.purchasedCostCents,
-    })
-  }
-  if (!(input.providerOrderId === undefined || input.providerOrderId === null) || !(input.purchasedCostCents === undefined || input.purchasedCostCents === null)) {
-    throw new Error("Invalid shipment reconciliation")
-  }
-  return callRpc("admin_resolve_shipment_reconciliation", {
-    p_shipment_id: input.shipmentId,
-    p_admin_user_id: input.adminUserId,
-    p_expected_version: input.expectedVersion,
-    p_resolution: input.resolution,
-    p_provider_order_id: null,
-    p_purchased_cost_cents: null,
-  })
-}
-
-export async function claimShipmentGeneration(input: CommonMutation) {
-  return callRpc("admin_claim_shipment_generation", commonBody(input))
-}
-
-export async function commitShipmentGeneration(input: CommonMutation) {
-  return callRpc("admin_commit_shipment_generation", commonBody(input))
-}
-
-export async function claimShipmentCancel(input: CommonMutation) {
-  return callRpc("admin_claim_shipment_cancel", commonBody(input))
-}
-
-export async function commitShipmentCancel(input: CommonMutation) {
-  return callRpc("admin_commit_shipment_cancel", commonBody(input))
-}
-
-export async function confirmShipmentPosting(input: { shipmentId: string; adminUserId: string; expectedVersion: number }) {
-  assertUuid(input.shipmentId)
-  assertUuid(input.adminUserId, "administrator")
-  if (!isPositiveInteger(input.expectedVersion)) throw new Error("Invalid shipment version")
-  return callRpc("admin_confirm_shipment_posting", {
-    p_shipment_id: input.shipmentId,
-    p_admin_user_id: input.adminUserId,
-    p_expected_version: input.expectedVersion,
-  })
-}
-
-export async function applyShipmentTrackingUpdate(input: {
-  shipmentId: string
-  expectedVersion: number
-  trackingState: TrackingState
-  providerStatus: string
-  trackingCode: string | null
-  eventFingerprint: string
-}) {
-  assertUuid(input.shipmentId)
-  if (!isPositiveInteger(input.expectedVersion)) throw new Error("Invalid shipment version")
-  if (!isOneOf(input.trackingState, TRACKING_STATES)) throw new Error("Invalid shipment tracking state")
-  if (!isBoundedString(input.providerStatus, 128)) throw new Error("Invalid shipment provider status")
-  if (!(input.trackingCode === null || isBoundedString(input.trackingCode, 128))) throw new Error("Invalid shipment tracking code")
-  if (!isBoundedString(input.eventFingerprint, 120)) throw new Error("Invalid shipment event fingerprint")
-  return callRpc("shipment_apply_tracking_update", {
-    p_shipment_id: input.shipmentId,
-    p_expected_version: input.expectedVersion,
-    p_tracking_state: input.trackingState,
-    p_provider_status: input.providerStatus,
-    p_tracking_code: input.trackingCode,
-    p_event_fingerprint: input.eventFingerprint,
-  })
-}
