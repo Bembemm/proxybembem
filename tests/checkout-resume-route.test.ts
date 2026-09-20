@@ -20,6 +20,10 @@ test("resume-payment route is owner-scoped, expiry-aware, and redirects only to 
 
   assert.match(route, /canResumeCheckout/)
   assert.match(route, /isAllowedMercadoPagoCheckoutUrl/)
+  assert.match(route, /dynamic\s*=\s*["']force-dynamic["']/)
+  assert.match(route, /private, no-cache, no-store, max-age=0, must-revalidate/)
+  assert.match(route, /Cache-Control/)
+  assert.match(route, /privateRedirect\(order\.checkout_url\)/)
   assert.doesNotMatch(route, /payment_status\s*[:=]/)
   assert.doesNotMatch(route, /updateOrder|PATCH|applyMercadoPagoPaymentEvent/)
 
