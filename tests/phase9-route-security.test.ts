@@ -67,20 +67,22 @@ test("admin catalog images and settings retain touched auth same-origin bounded 
   assert.match(settings, /private,\s*no-store/i)
 })
 
-test("shipment spending stays touched-admin same-origin and tightly rate limited", async () => {
-  const [route, actions] = await Promise.all([
-    source("../app/api/internal/admin/shipments/[id]/purchase/route.ts"),
+test("shipment preparation stays touched-admin same-origin rate-limited and no-spend", async () => {
+  const [route, actions, client] = await Promise.all([
+    source("../app/api/internal/admin/orders/[id]/shipment/prepare/route.ts"),
     source("../lib/server/admin-shipment-actions.ts"),
+    source("../lib/server/melhor-envio-shipment-client.ts"),
   ])
 
   assert.match(route, /authorizeAdminAccess\(\{\s*touch:\s*true\s*\}\)/)
-  assert.match(route, /scope:\s*["']admin-shipping-spend["']/)
-  assert.match(route, /purchaseAdminShipment/)
-
+  assert.match(route, /prepareAdminShipment/)
   assert.match(actions, /isAllowedCheckoutOrigin/)
   assert.match(actions, /consumeRateLimit/)
-  assert.match(actions, /expectedCostCents/)
   assert.match(actions, /no-store/i)
+
+  assert.match(client, /\/api\/v2\/me\/cart/)
+  assert.doesNotMatch(client, /\/api\/v2\/me\/shipment\/checkout/)
+  assert.doesNotMatch(client, /shipping-checkout|shipping-generate|shipping-print|shipping-tracking|shipping-cancel/)
 })
 
 test("notification worker and manual resend retain cron/admin authority", async () => {
