@@ -6,6 +6,7 @@ import {
 } from "../../../../lib/server/customer-account-actions.ts"
 import { resolvePublicSiteUrl } from "../../../../lib/server/env.ts"
 import { consumeRateLimit } from "../../../../lib/server/rate-limit.ts"
+import { readUrlEncodedBody } from "../../../../lib/server/request-body.ts"
 import { createSupabaseRouteClient } from "../../../../lib/supabase/route.ts"
 
 function redirect(request: NextRequest, path: string) {
@@ -26,15 +27,26 @@ export async function POST(request: NextRequest) {
     return redirect(request, loginErrorPath("/minha-conta", "requisicao"))
   }
 
-  let raw: FormData
+  let raw: URLSearchParams
   try {
-    raw = await request.formData()
+    raw = await readUrlEncodedBody(request, 4_096)
   } catch {
     return redirect(request, loginErrorPath("/minha-conta", "credenciais"))
   }
 
   let input: ReturnType<typeof parseAccountLoginInput>
   try {
+    const keys = [...raw.keys()]
+    if (
+      keys.length !== 3 ||
+      new Set(keys).size !== 3 ||
+      !keys.includes("email") ||
+      !keys.includes("password") ||
+      !keys.includes("next")
+    ) {
+      throw new Error("Invalid login form")
+    }
+
     input = parseAccountLoginInput({
       email: raw.get("email"),
       password: raw.get("password"),
