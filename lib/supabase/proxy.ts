@@ -12,6 +12,15 @@ const AUTH_FLOW_PATHS = new Set([
 const REDIRECT_CACHE_HEADERS = ["cache-control", "expires", "pragma"] as const
 const PRIVATE_ACCOUNT_CACHE_CONTROL =
   "private, no-cache, no-store, max-age=0, must-revalidate"
+const CUSTOMER_AUTH_SENSITIVE_PATHS = new Set([
+  "/entrar",
+  "/criar-conta",
+  "/esqueci-a-senha",
+  "/redefinir-senha",
+  "/checkout",
+  "/auth/callback",
+  "/auth/confirm",
+])
 const PRIVATE_ADMIN_CACHE_CONTROL =
   "private, no-cache, no-store, max-age=0, must-revalidate"
 
@@ -53,9 +62,11 @@ function disablePrivateBrowserCache(
 ) {
   const isPrivateAccount =
     pathname === "/minha-conta" || pathname.startsWith("/minha-conta/")
+  const isCustomerAuthSensitive =
+    isPrivateAccount || CUSTOMER_AUTH_SENSITIVE_PATHS.has(pathname)
   const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/")
 
-  if (isPrivateAccount) {
+  if (isCustomerAuthSensitive) {
     response.headers.set("Cache-Control", PRIVATE_ACCOUNT_CACHE_CONTROL)
     response.headers.set("Pragma", "no-cache")
     response.headers.set("Expires", "0")
