@@ -152,19 +152,16 @@ test("customer shipment projection permits null but rejects extra internal or ma
   }
 })
 
-test("customer order page renders a compact authenticated tracking block without public tracking endpoint", async () => {
+test("customer order page no longer exposes Melhor Envio provider tracking controls", async () => {
   const page = await readFile(
     new URL("../app/minha-conta/pedidos/[id]/page.tsx", import.meta.url),
     "utf8",
   )
 
-  assert.match(page, /Rastreamento/)
-  assert.match(page, /order\.shipment/)
-  assert.match(page, /trackingCode/)
-  assert.match(page, /carrierName/)
-  assert.match(page, /serviceName/)
-  assert.match(page, /shipment\.timeline|order\.shipment\.timeline/)
-  assert.match(page, /Preparando|Postado|Em trânsito|Entregue|Cancelado|Atenção/)
   assert.match(page, /requireCustomerPageAccess/)
+  assert.doesNotMatch(page, /Rastreamento/)
+  assert.doesNotMatch(page, /order\.shipment/)
+  assert.doesNotMatch(page, /trackingCode/)
+  assert.doesNotMatch(page, /shipment\.timeline|order\.shipment\.timeline/)
   assert.doesNotMatch(page, /\/api\/tracking|\/rastreamento\/|public_token/)
 })
