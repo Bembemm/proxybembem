@@ -77,6 +77,13 @@ test("public auth forms are accessible and call only the intended account APIs",
   assert.match(login, /type=["']email["']/)
   assert.match(login, /type=["']password["']/)
   assert.match(login, /window\.location\.assign\(next\)/)
+  assert.match(login, /validateAccountLoginPassword/)
+  assert.doesNotMatch(login, /validateAccountPassword\(password\)/)
+  assert.doesNotMatch(login, /minLength=\{8\}/)
+  assert.match(login, /createSupabaseBrowserClient/)
+  assert.match(login, /browserSupabase\.auth\.getUser\(\)/)
+  assert.match(login, /browserSupabase\.auth\.signInWithPassword/)
+  assert.match(login, /E-mail ou senha incorretos\./)
 
   assert.match(signup, /\/api\/account\/signup/)
   for (const field of ["name", "email", "whatsapp", "password"]) {
