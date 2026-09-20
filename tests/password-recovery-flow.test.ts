@@ -63,6 +63,8 @@ test("recovery link landing never consumes a credential", async () => {
   assert.match(confirm, /private,\s*no-store/i)
   assert.match(confirm, /sanitizeCustomerLoginNext/)
   assert.match(confirm, /\/redefinir-senha\?next=/)
+  assert.match(confirm, /recoveryErrorPath/)
+  assert.match(confirm, /erro=recovery&next=/)
 })
 
 test("reset page stays public but renders the form only for an active recovery grant", async () => {
@@ -74,7 +76,7 @@ test("reset page stays public but renders the form only for an active recovery g
   assert.match(page, /RECOVERY_TOKEN_COOKIE/)
   assert.match(page, /isValidPasswordRecoveryToken/)
   assert.match(page, /isPasswordRecoveryGrantActive/)
-  assert.match(page, /redirect\s*\(\s*["']\/entrar\?erro=recovery["']\s*\)/)
+  assert.match(page, /erro=recovery&next=/)
   assert.match(page, /sanitizeCustomerLoginNext/)
   assert.match(page, /PasswordForm[^>]*recovery[^>]*next=\{next\}/)
 
