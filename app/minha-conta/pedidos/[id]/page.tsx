@@ -12,8 +12,6 @@ import { requireCustomerPageAccess } from "@/lib/server/customer-auth"
 import {
   getOwnOrderById,
   type CustomerOrderTimelineEntry,
-  type CustomerShipmentProjection,
-  type CustomerShipmentTimelineEntry,
 } from "@/lib/server/customer-orders"
 import { getPublicStoreSettings } from "@/lib/server/store-settings-cache"
 
@@ -31,20 +29,6 @@ const TIMELINE_LABELS: Record<CustomerOrderTimelineEntry["kind"], string> = {
   canceled: "Cancelado",
 }
 
-const SHIPMENT_STATUS_LABELS: Record<CustomerShipmentProjection["status"], string> = {
-  preparing: "Preparando envio",
-  posted: "Postado",
-  in_transit: "Em trânsito",
-  delivered: "Entregue",
-  canceled: "Cancelado",
-  attention: "Atenção",
-}
-
-const SHIPMENT_TIMELINE_LABELS: Record<CustomerShipmentTimelineEntry["kind"], string> = {
-  posted: "Postado",
-  in_transit: "Em trânsito",
-  delivered: "Entregue",
-}
 
 
 function formatMoney(cents: number | null) {
@@ -285,37 +269,6 @@ Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
               )}
             </div>
 
-            {order.shipment ? (
-              <div className="mt-5 border-t border-slate-200 pt-5">
-                <h3 className="text-base font-bold text-slate-950">Rastreamento</h3>
-                <p className="mt-2 font-semibold text-slate-950">
-                  {SHIPMENT_STATUS_LABELS[order.shipment.status]}
-                </p>
-                <p className="mt-1 text-sm text-slate-600">
-                  {order.shipment.carrierName} — {order.shipment.serviceName}
-                </p>
-                {order.shipment.trackingCode ? (
-                  <p className="mt-1 text-sm text-slate-600">
-                    Código: <span className="font-mono font-semibold text-slate-800">{order.shipment.trackingCode}</span>
-                  </p>
-                ) : null}
-                <p className="mt-1 text-xs text-slate-500">
-                  Atualizado em {new Date(order.shipment.updatedAt).toLocaleString("pt-BR")}
-                </p>
-                {order.shipment.timeline.length > 0 ? (
-                  <ol className="mt-4 space-y-2">
-                    {order.shipment.timeline.map((entry) => (
-                      <li key={`${entry.kind}-${entry.createdAt}`} className="border-l-2 border-violet-200 pl-3">
-                        <p className="font-semibold text-slate-800">{SHIPMENT_TIMELINE_LABELS[entry.kind]}</p>
-                        <p className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString("pt-BR")}</p>
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="mt-3 text-xs text-slate-500">Ainda não há eventos públicos de rastreamento.</p>
-                )}
-              </div>
-            ) : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
