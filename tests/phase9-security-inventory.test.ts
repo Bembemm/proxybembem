@@ -75,22 +75,19 @@ test("admin product image and settings mutations retain same-origin protected bo
   assert.match(settingsActions, /readJsonBody\(request,\s*BODY_LIMIT_BYTES\)/)
 })
 
-test("shipment purchase stays explicit fail-closed and ambiguous provider outcomes require attention", async () => {
-  const [lifecycle, noAutoSpend] = await Promise.all([
+test("shipment runtime is prepare-only and cannot spend through Melhor Envio", async () => {
+  const [lifecycle, client, noAutoSpend] = await Promise.all([
     source("../lib/server/shipment-lifecycle-service.ts"),
+    source("../lib/server/melhor-envio-shipment-client.ts"),
     source("./shipment-no-auto-spend.test.ts"),
   ])
 
-  assert.match(lifecycle, /labelPurchaseEnabled/)
-  assert.match(lifecycle, /if\s*\(!config\.labelPurchaseEnabled\)/)
-  assert.match(lifecycle, /outcome:\s*["']purchase_disabled["']/)
-  assert.match(lifecycle, /purchase_outcome_unknown/)
-  assert.match(lifecycle, /must never be retried merely because local persistence is uncertain/i)
-
-  assert.match(noAutoSpend, /payment webhook/)
-  assert.match(noAutoSpend, /ready-to-ship/)
-  assert.match(noAutoSpend, /doesNotMatch/)
-  assert.match(noAutoSpend, /purchaseAdminShipment|purchaseMelhorEnvioShipment/)
+  assert.match(lifecycle, /prepareAdminShipment/)
+  assert.match(lifecycle, /addShipmentToMelhorEnvioCart/)
+  assert.doesNotMatch(lifecycle, /purchaseAdminShipment|generateAdminShipment|cancelAdminShipment/)
+  assert.match(client, /\/api\/v2\/me\/cart/)
+  assert.doesNotMatch(client, /shipping-checkout|shipping-generate|shipping-print|shipping-tracking|shipping-cancel|orders-read/)
+  assert.match(noAutoSpend, /preparation only/i)
 })
 
 test("dashboard remains protected read-only server presentation with explicit failure", async () => {
