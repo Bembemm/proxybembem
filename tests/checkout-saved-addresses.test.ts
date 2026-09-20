@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 import {
+  applyCheckoutSavedAddress,
   checkoutMatchesSavedAddress,
-  resolveCheckoutAddressPrefill,
   selectCheckoutSavedAddress,
   type CheckoutData,
   type CheckoutSavedAddress,
@@ -63,22 +63,8 @@ test("cart CEP chooses a matching saved address instead of mixing different addr
   )
 })
 
-test("checkout prefill never mixes a cart CEP with a different saved address", () => {
-  assert.deepEqual(
-    resolveCheckoutAddressPrefill(emptyCheckout, defaultAddress, "87000-000"),
-    {
-      ...emptyCheckout,
-      cep: "87000-000",
-    },
-  )
-})
-
-test("checkout can recognize an already-saved delivery address", () => {
-  const checkout = resolveCheckoutAddressPrefill(
-    emptyCheckout,
-    defaultAddress,
-    "86000-000",
-  )
+test("checkout can apply and recognize an already-saved delivery address", () => {
+  const checkout = applyCheckoutSavedAddress(emptyCheckout, defaultAddress)
   assert.equal(checkoutMatchesSavedAddress(checkout, defaultAddress), true)
   assert.equal(checkoutMatchesSavedAddress(checkout, secondAddress), false)
 })
