@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 import { AccountLoginForm } from "@/components/account/login-form"
 import { LoginConfirmationFlashCleanup } from "@/components/account/login-confirmation-flash-cleanup"
 import { sanitizeCustomerLoginNext } from "@/lib/server/customer-account-actions"
+import { getOptionalCustomerIdentity } from "@/lib/server/customer-auth"
 
 export const metadata: Metadata = {
   title: "Entrar",
@@ -23,6 +25,11 @@ export default async function LoginPage({
   const next = sanitizeCustomerLoginNext(
     typeof params.next === "string" ? params.next : undefined,
   )
+  const identity = await getOptionalCustomerIdentity()
+  if (identity) {
+    redirect(next)
+  }
+
   const passwordChanged = params.senha === "alterada"
   const emailConfirmed = params.confirmado === "1"
   const emailChanged = params.email === "alterado"
