@@ -12,6 +12,7 @@ interface MercadoPagoPreferenceInput {
     carrierName: string
     amountCents: number
   }
+  notificationUrl: string
   returnUrl: string
   payerName: string
   expirationDateFrom: string
@@ -144,6 +145,7 @@ export async function createMercadoPagoPreference(
         name: input.payerName,
       },
       external_reference: input.orderNumber,
+      notification_url: input.notificationUrl,
       back_urls: {
         success: input.returnUrl,
         pending: input.returnUrl,
