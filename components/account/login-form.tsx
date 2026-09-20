@@ -130,7 +130,10 @@ export function AccountLoginForm({ next }: { next: string }) {
           autoComplete="current-password"
           required
           maxLength={128}
-          onChange={() => setAuthInvalid(false)}
+          onChange={() => {
+            setAuthInvalid(false)
+            setMessage(null)
+          }}
           aria-invalid={Boolean(errors.password) || authInvalid}
           aria-describedby={errors.password ? "login-password-error" : undefined}
           className={inputClass}
