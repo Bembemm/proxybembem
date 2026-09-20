@@ -78,14 +78,13 @@ interface CheckoutPreview {
 }
 
 function writeCheckoutPreview(
-  storage: Storage,
   cep: string,
   shippingServiceId: string | null,
 ) {
   const normalizedCep = digitsOnly(cep)
   if (!/^\d{8}$/.test(normalizedCep)) return
   try {
-    storage.setItem(
+    window.localStorage.setItem(
       CHECKOUT_PREVIEW_KEY,
       JSON.stringify({
         version: 2,
@@ -99,9 +98,9 @@ function writeCheckoutPreview(
   }
 }
 
-function readCheckoutPreview(storage: Storage): CheckoutPreview | null {
+function readCheckoutPreview(): CheckoutPreview | null {
   try {
-    const raw = storage.getItem(CHECKOUT_PREVIEW_KEY)
+    const raw = window.localStorage.getItem(CHECKOUT_PREVIEW_KEY)
     if (!raw) return null
     const value = JSON.parse(raw) as Partial<CheckoutPreview>
     const cep = typeof value.cep === "string" ? digitsOnly(value.cep) : ""
@@ -119,7 +118,7 @@ function readCheckoutPreview(storage: Storage): CheckoutPreview | null {
       now - value.savedAt > CHECKOUT_PREVIEW_TTL_MS ||
       !/^\d{8}$/.test(cep)
     ) {
-      storage.removeItem(CHECKOUT_PREVIEW_KEY)
+      window.localStorage.removeItem(CHECKOUT_PREVIEW_KEY)
       return null
     }
     return { version: 2, savedAt: value.savedAt, cep, shippingServiceId }
@@ -173,7 +172,7 @@ export function CheckoutPage({
     if (initializedRef.current) return
     initializedRef.current = true
 
-    const preview = readCheckoutPreview(window.localStorage)
+    const preview = readCheckoutPreview()
     previewCepRef.current = preview?.cep ?? null
 
     const selectedAddress = selectCheckoutSavedAddress(
@@ -277,7 +276,7 @@ export function CheckoutPage({
       const normalizedCep = digitsOnly(value)
       if (/^\d{8}$/.test(normalizedCep)) {
         previewCepRef.current = normalizedCep
-        writeCheckoutPreview(window.localStorage, normalizedCep, null)
+        writeCheckoutPreview(normalizedCep, null)
       }
     }
 
@@ -303,7 +302,7 @@ export function CheckoutPage({
       uf: undefined,
     }))
     setShipping((current) => invalidateCheckoutSelection(current))
-    writeCheckoutPreview(window.localStorage, address.cep, null)
+    writeCheckoutPreview(address.cep, null)
     setCheckoutError(null)
   }
 
@@ -334,7 +333,7 @@ export function CheckoutPage({
     }))
     setShipping((current) => invalidateCheckoutSelection(current))
     if (/^\d{8}$/.test(preservedCep)) {
-      writeCheckoutPreview(window.localStorage, preservedCep, null)
+      writeCheckoutPreview(preservedCep, null)
     }
     setCheckoutError(null)
   }
@@ -342,7 +341,7 @@ export function CheckoutPage({
   const handleShippingSelect = (option: PublicShippingOption) => {
     restoredShippingServiceIdRef.current = null
     setShipping((current) => selectShippingOption(current, option))
-    writeCheckoutPreview(window.localStorage, checkout.cep, option.serviceId)
+    writeCheckoutPreview(checkout.cep, option.serviceId)
     setCheckoutError(null)
   }
 
@@ -417,7 +416,6 @@ export function CheckoutPage({
       if (!response.ok) {
         if (result?.code === "authentication_required") {
           writeCheckoutPreview(
-            window.localStorage,
             checkout.cep,
             shipping.selectedShipping.serviceId,
           )
