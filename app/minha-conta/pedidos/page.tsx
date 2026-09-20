@@ -31,9 +31,11 @@ export default async function OrdersPage({
 }: {
   searchParams: Promise<{ page?: string | string[] }>
 }) {
-  await requireCustomerPageAccess()
   const params = await searchParams
   const page = parsePage(params.page)
+  const next =
+    page > 1 ? `/minha-conta/pedidos?page=${page}` : "/minha-conta/pedidos"
+  await requireCustomerPageAccess(next)
   const result = await listOwnOrders({ page, pageSize: PAGE_SIZE })
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))
 
