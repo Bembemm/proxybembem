@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 import test from "node:test"
 
 type Environment = "sandbox" | "production"
+type ActiveScope = "shipping-calculate" | "cart-write"
 type TokenOptions = {
   forceRefresh?: boolean
   rejectedTokenVersion?: number
@@ -70,7 +71,7 @@ function dependencies(
       return {
         accessToken: "token-v7",
         tokenVersion: 7,
-        authorizedScopes: ["shipping-calculate", "cart-write"],
+        authorizedScopes: ["shipping-calculate", "cart-write"] as ActiveScope[],
       }
     },
   }
@@ -136,7 +137,7 @@ test("shipment client retries authentication once without widening OAuth scopes"
       return {
         accessToken: options?.forceRefresh ? "token-v8" : "token-v7",
         tokenVersion: options?.forceRefresh ? 8 : 7,
-        authorizedScopes: ["shipping-calculate", "cart-write"],
+        authorizedScopes: ["shipping-calculate", "cart-write"] as ActiveScope[],
       }
     },
   })
