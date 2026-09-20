@@ -36,6 +36,7 @@ test("recovery request sends an application-owned scanner-safe link through the 
   assert.doesNotMatch(resetRoute, /properties\?\.hashed_token|properties\.hashed_token/)
   assert.match(resetRoute, /["']\/auth\/confirm["']/)
   assert.match(resetRoute, /token_hash/)
+  assert.match(resetRoute, /searchParams\.set\(["']next["'],\s*input\.next\)/)
   assert.match(resetRoute, /sendPasswordRecoveryEmail/)
   assert.doesNotMatch(resetRoute, /resetPasswordForEmail/)
 
@@ -60,7 +61,8 @@ test("recovery link landing never consumes a credential", async () => {
   assert.match(confirm, /httpOnly\s*:\s*true/)
   assert.match(confirm, /sameSite\s*:\s*["']lax["']/i)
   assert.match(confirm, /private,\s*no-store/i)
-  assert.match(confirm, /\/redefinir-senha/)
+  assert.match(confirm, /sanitizeCustomerLoginNext/)
+  assert.match(confirm, /\/redefinir-senha\?next=/)
 })
 
 test("reset page stays public but renders the form only for an active recovery grant", async () => {
@@ -73,7 +75,8 @@ test("reset page stays public but renders the form only for an active recovery g
   assert.match(page, /isValidPasswordRecoveryToken/)
   assert.match(page, /isPasswordRecoveryGrantActive/)
   assert.match(page, /redirect\s*\(\s*["']\/entrar\?erro=recovery["']\s*\)/)
-  assert.match(page, /PasswordForm[^>]*recovery/)
+  assert.match(page, /sanitizeCustomerLoginNext/)
+  assert.match(page, /PasswordForm[^>]*recovery[^>]*next=\{next\}/)
 
   const activeCheck = page.indexOf("isPasswordRecoveryGrantActive")
   const form = page.indexOf("<PasswordForm recovery")
@@ -96,7 +99,7 @@ test("recovery form submits the new password only to the server", async () => {
   assert.match(form, /const\s+endpoint\s*=\s*recovery/)
   assert.match(form, /["']\/api\/account\/password-recovery["']/)
   assert.match(form, /fetch\(\s*endpoint/)
-  assert.match(form, /\/entrar\?senha=alterada/)
+  assert.match(form, /\/entrar\?senha=alterada&next=/)
   assert.doesNotMatch(form, /createClient/)
   assert.doesNotMatch(form, /PASSWORD_RECOVERY/)
   assert.doesNotMatch(form, /auth\.updateUser\s*\(/)
