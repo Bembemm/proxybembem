@@ -66,7 +66,9 @@ Endpoint:
 https://www.proxybembem.com.br/api/mercadopago/webhook
 ```
 
-A URL de produção deve ser configurada em **Suas integrações > Webhooks** na aplicação Mercado Pago. O Checkout Pro não sobrescreve essa configuração com `notification_url` por preferência; assim pagamentos reais e a simulação do painel usam a mesma superfície de Webhook configurada e testada.
+A URL de produção deve permanecer configurada em **Suas integrações > Webhooks** na aplicação Mercado Pago. Além disso, cada preferência do Checkout Pro envia explicitamente a mesma URL canônica em `notification_url`. Segundo a documentação do Mercado Pago, uma URL definida durante a criação do pagamento/preferência tem prioridade sobre a configuração da aplicação; por isso ambas devem apontar para o mesmo endpoint HTTPS de produção.
+
+Não adicione parâmetros para forçar IPN. O endpoint processa notificações Webhook assinadas e valida `x-signature` com a chave secreta da aplicação.
 
 O webhook valida HMAC, consulta o pagamento diretamente no provedor, valida a referência `PB-...`, compara moeda/valor com a verdade armazenada e aplica a transição via RPC atômico. Divergências vão para revisão; retorno de navegador nunca é autoridade financeira.
 
