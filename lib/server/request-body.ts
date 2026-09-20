@@ -19,7 +19,7 @@ export class InvalidFormBodyError extends Error {
   }
 }
 
-async function readBoundedText(request: Request, maxBytes: number) {
+function validateBodyLimit(request: Request, maxBytes: number) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
     throw new Error("Invalid request body size limit")
   }
@@ -31,25 +31,14 @@ async function readBoundedText(request: Request, maxBytes: number) {
       throw new RequestBodyTooLargeError()
     }
   }
-
-  let text: string
-  try {
-    text = await request.text()
-  } catch {
-    throw new RequestBodyTooLargeError()
-  }
-
-  if (Buffer.byteLength(text, "utf8") > maxBytes) {
-    throw new RequestBodyTooLargeError()
-  }
-
-  return text
 }
 
 export async function readUrlEncodedBody(
   request: Request,
   maxBytes = 32_768,
 ): Promise<URLSearchParams> {
+  validateBodyLimit(request, maxBytes)
+
   const contentType = request.headers
     .get("content-type")
     ?.split(";", 1)[0]
@@ -60,7 +49,17 @@ export async function readUrlEncodedBody(
     throw new InvalidFormBodyError()
   }
 
-  const text = await readBoundedText(request, maxBytes)
+  let text: string
+  try {
+    text = await request.text()
+  } catch {
+    throw new InvalidFormBodyError()
+  }
+
+  if (Buffer.byteLength(text, "utf8") > maxBytes) {
+    throw new RequestBodyTooLargeError()
+  }
+
   try {
     return new URLSearchParams(text)
   } catch {
@@ -72,12 +71,17 @@ export async function readJsonBody(
   request: Request,
   maxBytes = 32_768,
 ): Promise<unknown> {
+  validateBodyLimit(request, maxBytes)
+
   let text: string
   try {
-    text = await readBoundedText(request, maxBytes)
-  } catch (error) {
-    if (error instanceof RequestBodyTooLargeError) throw error
+    text = await request.text()
+  } catch {
     throw new InvalidJsonBodyError()
+  }
+
+  if (Buffer.byteLength(text, "utf8") > maxBytes) {
+    throw new RequestBodyTooLargeError()
   }
 
   try {
