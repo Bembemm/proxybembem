@@ -214,7 +214,7 @@ test("planned account routes are bounded POST surfaces and callback is GET-only"
 
   const login = await source("../app/api/account/login/route.ts")
   assert.match(login, /export\s+async\s+function\s+POST/)
-  assert.match(login, /request\.formData\s*\(\s*\)/)
+  assert.match(login, /readUrlEncodedBody\(request,\s*4_096\)/)
   assert.match(login, /parseAccountLoginInput/)
   assert.match(login, /consumeRateLimit/)
   assert.match(login, /signInWithPassword\s*\(/)
