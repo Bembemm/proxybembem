@@ -56,11 +56,12 @@ test("navbar reuses the cart provider catalog so the browser performs only one c
 })
 
 test("product mutation invalidation expires the lightweight catalog cache immediately", () => {
-  const revalidation = source("lib/server/product-catalog-revalidation.ts")
+  const cache = source("lib/server/product-catalog-cache.ts")
 
-  assert.match(revalidation, /revalidateTag/)
+  assert.match(cache, /invalidatePublishedProductCatalog/)
+  assert.match(cache, /revalidateTag/)
   assert.match(
-    revalidation,
+    cache,
     /revalidateTag\(\s*["']product-catalog["']\s*,\s*\{\s*expire:\s*0\s*\}\s*\)/,
   )
 })
