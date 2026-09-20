@@ -67,6 +67,7 @@ test("login does not apply signup password policy to an existing credential", ()
       parseAccountLoginInput({
         email: "cliente@example.com",
         password,
+        next: "/minha-conta",
       }).password,
       password,
     )
@@ -76,6 +77,7 @@ test("login does not apply signup password policy to an existing credential", ()
     parseAccountLoginInput({
       email: "cliente@example.com",
       password: "",
+      next: "/minha-conta",
     }),
   )
 })
