@@ -109,6 +109,8 @@ test("login UI does not misreport gateway or server failures as bad credentials"
 
   assert.match(loginForm, /response\.status\s*===\s*400\s*\|\|\s*response\.status\s*===\s*401/)
   assert.match(loginForm, /Não foi possível entrar agora/)
+  assert.match(loginForm, /E-mail ou senha incorretos\./)
+  assert.match(loginForm, /createSupabaseBrowserClient/)
   assert.doesNotMatch(
     loginForm,
     /typeof payload\?\.message === "string"[\s\S]{0,240}: "E-mail ou senha inválidos\."/,
