@@ -101,28 +101,6 @@ export function checkoutMatchesSavedAddress(
   )
 }
 
-export function resolveCheckoutAddressPrefill(
-  current: CheckoutData,
-  defaultSavedAddress: CheckoutSavedAddress | null,
-  previewCep: string | null,
-): CheckoutData {
-  const normalizedPreviewCep = previewCep ? digitsOnly(previewCep) : ""
-
-  if (
-    defaultSavedAddress &&
-    (!normalizedPreviewCep ||
-      normalizedPreviewCep === digitsOnly(defaultSavedAddress.cep))
-  ) {
-    return applyCheckoutSavedAddress(current, defaultSavedAddress)
-  }
-
-  if (/^\d{8}$/.test(normalizedPreviewCep)) {
-    return { ...current, cep: formatCep(normalizedPreviewCep) }
-  }
-
-  return current
-}
-
 export function digitsOnly(value: string) {
   return value.replace(/\D/g, "")
 }
