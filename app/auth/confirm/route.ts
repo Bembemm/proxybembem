@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server"
 
+import { sanitizeCustomerLoginNext } from "../../../lib/server/customer-account-actions.ts"
 import { resolvePublicSiteUrl } from "../../../lib/server/env.ts"
 import { isPasswordRecoveryGrantActive } from "../../../lib/server/password-recovery-grant.ts"
 import {
@@ -19,6 +20,9 @@ function redirect(request: NextRequest, path: string) {
 export async function GET(request: NextRequest) {
   const tokenHash = request.nextUrl.searchParams.get("token_hash")
   const type = request.nextUrl.searchParams.get("type")
+  const next = sanitizeCustomerLoginNext(
+    request.nextUrl.searchParams.get("next"),
+  )
 
   if (type !== "recovery" || !isValidRecoveryTokenHash(tokenHash)) {
     return redirect(request, "/entrar?erro=recovery")
@@ -35,7 +39,10 @@ export async function GET(request: NextRequest) {
     return redirect(request, "/entrar?erro=recovery")
   }
 
-  const response = redirect(request, "/redefinir-senha")
+  const response = redirect(
+    request,
+    `/redefinir-senha?next=${encodeURIComponent(next)}`,
+  )
   response.cookies.set(RECOVERY_TOKEN_COOKIE, tokenHash, {
     httpOnly: true,
     sameSite: "lax",
