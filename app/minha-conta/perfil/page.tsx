@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 }
 
 export default async function ProfilePage() {
-  await requireCustomerPageAccess()
+  await requireCustomerPageAccess("/minha-conta/perfil")
   const profile = await getOwnCustomerProfile()
 
   return (
