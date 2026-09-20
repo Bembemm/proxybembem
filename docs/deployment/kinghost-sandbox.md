@@ -55,7 +55,6 @@ MELHOR_ENVIO_CLIENT_SECRET=<sandbox-client-secret>
 MELHOR_ENVIO_REDIRECT_URI=https://<sandbox-host>/api/melhor-envio/oauth/callback
 MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY=<sandbox-64-hex-key>
 MELHOR_ENVIO_USER_AGENT=ProxyBembem (contato@proxybembem.com.br)
-MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
 SHIPPING_ORIGIN_CEP=86730000
 SHIPPING_QUOTE_SECRET=<sandbox-secret>
 CRON_SECRET=<sandbox-secret>
@@ -65,7 +64,6 @@ RATE_LIMIT_TRUSTED_PROXY_HOPS=0
 
 `APP_ENVIRONMENT=sandbox` é a trava que permite usar os dois provedores em sandbox mesmo com o Next rodando em runtime otimizado de Production. Se `APP_ENVIRONMENT` estiver ausente, o runtime continua exigindo ambientes de provedor `production` e falha fechado.
 
-Mantenha `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false` durante toda a validação inicial. Cotação, OAuth, preparação e demais fluxos que não gastam saldo continuam testáveis sem liberar compra de etiqueta.
 
 Mantenha também `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` no primeiro deploy do sandbox. Com zero hops confiáveis, a aplicação ignora `X-Forwarded-For` e `X-Real-IP` e usa o bucket `unknown`; isso evita confiar em um header forjado, mas compartilha o limite entre clientes. Só altere para um valor entre `1` e `5` depois de verificar, neste host sandbox, a cadeia real `X-Forwarded-For` que a KingHost entrega ao processo Node.
 
@@ -133,7 +131,7 @@ Confirme, nesta ordem:
 4. `APP_ENVIRONMENT=sandbox`;
 5. `MERCADO_PAGO_ENVIRONMENT=sandbox`;
 6. `MELHOR_ENVIO_ENVIRONMENT=sandbox`;
-7. `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`;
+
 8. `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` até a cadeia de proxy ser verificada;
 9. o callback do Melhor Envio aponta para o host sandbox;
 10. o webhook do Mercado Pago aponta para o host sandbox;
@@ -156,17 +154,16 @@ Nenhum pedido, usuário ou evento deve aparecer no Supabase Production.
 
 ## Aceitação Melhor Envio
 
-Com `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`:
-
 - autorize o aplicativo Sandbox pelo admin;
 - confirme que a integração aparece conectada no ambiente sandbox;
 - configure um remetente de teste no admin sandbox;
 - faça cotações em `/api/shipping/quote` por meio do checkout normal;
 - confirme que as opções vêm do Melhor Envio sandbox;
 - valide preparação de remessa somente quando houver um pedido sandbox elegível;
-- confirme que qualquer tentativa de compra de etiqueta continua bloqueada pela flag.
+- confirme que a remessa é adicionada ao carrinho do Melhor Envio;
+- confirme que o ProxyBembem não oferece rota ou botão para comprar, gerar, imprimir, cancelar ou rastrear etiqueta pela API.
 
-Não habilite compra de etiqueta apenas para “ver se funciona”. Essa etapa deve permanecer separada e explícita.
+A compra e os documentos da etiqueta são concluídos somente no site do Melhor Envio.
 
 ## Cron e notificações
 
