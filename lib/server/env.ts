@@ -35,9 +35,6 @@ export interface MelhorEnvioOAuthEnv {
   quoteSecret: string
 }
 
-export interface MelhorEnvioShipmentEnv extends MelhorEnvioOAuthEnv {
-  labelPurchaseEnabled: boolean
-}
 
 export interface RateLimitEnv extends SupabaseEnv {
   rateLimitSecret: string
@@ -60,16 +57,6 @@ function requireStrongSecret(name: string) {
     throw new Error(`${name} must contain at least 32 characters`)
   }
   return value
-}
-
-function optionalExactBoolean(name: string) {
-  const raw = process.env[name]
-  if (raw === undefined || raw.trim() === "") return false
-
-  const value = raw.trim()
-  if (value === "true") return true
-  if (value === "false") return false
-  throw new Error(`${name} must be true or false`)
 }
 
 function trustedProxyHops() {
@@ -210,12 +197,6 @@ export function getMelhorEnvioOAuthEnv(): MelhorEnvioOAuthEnv {
   }
 }
 
-export function getMelhorEnvioShipmentEnv(): MelhorEnvioShipmentEnv {
-  return {
-    ...getMelhorEnvioOAuthEnv(),
-    labelPurchaseEnabled: optionalExactBoolean("MELHOR_ENVIO_LABEL_PURCHASE_ENABLED"),
-  }
-}
 
 export function getCronSecret() {
   return requireStrongSecret("CRON_SECRET")
