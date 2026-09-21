@@ -37,7 +37,7 @@ Configure `CRON_SECRET` in Vercel Production. Vercel sends it as `Authorization:
 
 ## Rate limiting
 
-Vercel overwrites `x-forwarded-for` with the public client IP. When `VERCEL=1`, the server automatically trusts exactly one proxy hop. Outside Vercel, `RATE_LIMIT_TRUSTED_PROXY_HOPS` remains fail-closed by default.
+Vercel overwrites `x-forwarded-for` with the public client IP. When `VERCEL=1`, the server trusts exactly that one platform-managed hop. Local/non-Vercel execution trusts no forwarding hop.
 
 ## Domain and provider callbacks
 
