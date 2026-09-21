@@ -1,13 +1,23 @@
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
+import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const retiredProvider = ["ver", "cel"].join("")
+const ACTIVE_DEPLOYMENT_FILES = [
+  "../package.json",
+  "../next.config.mjs",
+  "../.github/workflows/ci.yml",
+  "../vercel.json",
+]
 
-test("tracked project files contain no retired hosting-provider references", () => {
-  const grep = spawnSync("git", ["grep", "-I", "-i", "-n", retiredProvider, "--", "."], {
-    encoding: "utf8",
-  })
+test("active production deployment files contain no KingHost-specific configuration", async () => {
+  for (const path of ACTIVE_DEPLOYMENT_FILES) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8")
+    assert.doesNotMatch(source, /kinghost/i, `${path} still contains KingHost configuration`)
+  }
+})
 
-  assert.equal(grep.status, 1, grep.stdout || grep.stderr)
+test("active production deployment includes Vercel configuration", async () => {
+  const source = await readFile(new URL("../vercel.json", import.meta.url), "utf8")
+  assert.match(source, /notifications\/process/)
+  assert.match(source, /\*\/5 \* \* \* \*/)
 })
