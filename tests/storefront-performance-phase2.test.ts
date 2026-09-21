@@ -57,6 +57,9 @@ test("home and products render server cards through small client interaction she
   assert.match(carousel, /^["']use client["']/m)
   assert.match(browser, /^["']use client["']/m)
   assert.match(carousel, /children/)
+  assert.match(carousel, /items\.map\(\(item, itemIndex\)/)
+  assert.doesNotMatch(carousel, /activeMobileItem|items\.slice\(/)
+  assert.match(home, /priority=\{index === 0\}/)
   assert.match(browser, /card:\s*ReactNode/)
 })
 

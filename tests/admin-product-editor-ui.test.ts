@@ -96,6 +96,7 @@ test("image field authorizes metadata then uploads bytes directly to Supabase St
   assert.match(imageField, /createAdminSupabaseBrowserClient/)
   assert.match(imageField, /uploadToSignedUrl/)
   assert.match(imageField, /product-images/)
+  assert.match(imageField, /cacheControl:\s*["\']31536000["\']/)
   assert.match(imageField, /upsert:\s*false/)
   assert.doesNotMatch(imageField, /SUPABASE_SECRET_KEY|supabaseSecretKey/)
 })

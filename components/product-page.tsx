@@ -96,7 +96,6 @@ export function ProductPage({
               <div className="relative aspect-square overflow-hidden rounded-2xl bg-slate-100">
                 <Image
                   src={product.image}
-                  unoptimized={product.image.startsWith("/")}
                   alt={product.title}
                   fill
                   priority
@@ -109,7 +108,6 @@ export function ProductPage({
                 <div className="relative h-16 w-16 overflow-hidden rounded-xl border-2 border-[#8B5CF6] bg-slate-100 sm:h-20 sm:w-20">
                   <Image
                     src={product.image}
-                    unoptimized={product.image.startsWith("/")}
                     alt=""
                     fill
                     sizes="80px"

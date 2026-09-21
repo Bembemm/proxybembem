@@ -17,7 +17,6 @@ export function CartItems({ items, onUpdateQuantity, onRemove }: CartItemsProps)
           <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-50">
             <Image
               src={item.product.image}
-              unoptimized={item.product.image.startsWith("/")}
               alt={item.product.title}
               fill
               sizes="80px"

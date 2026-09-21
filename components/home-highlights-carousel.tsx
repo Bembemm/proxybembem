@@ -18,45 +18,24 @@ function getItemsPerPage() {
 
 export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
   const carouselRef = useRef<HTMLDivElement | null>(null)
-  const touchStartXRef = useRef<number | null>(null)
   const [itemsPerPage, setItemsPerPage] = useState(1)
   const [activePage, setActivePage] = useState(0)
   const items = useMemo(() => Children.toArray(children), [children])
-  const pageCount = Math.ceil(items.length / itemsPerPage)
-  const pages = Array.from({ length: pageCount }, (_, pageIndex) =>
-    items.slice(pageIndex * itemsPerPage, (pageIndex + 1) * itemsPerPage),
-  )
-
-  const getCarouselPages = useCallback(() => {
-    const carousel = carouselRef.current
-    if (!carousel) return []
-    return Array.from(carousel.querySelectorAll<HTMLElement>("[data-carousel-page]"))
-  }, [])
+  const pageCount = Math.max(1, Math.ceil(items.length / itemsPerPage))
 
   const updateScrollState = useCallback(() => {
     const carousel = carouselRef.current
     if (!carousel) return
 
-    const pageElements = getCarouselPages()
-    if (pageElements.length === 0) {
+    const maxScrollLeft = Math.max(0, carousel.scrollWidth - carousel.clientWidth)
+    if (maxScrollLeft === 0 || pageCount <= 1) {
       setActivePage(0)
       return
     }
 
-    const firstPageOffset = pageElements[0].offsetLeft
-    let nearestPage = 0
-    let nearestDistance = Number.POSITIVE_INFINITY
-
-    pageElements.forEach((page, pageIndex) => {
-      const distance = Math.abs(page.offsetLeft - firstPageOffset - carousel.scrollLeft)
-      if (distance < nearestDistance) {
-        nearestDistance = distance
-        nearestPage = pageIndex
-      }
-    })
-
-    setActivePage(nearestPage)
-  }, [getCarouselPages])
+    const progress = Math.min(1, Math.max(0, carousel.scrollLeft / maxScrollLeft))
+    setActivePage(Math.round(progress * (pageCount - 1)))
+  }, [pageCount])
 
   useEffect(() => {
     const updateItemsPerPage = () => setItemsPerPage(getItemsPerPage())
@@ -70,6 +49,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
     if (!carousel) return
 
     carousel.scrollTo({ left: 0, behavior: "auto" })
+    setActivePage(0)
 
     const observer =
       typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateScrollState)
@@ -78,60 +58,28 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
     return () => observer?.disconnect()
   }, [itemsPerPage, updateScrollState])
 
-  const scrollToPage = (page: number) => {
+  const goToPage = (page: number) => {
     const carousel = carouselRef.current
-    const pageElements = getCarouselPages()
-    if (!carousel || pageElements.length === 0) return
+    if (!carousel) return
 
-    const nextPage = Math.min(pageElements.length - 1, Math.max(0, page))
-    const firstPageOffset = pageElements[0].offsetLeft
+    const nextPage = Math.min(pageCount - 1, Math.max(0, page))
+    const maxScrollLeft = Math.max(0, carousel.scrollWidth - carousel.clientWidth)
+    const left =
+      pageCount <= 1 ? 0 : (maxScrollLeft * nextPage) / (pageCount - 1)
 
     carousel.scrollTo({
-      left: Math.max(0, pageElements[nextPage].offsetLeft - firstPageOffset),
+      left,
       behavior: "smooth",
     })
-  }
-
-  const goToPage = (page: number) => {
-    const nextPage = Math.min(pageCount - 1, Math.max(0, page))
-
-    if (itemsPerPage === 1) {
-      setActivePage(nextPage)
-      return
-    }
-
-    scrollToPage(nextPage)
-  }
-
-  const handleMobileTouchStart = (clientX: number) => {
-    if (itemsPerPage !== 1) return
-    touchStartXRef.current = clientX
-  }
-
-  const handleMobileTouchEnd = (clientX: number) => {
-    if (itemsPerPage !== 1 || touchStartXRef.current === null) return
-
-    const deltaX = clientX - touchStartXRef.current
-    touchStartXRef.current = null
-
-    if (Math.abs(deltaX) < 40) return
-
-    if (deltaX < 0) {
-      goToPage(activePage + 1)
-      return
-    }
-
-    goToPage(activePage - 1)
   }
 
   const safeActivePage = Math.min(activePage, Math.max(0, pageCount - 1))
   const canScrollLeft = safeActivePage > 0
   const canScrollRight = safeActivePage < pageCount - 1
-  const activeMobileItem = pages[safeActivePage]?.[0] ?? pages[0]?.[0] ?? null
 
   return (
     <div className="relative">
-      {pageCount > 1 && itemsPerPage > 1 ? (
+      {pageCount > 1 ? (
         <button
           type="button"
           onClick={() => goToPage(safeActivePage - 1)}
@@ -143,42 +91,34 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
         </button>
       ) : null}
 
-      {itemsPerPage === 1 ? (
-        <div
-          aria-label="Produto em destaque"
-          className="w-full touch-pan-y overflow-hidden"
-          onTouchStart={(event) => handleMobileTouchStart(event.touches[0]?.clientX ?? 0)}
-          onTouchEnd={(event) => handleMobileTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
-        >
-          <div data-carousel-page className="w-full">
-            {activeMobileItem}
-          </div>
-        </div>
-      ) : (
-        <div
-          ref={carouselRef}
-          onScroll={updateScrollState}
-          aria-label="Produtos em destaque"
-          className="-mx-6 snap-x snap-mandatory overflow-x-auto scroll-smooth px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:px-0"
-        >
-          <div className="flex">
-            {pages.map((page, pageIndex) => (
-              <div
-                key={pageIndex}
-                data-carousel-page
-                aria-label={`Página ${pageIndex + 1} de ${pageCount}`}
-                className="w-full shrink-0 snap-start"
-              >
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                  {page}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <div
+        ref={carouselRef}
+        onScroll={updateScrollState}
+        aria-label="Produtos em destaque"
+        className="-mx-2 snap-x snap-mandatory overflow-x-auto scroll-smooth px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <div className="flex">
+          {items.map((item, itemIndex) => {
+            const isPageStart = itemIndex % itemsPerPage === 0
 
-      {pageCount > 1 && itemsPerPage > 1 ? (
+            return (
+              <div
+                key={itemIndex}
+                data-carousel-item
+                aria-label={`Produto ${itemIndex + 1} de ${items.length}`}
+                className={
+                  "w-full shrink-0 px-2 sm:w-1/2 lg:w-1/4 " +
+                  (isPageStart ? "snap-start" : "")
+                }
+              >
+                {item}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {pageCount > 1 ? (
         <button
           type="button"
           onClick={() => goToPage(safeActivePage + 1)}
@@ -195,7 +135,7 @@ export function HomeHighlightsCarousel({ children }: { children: ReactNode }) {
           className="mt-4 flex items-center justify-center gap-2 sm:mt-4"
           aria-label="Páginas dos produtos em destaque"
         >
-          {pages.map((_, pageIndex) => (
+          {Array.from({ length: pageCount }, (_, pageIndex) => (
             <button
               key={pageIndex}
               type="button"

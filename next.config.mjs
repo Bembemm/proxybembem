@@ -58,6 +58,7 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    minimumCacheTTL: 86_400,
     remotePatterns: supabaseProductImagePattern
       ? [supabaseProductImagePattern]
       : [],

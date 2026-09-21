@@ -33,10 +33,9 @@ export function StorefrontProductCard({
       >
         <Image
           src={product.image}
-          unoptimized={product.image.startsWith("/")}
           alt={product.title}
           fill
-          sizes="(max-width: 640px) 82vw, (max-width: 1024px) 33vw, 25vw"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
         />
 

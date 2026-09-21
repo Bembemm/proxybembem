@@ -40,10 +40,11 @@ export function HomePage({
 
         {!unavailable && products.length > 0 ? (
           <HomeHighlightsCarousel>
-            {products.map((product) => (
+            {products.map((product, index) => (
               <HomeHighlightProductCard
                 key={product.id}
                 product={product}
+                priority={index === 0}
                 className="h-full w-full"
               />
             ))}
