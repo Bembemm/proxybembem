@@ -20,9 +20,11 @@ function discountPercent(product: StorefrontProduct) {
 export function HomeHighlightProductCard({
   product,
   className = "",
+  priority = false,
 }: {
   product: StorefrontProduct
   className?: string
+  priority?: boolean
 }) {
   const discount = discountPercent(product)
   const hasDiscount = discount > 0
@@ -42,9 +44,9 @@ export function HomeHighlightProductCard({
       >
         <Image
           src={product.image}
-          unoptimized={product.image.startsWith("/")}
           alt={product.title}
           fill
+          priority={priority}
           sizes="(max-width: 639px) 44vw, (max-width: 1023px) 50vw, 25vw"
           className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.025]"
         />
