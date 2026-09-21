@@ -11,7 +11,6 @@ Vercel should use the framework preset **Next.js** and the repository root as th
 - Node.js: `22.x`
 - Output directory: managed automatically by the Next.js integration
 
-Do not use the legacy KingHost standalone build or `app.js` startup adapter for Vercel.
 
 ## Production environment
 
@@ -50,4 +49,11 @@ After the first successful production deployment:
 4. Confirm Melhor Envio OAuth redirect URI uses the canonical HTTPS domain.
 5. Confirm the Resend webhook remains pointed at `/api/webhooks/resend`.
 
-The legacy KingHost deployment files can remain temporarily for rollback/history, but they are not part of the Vercel production path.
+
+## Transactional email delivery
+
+The production Resend webhook is:
+
+`https://www.proxybembem.com.br/api/webhooks/resend`
+
+Subscribe only to the operational events used by the application: `email.sent`, `email.delivered`, `email.bounced`, `email.failed` and `email.suppressed`. Do not subscribe to `email.opened` or `email.clicked`. Open Tracking and Click Tracking remain OFF in Production.

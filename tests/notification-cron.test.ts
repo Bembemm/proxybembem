@@ -35,6 +35,7 @@ test("notification cron rejects missing malformed and wrong credentials before d
       fetchCalls += 1
       return Response.json([])
     })
+
     const variants: HeadersInit[] = [
       {},
       { authorization: "" },
@@ -43,7 +44,6 @@ test("notification cron rejects missing malformed and wrong credentials before d
       { authorization: "Bearer wrong-value" },
       { authorization: `bearer ${CRON_VALUE}` },
       { authorization: `Bearer ${CRON_VALUE} extra` },
-      { "x-cron-auth": "wrong-value" },
     ]
 
     for (const headers of variants) {
@@ -56,7 +56,7 @@ test("notification cron rejects missing malformed and wrong credentials before d
   })
 })
 
-test("notification cron accepts Bearer and KingHost X-CRON-AUTH and returns only bounded counts", async (t) => {
+test("notification cron accepts Vercel Bearer auth and returns only bounded counts", async (t) => {
   await withEnv(async () => {
     const { POST } = await import("../app/api/internal/notifications/process/route.ts")
     const bodies: Record<string, unknown>[] = []
@@ -71,34 +71,28 @@ test("notification cron accepts Bearer and KingHost X-CRON-AUTH and returns only
       return Response.json([])
     })
 
-    const acceptedHeaders: HeadersInit[] = [
-      { authorization: `Bearer ${CRON_VALUE}` },
-      { "x-cron-auth": CRON_VALUE },
-    ]
-    for (const headers of acceptedHeaders) {
-      const response = await POST(request(headers))
-      assert.equal(response.status, 200)
-      assert.equal(response.headers.get("cache-control"), "no-store")
-      const json = await response.json()
-      assert.deepEqual(json, {
-        ok: true,
-        claimed: 0,
-        accepted: 0,
-        retryScheduled: 0,
-        failed: 0,
-      })
-      assert.doesNotMatch(JSON.stringify(json), /@|recipient|email|provider|body|subject/i)
-    }
-    assert.equal(bodies.length, 2)
+    const response = await POST(request({ authorization: `Bearer ${CRON_VALUE}` }))
+    assert.equal(response.status, 200)
+    assert.equal(response.headers.get("cache-control"), "no-store")
+    const json = await response.json()
+    assert.deepEqual(json, {
+      ok: true,
+      claimed: 0,
+      accepted: 0,
+      retryScheduled: 0,
+      failed: 0,
+    })
+    assert.doesNotMatch(JSON.stringify(json), /@|recipient|email|provider|body|subject/i)
+    assert.equal(bodies.length, 1)
   })
 })
 
-test("notification cron accepts KingHost GET with X-CRON-AUTH", async (t) => {
+test("notification cron accepts Vercel GET with Bearer auth", async (t) => {
   await withEnv(async () => {
     const { GET } = await import("../app/api/internal/notifications/process/route.ts")
     t.mock.method(globalThis, "fetch", async () => Response.json([]))
 
-    const response = await GET(request({ "x-cron-auth": CRON_VALUE }, "GET"))
+    const response = await GET(request({ authorization: `Bearer ${CRON_VALUE}` }, "GET"))
     assert.equal(response.status, 200)
     assert.equal(response.headers.get("cache-control"), "no-store")
     assert.deepEqual(await response.json(), {

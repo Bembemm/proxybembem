@@ -59,7 +59,6 @@ test("missing malformed and wrong maintenance credentials all fail closed", asyn
     { authorization: "Bearer wrong-secret" },
     { authorization: `bearer ${CRON_SECRET}` },
     { authorization: `Bearer ${CRON_SECRET} extra` },
-    { "x-cron-auth": "wrong-secret" },
   ]
 
   for (const headers of variants) {
@@ -79,7 +78,7 @@ test("missing malformed and wrong maintenance credentials all fail closed", asyn
   }
 })
 
-test("manual Bearer secret invokes the shared token manager once and returns only ok", async () => {
+test("Vercel Bearer secret invokes the shared token manager once and returns only ok", async () => {
   let managerCalls = 0
   const createHandler = await loadCreateHandler()
   const handler = createHandler({
@@ -97,24 +96,6 @@ test("manual Bearer secret invokes the shared token manager once and returns onl
   assert.equal(response.headers.get("cache-control"), "no-store")
 })
 
-test("KingHost X-CRON-AUTH secret invokes the same maintenance boundary", async () => {
-  let managerCalls = 0
-  const createHandler = await loadCreateHandler()
-  const handler = createHandler({
-    getCronSecret: () => CRON_SECRET,
-    getAccessToken: async () => {
-      managerCalls += 1
-      return { accessToken: "maintenance-access-token", tokenVersion: 13 }
-    },
-  })
-
-  const response = await handler(request({ "x-cron-auth": CRON_SECRET }))
-  assert.equal(response.status, 200)
-  assert.equal(managerCalls, 1)
-  assert.deepEqual(await response.json(), { ok: true })
-  assert.equal(response.headers.get("cache-control"), "no-store")
-})
-
 test("token-manager failures are sanitized and never expose token or provider details", async () => {
   const createHandler = await loadCreateHandler()
   const handler = createHandler({
@@ -124,7 +105,7 @@ test("token-manager failures are sanitized and never expose token or provider de
     },
   })
 
-  const response = await handler(request({ "x-cron-auth": CRON_SECRET }))
+  const response = await handler(request({ authorization: `Bearer ${CRON_SECRET}` }))
   assert.equal(response.status, 503)
   assert.deepEqual(await response.json(), { ok: false })
   assert.doesNotMatch(JSON.stringify(await response.headers.entries()), /secret-token-value/)
