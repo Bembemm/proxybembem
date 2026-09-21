@@ -150,7 +150,7 @@ Commit message: `feat: add transactional order email templates`.
 - `claimDueNotifications({ workerId, limit })` calls the claim RPC.
 - `completeNotificationAttempt(...)` calls the completion RPC.
 - `processNotificationBatch({ workerId, limit, send })` claims up to 25 rows, renders immutable payload, sends via Resend, and finalizes each result.
-- Cron route accepts `Authorization: Bearer <CRON_SECRET>` or `X-CRON-AUTH: <CRON_SECRET>` using the existing timing-safe secret pattern and returns only counts/booleans.
+- Cron route accepts only `Authorization: Bearer <CRON_SECRET>` using the existing timing-safe secret pattern and returns only counts/booleans.
 
 - [ ] **Step 1: Write failing repository/worker/route tests**
 
