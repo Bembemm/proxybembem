@@ -93,7 +93,7 @@ This avoids a forgeable custom recovery-marker cookie while still allowing retry
 - Raw recovery-token cookie lifetime is 3600 seconds and does not bypass Supabase's own token validity.
 - Retry authorization is based on Supabase-signed recovery AMR plus server `getUser()` validation, not on a forgeable application marker.
 - All auth/recovery route responses use `Cache-Control: private, no-store` where the application controls the response.
-- KingHost/proxy caching must not cache responses containing auth `Set-Cookie` headers.
+- Vercel/proxy caching must not cache responses containing auth `Set-Cookie` headers.
 - The existing `/auth/callback` remains for non-recovery auth flows.
 - Recovery-specific PKCE diagnostics are removed from the new recovery path.
 
@@ -124,11 +124,11 @@ Verified runtime candidate before this documentation checkpoint: `6b991a1ee3cd9d
 
 GitHub Actions run `33976620408`, job `101334337857`:
 
-- exact KingHost Node 22.1.0 verification: PASS;
+- exact Vercel Node.js 22.x verification: PASS;
 - `pnpm install --frozen-lockfile`: PASS;
 - `pnpm typecheck`: PASS;
-- `pnpm build:kinghost`: PASS;
-- KingHost startup-adapter smoke: PASS;
+- `pnpm build`: PASS;
+- Vercel runtime-adapter smoke: PASS;
 - tests: **391/391 PASS**.
 
 ## Supabase dashboard change

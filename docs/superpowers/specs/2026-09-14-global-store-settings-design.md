@@ -33,4 +33,4 @@ The modal replaces only catalog copy that is unambiguously a production lead-tim
 
 ## Verification
 
-Tests must prove that successful admin saves refresh the router, policy pages no longer contain a hard-coded public support email, and every known public product production-lead-time presentation uses the global setting while unrelated catalog content is left unchanged. Full CI must remain green on the KingHost runtime contract before the original Phase 7 branch is advanced.
+Tests must prove that successful admin saves refresh the router, policy pages no longer contain a hard-coded public support email, and every known public product production-lead-time presentation uses the global setting while unrelated catalog content is left unchanged. Full CI must remain green on the Vercel runtime contract before the original Phase 7 branch is advanced.

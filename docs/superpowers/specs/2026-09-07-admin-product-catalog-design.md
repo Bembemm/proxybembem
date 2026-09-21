@@ -108,7 +108,7 @@ Admin image flow:
 1. Admin chooses a file from the local computer.
 2. The application validates the active protected admin session.
 3. The server authorizes or signs the upload target.
-4. The browser uploads directly to Supabase Storage so image bytes do not need to transit through KingHost.
+4. The browser uploads directly to Supabase Storage so image bytes do not need to transit through Vercel.
 5. The new image reference is only attached to the product after the product save succeeds.
 6. If upload or save fails, the previous active image remains unchanged.
 
@@ -355,7 +355,7 @@ Automated coverage must include at least:
 - new sidebar navigation highlights the correct section
 - existing admin pages still require valid MFA/admin sessions
 - mobile sidebar/navigation remains usable
-- KingHost production build and startup smoke continue passing
+- Vercel production build and startup smoke continue passing
 
 Production acceptance should also cover at least one real admin edit of a safe test/draft product, publish/archive/reactivate transitions, image upload, a storefront visibility check, and a cart/checkout re-resolution check without completing a real paid Mercado Pago transaction.
 

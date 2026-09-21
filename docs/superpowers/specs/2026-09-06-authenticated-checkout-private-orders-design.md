@@ -207,11 +207,11 @@ Implementation follows TDD and must cover at minimum:
 9. Public `/pedido/[token]` and guest claim UI/API are absent from the active build.
 10. Private order detail still renders for owner and returns not-found for another customer.
 11. Existing checkout freight/idempotency/payment/webhook tests continue passing.
-12. Typecheck, KingHost build, startup smoke and full tests pass in CI.
+12. Typecheck, Vercel build, startup smoke and full tests pass in CI.
 
 ## Production Acceptance
 
-Before declaring this change complete on KingHost:
+Before declaring this change complete on Vercel:
 
 1. Anonymous shopper can fill cart/freight but is sent to login when starting payment.
 2. After login, cart contents remain available.
