@@ -6,7 +6,7 @@
 
 **Architecture:** Extract client-IP resolution into a pure helper based on validated IPv4/IPv6 values and an explicit trusted-proxy-hop count. `consumeRateLimit` continues hashing the derived identity with HMAC and storing counters through the existing Supabase RPC. Unknown/untrusted forwarding data collapses to the existing deterministic `unknown` bucket instead of becoming attacker-controlled input.
 
-**Tech Stack:** Node 22.1.0 (`node:net`), TypeScript 5.7.3, Supabase REST/RPC, Next.js Request API.
+**Tech Stack:** Node.js 22.x (`node:net`), TypeScript 5.7.3, Supabase REST/RPC, Next.js Request API.
 
 **Spec:** `docs/superpowers/specs/2026-09-16-site-security-nonce-hardening-design.md`
 
@@ -14,7 +14,7 @@
 
 - Do not change existing per-scope limits/windows without separate evidence.
 - Never store or transmit raw client IPs to Supabase; only the HMAC bucket remains server-side.
-- KingHost forwarding behavior is not assumed to be trustworthy without explicit configuration.
+- Vercel forwarding behavior is not assumed to be trustworthy without explicit configuration.
 - Production must fail safely if proxy trust is misconfigured.
 
 ---
@@ -25,7 +25,7 @@
 - Modify `lib/server/env.ts`: parse `RATE_LIMIT_TRUSTED_PROXY_HOPS`.
 - Modify `lib/server/rate-limit.ts`: use the pure resolver.
 - Modify `.env.example`: document the new setting.
-- Modify `docs/deployment/kinghost.md` and `docs/deployment/kinghost-sandbox.md`: state how to verify/configure trusted hops before rollout.
+- Modify `docs/deployment/vercel.md` and `docs/deployment/vercel.md`: state how to verify/configure trusted hops before rollout.
 - Modify `tests/rate-limit.test.ts`: behavioral coverage for spoofing, IPv4, IPv6, chains and fallback.
 
 ### Task 1: Define client-IP parsing behavior
@@ -183,7 +183,7 @@ Use default `0` so an unconfigured deployment does not silently trust attacker-c
 
 ```text
 # Number of reverse-proxy hops explicitly trusted for rate-limit client IP resolution.
-# Keep 0 until the KingHost header chain has been verified; use the verified count in each deployment.
+# Keep 0 until the Vercel header chain has been verified; use the verified count in each deployment.
 RATE_LIMIT_TRUSTED_PROXY_HOPS=0
 ```
 
@@ -241,15 +241,15 @@ git add lib/server/rate-limit.ts tests/rate-limit.test.ts
 git commit -m "fix: harden proxy-aware rate limiting"
 ```
 
-### Task 4: KingHost rollout documentation
+### Task 4: Vercel rollout documentation
 
 **Files:**
-- Modify: `docs/deployment/kinghost.md`
-- Modify: `docs/deployment/kinghost-sandbox.md`
+- Modify: `docs/deployment/vercel.md`
+- Modify: `docs/deployment/vercel.md`
 
 - [ ] **Step 1: Document fail-safe default**
 
-State that `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` ignores forwarding IP headers and uses the shared `unknown` bucket. Before production, determine the actual KingHost reverse-proxy chain using a temporary diagnostic in the isolated sandbox or KingHost support documentation/support response; do not infer it from browser-supplied headers.
+State that `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` ignores forwarding IP headers and uses the shared `unknown` bucket. Before production, determine the actual Vercel reverse-proxy chain using a temporary diagnostic in the isolated sandbox or Vercel support documentation/support response; do not infer it from browser-supplied headers.
 
 - [ ] **Step 2: Document sandbox acceptance**
 
@@ -258,8 +258,8 @@ Require tests from at least two independent client networks/IPs, confirm the exp
 - [ ] **Step 3: Commit**
 
 ```bash
-git add docs/deployment/kinghost.md docs/deployment/kinghost-sandbox.md
-git commit -m "docs: define KingHost trusted proxy rollout"
+git add docs/deployment/vercel.md docs/deployment/vercel.md
+git commit -m "docs: define Vercel trusted proxy rollout"
 ```
 
 ### Task 5: Regression checkpoint
@@ -277,12 +277,12 @@ node --experimental-strip-types --test \
 
 Expected: PASS.
 
-- [ ] **Step 2: Run full suite and KingHost build**
+- [ ] **Step 2: Run full suite and Vercel build**
 
 ```bash
 pnpm test
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 ```
 
 Expected: PASS.

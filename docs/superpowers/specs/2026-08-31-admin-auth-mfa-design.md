@@ -277,7 +277,7 @@ Before Production:
 - Implement and validate on the existing feature branch/Preview first.
 - Do not switch Mercado Pago or Melhor Envio to Production as part of this auth feature.
 - Do not merge to `main` without explicit owner approval.
-- Keep the future KingHost migration in mind: the admin-session schema and authorization boundary should remain ordinary Postgres/application concepts where practical, while Supabase Auth-specific code stays isolated behind auth helpers so it can be replaced during migration.
+- Keep the future Vercel migration in mind: the admin-session schema and authorization boundary should remain ordinary Postgres/application concepts where practical, while Supabase Auth-specific code stays isolated behind auth helpers so it can be replaced during migration.
 
 ## Out of scope
 
@@ -291,4 +291,4 @@ Before Production:
 - trusted-device bypass
 - self-service MFA recovery
 - Production provider rollout
-- KingHost migration
+- Vercel migration

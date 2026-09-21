@@ -4,9 +4,9 @@
 
 **Goal:** Maximize no-cost Supabase Auth security without breaking account flows, review Security Advisor findings, and perform the final hardening regression/acceptance gate.
 
-**Architecture:** First align application password validation/error handling with the intended Auth policy, then change only supported free Supabase dashboard settings. Database findings are reviewed by intent rather than silenced with permissive RLS. Final acceptance combines repository CI gates, Security Advisor evidence and KingHost sandbox smoke; production remains untouched.
+**Architecture:** First align application password validation/error handling with the intended Auth policy, then change only supported free Supabase dashboard settings. Database findings are reviewed by intent rather than silenced with permissive RLS. Final acceptance combines repository CI gates, Security Advisor evidence and Vercel sandbox smoke; production remains untouched.
 
-**Tech Stack:** Supabase Auth/Postgres/RLS, `@supabase/ssr`, Next.js account routes, Node test runner, KingHost sandbox, Mercado Pago sandbox, Melhor Envio sandbox.
+**Tech Stack:** Supabase Auth/Postgres/RLS, `@supabase/ssr`, Next.js account routes, Node test runner, Vercel sandbox, Mercado Pago sandbox, Melhor Envio sandbox.
 
 **Spec:** `docs/superpowers/specs/2026-09-16-site-security-nonce-hardening-design.md`
 
@@ -204,7 +204,7 @@ git commit -m "docs: classify Supabase security advisor findings"
 pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 pnpm test
 ```
 
@@ -242,13 +242,13 @@ git add docs/superpowers/phase-hardening/FINAL_ACCEPTANCE.md
 git commit -m "docs: record hardening verification"
 ```
 
-### Task 6: Isolated KingHost sandbox smoke before merge
+### Task 6: Isolated Vercel sandbox smoke before merge
 
-**Environment:** existing separate KingHost sandbox app and separate sandbox Supabase/provider credentials from `docs/deployment/kinghost-sandbox.md`.
+**Environment:** existing separate Vercel sandbox app and separate sandbox Supabase/provider credentials from `docs/deployment/vercel.md`.
 
 - [ ] **Step 1: Deploy only this branch to the sandbox app**
 
-Use the existing `deploy:kinghost` flow with the sandbox-specific `KINGHOST_WEB_ROOT`. Keep `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`.
+Use the existing `build` flow with the sandbox-specific `VERCEL_ENV`. Keep `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`.
 
 - [ ] **Step 2: Verify strict CSP in the browser/network response**
 

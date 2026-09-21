@@ -206,6 +206,6 @@ Assert:
 - [ ] **Step 2: Run `pnpm lint`**
 - [ ] **Step 3: Run `pnpm typecheck`**
 - [ ] **Step 4: Run `pnpm test`**
-- [ ] **Step 5: Run `pnpm build:kinghost`**
+- [ ] **Step 5: Run `pnpm build`**
 - [ ] **Step 6: Inspect branch diff against `main` for auth, RLS, destructive behavior, payment/shipping regressions**
 - [ ] **Step 7: Open PR against `main` and require GitHub CI to finish successfully before recommending merge**
