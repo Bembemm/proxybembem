@@ -589,7 +589,7 @@ Operational sequence is the existing normal flow:
 
 ```text
 ssh -4 proxybembem@ftp.proxybembem.com.br
-cd ~/apps_nodejs/proxybembem && git pull --ff-only
+cd <project-root> && git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile
 NODE_ENV=production npx pnpm@10 build

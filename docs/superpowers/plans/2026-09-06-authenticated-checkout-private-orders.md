@@ -617,7 +617,7 @@ Required CI evidence: exact Node.js 22.x, frozen install, typecheck, Vercel buil
 Use the normal single-line SSH command:
 
 ```bash
-cd ~/apps_nodejs/proxybembem && git pull --ff-only && nvm use && npx pnpm@10 install --frozen-lockfile && NODE_ENV=production npx pnpm@10 build && git rev-parse HEAD
+cd <project-root> && git pull --ff-only && nvm use && npx pnpm@10 install --frozen-lockfile && NODE_ENV=production npx pnpm@10 build && git rev-parse HEAD
 ```
 
 Restart `proxybembem` from the Vercel process authority/panel after deployment.

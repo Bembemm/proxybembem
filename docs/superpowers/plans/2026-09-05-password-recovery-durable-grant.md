@@ -228,7 +228,7 @@ Verify table exists, RLS is enabled, direct privileges are absent for browser ro
 Vercel commands:
 
 ```bash
-cd ~/apps_nodejs/proxybembem
+cd <project-root>
 git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile

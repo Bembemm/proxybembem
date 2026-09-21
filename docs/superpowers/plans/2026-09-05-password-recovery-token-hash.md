@@ -508,7 +508,7 @@ git commit -m "docs: checkpoint token-hash recovery"
 Use the existing runbook commands:
 
 ```bash
-cd ~/apps_nodejs/proxybembem
+cd <project-root>
 git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile

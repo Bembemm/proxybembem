@@ -5,12 +5,11 @@ import test from "node:test"
 const ENV_EXAMPLE = new URL("../.env.example", import.meta.url)
 const VERCEL_DOC = new URL("../docs/deployment/vercel.md", import.meta.url)
 
-test("environment example keeps non-Vercel proxy trust fail-closed by default", async () => {
+test("environment example does not expose a configurable proxy-hop trust setting", async () => {
   const source = await readFile(ENV_EXAMPLE, "utf8")
+  const legacySetting = ["RATE_LIMIT", "TRUSTED_PROXY_HOPS"].join("_")
 
-  assert.match(source, /RATE_LIMIT_TRUSTED_PROXY_HOPS=0/)
-  assert.match(source, /proxy/i)
-  assert.match(source, /verific/i)
+  assert.doesNotMatch(source, new RegExp(legacySetting))
 })
 
 test("Vercel runbook documents the platform-managed client IP boundary", async () => {
@@ -18,6 +17,6 @@ test("Vercel runbook documents the platform-managed client IP boundary", async (
 
   assert.match(source, /x-forwarded-for/i)
   assert.match(source, /VERCEL=1/)
-  assert.match(source, /exactly one proxy hop/i)
-  assert.match(source, /fail-closed/i)
+  assert.match(source, /one platform-managed hop/i)
+  assert.match(source, /trusts no forwarding hop/i)
 })

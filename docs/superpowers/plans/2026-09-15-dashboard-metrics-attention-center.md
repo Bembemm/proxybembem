@@ -728,7 +728,7 @@ Update docs only with evidence actually observed. If hosted validation fails, st
 On Vercel:
 
 ```bash
-cd ~/apps_nodejs/proxybembem
+cd <project-root>
 git fetch origin
 # check out the exact candidate/branch state according to the established deployment runbook
 nvm use

@@ -60,18 +60,9 @@ function requireStrongSecret(name: string) {
 }
 
 function trustedProxyHops() {
-  // Vercel overwrites x-forwarded-for with the public client IP, so one
-  // trusted hop is safe and avoids grouping every visitor into "unknown".
-  if (process.env.VERCEL === "1") return 1
-
-  const raw = process.env.RATE_LIMIT_TRUSTED_PROXY_HOPS
-  if (raw === undefined) return 0
-
-  const value = raw.trim()
-  if (!/^[0-5]$/.test(value)) {
-    throw new Error("RATE_LIMIT_TRUSTED_PROXY_HOPS must be an integer from 0 to 5")
-  }
-  return Number(value)
+  // Vercel overwrites x-forwarded-for with the public client IP.
+  // Outside Vercel (including local tests), forwarding headers stay untrusted.
+  return process.env.VERCEL === "1" ? 1 : 0
 }
 
 function isProductionRuntime(nodeEnv: string | undefined) {

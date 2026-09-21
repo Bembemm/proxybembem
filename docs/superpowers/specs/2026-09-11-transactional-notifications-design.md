@@ -43,7 +43,7 @@ The current application already has the pieces Phase 6 should build on:
 - Melhor Envio posting/tracking also records fulfillment changes; trusted `delivered` tracking can move an order from `shipped` to `completed`;
 - the customer order page is authenticated and owner-scoped at `/minha-conta/pedidos/{uuid}`;
 - Resend is already used server-side for password recovery via `RESEND_API_KEY` and `ProxyBembem <noreply@proxybembem.com.br>`;
-- Vercel already has a protected internal-cron pattern using `CRON_SECRET`, Bearer or `X-CRON-AUTH`.
+- Vercel already has a protected internal-cron pattern using `CRON_SECRET`, Bearer or `Authorization: Bearer <CRON_SECRET>`.
 
 Phase 6 must preserve those authorities. An e-mail failure must never roll back or falsify a payment, fulfillment or shipment state.
 

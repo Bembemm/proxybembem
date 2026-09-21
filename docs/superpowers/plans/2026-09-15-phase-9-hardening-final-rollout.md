@@ -544,7 +544,7 @@ Do not call the project `Production accepted` merely because CI is green.
 Before changing checkout state:
 
 ```bash
-cd ~/apps_nodejs/proxybembem
+cd <project-root>
 git status -sb
 umask
 git fetch origin feat/phase-9-hardening-final-rollout

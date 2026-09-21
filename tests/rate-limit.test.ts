@@ -7,12 +7,12 @@ const KEYS = [
   "SUPABASE_URL",
   "SUPABASE_SECRET_KEY",
   "RATE_LIMIT_SECRET",
-  "RATE_LIMIT_TRUSTED_PROXY_HOPS",
+  "VERCEL",
 ] as const
 const RATE_SECRET = "rate-limit-secret-12345678901234567890"
 
 async function withEnv(
-  trustedProxyHops: string | undefined,
+  vercel: boolean,
   run: () => Promise<void>,
 ) {
   const previous = new Map<string, string | undefined>()
@@ -21,11 +21,8 @@ async function withEnv(
   process.env.SUPABASE_URL = "https://example.supabase.co"
   process.env.SUPABASE_SECRET_KEY = "server-secret"
   process.env.RATE_LIMIT_SECRET = RATE_SECRET
-  if (trustedProxyHops === undefined) {
-    delete process.env.RATE_LIMIT_TRUSTED_PROXY_HOPS
-  } else {
-    process.env.RATE_LIMIT_TRUSTED_PROXY_HOPS = trustedProxyHops
-  }
+  if (vercel) process.env.VERCEL = "1"
+  else delete process.env.VERCEL
 
   try {
     await run()
@@ -38,8 +35,8 @@ async function withEnv(
   }
 }
 
-test("uses the explicitly trusted forwarding depth and sends only its HMAC bucket to Supabase", async (t) => {
-  await withEnv("2", async () => {
+test("uses the Vercel-managed forwarded client IP and sends only its HMAC bucket to Supabase", async (t) => {
+  await withEnv(true, async () => {
     const rawIp = "198.51.100.2"
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update(`checkout:${rawIp}`)
@@ -69,7 +66,7 @@ test("uses the explicitly trusted forwarding depth and sends only its HMAC bucke
 
     const request = new Request("https://store.test/api/checkout", {
       headers: {
-        "x-forwarded-for": "198.51.100.2, 10.0.0.1",
+        "x-forwarded-for": "198.51.100.2",
         "x-real-ip": "192.0.2.3",
       },
     })
@@ -79,7 +76,7 @@ test("uses the explicitly trusted forwarding depth and sends only its HMAC bucke
 })
 
 test("malformed forwarded chains fail closed instead of trusting x-real-ip", async (t) => {
-  await withEnv("1", async () => {
+  await withEnv(true, async () => {
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update("shipping-quote:unknown")
       .digest("hex")
@@ -109,7 +106,7 @@ test("malformed forwarded chains fail closed instead of trusting x-real-ip", asy
 })
 
 test("uses an unknown bucket when no forwarding IP is usable", async (t) => {
-  await withEnv("1", async () => {
+  await withEnv(true, async () => {
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update("checkout:unknown")
       .digest("hex")
@@ -134,8 +131,8 @@ test("uses an unknown bucket when no forwarding IP is usable", async (t) => {
   })
 })
 
-test("default zero proxy trust ignores otherwise valid forwarding headers", async (t) => {
-  await withEnv(undefined, async () => {
+test("non-Vercel execution ignores otherwise valid forwarding headers", async (t) => {
+  await withEnv(false, async () => {
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update("checkout:unknown")
       .digest("hex")
@@ -166,7 +163,7 @@ test("default zero proxy trust ignores otherwise valid forwarding headers", asyn
 })
 
 test("returns false when the Supabase rate-limit RPC denies the request", async (t) => {
-  await withEnv("1", async () => {
+  await withEnv(true, async () => {
     t.mock.method(globalThis, "fetch", async () => new Response("false", { status: 200 }))
 
     assert.equal(
@@ -182,7 +179,7 @@ test("returns false when the Supabase rate-limit RPC denies the request", async 
 })
 
 test("uses a separate 5-per-15-minute bucket for Melhor Envio OAuth starts", async (t) => {
-  await withEnv("1", async () => {
+  await withEnv(true, async () => {
     const rawIp = "192.0.2.10"
     const expectedBucket = createHmac("sha256", RATE_SECRET)
       .update(`melhor-envio-oauth-start:${rawIp}`)
@@ -214,7 +211,7 @@ test("uses a separate 5-per-15-minute bucket for Melhor Envio OAuth starts", asy
 })
 
 test("shipment admin actions use distinct HMAC buckets for config and preparation mutations", async (t) => {
-  await withEnv("1", async () => {
+  await withEnv(true, async () => {
     const rawIp = "192.0.2.55"
     const cases = [
       { scope: "admin-shipping-config", limit: 10, windowSeconds: 600 },
