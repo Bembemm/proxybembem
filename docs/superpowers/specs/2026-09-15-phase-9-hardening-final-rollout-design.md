@@ -19,7 +19,7 @@ At this point:
 
 - Phases 0–7 are functionally complete at their accepted level;
 - Phase 8 implementation and hosted Supabase validation are complete;
-- the Phase 8 runtime candidate has been deployed to KingHost;
+- the Phase 8 runtime candidate has been deployed to Vercel;
 - the authenticated `/admin` production smoke for Phase 8 remains explicitly open because the owner cannot complete it now;
 - Phase 8 therefore must not be rewritten as Production-accepted until that smoke is actually performed;
 - Phase 9 may proceed because the owner explicitly authorized it despite that open acceptance gate.
@@ -171,7 +171,7 @@ Audit env readers, server modules, client imports, logging and docs for:
 - Resend/Svix secrets;
 - cron/worker/admin secrets;
 - TOTP secrets;
-- KingHost runtime configuration.
+- Vercel runtime configuration.
 
 No secret is moved into Store Settings or database rows merely to simplify code.
 
@@ -271,11 +271,11 @@ Phase 9 uses evidence-driven testing.
 
 The final candidate must pass, at minimum:
 
-- frozen dependency install under Node 22.1.0;
+- frozen dependency install under Node.js 22.x;
 - TypeScript typecheck;
-- `build:kinghost`;
+- `build`;
 - private-order route contract;
-- KingHost startup adapter smoke;
+- Vercel runtime smoke;
 - full test suite;
 - new targeted tests for every code-level correction;
 - security/contract tests for any grant/origin/cache/rate-limit change.
@@ -298,13 +298,13 @@ No synthetic business data is left behind by validation.
 
 Final rollout uses one exact CI-green SHA.
 
-KingHost process:
+Vercel process:
 
 - exact candidate checkout;
-- Node 22.1.0;
+- Node.js 22.x;
 - frozen install;
-- production `deploy:kinghost`;
-- restart only through KingHost panel;
+- production `build`;
+- restart only through Vercel dashboard;
 - public HTTP smoke;
 - authenticated admin/customer/private-route smoke;
 - explicit verification of any corrected high-risk boundary.
@@ -349,7 +349,7 @@ Phase 9 implementation is complete only when:
 1. all audit domains have a recorded disposition;
 2. objective safe findings have been corrected or explicitly justified as retained;
 3. code-level corrections have targeted regression coverage;
-4. final automated suite and KingHost build are green on one exact SHA;
+4. final automated suite and Vercel build are green on one exact SHA;
 5. all Phase 9 migrations, if any, are applied once and hosted checks are reconciled;
 6. security/performance advisors have been re-reviewed after final DDL;
 7. exact rollout candidate is documented;

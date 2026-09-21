@@ -73,7 +73,7 @@ Recreate the approved storefront visuals from the two provided mockups without a
 Implementation must be test-driven and finish with the repository's complete CI-equivalent validation, including:
 - lint
 - TypeScript typecheck
-- KingHost build
+- Vercel build
 - private order route contract / startup smoke checks already present in CI
 - critical commerce/security subset
 - full test suite

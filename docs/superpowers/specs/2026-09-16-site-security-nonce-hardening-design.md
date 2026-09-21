@@ -77,11 +77,11 @@ Add a dedicated client-IP parser that:
 - validates IPv4 and IPv6 values;
 - rejects malformed or arbitrary strings;
 - handles `X-Forwarded-For` chains defensively;
-- supports an explicit trusted-proxy-hop configuration suitable for the KingHost reverse-proxy environment;
+- supports an explicit trusted-proxy-hop configuration suitable for the Vercel reverse-proxy environment;
 - has a deterministic fallback when the trusted client IP cannot be established;
 - never treats a free-form attacker-controlled header string as a valid client identity.
 
-The KingHost proxy behavior must not be invented. The implementation must document the assumed trust boundary and keep it configurable where necessary.
+The Vercel proxy behavior must not be invented. The implementation must document the assumed trust boundary and keep it configurable where necessary.
 
 Add unit tests for valid IPv4, valid IPv6, malformed values, multiple forwarded hops, missing headers, and spoof-like header input.
 
@@ -100,15 +100,15 @@ Scripts must have distinct responsibilities:
 - `lint`: ESLint/static quality checks;
 - `typecheck`: TypeScript type checking;
 - `test`: current Node test suite;
-- `build:kinghost`: exact KingHost production-style build path.
+- `build`: exact Vercel production-style build path.
 
 CI must require at least:
 
 1. frozen dependency install;
 2. real lint;
 3. typecheck;
-4. `build:kinghost`;
-5. existing KingHost startup/private-route contracts;
+4. `build`;
+5. existing Vercel runtime/private-route contracts;
 6. full test suite.
 
 Rules must not be disabled simply to make CI green. Any suppression must be narrow, justified, and documented if unavoidable.
@@ -205,7 +205,7 @@ Regression coverage must protect at least:
 - Mercado Pago webhook signature/authoritative payment fetch behavior;
 - private customer order routes;
 - Melhor Envio OAuth/form-action compatibility;
-- KingHost standalone startup adapter.
+- Vercel native startup adapter.
 
 No test should weaken a security condition merely to preserve an old behavior.
 
@@ -244,7 +244,7 @@ The branch is ready for review only when all of the following are true:
 - `pnpm lint` passes;
 - `pnpm typecheck` passes;
 - `pnpm test` passes;
-- `pnpm build:kinghost` passes on the expected runtime contract;
+- `pnpm build` passes on the expected runtime contract;
 - existing checkout/payment/shipping/auth security tests continue to pass;
 - Security Advisor is re-run and findings are reviewed.
 
@@ -265,7 +265,7 @@ Before production deployment, perform a sandbox/preview smoke covering:
 9. admin login/MFA and critical admin pages;
 10. no real label purchase or production payment during sandbox validation.
 
-Use the existing KingHost sandbox runbook and separate sandbox Supabase/provider credentials.
+Use the existing Vercel sandbox runbook and separate sandbox Supabase/provider credentials.
 
 ## 10. Rollback
 
