@@ -36,7 +36,7 @@ test("customer order detail uses provider return params only to trigger safe rec
   const detail = await source("../app/minha-conta/pedidos/[id]/page.tsx")
 
   assert.match(detail, /PaymentReturnReconciler/)
-  assert.match(detail, /MERCADO_PAGO_RETURN_KEYS/)
+  assert.match(detail, /MERCADO_PAGO_RETURN_SIGNAL_KEYS/)
   assert.match(detail, /Ir para o Mercado Pago/)
   assert.match(detail, /não pague novamente/i)
   assert.match(detail, /Checkout expirado/)
