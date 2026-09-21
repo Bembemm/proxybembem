@@ -287,7 +287,7 @@ Runbook: `docs/deployment/vercel.md`.
 
 Estrutura:
 
-- aplicação Node/Next: `~/apps_nodejs/proxybembem`;
+- aplicação Node/Next: `<project-root>`;
 - assets públicos/Next: `~/www`;
 - entrypoint: `proxybembem/app.js`;
 - porta vem do ambiente Vercel; não hard-code.
@@ -295,7 +295,7 @@ Estrutura:
 Deploy normal:
 
 ```bash
-cd ~/apps_nodejs/proxybembem
+cd <project-root>
 git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile
