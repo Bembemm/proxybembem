@@ -53,7 +53,7 @@ test("home uses a dedicated highlight card while products keep the shared storef
   assert.match(highlight, /productHref\(product\)/)
 })
 
-test("home keeps the paged carousel on every viewport without a visible scrollbar", () => {
+test("home keeps every product rendered in the responsive paged carousel", () => {
   const home = source("components/pages/home-page.tsx")
   const carousel = source("components/home-highlights-carousel.tsx")
 
@@ -64,6 +64,9 @@ test("home keeps the paged carousel on every viewport without a visible scrollba
   assert.match(home, /font-serif/)
   assert.match(home, /HomeHighlightsCarousel/)
   assert.match(home, /HomeHighlightProductCard/)
+  assert.match(home, /products\.map\(\(product, index\)/)
+  assert.match(home, /priority=\{index === 0\}/)
+
   assert.match(carousel, /useRef/)
   assert.match(carousel, /useEffect/)
   assert.match(carousel, /ArrowLeft/)
@@ -71,26 +74,17 @@ test("home keeps the paged carousel on every viewport without a visible scrollba
   assert.match(carousel, /itemsPerPage/)
   assert.match(carousel, /innerWidth\s*>=\s*1024\s*\?\s*4/)
   assert.match(carousel, /innerWidth\s*>=\s*640\s*\?\s*2\s*:\s*1/)
-  assert.doesNotMatch(home, /className="lg:hidden"/)
-  assert.doesNotMatch(home, /hidden lg:grid/)
+  assert.match(carousel, /Math\.ceil\(items\.length\s*\/\s*itemsPerPage\)/)
+  assert.match(carousel, /items\.map\(\(item, itemIndex\)/)
+  assert.doesNotMatch(carousel, /items\.slice\(/)
+  assert.doesNotMatch(carousel, /activeMobileItem/)
+  assert.match(carousel, /w-full shrink-0 px-2 sm:w-1\/2 lg:w-1\/4/)
+  assert.match(carousel, /carousel\.scrollWidth - carousel\.clientWidth/)
   assert.match(carousel, /\[scrollbar-width:none\]/)
   assert.match(carousel, /\[&::\-webkit-scrollbar\]:hidden/)
-  assert.match(carousel, /Math\.ceil\(items\.length\s*\/\s*itemsPerPage\)/)
-  assert.match(carousel, /data-carousel-page/)
-  assert.match(carousel, /slice\(pageIndex \* itemsPerPage/)
-  assert.match(carousel, /activeMobileItem/)
-  assert.match(carousel, /itemsPerPage === 1/)
-  assert.match(carousel, /pages\[safeActivePage\]\?\.\[0\]/)
-  assert.match(carousel, /touchStartXRef/)
-  assert.match(carousel, /onTouchStart/)
-  assert.match(carousel, /onTouchEnd/)
-  assert.match(carousel, /Math\.abs\(deltaX\) < 40/)
-  assert.match(carousel, /grid-cols-2/)
-  assert.match(carousel, /lg:grid-cols-4/)
-  assert.match(carousel, /aria-label=\{`Ir para página \$\{pageIndex \+ 1\}\`\}/)
-  assert.match(home, /max-w-\[1180px\]/)
-  assert.match(carousel, /aria-label=["']Produto em destaque["']/)
+  assert.match(carousel, /aria-label=\{`Ir para página \$\{pageIndex \+ 1\}`\}/)
   assert.match(carousel, /aria-label=["']Produtos em destaque["']/)
+  assert.match(home, /max-w-\[1180px\]/)
 })
 
 test("home, notice and FAQ use one compact vertical rhythm without artificial header offsets", () => {
