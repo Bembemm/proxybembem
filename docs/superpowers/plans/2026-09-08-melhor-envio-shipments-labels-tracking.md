@@ -4,9 +4,9 @@
 
 **Goal:** Add a production-capable, server-authoritative Melhor Envio shipment subsystem that supports a fixed PF/CPF sender, reviewed DC-e/DACE flow, explicit label purchase, separate label generation, printing, posting, cancellation, safe tracking reconciliation, and customer-visible tracking without automatic spending.
 
-**Architecture:** Keep the existing Next.js + Supabase modular monolith. Add a dedicated shipment domain/repository/provider boundary, backend-only sender and shipment tables, database-backed operation claims for concurrency/idempotency, thin authenticated admin routes, and a curated customer shipment projection. Reuse the existing Melhor Envio OAuth/token manager, existing order snapshots, admin AAL2/session controls, order events, attention flags, audit log, and KingHost runtime.
+**Architecture:** Keep the existing Next.js + Supabase modular monolith. Add a dedicated shipment domain/repository/provider boundary, backend-only sender and shipment tables, database-backed operation claims for concurrency/idempotency, thin authenticated admin routes, and a curated customer shipment projection. Reuse the existing Melhor Envio OAuth/token manager, existing order snapshots, admin AAL2/session controls, order events, attention flags, audit log, and Vercel runtime.
 
-**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase/PostgreSQL/PostgREST, Melhor Envio OAuth/API, Node.js 22.1.0, pnpm 10, Node test runner, KingHost standalone deployment.
+**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase/PostgreSQL/PostgREST, Melhor Envio OAuth/API, Node.js 22.x, pnpm 10, Node test runner, Vercel native deployment.
 
 **Spec:** `docs/superpowers/specs/2026-09-08-melhor-envio-shipments-labels-tracking-design.md`
 
@@ -473,7 +473,7 @@ pnpm typecheck
 ```
 
 ```bash
-pnpm build:kinghost
+pnpm build
 ```
 
 ### Step 6: Commit
@@ -848,7 +848,7 @@ pnpm typecheck
 ```
 
 ```bash
-pnpm build:kinghost
+pnpm build
 ```
 
 ### Step 5: Commit
@@ -971,7 +971,7 @@ Rules:
 - internal route uses existing `CRON_SECRET` timing-safe pattern and returns only counts/boolean, no tracking code lists/PII;
 - batch is bounded (for example max 50 per invocation) and no generalized queue is added.
 
-Operational cadence after rollout: KingHost cron once per hour. Existing OAuth refresh cron remains daily at 03:17.
+Operational cadence after rollout: Vercel cron once per hour. Existing OAuth refresh cron remains daily at 03:17.
 
 ### Step 1: Write RED tests
 
@@ -1074,7 +1074,7 @@ pnpm typecheck
 ```
 
 ```bash
-pnpm build:kinghost
+pnpm build
 ```
 
 ### Step 6: Commit
@@ -1167,7 +1167,7 @@ pnpm typecheck
 ```
 
 ```bash
-pnpm build:kinghost
+pnpm build
 ```
 
 ### Step 5: Commit
@@ -1300,9 +1300,9 @@ Use a focused commit message describing the grant/constraint fix.
 MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false
 ```
 
-### Step 1: Deploy the exact green candidate to KingHost
+### Step 1: Deploy the exact green candidate to Vercel
 
-Use the canonical runbook. Verify the deployed SHA before restarting from the KingHost panel.
+Use the canonical runbook. Verify the deployed SHA before restarting from the Vercel dashboard.
 
 ### Step 2: Reconnect Melhor Envio in Production
 
@@ -1346,7 +1346,7 @@ Set in private Production environment:
 MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=true
 ```
 
-Restart through the KingHost panel. Never commit this private production setting.
+Restart through the Vercel dashboard. Never commit this private production setting.
 
 ### Step 2: Verify exact price before spend
 
@@ -1404,7 +1404,7 @@ Require docs to state:
 - cancellation confirmation rule;
 - one active package/label per order V1;
 - no real secrets in docs;
-- canonical KingHost deployment instructions remain referenced.
+- canonical Vercel deployment instructions remain referenced.
 
 ### Step 2: Run RED
 
@@ -1458,7 +1458,7 @@ pnpm test
 ```
 
 ```bash
-NODE_ENV=production pnpm build:kinghost
+NODE_ENV=production pnpm build
 ```
 
 Expected: all PASS.
@@ -1475,7 +1475,7 @@ Record:
 git rev-parse HEAD
 ```
 
-Do not call the phase ready until GitHub Actions for that exact SHA is completed successfully with Node 22.1.0, frozen install, typecheck, full tests, KingHost build, private-order route gate, and startup smoke.
+Do not call the phase ready until GitHub Actions for that exact SHA is completed successfully with Node.js 22.x, frozen install, typecheck, full tests, Vercel build, private-order route gate, and startup smoke.
 
 ### Step 4: Production runtime verification
 
@@ -1518,4 +1518,4 @@ Before execution starts, verify this plan against the approved spec:
 - [x] Server-only tokens/CPF-sensitive boundaries.
 - [x] Staged direct-Production rollout without Sandbox requirement.
 - [x] Migration-first compatibility and no rewriting applied history.
-- [x] Exact-SHA CI and KingHost verification before completion claim.
+- [x] Exact-SHA CI and Vercel verification before completion claim.

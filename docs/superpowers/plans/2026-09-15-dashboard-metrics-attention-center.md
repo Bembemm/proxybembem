@@ -6,7 +6,7 @@
 
 **Architecture:** Add one read-only service-role-only Supabase RPC that captures a single São Paulo `as_of` instant and returns the complete dashboard snapshot. A strict Next.js server repository validates that snapshot and the protected force-dynamic `/admin` page renders it without browser-side authority or fallback zeros.
 
-**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase/PostgreSQL, Node.js 22.1.0, pnpm 10, `node:test`, Tailwind CSS, lucide-react.
+**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase/PostgreSQL, Node.js 22.x, pnpm 10, `node:test`, Tailwind CSS, lucide-react.
 
 **Spec:** `docs/superpowers/specs/2026-09-15-dashboard-metrics-attention-center-design.md`
 
@@ -23,7 +23,7 @@
 - No provider API call, spend, cancellation, order mutation, notification send, or Store Settings mutation belongs in Phase 8.
 - Existing admin authorization remains owner UUID + Supabase session + AAL2/TOTP + active admin session.
 - Existing migrations are never rewritten or reapplied; Phase 8 is additive.
-- KingHost runtime remains Node.js `22.1.0`; pnpm major remains `10`.
+- Vercel runtime remains Node.js `22.1.0`; pnpm major remains `10`.
 
 ---
 
@@ -645,7 +645,7 @@ Skip this commit only when Step 1 required no file change after the assertions w
 
 ```bash
 npx pnpm@10 typecheck
-NODE_ENV=production npx pnpm@10 build:kinghost
+NODE_ENV=production npx pnpm@10 build
 npx pnpm@10 test
 ```
 
@@ -684,7 +684,7 @@ git commit -m "docs: record Phase 8 implementation checkpoint"
 
 - [ ] **Step 1: Push/check exact candidate and wait for CI**
 
-CI must pass the existing workflow including exact Node 22.1.0 setup, frozen install, typecheck, KingHost build, route/startup checks, and full tests. Record run ID + SHA.
+CI must pass the existing workflow including exact Node.js 22.x setup, frozen install, typecheck, Vercel build, route/startup checks, and full tests. Record run ID + SHA.
 
 - [ ] **Step 2: Apply the Phase 8 migration once to hosted Supabase**
 
@@ -711,7 +711,7 @@ Update docs only with evidence actually observed. If hosted validation fails, st
 
 ---
 
-### Task 8: KingHost deploy and Production acceptance
+### Task 8: Vercel deploy and Production acceptance
 
 **Files:**
 - Create after acceptance: `docs/superpowers/phase-8/FINAL_ACCEPTANCE.md`
@@ -723,9 +723,9 @@ Update docs only with evidence actually observed. If hosted validation fails, st
 - Consumes: exact CI-green candidate SHA and hosted-validated RPC.
 - Produces: Production-accepted Phase 8 evidence; no automatic merge to `main` unless owner explicitly approves.
 
-- [ ] **Step 1: Deploy the exact candidate using the existing KingHost runbook**
+- [ ] **Step 1: Deploy the exact candidate using the existing Vercel runbook**
 
-On KingHost:
+On Vercel:
 
 ```bash
 cd ~/apps_nodejs/proxybembem
@@ -733,10 +733,10 @@ git fetch origin
 # check out the exact candidate/branch state according to the established deployment runbook
 nvm use
 npx pnpm@10 install --frozen-lockfile
-NODE_ENV=production npx pnpm@10 deploy:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Use normal `umask 022`. Do not use PM2 CLI. Restart only through the KingHost panel.
+Use normal `umask 022`. Do not use PM2 CLI. Restart only through the Vercel dashboard.
 
 - [ ] **Step 2: Public runtime smoke**
 
@@ -781,7 +781,7 @@ No runtime redeploy is required for a docs-only acceptance commit.
 
 ## Plan Self-Review
 
-- Spec coverage: all approved rules are mapped to Tasks 1–8: trusted event timing, calendar periods, gross/reversal separation, product snapshots, read-only attention, current operations, fail-visible behavior, auth boundary, hosted rollout, KingHost acceptance.
+- Spec coverage: all approved rules are mapped to Tasks 1–8: trusted event timing, calendar periods, gross/reversal separation, product snapshots, read-only attention, current operations, fail-visible behavior, auth boundary, hosted rollout, Vercel acceptance.
 - Placeholder scan: implementation tasks contain concrete interfaces, commands, tests, and acceptance behavior; no implementation step delegates behavior to an undefined future decision.
 - Type consistency: the RPC, repository, components, and page all use the single `AdminDashboardSnapshot` contract defined in the spec and produced by `getAdminDashboardSnapshot()`.
 - Scope: Phase 8 remains a single read-only dashboard/attention subsystem. Charts, accounting, provider actions, partial-refund accounting, and generic attention resolution stay out of scope.
