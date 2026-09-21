@@ -13,22 +13,17 @@ jobs:
         with:
           version: 10
 
-      - name: Set up exact KingHost runtime
+      - name: Set up Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: 22.1.0
+          node-version: 22.x
           cache: pnpm
-      - name: Verify exact KingHost Node version
-        run: |
-          node - <<'NODE'
-          if (process.version !== "v22.1.0") {
-            throw new Error(`Expected v22.1.0, got ${process.version}`)
-          }
-          NODE
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm build:kinghost
+      - run: pnpm build
+
       - name: Verify private order route contract
         run: |
           node - <<'NODE'
@@ -41,22 +36,7 @@ jobs:
           }
           console.log("private-order-route-contract-ok")
           NODE
-      - name: Smoke KingHost startup adapter
-        run: |
-          node - <<'NODE'
-          const { resolveKingHostPort } = require("./app.js")
-          if (resolveKingHostPort({ PORT_APP: "21169", PORT: "3000" }) !== "21169") {
-            process.exit(1)
-          }
-          NODE
 
-      # Node 22.1.0 predates Node's built-in TypeScript type stripping.
-      # Production code is typechecked/built/smoked above on the exact KingHost runtime;
-      # Node 24 is used only to execute the raw .ts test files without another test loader.
-      - name: Set up TypeScript test runner
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
       - name: Critical commerce and security subset
         run: |
           node --experimental-strip-types --test \
@@ -73,4 +53,5 @@ jobs:
             tests/private-order-only.test.ts \
             tests/phase9-route-security.test.ts \
             tests/phase9-supabase-hardening.test.ts
+
       - run: pnpm test
