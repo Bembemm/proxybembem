@@ -6,7 +6,7 @@ async function source(path: string) {
   return readFile(new URL(path, import.meta.url), "utf8")
 }
 
-test("legacy bundled product image exists and bypasses Next image optimization", async () => {
+test("product images use Next optimization instead of bypassing it", async () => {
   await access(new URL("../public/products/deck-commander.png", import.meta.url))
 
   const files = [
@@ -20,12 +20,17 @@ test("legacy bundled product image exists and bypasses Next image optimization",
 
   for (const path of files) {
     const text = await source(path)
-    assert.match(
+    assert.match(text, /<Image\b/, `${path} must render product images with next/image`)
+    assert.doesNotMatch(
       text,
       /unoptimized=\{(?:item\.)?product\.image\.startsWith\(["']\/["']\)\}/,
-      `${path} must serve bundled product images directly`,
+      `${path} must not bypass Next image optimization`,
     )
   }
+
+  const config = await source("../next.config.mjs")
+  assert.match(config, /minimumCacheTTL:\s*86_400/)
+  assert.match(config, /\/storage\/v1\/object\/public\/product-images\/\*\*/)
 })
 
 test("storefront explicitly opts out of browser forced dark color schemes", async () => {
