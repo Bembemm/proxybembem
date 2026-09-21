@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { AccountPage } from "@/components/account/account-page"
+import { PaymentReturnReconciler } from "@/components/account/payment-return-reconciler"
 import { buildWhatsAppOrderUrl } from "@/lib/checkout"
 import {
   canResumeCheckout,
