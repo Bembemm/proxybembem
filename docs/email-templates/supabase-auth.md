@@ -37,7 +37,7 @@ Confirme seu e-mail — ProxyBembem
             </tr>
             <tr>
               <td align="center" style="padding:24px 28px 34px;">
-                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:15px;line-height:1;font-weight:700;padding:15px 24px;border-radius:10px;border:1px solid #8b5cf6;">Confirmar meu e-mail</a>
+                <a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email" style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:15px;line-height:1;font-weight:700;padding:15px 24px;border-radius:10px;border:1px solid #8b5cf6;">Confirmar meu e-mail</a>
               </td>
             </tr>
             <tr>
@@ -87,7 +87,7 @@ Confirme seu novo e-mail — ProxyBembem
             </tr>
             <tr>
               <td align="center" style="padding:24px 28px 34px;">
-                <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:15px;line-height:1;font-weight:700;padding:15px 24px;border-radius:10px;border:1px solid #8b5cf6;">Confirmar novo e-mail</a>
+                <a href="{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=email_change" style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-family:Arial,sans-serif;font-size:15px;line-height:1;font-weight:700;padding:15px 24px;border-radius:10px;border:1px solid #8b5cf6;">Confirmar novo e-mail</a>
               </td>
             </tr>
             <tr>
