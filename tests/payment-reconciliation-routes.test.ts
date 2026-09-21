@@ -60,7 +60,7 @@ test("Mercado Pago return UI retries verification without trusting browser payme
   const admin = await source("../app/admin/pedidos/[id]/page.tsx")
 
   assert.match(customer, /PaymentReturnReconciler/)
-  assert.match(customer, /MERCADO_PAGO_RETURN_KEYS/)
+  assert.match(customer, /MERCADO_PAGO_RETURN_SIGNAL_KEYS/)
   assert.doesNotMatch(customer, /Já paguei — atualizar status/)
   assert.match(reconciler, /method:\s*["']POST["']/)
   assert.match(reconciler, /RETRY_DELAYS_MS/)
