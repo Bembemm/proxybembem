@@ -74,6 +74,7 @@ export function ProductImageField({
         .from(PRODUCT_IMAGE_BUCKET)
         .uploadToSignedUrl(authorization.path, authorization.token, file, {
           contentType: file.type,
+          cacheControl: "31536000",
           upsert: false,
         })
       if (uploadError) throw new Error("upload_failed")
@@ -115,7 +116,7 @@ export function ProductImageField({
               className="sr-only"
             />
           </label>
-          <p className="text-xs text-slate-500">JPEG, PNG ou WebP, até 8 MiB. O novo arquivo só passa a fazer parte do produto depois de salvar.</p>
+          <p className="text-xs text-slate-500">JPEG, PNG ou WebP, até 8 MiB. Prefira WebP para arquivos menores. O novo arquivo só passa a fazer parte do produto depois de salvar.</p>
           {imagePath ? <p className="break-all text-xs text-slate-400">{imagePath}</p> : null}
         </div>
       </div>
