@@ -29,7 +29,25 @@ const TIMELINE_LABELS: Record<CustomerOrderTimelineEntry["kind"], string> = {
   canceled: "Cancelado",
 }
 
+type PaymentReturnSearchParams = Promise<
+  Record<string, string | string[] | undefined>
+>
 
+const MERCADO_PAGO_RETURN_KEYS = [
+  "collection_id",
+  "collection_status",
+  "payment_id",
+  "status",
+  "external_reference",
+  "preference_id",
+  "merchant_order_id",
+] as const
+
+function hasMercadoPagoReturn(
+  searchParams: Record<string, string | string[] | undefined>,
+) {
+  return MERCADO_PAGO_RETURN_KEYS.some((key) => searchParams[key] !== undefined)
+}
 
 function formatMoney(cents: number | null) {
   if (cents === null) return "—"
@@ -41,10 +59,13 @@ function formatMoney(cents: number | null) {
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: PaymentReturnSearchParams
 }) {
   const { id } = await params
+  const returnParams = await searchParams
   await requireCustomerPageAccess(`/minha-conta/pedidos/${id}`)
   let order: Awaited<ReturnType<typeof getOwnOrderById>>
   try {
@@ -85,6 +106,11 @@ export default async function OrderDetailPage({
   const checkoutExpired = isCheckoutExpired(order)
   const checkoutResumable = canResumeCheckout(order)
   const checkoutExpiration = checkoutExpiresAt(order.createdAt)
+  const returnedFromMercadoPago = hasMercadoPagoReturn(returnParams)
+  const shouldReconcileReturn =
+    returnedFromMercadoPago &&
+    order.paymentStatus !== "approved" &&
+    order.fulfillmentStatus === "awaiting_payment"
 
   const storeSettings = await getPublicStoreSettings()
   const supportUrl = buildWhatsAppOrderUrl(
@@ -130,21 +156,29 @@ Vou mandar abaixo a lista/cartas, artes e observações do pedido.`,
       ) : undefined}
     >
       <div className="space-y-6">
-        {checkoutResumable ? (
+        {shouldReconcileReturn ? (
+          <PaymentReturnReconciler
+            orderId={order.id}
+            resumeHref={`/api/orders/${order.id}/resume-payment`}
+          />
+        ) : checkoutResumable ? (
           <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-amber-800">
               Pagamento pendente
             </p>
-            <h2 className="mt-2 text-xl font-bold text-slate-950">Finalize o pagamento deste pedido</h2>
+            <h2 className="mt-2 text-xl font-bold text-slate-950">
+              Aguardando confirmação do pagamento
+            </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
-              O pedido já foi reservado, mas o pagamento ainda não foi concluído. Você pode continuar
-              no Mercado Pago até {checkoutExpiration.toLocaleString("pt-BR")}.
+              Se você já realizou o pagamento no Mercado Pago, não pague novamente.
+              A confirmação pode levar alguns instantes. Caso ainda não tenha concluído,
+              você pode voltar ao checkout até {checkoutExpiration.toLocaleString("pt-BR")}.
             </p>
             <a
               href={`/api/orders/${order.id}/resume-payment`}
               className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-violet-600 px-5 py-3 text-center text-sm font-bold text-white shadow-sm transition hover:bg-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 sm:w-auto"
             >
-              Continuar pagamento
+              Ir para o Mercado Pago
             </a>
           </section>
         ) : checkoutExpired ? (
