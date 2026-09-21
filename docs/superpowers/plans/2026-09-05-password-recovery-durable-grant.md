@@ -6,7 +6,7 @@
 
 **Architecture:** Issue an application-owned 256-bit recovery token after server-side Supabase account resolution, store only an HMAC-backed grant in Postgres, and use a short atomic lease plus server-only `auth.admin.updateUserById` on final submit. The browser keeps only the existing HttpOnly recovery cookie; successful completion consumes the grant.
 
-**Tech Stack:** Next.js 16.3.3, Node.js 22.1.0, TypeScript, `@supabase/supabase-js` 2.112.4, PostgreSQL/Supabase RPC, Resend, Node test runner.
+**Tech Stack:** Next.js 16.3.3, Node.js 22.x, TypeScript, `@supabase/supabase-js` 2.112.4, PostgreSQL/Supabase RPC, Resend, Node test runner.
 
 **Spec:** `docs/superpowers/specs/2026-09-05-password-recovery-durable-grant-design.md`
 
@@ -18,7 +18,7 @@
 - Never log email, password, raw recovery token, HMAC grant key, cookies, access/refresh tokens, Supabase secret or Resend key.
 - Recovery responses controlled by the app remain `Cache-Control: private, no-store`.
 - Recovery cookie remains host-only, HttpOnly, SameSite=Lax, Path=/, Secure in production.
-- Server runtime remains exact Node 22.1.0 on KingHost.
+- Server runtime remains exact Node.js 22.x on Vercel.
 
 ---
 
@@ -182,7 +182,7 @@ Commit message: `fix: make password recovery submit retry-safe`.
 **Files:**
 - Modify: `components/account/password-form.tsx`
 - Modify: `docs/superpowers/CURRENT_STATUS.md`
-- Modify: `docs/deployment/kinghost.md` only if migration/deploy order needs clarification.
+- Modify: `docs/deployment/vercel.md` only if migration/deploy order needs clarification.
 - Test: existing account/recovery tests.
 
 **Interfaces:**
@@ -194,11 +194,11 @@ Keep the existing JSON message behavior and add explicit fallback copy for `409`
 
 - [ ] **Step 2: Update CURRENT_STATUS**
 
-Record the production failure evidence, superseding durable-grant design, migration filename/status, CI evidence, and exact remaining KingHost acceptance steps. Do not mark Phase 3 Task 14 complete until end-to-end login succeeds.
+Record the production failure evidence, superseding durable-grant design, migration filename/status, CI evidence, and exact remaining Vercel acceptance steps. Do not mark Phase 3 Task 14 complete until end-to-end login succeeds.
 
 - [ ] **Step 3: Run full verification**
 
-Run exact Node 22.1.0 CI path: frozen install, typecheck, `build:kinghost`, startup smoke, full tests.
+Run exact Node.js 22.x CI path: frozen install, typecheck, `build`, startup smoke, full tests.
 
 - [ ] **Step 4: Commit**
 
@@ -225,18 +225,18 @@ Verify table exists, RLS is enabled, direct privileges are absent for browser ro
 
 - [ ] **Step 3: Deploy only after migration + CI green**
 
-KingHost commands:
+Vercel commands:
 
 ```bash
 cd ~/apps_nodejs/proxybembem
 git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile
-NODE_ENV=production npx pnpm@10 deploy:kinghost
+NODE_ENV=production npx pnpm@10 build
 git rev-parse HEAD
 ```
 
-Restart through the KingHost panel/process authority.
+Restart through the Vercel dashboard/process authority.
 
 - [ ] **Step 4: End-to-end acceptance**
 

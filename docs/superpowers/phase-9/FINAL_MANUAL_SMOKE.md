@@ -73,7 +73,7 @@ Result: **PASS — owner-reported on 2026-09-15**. Phase 8 may now be recorded a
 
 **Status: OWNER ACCEPTED / PRODUCTION ACCEPTED / FINAL CANDIDATE DEPLOYED**
 
-The exact final runtime candidate was deployed to KingHost and restarted through the KingHost panel before this smoke. The owner then reported all of the following as passing:
+The exact final runtime candidate was deployed to Vercel and restarted through the Vercel dashboard before this smoke. The owner then reported all of the following as passing:
 
 - [x] Public home/catalog responds normally over HTTPS.
 - [x] Customer sign-in works and a customer can view only their own private order surfaces.
@@ -94,10 +94,10 @@ Result: **PASS — owner-reported on 2026-09-15**. Phase 9 may now be recorded a
 
 These operator checks were completed before the authenticated acceptance above.
 
-**Observed 2026-09-15 from owner-provided KingHost terminal output:**
+**Observed 2026-09-15 from owner-provided production terminal output:**
 
 - deployed runtime SHA: `cdb3f863336237ab49f9b91cca20f0d876aa75c7`;
-- restart: owner reported completion through the KingHost panel;
+- restart: owner reported completion through the Vercel dashboard;
 - `git rev-parse HEAD`: exact candidate SHA above;
 - first post-build `git status -sb`: detached HEAD plus only `M next-env.d.ts`;
 - `git diff -- next-env.d.ts` showed only Next.js-generated type-reference changes from `.next/dev/types/routes.d.ts` to `.next/types/routes.d.ts` plus `.next/types/root-params.d.ts`;

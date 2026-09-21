@@ -6,7 +6,7 @@
 
 **Architecture:** The public catalog, cart, and freight quote stay unchanged. `POST /api/checkout` becomes the authoritative authentication boundary and passes a required `CustomerIdentity` into the checkout core. Checkout attempt reuse is ownership-aware. Orders still receive the legacy `public_token` internally while the existing schema requires it, but application navigation no longer exposes or depends on it. Mercado Pago back URLs use the reserved order UUID under `/minha-conta/pedidos/[id]`. The old `/pedido/[token]` page and guest claim surfaces are deleted. All account order detail access continues through the existing owner-filtered customer repository.
 
-**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase Auth/Postgres, Mercado Pago Checkout Pro, Node.js 22.1.0, pnpm 10, KingHost standalone deployment.
+**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase Auth/Postgres, Mercado Pago Checkout Pro, Node.js 22.x, pnpm 10, Vercel native deployment.
 
 **Spec:** `docs/superpowers/specs/2026-09-06-authenticated-checkout-private-orders-design.md`
 
@@ -20,7 +20,7 @@
 - Preserve cart contents across login using the existing `proxybembem-cart-v1` localStorage persistence; do not put cart contents into URLs, cookies, or auth metadata.
 - Keep checkout/auth/private responses non-cacheable.
 - Use TDD for every behavior change: write/modify the focused test, observe RED, implement the minimum change, observe GREEN, then run the adjacent regression set.
-- Do not mark Task 14 complete until KingHost production acceptance verifies private ownership with two accounts.
+- Do not mark Task 14 complete until Vercel production acceptance verifies private ownership with two accounts.
 
 ---
 
@@ -541,7 +541,7 @@ git commit -m "refactor: remove guest order flow"
 **Files:**
 - Modify: `docs/superpowers/CURRENT_STATUS.md`
 
-- [ ] **Step 1: Verify the exact KingHost runtime locally/CI.**
+- [ ] **Step 1: Verify the exact Vercel runtime locally/CI.**
 
 ```bash
 node --version
@@ -557,7 +557,7 @@ v22.1.0
 
 ```bash
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 ```
 
 Expected: both exit 0.
@@ -588,7 +588,7 @@ Expected: zero failures.
 
 Record:
 
-- signup confirmation/login real E2E passed on KingHost;
+- signup confirmation/login real E2E passed on Vercel;
 - authenticated checkout/private-order architecture implemented in code;
 - public order/guest claim surfaces removed from active application;
 - `public_token`/claim RPC remain legacy database schema pending pre-launch cleanup;
@@ -604,23 +604,23 @@ git commit -m "docs: record authenticated checkout acceptance state"
 
 - [ ] **Step 7: Confirm GitHub CI passes on the final HEAD before deployment.**
 
-Required CI evidence: exact Node 22.1.0, frozen install, typecheck, KingHost build, startup smoke, and `pnpm test` all successful.
+Required CI evidence: exact Node.js 22.x, frozen install, typecheck, Vercel build, startup smoke, and `pnpm test` all successful.
 
 ---
 
-## Task 7: Deploy to KingHost and complete real acceptance without a real charge
+## Task 7: Deploy to Vercel and complete real acceptance without a real charge
 
 **Files:** No code changes unless production evidence exposes a defect.
 
-- [ ] **Step 1: Deploy the final verified branch HEAD on KingHost.**
+- [ ] **Step 1: Deploy the final verified branch HEAD on Vercel.**
 
 Use the normal single-line SSH command:
 
 ```bash
-cd ~/apps_nodejs/proxybembem && git pull --ff-only && nvm use && npx pnpm@10 install --frozen-lockfile && NODE_ENV=production npx pnpm@10 deploy:kinghost && git rev-parse HEAD
+cd ~/apps_nodejs/proxybembem && git pull --ff-only && nvm use && npx pnpm@10 install --frozen-lockfile && NODE_ENV=production npx pnpm@10 build && git rev-parse HEAD
 ```
 
-Restart `proxybembem` from the KingHost process authority/panel after deployment.
+Restart `proxybembem` from the Vercel process authority/panel after deployment.
 
 - [ ] **Step 2: Verify anonymous checkout behavior.**
 

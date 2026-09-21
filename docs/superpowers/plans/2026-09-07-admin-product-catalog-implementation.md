@@ -6,7 +6,7 @@
 
 **Architecture:** Supabase `public.products` is the only runtime catalog authority. Public reads return only `published` rows; checkout resolves product IDs and quantities against current server-side catalog data; admin mutations reuse the existing MFA + admin-session gate and use optimistic concurrency. Product images use a public-read/private-write Supabase Storage bucket with admin-authorized signed uploads. The rollout is staged so catalog cutover is proven before product-management UI, and product-management is proven before the global admin layout redesign.
 
-**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase JS 2.112.4 / Supabase SSR 0.12.5, PostgreSQL 17, Tailwind CSS 4, Node 22.1.0, KingHost standalone deployment.
+**Tech Stack:** Next.js 16.3.3, React 19, TypeScript 5.7.3, Supabase JS 2.112.4 / Supabase SSR 0.12.5, PostgreSQL 17, Tailwind CSS 4, Node.js 22.x, Vercel native deployment.
 
 **Spec:** `docs/superpowers/specs/2026-09-07-admin-product-catalog-design.md`
 
@@ -29,7 +29,7 @@
 - The static `data/products.ts` catalog stays temporarily as rollback evidence during Stage 1 but must not remain a runtime fallback after cutover acceptance.
 - Existing admin login, MFA, session expiry, logout, and no-store/cache-security semantics must not change.
 - New admin styling keeps the existing violet/slate ProxyBembem identity.
-- Node version remains exactly `22.1.0`; package manager remains pnpm 10; KingHost build remains `pnpm build:kinghost`.
+- Node version remains exactly `22.1.0`; package manager remains pnpm 10; Vercel build remains `pnpm build`.
 - Every implementation task follows RED → verify exact failure → minimal GREEN → focused verification → commit.
 - Do not reapply previously applied migrations. The product-catalog migration is a new migration applied once.
 
@@ -352,7 +352,7 @@ Create `GET /api/catalog` returning only published products. On repository failu
 ```bash
 pnpm test -- tests/storefront-product-catalog.test.ts tests/home-storefront-merge.test.ts
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 ```
 
 Expected: PASS.
@@ -444,20 +444,20 @@ nvm use
 npx pnpm@10 install --frozen-lockfile
 npx pnpm@10 test
 npx pnpm@10 typecheck
-NODE_ENV=production npx pnpm@10 build:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Also run the existing private-order route gate and KingHost startup smoke command used by CI.
+Also run the existing private-order route gate and Vercel runtime smoke command used by CI.
 
-Expected: all tests pass, typecheck passes, KingHost build passes, route gate passes, startup smoke passes.
+Expected: all tests pass, typecheck passes, Vercel build passes, route gate passes, startup smoke passes.
 
 - [ ] **Step 2: Re-run live Supabase catalog validation**
 
 Verify rows `1` and `2`, statuses, prices, and Storage bucket posture. Verify no unexpected Supabase advisor regressions.
 
-- [ ] **Step 3: Deploy Stage 1 to KingHost and perform owner acceptance**
+- [ ] **Step 3: Deploy Stage 1 to Vercel and perform owner acceptance**
 
-Use the canonical KingHost runbook. Validate without completing a paid Mercado Pago transaction:
+Use the canonical Vercel runbook. Validate without completing a paid Mercado Pago transaction:
 
 - `/produtos` shows both current products with unchanged content/prices.
 - Home featured product still renders correctly.
@@ -809,7 +809,7 @@ Archive uses an explicit confirmation dialog. Reactivation goes to draft. Publis
 ```bash
 pnpm test -- tests/admin-product-editor-ui.test.ts tests/admin-products-ui.test.ts tests/admin-product-routes.test.ts tests/admin-product-images.test.ts
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 ```
 
 Expected: PASS.
@@ -831,14 +831,14 @@ git commit -m "feat: add admin product editor"
 ```bash
 npx pnpm@10 test
 npx pnpm@10 typecheck
-NODE_ENV=production npx pnpm@10 build:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Also run existing admin auth/cache regression tests, private-order route gate, and KingHost startup smoke.
+Also run existing admin auth/cache regression tests, private-order route gate, and Vercel runtime smoke.
 
-- [ ] **Step 2: Deploy exact Stage 2 SHA to KingHost**
+- [ ] **Step 2: Deploy exact Stage 2 SHA to Vercel**
 
-Use the canonical KingHost deployment commands and restart from the KingHost panel.
+Use the canonical Vercel deployment commands and restart from the Vercel dashboard.
 
 - [ ] **Step 3: Perform safe production acceptance with a test/draft product**
 
@@ -1003,10 +1003,10 @@ nvm use
 npx pnpm@10 install --frozen-lockfile
 npx pnpm@10 test
 npx pnpm@10 typecheck
-NODE_ENV=production npx pnpm@10 build:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Also run the private-order route gate and KingHost startup smoke. Record exact test count and exact SHA.
+Also run the private-order route gate and Vercel runtime smoke. Record exact test count and exact SHA.
 
 - [ ] **Step 2: Re-run Supabase validation/advisors**
 
@@ -1047,7 +1047,7 @@ npx pnpm@10 test
 npx pnpm@10 typecheck
 ```
 
-If any runtime file changed during documentation reconciliation, rerun the full KingHost build and smoke gates too.
+If any runtime file changed during documentation reconciliation, rerun the full Vercel build and smoke gates too.
 
 - [ ] **Step 6: Commit final documentation**
 

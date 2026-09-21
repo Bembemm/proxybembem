@@ -6,7 +6,7 @@
 
 **Architecture:** The reset email points to `/auth/confirm?token_hash=...&type=recovery`. `GET /auth/confirm` validates only the shape/type, stores the token hash in a short-lived HttpOnly recovery cookie, strips the secret from the URL, and redirects to `/redefinir-senha` without calling Supabase. The final password POST calls `verifyOtp({ token_hash, type: "recovery" })`, updates the password, preserves a retry-capable verified recovery session if update fails after OTP consumption, and globally signs out after success.
 
-**Tech Stack:** Next.js 16 App Router, React 19, TypeScript 5.7, `@supabase/ssr` 0.12.5, `@supabase/supabase-js` 2.112.4, Node 22.1.0 built-in test runner.
+**Tech Stack:** Next.js 16 App Router, React 19, TypeScript 5.7, `@supabase/ssr` 0.12.5, `@supabase/supabase-js` 2.112.4, Node.js 22.x built-in test runner.
 
 **Spec:** `docs/superpowers/specs/2026-09-05-password-recovery-token-hash-design.md`
 
@@ -443,11 +443,11 @@ git commit -m "fix: verify recovery token on password submit"
 
 ---
 
-### Task 4: Verify KingHost candidate and checkpoint the manual Supabase template gate
+### Task 4: Verify Vercel candidate and checkpoint the manual Supabase template gate
 
 **Files:**
 - Modify: `docs/superpowers/CURRENT_STATUS.md`
-- Reference: `docs/deployment/kinghost.md`
+- Reference: `docs/deployment/vercel.md`
 - Reference: `docs/superpowers/specs/2026-09-05-password-recovery-token-hash-design.md`
 
 **Interfaces:**
@@ -459,11 +459,11 @@ git commit -m "fix: verify recovery token on password submit"
 nvm use
 npx pnpm@10 install --frozen-lockfile
 npx pnpm@10 typecheck
-NODE_ENV=production npx pnpm@10 build:kinghost
+NODE_ENV=production npx pnpm@10 build
 npx pnpm@10 test
 ```
 
-Expected: Node `22.1.0`, typecheck PASS, KingHost build/standalone preparation PASS, full test suite PASS.
+Expected: Node `22.1.0`, typecheck PASS, Vercel build/standalone preparation PASS, full test suite PASS.
 
 - [ ] **Step 2: Confirm no recovery secret can enter logs**
 
@@ -503,7 +503,7 @@ git add docs/superpowers/CURRENT_STATUS.md
 git commit -m "docs: checkpoint token-hash recovery"
 ```
 
-- [ ] **Step 5: Deploy to KingHost only after CI is green**
+- [ ] **Step 5: Deploy to Vercel only after CI is green**
 
 Use the existing runbook commands:
 
@@ -512,10 +512,10 @@ cd ~/apps_nodejs/proxybembem
 git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile
-NODE_ENV=production npx pnpm@10 deploy:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Restart through the KingHost panel, not by creating a second process manually.
+Restart through the Vercel dashboard, not by creating a second process manually.
 
 - [ ] **Step 6: Change the Supabase Reset Password template before requesting another email**
 
@@ -542,7 +542,7 @@ After the email limit is available:
 5. submit a new password once;
 6. verify login succeeds with the new password and the old password fails;
 7. verify the same recovery link cannot reset the password again after the successful change;
-8. review KingHost and Supabase Auth logs for errors without exposing secrets.
+8. review Vercel and Supabase Auth logs for errors without exposing secrets.
 
 - [ ] **Step 8: Continue the remaining Task 14 acceptance only after recovery passes**
 
