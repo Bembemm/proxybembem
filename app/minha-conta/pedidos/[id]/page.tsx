@@ -34,20 +34,17 @@ type PaymentReturnSearchParams = Promise<
   Record<string, string | string[] | undefined>
 >
 
-const MERCADO_PAGO_RETURN_KEYS = [
-  "collection_id",
+const MERCADO_PAGO_RETURN_SIGNAL_KEYS = [
   "collection_status",
-  "payment_id",
   "status",
-  "external_reference",
-  "preference_id",
-  "merchant_order_id",
 ] as const
 
 function hasMercadoPagoReturn(
   searchParams: Record<string, string | string[] | undefined>,
 ) {
-  return MERCADO_PAGO_RETURN_KEYS.some((key) => searchParams[key] !== undefined)
+  return MERCADO_PAGO_RETURN_SIGNAL_KEYS.some(
+    (key) => searchParams[key] !== undefined,
+  )
 }
 
 function formatMoney(cents: number | null) {
