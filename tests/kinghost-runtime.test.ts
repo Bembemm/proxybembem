@@ -12,32 +12,32 @@ const kingHostRuntime = require("../app.js") as {
 
 const { resolveKingHostPort } = kingHostRuntime
 
-test("KingHost runtime accepts the scoped port variable generated for proxybembem/app.js", () => {
+test("legacy KingHost runtime accepts the scoped port variable", () => {
   assert.equal(
     resolveKingHostPort({ PORT_PROXYBEMBEM_APP: "21169", PORT: "3000" }),
     "21169",
   )
 })
 
-test("KingHost runtime prefers PORT_APP without hard-coding the allocated port", () => {
+test("legacy KingHost runtime prefers PORT_APP without hard-coding the allocated port", () => {
   assert.equal(resolveKingHostPort({ PORT_APP: "21169", PORT: "3000" }), "21169")
   assert.equal(resolveKingHostPort({ PORT: "4321" }), "4321")
   assert.equal(resolveKingHostPort({}), "3000")
 })
 
-test("KingHost runtime rejects invalid ports", () => {
+test("legacy KingHost runtime rejects invalid ports", () => {
   assert.throws(() => resolveKingHostPort({ PORT_APP: "abc" }), /valid port/i)
   assert.throws(() => resolveKingHostPort({ PORT_APP: "70000" }), /valid port/i)
 })
 
-test("KingHost runtime ignores the machine HOSTNAME and binds all interfaces", () => {
+test("legacy KingHost runtime binds all interfaces", () => {
   assert.equal(
     kingHostRuntime.resolveKingHostHostname?.({ HOSTNAME: "10.19.0.157" }),
     "0.0.0.0",
   )
 })
 
-test("Next config emits standalone output", async () => {
+test("Vercel production config does not force standalone output", async () => {
   const source = await readFile(new URL("../next.config.mjs", import.meta.url), "utf8")
-  assert.match(source, /output:\s*["']standalone["']/)
+  assert.doesNotMatch(source, /output:\s*["']standalone["']/)
 })

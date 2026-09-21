@@ -3,13 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "22.1.0"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:kinghost": "next build --webpack && node scripts/kinghost/prepare-standalone.mjs",
-    "deploy:kinghost": "pnpm build:kinghost && node scripts/kinghost/publish-assets.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",

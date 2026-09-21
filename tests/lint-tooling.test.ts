@@ -30,15 +30,16 @@ test("flat config enables Next core web vitals and TypeScript rules", async () =
   assert.match(source, /next-env\.d\.ts/)
 })
 
-test("CI runs lint then typecheck on the exact KingHost Node runtime before building", async () => {
+test("CI runs lint then typecheck on Node 22 before the production build", async () => {
   const source = await readFile(CI_WORKFLOW, "utf8")
   const lint = source.indexOf("pnpm lint")
   const typecheck = source.indexOf("pnpm typecheck")
-  const build = source.indexOf("pnpm build:kinghost")
+  const build = source.indexOf("pnpm build")
 
+  assert.match(source, /node-version:\s*22\.x/)
   assert.ok(lint >= 0, "lint step missing")
   assert.ok(typecheck > lint, "typecheck must run after lint")
-  assert.ok(build > typecheck, "KingHost build must run after typecheck")
+  assert.ok(build > typecheck, "production build must run after typecheck")
 })
 
 test("CI runs the explicit critical commerce and security subset before the full suite", async () => {
