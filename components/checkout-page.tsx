@@ -688,7 +688,6 @@ export function CheckoutPage({
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white">
                       <Image
                         src={item.product.image}
-                        unoptimized={item.product.image.startsWith("/")}
                         alt={item.product.title}
                         fill
                         sizes="64px"
