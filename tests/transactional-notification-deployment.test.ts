@@ -13,26 +13,28 @@ test("environment example includes server-only Resend webhook signing secret", a
   assert.doesNotMatch(text, /^NEXT_PUBLIC_RESEND_/m)
 })
 
-test("KingHost docs define the real five-minute GET cron contract with the existing maintenance secret", async () => {
-  const text = await source("docs/deployment/kinghost.md")
-  assert.match(text, /GET \/api\/internal\/notifications\/process/)
-  assert.match(text, /também aceita POST/i)
-  assert.match(text, /X-CRON-AUTH: <CRON_SECRET>/)
-  assert.match(text, /a cada 5 minutos/i)
-  assert.match(text, /https:\/\/www\.proxybembem\.com\.br\/api\/internal\/notifications\/process/)
+test("Vercel configuration defines the real five-minute notification cron", async () => {
+  const [config, runbook] = await Promise.all([
+    source("vercel.json"),
+    source("docs/deployment/vercel.md"),
+  ])
+
+  assert.match(config, /\/api\/internal\/notifications\/process/)
+  assert.match(config, /\*\/5 \* \* \* \*/)
+  assert.match(runbook, /Authorization: Bearer <CRON_SECRET>/)
+  assert.match(runbook, /every five minutes/i)
 })
 
-test("KingHost docs define the real signed Resend webhook and explicitly disable open/click tracking", async () => {
-  const text = await source("docs/deployment/kinghost.md")
-  assert.match(text, /RESEND_WEBHOOK_SECRET/)
+test("Vercel runbook defines the signed Resend webhook and disables open/click tracking", async () => {
+  const text = await source("docs/deployment/vercel.md")
+  assert.match(text, /RESEND_WEBHOOK_SECRET|Resend webhook/i)
   assert.match(text, /https:\/\/www\.proxybembem\.com\.br\/api\/webhooks\/resend/)
   assert.match(text, /email\.sent/)
   assert.match(text, /email\.delivered/)
   assert.match(text, /email\.bounced/)
   assert.match(text, /email\.failed/)
   assert.match(text, /email\.suppressed/)
-  assert.match(text, /não.*email\.opened/i)
-  assert.match(text, /não.*email\.clicked/i)
-  assert.match(text, /Open Tracking.*(?:OFF|desativad[oa])/i)
-  assert.match(text, /Click Tracking.*(?:OFF|desativad[oa])/i)
+  assert.match(text, /Do not subscribe to `email\.opened` or `email\.clicked`/i)
+  assert.match(text, /Open Tracking.*OFF/i)
+  assert.match(text, /Click Tracking.*OFF/i)
 })
