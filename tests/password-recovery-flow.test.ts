@@ -41,6 +41,9 @@ test("recovery request sends an application-owned scanner-safe link through the 
   assert.doesNotMatch(resetRoute, /resetPasswordForEmail/)
 
   assert.match(emailSender, /sendResendEmail/)
+  assert.match(emailSender, /renderBrandedEmailHtml/)
+  assert.match(emailSender, /Segurança da conta/)
+  assert.match(emailSender, /Redefinir senha/)
   assert.match(emailSender, /recoveryUrl/)
   assert.match(resendClient, /https:\/\/api\.resend\.com\/emails/)
   assert.match(resendClient, /Authorization/)

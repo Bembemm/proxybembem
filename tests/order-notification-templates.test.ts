@@ -121,11 +121,33 @@ test("renders all eight approved subjects with HTML and text plus one authentica
     )
     assert.equal(rendered.subject, expectedSubjects.get(type))
     assert.match(rendered.html, /ProxyBembem/)
+    assert.match(rendered.html, /#7c3aed|#8b5cf6/i)
+    assert.match(rendered.html, /border-radius:18px/)
     assert.match(rendered.text, /ProxyBembem/)
     assert.match(rendered.html, new RegExp(orderId))
     assert.match(rendered.text, new RegExp(orderId))
     assert.match(rendered.html, /Ver meu pedido|Acompanhar meu pedido/)
   }
+})
+
+test("accepts blank optional address complement from persisted orders", () => {
+  const payload = buildOrderNotificationPayload(
+    "payment_approved",
+    snapshot({
+      address: {
+        street: "Rua Exemplo",
+        number: "10",
+        complement: "",
+        neighborhood: "Centro",
+        city: "Astorga",
+        state: "PR",
+        cep: "86730000",
+      },
+    }) as never,
+  )
+
+  assert.equal(payload.address.complement, null)
+  assert.doesNotThrow(() => renderOrderNotification(payload))
 })
 
 test("payment-approved email includes item quantities, subtotal, shipping, total and delivery address", () => {
@@ -153,6 +175,8 @@ test("shipped email includes available carrier, service and tracking without cla
   assert.match(rendered.text, /SEDEX/)
   assert.match(rendered.text, /AB123456789BR/)
   assert.match(rendered.html, /Acompanhar meu pedido/)
+  assert.match(rendered.text, /aplicativo ou site oficial dos Correios/i)
+  assert.match(rendered.html, /aplicativo ou site oficial dos Correios/i)
   assert.doesNotMatch(rendered.text, /etiqueta comprada|etiqueta gerada/i)
 })
 

@@ -1,3 +1,12 @@
+import {
+  EMAIL_MUTED_TEXT,
+  EMAIL_PRIMARY,
+  EMAIL_TEXT,
+  escapeEmailHtml,
+  renderBrandedEmailHtml,
+  renderEmailPanel,
+} from "./email-layout.ts"
+
 export const ORDER_NOTIFICATION_TYPES = [
   "payment_approved",
   "production_started",
@@ -89,7 +98,13 @@ function requiredText(value: unknown, maxLength: number, message: string) {
 }
 
 function optionalText(value: unknown, maxLength: number, message: string) {
-  if (value === null || value === undefined) return null
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === "string" && value.trim().length === 0)
+  ) {
+    return null
+  }
   return requiredText(value, maxLength, message)
 }
 
@@ -266,15 +281,6 @@ function parsePayload(value: unknown): OrderNotificationPayload {
   }
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;")
-}
-
 function formatBrl(centsValue: number) {
   const whole = Math.floor(centsValue / 100).toLocaleString("pt-BR")
   const fraction = String(centsValue % 100).padStart(2, "0")
@@ -378,27 +384,56 @@ function paymentHtml(payload: OrderNotificationPayload) {
   const items = payload.items
     .map(
       (item) =>
-        `<li>${escapeHtml(item.title)} — ${item.quantity} x ${escapeHtml(formatBrl(item.unitPriceCents))}</li>`,
+        `<tr><td style="padding:6px 0;color:${EMAIL_MUTED_TEXT};">${escapeEmailHtml(item.title)} <span style="color:${EMAIL_TEXT};font-weight:700;">× ${item.quantity}</span></td><td align="right" style="padding:6px 0;color:${EMAIL_TEXT};font-weight:700;white-space:nowrap;">${escapeEmailHtml(formatBrl(item.unitPriceCents * item.quantity))}</td></tr>`,
     )
     .join("")
   const address = addressLines(payload.address)
-    .map((line) => escapeHtml(line))
+    .map((line) => escapeEmailHtml(line))
     .join("<br>")
-  return `<h3>Resumo do pedido</h3><ul>${items}</ul><p><strong>Subtotal:</strong> ${escapeHtml(formatBrl(payload.subtotalCents))}<br><strong>Frete:</strong> ${escapeHtml(formatBrl(payload.shippingCents ?? 0))}<br><strong>Total pago:</strong> ${escapeHtml(formatBrl(payload.totalCents))}</p><h3>Endereço de entrega</h3><p>${address}</p>`
+
+  return [
+    renderEmailPanel(
+      `<div style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:${EMAIL_PRIMARY};font-weight:700;margin-bottom:8px;">Resumo do pedido</div>` +
+        `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;font-family:Arial,sans-serif;font-size:14px;">${items}</table>` +
+        `<div style="height:1px;background:#332641;margin:12px 0;"></div>` +
+        `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;font-family:Arial,sans-serif;font-size:14px;"><tr><td style="padding:4px 0;color:${EMAIL_MUTED_TEXT};">Subtotal</td><td align="right" style="padding:4px 0;color:${EMAIL_TEXT};">${escapeEmailHtml(formatBrl(payload.subtotalCents))}</td></tr><tr><td style="padding:4px 0;color:${EMAIL_MUTED_TEXT};">Frete</td><td align="right" style="padding:4px 0;color:${EMAIL_TEXT};">${escapeEmailHtml(formatBrl(payload.shippingCents ?? 0))}</td></tr><tr><td style="padding:7px 0 0;color:${EMAIL_TEXT};font-weight:700;">Total pago</td><td align="right" style="padding:7px 0 0;color:${EMAIL_TEXT};font-size:16px;font-weight:700;">${escapeEmailHtml(formatBrl(payload.totalCents))}</td></tr></table>`,
+    ),
+    `<div style="height:12px;"></div>`,
+    renderEmailPanel(
+      `<div style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:${EMAIL_PRIMARY};font-weight:700;margin-bottom:8px;">Entrega</div><div style="color:${EMAIL_MUTED_TEXT};">${address}</div>`,
+    ),
+  ].join("")
 }
 
 function shipmentHtml(payload: OrderNotificationPayload) {
   const rows: string[] = []
   if (payload.carrierName) {
-    rows.push(`<strong>Transportadora:</strong> ${escapeHtml(payload.carrierName)}`)
+    rows.push(
+      `<tr><td style="padding:5px 0;color:${EMAIL_MUTED_TEXT};">Transportadora</td><td align="right" style="padding:5px 0;color:${EMAIL_TEXT};font-weight:700;">${escapeEmailHtml(payload.carrierName)}</td></tr>`,
+    )
   }
   if (payload.serviceName) {
-    rows.push(`<strong>Serviço:</strong> ${escapeHtml(payload.serviceName)}`)
+    rows.push(
+      `<tr><td style="padding:5px 0;color:${EMAIL_MUTED_TEXT};">Serviço</td><td align="right" style="padding:5px 0;color:${EMAIL_TEXT};font-weight:700;">${escapeEmailHtml(payload.serviceName)}</td></tr>`,
+    )
   }
   if (payload.trackingCode) {
-    rows.push(`<strong>Código de rastreio:</strong> ${escapeHtml(payload.trackingCode)}`)
+    rows.push(
+      `<tr><td style="padding:5px 0;color:${EMAIL_MUTED_TEXT};">Código de rastreio</td><td align="right" style="padding:5px 0;color:${EMAIL_TEXT};font-weight:700;letter-spacing:.4px;">${escapeEmailHtml(payload.trackingCode)}</td></tr>`,
+    )
   }
-  return rows.length > 0 ? `<p>${rows.join("<br>")}</p>` : ""
+
+  const correiosGuidance =
+    payload.trackingCode &&
+    payload.carrierName?.toLocaleLowerCase("pt-BR").includes("correios")
+      ? `<p style="margin:14px 0 0;color:${EMAIL_MUTED_TEXT};font-size:13px;line-height:1.6;">Para acompanhar as movimentações da entrega, copie o código acima e consulte no aplicativo ou site oficial dos Correios.</p>`
+      : ""
+
+  return rows.length > 0
+    ? renderEmailPanel(
+        `<div style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:${EMAIL_PRIMARY};font-weight:700;margin-bottom:8px;">Dados do envio</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;font-family:Arial,sans-serif;font-size:14px;">${rows.join("")}</table>${correiosGuidance}`,
+      )
+    : ""
 }
 
 export function renderOrderNotification(value: unknown) {
@@ -409,7 +444,15 @@ export function renderOrderNotification(value: unknown) {
     payload.type === "payment_approved"
       ? paymentText(payload)
       : payload.type === "shipped"
-        ? shipmentText(payload)
+        ? [
+            shipmentText(payload),
+            payload.trackingCode &&
+            payload.carrierName?.toLocaleLowerCase("pt-BR").includes("correios")
+              ? "Para acompanhar as movimentações da entrega, consulte o código no aplicativo ou site oficial dos Correios."
+              : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n")
         : ""
   const detailsHtml =
     payload.type === "payment_approved"
@@ -431,7 +474,16 @@ export function renderOrderNotification(value: unknown) {
     "Este é um e-mail transacional sobre o seu pedido.",
   ].join("\n")
 
-  const html = `<!doctype html><html lang="pt-BR"><body><div style="max-width:640px;margin:0 auto;font-family:Arial,sans-serif;color:#171717;line-height:1.5"><p style="font-weight:700">ProxyBembem</p><p>Olá, ${escapeHtml(payload.customerName)}.</p><h2>${escapeHtml(copy.title)}</h2><p>${escapeHtml(copy.message)}</p>${detailsHtml}<p><a href="${escapeHtml(payload.orderUrl)}" style="display:inline-block;padding:12px 18px;background:#171717;color:#fff;text-decoration:none;border-radius:6px">${escapeHtml(buttonLabel)}</a></p><p style="font-size:12px;color:#666">Este é um e-mail transacional sobre o seu pedido.</p></div></body></html>`
+  const html = renderBrandedEmailHtml({
+    preheader: `${copy.title} — ${payload.orderNumber}`,
+    eyebrow: payload.orderNumber,
+    title: copy.title,
+    message: `Olá, ${payload.customerName}. ${copy.message}`,
+    contentHtml: detailsHtml,
+    buttonLabel,
+    buttonUrl: payload.orderUrl,
+    footerNote: "Este é um e-mail transacional sobre o seu pedido.",
+  })
 
   return {
     subject: copy.subject,
