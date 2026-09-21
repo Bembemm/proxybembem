@@ -56,7 +56,7 @@ test("notification cron rejects missing malformed and wrong credentials before d
   })
 })
 
-test("notification cron accepts Vercel Bearer auth and returns only bounded counts", async (t) => {
+test("notification cron accepts scheduled Bearer auth and returns only bounded counts", async (t) => {
   await withEnv(async () => {
     const { POST } = await import("../app/api/internal/notifications/process/route.ts")
     const bodies: Record<string, unknown>[] = []
@@ -87,7 +87,7 @@ test("notification cron accepts Vercel Bearer auth and returns only bounded coun
   })
 })
 
-test("notification cron accepts Vercel GET with Bearer auth", async (t) => {
+test("notification cron accepts scheduled GET with Bearer auth", async (t) => {
   await withEnv(async () => {
     const { GET } = await import("../app/api/internal/notifications/process/route.ts")
     t.mock.method(globalThis, "fetch", async () => Response.json([]))

@@ -25,15 +25,24 @@ The production deployment must use:
 
 Secrets must be configured only in Vercel Environment Variables and must never be committed.
 
-## Cron
+## Notification scheduler
 
-`vercel.json` schedules:
+Transactional notification processing is scheduled by GitHub Actions, not Vercel Cron.
 
-`GET /api/internal/notifications/process`
+The workflow `.github/workflows/notification-cron.yml` calls:
 
-every five minutes.
+`GET https://www.proxybembem.com.br/api/internal/notifications/process`
 
-Configure `CRON_SECRET` in Vercel Production. Vercel sends it as `Authorization: Bearer <CRON_SECRET>`, which is already accepted by the route.
+every five minutes and authenticates with:
+
+`Authorization: Bearer <CRON_SECRET>`
+
+Configure the same `CRON_SECRET` value in both places:
+
+- Vercel Production Environment Variables, so the API route can validate requests;
+- GitHub repository secret `CRON_SECRET` under **Settings -> Secrets and variables -> Actions**.
+
+If the GitHub secret has not been configured yet, scheduled workflow runs exit without calling Production. An incorrect secret or an unhealthy endpoint makes the workflow fail visibly.
 
 ## Rate limiting
 

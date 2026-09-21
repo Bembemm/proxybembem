@@ -13,16 +13,23 @@ test("environment example includes server-only Resend webhook signing secret", a
   assert.doesNotMatch(text, /^NEXT_PUBLIC_RESEND_/m)
 })
 
-test("Vercel configuration defines the real five-minute notification cron", async () => {
-  const [config, runbook] = await Promise.all([
-    source("vercel.json"),
+test("GitHub Actions defines the real five-minute notification scheduler", async () => {
+  const [workflow, runbook] = await Promise.all([
+    source(".github/workflows/notification-cron.yml"),
     source("docs/deployment/vercel.md"),
   ])
 
-  assert.match(config, /\/api\/internal\/notifications\/process/)
-  assert.match(config, /\*\/5 \* \* \* \*/)
+  assert.match(workflow, /cron:\s*["']\*\/5 \* \* \* \*["']/)
+  assert.match(workflow, /https:\/\/www\.proxybembem\.com\.br\/api\/internal\/notifications\/process/)
+  assert.match(workflow, /secrets\.CRON_SECRET/)
+  assert.match(workflow, /Authorization: Bearer/)
+  assert.match(runbook, /GitHub Actions/)
   assert.match(runbook, /Authorization: Bearer <CRON_SECRET>/)
   assert.match(runbook, /every five minutes/i)
+})
+
+test("repository does not register a Vercel Cron configuration", async () => {
+  await assert.rejects(source("vercel.json"))
 })
 
 test("Vercel runbook defines the signed Resend webhook and disables open/click tracking", async () => {
