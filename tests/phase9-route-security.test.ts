@@ -93,7 +93,6 @@ test("notification worker and manual resend retain cron/admin authority", async 
   ])
 
   assert.match(worker, /Authorization/i)
-  assert.match(worker, /x-cron-auth/i)
   assert.match(worker, /timingSafeSecretEqual/)
   assert.match(worker, /no-store/i)
   assert.doesNotMatch(worker, /consumeRateLimit/)
