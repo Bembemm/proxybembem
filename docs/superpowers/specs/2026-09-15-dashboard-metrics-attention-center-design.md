@@ -216,7 +216,7 @@ Phase 8 uses TDD and covers:
 - SQL migration contract: `SECURITY DEFINER`, fixed `search_path`, service-role-only execute, São Paulo calendar boundaries, trustworthy event filters, first approval/reversal dedupe, current fulfillment counts, distinct-order attention buckets, severity ordering, snapshot-item product aggregation, deterministic limits;
 - repository/parser: valid snapshot, malformed shape, negative/non-integer values, invalid UUID/timestamp/severity, oversized attention/products arrays, network failure, non-2xx response;
 - UI contract: protected force-dynamic `/admin`, server-side snapshot load, all approved sections/copy, attention links, safe code-label mapping, no raw metadata rendering, explicit unavailable state;
-- full existing regression suite, typecheck, KingHost build, startup smoke, and route contract checks.
+- full existing regression suite, typecheck, Vercel build, startup smoke, and route contract checks.
 
 ## 15. Rollout
 
@@ -225,8 +225,8 @@ Phase 8 uses TDD and covers:
 3. run full CI on the exact candidate SHA;
 4. apply the new migration once to hosted Supabase;
 5. validate the hosted RPC with read-only reconciliation queries; no synthetic write fixture is required;
-6. deploy the exact candidate to KingHost using the existing Node 22.1.0 / pnpm 10 runbook;
-7. restart only through the KingHost panel;
+6. deploy the exact candidate to Vercel using the existing Node.js 22.x / pnpm 10 runbook;
+7. restart only through the Vercel dashboard;
 8. verify public HTTP smoke and authenticated `/admin` dashboard values against direct database reconciliation;
 9. record Production acceptance before any integration decision for the feature branch.
 

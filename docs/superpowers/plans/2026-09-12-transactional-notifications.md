@@ -6,7 +6,7 @@
 
 **Architecture:** Keep notifications inside the existing modular monolith. Authoritative payment/fulfillment/shipment transitions persist notification intents in Supabase without calling Resend; a `CRON_SECRET`-protected worker claims due rows atomically and sends immutable payloads through a reusable Resend client; signed Resend/Svix webhooks update delivery state only. Admin reads and manual resend use the existing server-side admin/AAL2 boundary.
 
-**Tech Stack:** Next.js 16.3.3 App Router, TypeScript 5.7.3, Node 22.1.0 production runtime, hosted Supabase/Postgres 17, direct Resend HTTP API, Node `crypto` for Svix-compatible signature verification, Node test runner.
+**Tech Stack:** Next.js 16.3.3 App Router, TypeScript 5.7.3, Node.js 22.x production runtime, hosted Supabase/Postgres 17, direct Resend HTTP API, Node `crypto` for Svix-compatible signature verification, Node test runner.
 
 **Spec:** `docs/superpowers/specs/2026-09-12-transactional-notifications-design.md`
 
@@ -15,7 +15,7 @@
 - Exactly eight notification types: `payment_approved`, `production_started`, `ready_to_ship`, `shipped`, `delivered`, `canceled`, `refunded`, `charged_back`.
 - No order e-mail on unpaid order creation.
 - Maximum automatic attempts: 3 total; retry no earlier than +5 minutes after attempt 1 and +30 minutes after attempt 2.
-- KingHost worker cadence: every 5 minutes; batch size max 25.
+- Vercel worker cadence: every 5 minutes; batch size max 25.
 - Stable provider idempotency key and immutable payload across automatic retries.
 - Manual resend creates a new linked row with a new provider idempotency key and reuses the original immutable payload.
 - `sent` means provider accepted; `delivered` requires a trusted Resend webhook.
@@ -25,7 +25,7 @@
 - Browser `anon`/ordinary `authenticated` roles get no notification-outbox CRUD.
 - Security-definer SQL uses `set search_path = ''`, schema-qualified names, explicit revoke/grant.
 - Existing password recovery Resend behavior and security tests remain green.
-- Production runtime remains exactly Node 22.1.0; raw TypeScript tests run under the existing Node 24 CI test step.
+- Production runtime remains exactly Node.js 22.x; raw TypeScript tests run under the existing Node 24 CI test step.
 
 ---
 
@@ -274,13 +274,13 @@ Commit message: `feat: add admin notification history and resend`.
 
 **Files:**
 - Modify: `.env.example`
-- Modify: `docs/deployment/kinghost.md`
+- Modify: `docs/deployment/vercel.md`
 - Modify: `docs/superpowers/CURRENT_STATUS.md`
 - Verify all Phase 6 tests plus existing CI suite.
 
 **Interfaces:**
 - Production needs `RESEND_WEBHOOK_SECRET` and existing `CRON_SECRET`/`RESEND_API_KEY`.
-- KingHost cron calls `/api/internal/notifications/process` every 5 minutes.
+- Vercel cron calls `/api/internal/notifications/process` every 5 minutes.
 - Resend webhook points to `/api/webhooks/resend` and subscribes only to operational Phase 6 event classes.
 
 - [ ] **Step 1: Write/update documentation contract tests if existing docs tests enforce env/cron keys**
@@ -293,11 +293,11 @@ Use the connected Supabase project, then query catalog/ACL/RLS/function metadata
 
 - [ ] **Step 3: Run full verification**
 
-CI must pass exact Node 22.1.0 typecheck, `build:kinghost`, private-order route contract, KingHost startup smoke, and full TypeScript tests.
+CI must pass exact Node.js 22.x typecheck, `build`, private-order route contract, Vercel runtime smoke, and full TypeScript tests.
 
 - [ ] **Step 4: Production configuration/acceptance boundary**
 
-Configure `RESEND_WEBHOOK_SECRET`, register only operational webhook events, and add the five-minute KingHost cron. Do not manufacture real payment/refund/chargeback solely for acceptance. Use an owner-selected safe order/event path for live acceptance.
+Configure `RESEND_WEBHOOK_SECRET`, register only operational webhook events, and add the five-minute Vercel cron. Do not manufacture real payment/refund/chargeback solely for acceptance. Use an owner-selected safe order/event path for live acceptance.
 
 - [ ] **Step 5: Record runtime SHA and Phase 6 acceptance**
 

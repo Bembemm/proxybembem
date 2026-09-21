@@ -149,4 +149,4 @@ Ela usa o `CRON_SECRET` e apenas mantém a autorização necessária para cotaç
 
 ## Deploy
 
-Use o procedimento de `docs/deployment/kinghost.md`. Migrations antigas de remessas não devem ser removidas nem reaplicadas.
+Use o procedimento de `docs/deployment/vercel.md`. Migrations antigas de remessas não devem ser removidas nem reaplicadas.

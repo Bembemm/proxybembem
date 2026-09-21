@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace static `script-src 'unsafe-inline'` with a per-request nonce while preserving Supabase session behavior and KingHost compatibility.
+**Goal:** Replace static `script-src 'unsafe-inline'` with a per-request nonce while preserving Supabase session behavior and Vercel compatibility.
 
 **Architecture:** Move request-specific CSP construction into a pure security helper. Root `proxy.ts` generates a nonce for HTML requests, forwards `x-nonce` plus the CSP to Next.js, and mirrors the CSP on the response. Supabase session refresh remains a separate path predicate so public pages do not call Auth merely because nonce CSP is enabled.
 
-**Tech Stack:** Next.js 16.3.3 App Router/Proxy, React 19, TypeScript 5.7.3, `@supabase/ssr` 0.12.5, Node 22.1.0.
+**Tech Stack:** Next.js 16.3.3 App Router/Proxy, React 19, TypeScript 5.7.3, `@supabase/ssr` 0.12.5, Node.js 22.x.
 
 **Spec:** `docs/superpowers/specs/2026-09-16-site-security-nonce-hardening-design.md`
 
 ## Global Constraints
 
 - Branch: `hardening/site-security-nonce`; do not modify `main` directly.
-- Production hosting is KingHost; preserve the existing KingHost runtime contract.
+- Production hosting is Vercel; preserve the existing Vercel runtime contract.
 - Keep `style-src 'unsafe-inline'` unless a separately tested change proves it can be removed safely.
 - Accepted target: `script-src` must not contain `'unsafe-inline'`.
 - Do not add Supabase session/auth lookups to ordinary public requests.
@@ -484,11 +484,11 @@ node --experimental-strip-types --test \
 
 Expected: PASS.
 
-- [ ] **Step 5: Run KingHost build**
+- [ ] **Step 5: Run Vercel build**
 
 ```bash
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 ```
 
 Expected: PASS; no nonce/static-render build error.
@@ -512,14 +512,14 @@ pnpm test
 
 Expected: PASS.
 
-- [ ] **Step 2: Run exact KingHost verification**
+- [ ] **Step 2: Run exact Vercel verification**
 
 ```bash
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 ```
 
-Expected: PASS on the repository's Node 22.1.0 runtime contract.
+Expected: PASS on the repository's Node.js 22.x runtime contract.
 
 - [ ] **Step 3: Record CSP assumptions in the hardening evidence doc used by the final plan**
 

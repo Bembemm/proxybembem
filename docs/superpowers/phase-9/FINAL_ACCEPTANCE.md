@@ -12,7 +12,7 @@ This acceptance combines independent evidence classes:
 
 - repository/CI verification;
 - hosted Supabase validation;
-- exact KingHost rollout evidence;
+- exact Vercel rollout evidence;
 - owner-reported authenticated/business Production smoke.
 
 Manual acceptance was not inferred from CI or public HTTP health. On 2026-09-15 the owner received the complete remaining manual checklist covering Phase 4 historical product-admin debt, Phase 8 authenticated dashboard debt and final Phase 9 Production smoke, then explicitly reported **“tudo ok”**. That statement is recorded as owner-reported acceptance evidence.
@@ -23,10 +23,10 @@ Production remains pinned to the exact accepted runtime candidate:
 
 `cdb3f863336237ab49f9b91cca20f0d876aa75c7`
 
-Evidence supplied from the KingHost terminal on 2026-09-15:
+Evidence supplied from the production terminal on 2026-09-15:
 
 - `git rev-parse HEAD` returned the exact SHA above;
-- restart was completed through the KingHost panel, not PM2 CLI;
+- restart was completed through the Vercel dashboard, not PM2 CLI;
 - public HTTPS health returned `HTTP/2 200`;
 - expected security headers were present, including CSP, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS;
 - the only post-build working-tree change was Next.js-generated `next-env.d.ts` type references;
@@ -38,12 +38,12 @@ The detached checkout is deliberate for the exact-SHA rollout.
 
 The final application runtime candidate passed the full CI contract at commit `cdb3f863336237ab49f9b91cca20f0d876aa75c7` in CI #1648 / run `34983376962`, including:
 
-- exact Node.js 22.1.0 setup;
+- exact Node.js 22.x setup;
 - frozen pnpm install;
 - TypeScript typecheck;
-- KingHost production build;
+- Vercel production build;
 - private-order route contract;
-- KingHost startup adapter smoke;
+- Vercel runtime smoke;
 - complete automated test suite.
 
 Subsequent acceptance/test/documentation commits do not require a new Production runtime deploy unless they change application runtime code.

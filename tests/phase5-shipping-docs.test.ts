@@ -28,7 +28,7 @@ test("shipping setup documents the prepare-only Melhor Envio flow", async () => 
     "Preparar remessa",
     "Marcar enviado",
     "POST /api/v2/me/cart",
-    "docs/deployment/kinghost.md",
+    "docs/deployment/vercel.md",
   ]) {
     assert.ok(source.includes(expected), `shipping setup must include ${expected}`)
   }
@@ -87,7 +87,7 @@ test("operational status preserves Phase 5 acceptance evidence and closes Task 2
   assert.doesNotMatch(status, /Do not start Phase 5 automatically|N[aã]o iniciar Phase 5/i)
 })
 
-test("Phase 5 docs keep secrets out and reference the canonical KingHost runbook", async () => {
+test("Phase 5 docs keep secrets out and reference the canonical Vercel runbook", async () => {
   const sources = await Promise.all([
     read("../docs/shipping-setup.md"),
     read("../docs/superpowers/CURRENT_STATUS.md"),
@@ -95,7 +95,7 @@ test("Phase 5 docs keep secrets out and reference the canonical KingHost runbook
   ])
 
   const combined = sources.join("\n")
-  assert.ok(combined.includes("docs/deployment/kinghost.md"))
+  assert.ok(combined.includes("docs/deployment/vercel.md"))
   assert.doesNotMatch(combined, /Bearer\s+[A-Za-z0-9._~-]{20,}/)
   assert.doesNotMatch(combined, /MELHOR_ENVIO_CLIENT_SECRET=[^\s<][^\n]*/)
   assert.doesNotMatch(combined, /MELHOR_ENVIO_TOKEN_ENCRYPTION_KEY=[0-9a-fA-F]{64}/)

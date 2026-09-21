@@ -69,25 +69,18 @@ test("production rollout pins the canonical callback and isolates sandbox and pr
   assert.match(source, /SHIPPING_ORIGIN_CEP/)
 })
 
-test("KingHost sandbox runbook isolates provider credentials and production data", async () => {
+test("Vercel production runbook pins production provider environments", async () => {
   const source = await readFile(
-    new URL("../docs/deployment/kinghost-sandbox.md", import.meta.url),
+    new URL("../docs/deployment/vercel.md", import.meta.url),
     "utf8",
   )
 
   for (const expected of [
-    "sandbox/kinghost-mercadopago-melhor-envio",
-    "APP_ENVIRONMENT=sandbox",
-    "MERCADO_PAGO_ENVIRONMENT=sandbox",
-    "MELHOR_ENVIO_ENVIRONMENT=sandbox",
-    "/api/melhor-envio/oauth/callback",
-    "/api/mercadopago/webhook",
-    "Supabase",
+    "APP_ENVIRONMENT=production",
+    "MERCADO_PAGO_ENVIRONMENT=production",
+    "MELHOR_ENVIO_ENVIRONMENT=production",
+    "NEXT_PUBLIC_SITE_URL=https://www.proxybembem.com.br",
   ]) {
-    assert.ok(source.includes(expected), `sandbox runbook must include ${expected}`)
+    assert.ok(source.includes(expected), `Vercel runbook must include ${expected}`)
   }
-
-  assert.match(source, /n[aã]o use.*Supabase.*Production/i)
-  assert.match(source, /n[aã]o copie.*(?:credenciais|segredos).*Production/i)
-  assert.match(source, /aplica[cç][aã]o.*KingHost.*separad/i)
 })

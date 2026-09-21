@@ -15,7 +15,7 @@ This preserves refreshed auth cookies while keeping the same nonce/CSP for the r
 
 ## Plan 2 — rate-limit proxy IP
 
-Status: repository implementation complete; real KingHost proxy-hop topology still requires sandbox verification.
+Status: repository implementation complete; real Vercel proxy-hop topology still requires sandbox verification.
 
 Final behavior keeps `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` by default. No production hop count is guessed. A non-zero value is allowed only after observing/confirming the actual reverse-proxy chain.
 
@@ -30,7 +30,7 @@ The final workflow follows the approved order:
 1. frozen install;
 2. lint;
 3. typecheck;
-4. KingHost build;
+4. Vercel build;
 5. route/startup smokes;
 6. explicit critical commerce/security subset under Node 24;
 7. full test suite.
@@ -60,7 +60,7 @@ A final review found that Next metadata routes are otherwise cacheable/static. `
 
 ## Plan 4 — Supabase Auth / final acceptance
 
-Status: repository code and live Advisor review in progress/recorded; external Auth dashboard verification and isolated KingHost sandbox smoke remain required before merge readiness.
+Status: repository code and live Advisor review in progress/recorded; external Auth dashboard verification and isolated Vercel sandbox smoke remain required before merge readiness.
 
 Repository password policy now enforces strong rules on signup/new-password mutations while leaving login credential parsing compatible with existing passwords. Client and server share the policy helper.
 
@@ -68,7 +68,7 @@ Live Advisor findings were reviewed rather than cosmetically silenced. Details a
 
 The available Supabase connector cannot read or mutate the hosted Auth password/email-confirmation toggles, so the final acceptance must not represent those settings as verified until the owner confirms them in the Dashboard.
 
-Likewise, the repository's KingHost sandbox runbook still contains placeholder host/webroot values and no sandbox credentials. A real sandbox smoke cannot be truthfully recorded from repository state alone.
+Likewise, the repository's Vercel sandbox runbook still contains placeholder host/webroot values and no sandbox credentials. A real sandbox smoke cannot be truthfully recorded from repository state alone.
 
 ## Merge-readiness rule
 
@@ -76,7 +76,7 @@ Repository CI being green is necessary but not sufficient. The branch is merge-r
 
 - repository gates are green on the final candidate;
 - Supabase Auth dashboard targets are owner-verified;
-- the isolated KingHost sandbox candidate is deployed and manually smoked;
+- the isolated Vercel sandbox candidate is deployed and manually smoked;
 - CSP nonce behavior is observed in actual HTTP responses/browser console;
 - the trusted proxy-hop setting is verified or intentionally left at fail-safe `0`;
 - final acceptance evidence is updated without claiming unperformed checks.

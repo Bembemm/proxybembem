@@ -6,7 +6,7 @@
 **Architecture:** modular monolith in the existing Next.js + Supabase application.  
 **Active branch:** `feat/phase-9-hardening-final-rollout`  
 **Canonical integration branch:** `main`  
-**Runtime:** KingHost Node.js **22.1.0** + hosted Supabase.
+**Runtime:** Vercel Node.js **22.1.0** + hosted Supabase.
 
 ## Global invariants
 
@@ -142,7 +142,7 @@ Runtime rollout candidate:
 
 GitHub Actions CI #1631 / run `34960866441`: **PASS**.
 
-The KingHost candidate was deployed. However the owner did not complete the authenticated `/admin` Production smoke; Phase 8 therefore remains **not Production accepted** until that observation is actually performed.
+The Vercel candidate was deployed. However the owner did not complete the authenticated `/admin` Production smoke; Phase 8 therefore remains **not Production accepted** until that observation is actually performed.
 
 # PHASE 9 — Hardening + Final Rollout
 
@@ -170,7 +170,7 @@ Final automated application candidate:
 
 `cdb3f863336237ab49f9b91cca20f0d876aa75c7` — `test: preserve Phase 9 manual acceptance gates`.
 
-GitHub Actions CI #1648 / run `34983376962`: **PASS**. The verify job passed exact Node runtime, frozen install, typecheck, `build:kinghost`, private-order route contract, startup smoke and full `pnpm test`.
+GitHub Actions CI #1648 / run `34983376962`: **PASS**. The verify job passed exact Node runtime, frozen install, typecheck, `build`, private-order route contract, startup smoke and full `pnpm test`.
 
 ## Hosted Supabase hardening
 
@@ -195,8 +195,8 @@ Supabase documentation states leaked-password protection is available on Pro and
 ## Remaining final gates
 
 1. canonical docs reconciliation + docs-head CI;
-2. one exact final KingHost rollout, with normal `umask 022`;
-3. restart only from KingHost panel, never PM2 CLI;
+2. one exact final Vercel rollout, with normal `umask 022`;
+3. restart only from Vercel dashboard, never PM2 CLI;
 4. public HTTP health;
 5. owner-performed final manual smoke, including inherited Phase 4 and Phase 8 gates;
 6. `FINAL_ACCEPTANCE.md` only after actual manual evidence;
@@ -218,8 +218,8 @@ Supabase documentation states leaked-password protection is available on Pro and
 10. Melhor Envio spending is explicit and fail-closed behind `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED`.
 11. Preparation, purchase, generation, printing, posting and cancellation are distinct operations.
 12. Customer shipment tracking stays authenticated, owner-scoped and sanitized.
-13. Hosted Supabase stays separate from KingHost; applied migrations are not reapplied.
-14. KingHost Node.js 22.1.0 is the application runtime.
+13. Hosted Supabase stays separate from Vercel; applied migrations are not reapplied.
+14. Vercel Node.js 22.x is the application runtime.
 15. Transactional e-mail failure never mutates business truth.
 16. Phase 7 Store Settings V1 is allowlisted and provider secrets stay env-only.
 17. Dashboard/Attention Center remain read-only.
@@ -240,4 +240,4 @@ Supabase documentation states leaked-password protection is available on Pro and
 **Phase 8:** implementation complete/hosted validated/candidate deployed; authenticated owner smoke pending.  
 **Phase 9:** repository + hosted hardening validated; final rollout/manual acceptance pending.
 
-**NEXT EXACT ACTION:** validate the canonical-docs head CI, then deploy the exact final Phase 9 application candidate once to KingHost and execute `FINAL_MANUAL_SMOKE.md`. Do not merge/delete branches without explicit owner approval.
+**NEXT EXACT ACTION:** validate the canonical-docs head CI, then deploy the exact final Phase 9 application candidate once to Vercel and execute `FINAL_MANUAL_SMOKE.md`. Do not merge/delete branches without explicit owner approval.

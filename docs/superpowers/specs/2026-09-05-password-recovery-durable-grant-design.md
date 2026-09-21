@@ -5,7 +5,7 @@ Branch: `feat/admin-dashboard-expansion`
 
 ## Goal
 
-Make password recovery scanner-safe, retry-safe across KingHost/Node/Nginx failures, and resistant to token replay without depending on a browser-bound Supabase recovery session.
+Make password recovery scanner-safe, retry-safe across Vercel/Node/Nginx failures, and resistant to token replay without depending on a browser-bound Supabase recovery session.
 
 Production acceptance exposed a concrete failure in the prior TokenHash design: the first final-submit request can consume the Supabase recovery token and then lose the response because the application process/upstream fails. The next submit then receives `401`, even though the password was never changed.
 

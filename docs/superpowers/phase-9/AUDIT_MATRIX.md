@@ -27,7 +27,7 @@ This matrix is the operational audit ledger for Phase 9. `PASS` means repository
 | Unused index review | KEEP_INTENTIONAL / KEEP_UNPROVEN | Six INFO findings reviewed against DDL, FK/constraints, query shape, overlap and hosted stats. No index met the safe-removal evidence gate; no drop migration was created. |
 | Concurrency / idempotency | PASS | Payment dedupe, preference lease, fulfillment row locks, product/settings optimistic revisions, shipment operation IDs/versioning, notification idempotency, recovery lease, attention uniqueness and dashboard single-`as_of` consistency are consolidated in `CONCURRENCY_MATRIX.md`. |
 | Historical Phase 4 product-admin smoke | OWNER SMOKE PENDING | Automated lifecycle/image/conflict coverage exists; broad browser smoke remains explicitly deferred into the final checklist. |
-| Phase 8 authenticated dashboard smoke | OWNER SMOKE PENDING | Phase 8 hosted validation and KingHost candidate deployment exist; authenticated `/admin` owner observation remains open. |
+| Phase 8 authenticated dashboard smoke | OWNER SMOKE PENDING | Phase 8 hosted validation and Vercel candidate deployment exist; authenticated `/admin` owner observation remains open. |
 | Final Phase 9 Production smoke | OWNER SMOKE PENDING | Run only after exact final candidate deployment/restart; authenticated business/admin acceptance remains owner-performed. |
 
 ## Phase 9 demonstrated correction

@@ -3,7 +3,7 @@
 **Date:** 2026-09-11  
 **Branch:** `feat/transactional-notifications`  
 **Base:** `main`  
-**Runtime:** KingHost Node.js 22.1.0 + hosted Supabase  
+**Runtime:** Vercel Node.js 22.x + hosted Supabase  
 **Provider:** Resend
 
 ## Goal
@@ -43,7 +43,7 @@ The current application already has the pieces Phase 6 should build on:
 - Melhor Envio posting/tracking also records fulfillment changes; trusted `delivered` tracking can move an order from `shipped` to `completed`;
 - the customer order page is authenticated and owner-scoped at `/minha-conta/pedidos/{uuid}`;
 - Resend is already used server-side for password recovery via `RESEND_API_KEY` and `ProxyBembem <noreply@proxybembem.com.br>`;
-- KingHost already has a protected internal-cron pattern using `CRON_SECRET`, Bearer or `X-CRON-AUTH`.
+- Vercel already has a protected internal-cron pattern using `CRON_SECRET`, Bearer or `X-CRON-AUTH`.
 
 Phase 6 must preserve those authorities. An e-mail failure must never roll back or falsify a payment, fulfillment or shipment state.
 
@@ -151,7 +151,7 @@ It reuses the existing constant-time `CRON_SECRET` authentication pattern and re
 
 The worker processes a bounded batch of due deliveries. A database claim RPC selects eligible rows with row locking / `SKIP LOCKED`, moves them to `processing`, increments the attempt count atomically and prevents two workers from sending the same delivery concurrently.
 
-New deliveries are due immediately (`next_attempt_at <= now()`); the durable cron worker is the only required send path. Payment/admin/shipment source requests do not call Resend directly and do not depend on notification delivery. Operationally, KingHost should invoke the worker at least every five minutes.
+New deliveries are due immediately (`next_attempt_at <= now()`); the durable cron worker is the only required send path. Payment/admin/shipment source requests do not call Resend directly and do not depend on notification delivery. Operationally, Vercel should invoke the worker at least every five minutes.
 
 Retry eligibility is recorded in `next_attempt_at`; the target schedule is attempt 1 on the first worker pass, attempt 2 about five minutes after a retryable failure, and attempt 3 about thirty minutes after the second retryable failure. These are three total automatic send attempts, not three retries after the first attempt.
 
@@ -372,9 +372,9 @@ Do not route password recovery through the order outbox in Phase 6. Recovery has
 3. Add the Resend transport/template/worker tests and implementation.
 4. Add verified webhook tests before enabling a production Resend webhook endpoint.
 5. Add admin notification history/manual resend tests and UI.
-6. Run exact KingHost Node 22.1.0 install/typecheck/build/startup/full-suite verification.
+6. Run exact Vercel Node.js 22.x install/typecheck/build/startup/full-suite verification.
 7. Configure `RESEND_WEBHOOK_SECRET` and the production Resend webhook for only the approved operational events.
-8. Configure/verify the protected KingHost notification worker schedule.
+8. Configure/verify the protected Vercel notification worker schedule.
 9. Perform controlled production acceptance using a deliberate test/real order chosen by the owner; do not alter unrelated customer orders.
 
 No production label spending or payment/refund mutation is part of Phase 6 acceptance.

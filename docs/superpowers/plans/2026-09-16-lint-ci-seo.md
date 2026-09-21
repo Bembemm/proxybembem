@@ -83,7 +83,7 @@ export default defineConfig([
     ".next/**",
     "out/**",
     "build/**",
-    ".kinghost-standalone/**",
+    ".vercel/**",
     "next-env.d.ts",
   ]),
 ])
@@ -119,7 +119,7 @@ git commit -m "build: add real Next.js lint gate"
 
 - [ ] **Step 1: Add failing CI contract**
 
-Read `.github/workflows/ci.yml` and assert it contains `pnpm lint` before `pnpm typecheck` and still contains `pnpm build:kinghost` and `pnpm test`.
+Read `.github/workflows/ci.yml` and assert it contains `pnpm lint` before `pnpm typecheck` and still contains `pnpm build` and `pnpm test`.
 
 - [ ] **Step 2: Confirm failure**
 
@@ -134,7 +134,7 @@ Insert after frozen install:
       - run: pnpm typecheck
 ```
 
-Do not alter the exact Node 22.1.0 build runtime or Node 24 raw-TypeScript test-runner rationale.
+Do not alter the exact Node.js 22.x build runtime or Node 24 raw-TypeScript test-runner rationale.
 
 - [ ] **Step 4: Run tooling contract**
 
@@ -232,7 +232,7 @@ Run tooling SEO test; expected missing modules FAIL.
 ```bash
 node --experimental-strip-types --test tests/tooling-seo.test.ts
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 ```
 
 Expected: PASS and generated routes include `/robots.txt` and `/sitemap.xml`.
@@ -313,7 +313,7 @@ git commit -m "feat: exclude private transaction routes from indexing"
 pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
-pnpm build:kinghost
+pnpm build
 pnpm test
 ```
 

@@ -5,9 +5,9 @@ Branch: `hardening/site-security-nonce`
 
 ## Owner environment decision
 
-On 2026-09-16 the owner confirmed that the current `main`/KingHost/Supabase environment is intentionally being used as the sandbox environment. A separate Supabase project will not be created for this phase.
+On 2026-09-16 the owner confirmed that the current `main`/Vercel/Supabase environment is intentionally being used as the sandbox environment. A separate Supabase project will not be created for this phase.
 
-This owner decision supersedes the earlier acceptance assumption that the hardening branch could only be merged after validation in a separate isolated KingHost/Supabase sandbox. The merge to `main` is now part of the sandbox validation flow, not a production launch.
+This owner decision supersedes the earlier acceptance assumption that the hardening branch could only be merged after validation in a separate isolated Vercel/Supabase sandbox. The merge to `main` is now part of the sandbox validation flow, not a production launch.
 
 The current environment must remain explicitly configured as sandbox while acceptance is in progress:
 
@@ -15,7 +15,7 @@ The current environment must remain explicitly configured as sandbox while accep
 - `MERCADO_PAGO_ENVIRONMENT=sandbox` with test credentials only;
 - `MELHOR_ENVIO_ENVIRONMENT=sandbox` with sandbox credentials only;
 - `MELHOR_ENVIO_LABEL_PURCHASE_ENABLED=false`;
-- `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` until the real KingHost forwarding chain is measured;
+- `RATE_LIMIT_TRUSTED_PROXY_HOPS=0` until the real Vercel forwarding chain is measured;
 - sandbox/test data in the current Supabase project is allowed during this phase.
 
 Promotion to real production is a separate explicit operation. Before that promotion, the owner intends to clear the saved sandbox/test data from the same Supabase project. The production promotion checklist must also switch provider environments/credentials/webhooks, set `APP_ENVIRONMENT=production`, confirm the final public URL, rotate sandbox-only secrets where appropriate, re-run the Security Advisor, and perform the production smoke checklist before enabling any real-money or real-label action.
@@ -42,19 +42,19 @@ The hardening code candidate `b44520780b79071fdbc19fdfedec166134d51509` complete
 
 Verified gates include:
 
-- exact KingHost Node runtime `22.1.0`;
+- exact Vercel Node runtime `22.1.0`;
 - `pnpm install --frozen-lockfile`;
 - `pnpm lint` with zero warnings;
 - `pnpm typecheck`;
-- `pnpm build:kinghost`;
+- `pnpm build`;
 - private-order route contract;
-- KingHost startup adapter smoke;
+- Vercel runtime smoke;
 - explicit critical commerce/security subset;
 - full test suite.
 
 ## Remaining sandbox acceptance after merge to `main`
 
-The merge to `main` is authorized by the owner specifically because `main` is still the sandbox environment. The following runtime checks still need to be completed on the deployed KingHost sandbox before promotion to production:
+The merge to `main` is authorized by the owner specifically because `main` is still the sandbox environment. The following runtime checks still need to be completed on the deployed Vercel sandbox before promotion to production:
 
 - [ ] deployed SHA matches the reviewed `main` SHA;
 - [ ] `APP_ENVIRONMENT=sandbox`;
@@ -70,7 +70,7 @@ The merge to `main` is authorized by the owner specifically because `main` is st
 - [ ] private customer order is visible only to its owner;
 - [ ] admin login + MFA/AAL2 and critical admin pages work;
 - [ ] no real Melhor Envio label is purchased;
-- [ ] actual KingHost proxy chain is measured before setting a non-zero trusted-hop value.
+- [ ] actual Vercel proxy chain is measured before setting a non-zero trusted-hop value.
 
 ## Production promotion gate
 

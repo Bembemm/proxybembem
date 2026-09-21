@@ -3,7 +3,7 @@
 **Date:** 2026-09-12  
 **Branch:** `feat/transactional-notifications`  
 **Base:** `main`  
-**Runtime:** KingHost Node.js 22.1.0 + hosted Supabase  
+**Runtime:** Vercel Node.js 22.x + hosted Supabase  
 **Provider:** existing Resend integration (`RESEND_API_KEY`)  
 **Status:** owner-approved design, ready for implementation planning
 
@@ -53,7 +53,7 @@ Phase 6 stays inside the existing modular monolith and adds four focused units:
 
 1. **Notification outbox persistence** — durable queue and status history in hosted Supabase.
 2. **Notification projection/template layer** — builds customer-safe immutable message payloads from trusted order/shipment state.
-3. **Delivery worker** — bounded server-side processor invoked by an internal `CRON_SECRET`-protected route and scheduled by KingHost.
+3. **Delivery worker** — bounded server-side processor invoked by an internal `CRON_SECRET`-protected route and scheduled by Vercel.
 4. **Provider webhook ingestion** — authenticated Resend webhook route that updates delivery outcomes without trusting unsigned payloads.
 
 Order/payment/fulfillment/shipment code only enqueues a durable notification intent. It never needs Resend to succeed before the business operation succeeds.
@@ -253,7 +253,7 @@ Requirements:
 - response contains only bounded counts/booleans suitable for cron observability;
 - no logs containing e-mail bodies, customer address, API key, webhook secret, or raw provider payload.
 
-KingHost cadence: every **5 minutes**.
+Vercel cadence: every **5 minutes**.
 
 The feature remains correct if a cron run is missed: rows stay durable and become eligible on the next invocation.
 
@@ -458,7 +458,7 @@ Required automated coverage includes:
 
 ### CI/regression
 
-Exact KingHost Node 22.1.0, frozen install, typecheck, `build:kinghost`, private order route contract, KingHost startup smoke, TypeScript tests and full `pnpm test` remain green.
+Exact Vercel Node.js 22.x, frozen install, typecheck, `build`, private order route contract, Vercel runtime smoke, TypeScript tests and full `pnpm test` remain green.
 
 ## Rollout
 
@@ -466,7 +466,7 @@ Exact KingHost Node 22.1.0, frozen install, typecheck, `build:kinghost`, private
 2. Apply hosted Supabase migration once and verify ACL/RLS/index/function ownership.
 3. Deploy worker/provider/template code with automatic trigger integration controlled so historical orders are not backfilled accidentally.
 4. Configure `RESEND_WEBHOOK_SECRET` and register the Production webhook endpoint for only the approved Phase 6 operational events.
-5. Configure KingHost notification worker cron every 5 minutes using the existing `CRON_SECRET` boundary.
+5. Configure Vercel notification worker cron every 5 minutes using the existing `CRON_SECRET` boundary.
 6. Run a controlled Production acceptance using an owner-selected safe order/event path; do not manufacture a real payment/refund/chargeback solely for testing without explicit authorization.
 7. Verify admin status, provider acceptance/delivery callback, and manual resend on a safe controlled notification.
 8. Record exact runtime SHA and owner acceptance before closing Phase 6.

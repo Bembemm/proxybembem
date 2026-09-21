@@ -31,7 +31,7 @@ The following do not become store settings in Phase 7 V1:
 - Mercado Pago tokens, webhook secrets, payment-state controls or financial authority;
 - Melhor Envio OAuth credentials, token-encryption keys, provider identities or automatic-spend controls;
 - Resend API key, webhook signing secret or tracking controls;
-- `CRON_SECRET` or KingHost/runtime secrets;
+- `CRON_SECRET` or Vercel/runtime secrets;
 - CPF/CNPJ or private provider metadata;
 - product prices, checkout totals or manual freight prices;
 - automatic label purchase/generation/posting controls;
@@ -247,7 +247,7 @@ The old test that asserts literal five-day production copy is rewritten to asser
 1. Implement and verify locally/CI on `feat/phase-7-store-settings`.
 2. Apply only the new additive Phase 7 migration(s) to the hosted Supabase project after the migration contract and branch CI are green.
 3. Re-run security/performance advisors and confirm no unintended browser grants or policy regressions.
-4. Deploy the application candidate to KingHost using the existing deployment runbook.
+4. Deploy the application candidate to Vercel using the existing deployment runbook.
 5. Smoke `/admin/configuracoes` with real admin auth/TOTP.
 6. Change a harmless setting and verify persistence, conflict/audit behavior and public propagation.
 7. Verify FAQ/contact/banner behavior and verify checkout/payment/shipping flows remain unchanged.
@@ -268,7 +268,7 @@ Phase 7 V1 is complete when all of the following are true:
 - FAQ uses configured production lead time;
 - configured WhatsApp/e-mail are used by shared public contact surfaces without malformed fallback links;
 - storefront notice works only when explicitly enabled;
-- automated suite/CI green on the KingHost Node 22.1.0 gate;
+- automated suite/CI green on the Vercel Node.js 22.x gate;
 - hosted Supabase migration/advisors verified;
-- KingHost deployment and focused Production smoke accepted;
+- Vercel deployment and focused Production smoke accepted;
 - `CONTINUIDADE.md` and canonical project status documents updated with real evidence.

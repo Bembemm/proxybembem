@@ -138,7 +138,7 @@ with `Produção e postagem em até <global prazo>.`, and replaces quick-info hi
 
 - [ ] **Step 1: Verify GREEN**
 
-Require exact KingHost runtime setup, frozen install, typecheck, KingHost build, route/startup checks, TypeScript runner, and full tests to pass on the final squashed commit.
+Require exact Vercel runtime setup, frozen install, typecheck, Vercel build, route/startup checks, TypeScript runner, and full tests to pass on the final squashed commit.
 
 - [x] **Step 2: Review diff scope**
 

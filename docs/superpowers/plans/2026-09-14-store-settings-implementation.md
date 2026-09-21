@@ -6,7 +6,7 @@
 
 **Architecture:** Add one private singleton `public.store_settings` row with explicit typed columns and a service-role-only atomic update RPC. Keep validation in a pure TypeScript domain module, access Supabase only from server repositories, cache only the sanitized public projection, and invalidate that cache after successful admin updates. The protected admin page uses the existing owner/AAL2/admin-session and same-origin patterns. Public UI receives only allowlisted settings and falls back safely when the settings read is unavailable.
 
-**Tech Stack:** Next.js 16.3.3 App Router, React 19, TypeScript 5.7.3, Tailwind CSS 4, Supabase/PostgreSQL, Node 22.1.0 production runtime, pnpm 10, Node built-in test runner.
+**Tech Stack:** Next.js 16.3.3 App Router, React 19, TypeScript 5.7.3, Tailwind CSS 4, Supabase/PostgreSQL, Node.js 22.x production runtime, pnpm 10, Node built-in test runner.
 
 **Spec:** `docs/superpowers/specs/2026-09-14-store-settings-design.md`
 
@@ -15,7 +15,7 @@
 - Branch remains `feat/phase-7-store-settings` until the owner explicitly approves integration.
 - V1 contains exactly: `production_lead_time_business_days`, `contact_email`, `contact_whatsapp_e164`, `notice_enabled`, `notice_text`.
 - No generic `key/value` table and no unrestricted JSON settings object.
-- No Mercado Pago, Melhor Envio, Resend, Supabase, cron or KingHost secret becomes a store setting.
+- No Mercado Pago, Melhor Envio, Resend, Supabase, cron or Vercel secret becomes a store setting.
 - No store-pause/payment-flow switch in V1.
 - `public.products` remains the runtime catalog authority; saved product editorial text is not silently rewritten.
 - Mercado Pago remains financial authority.
@@ -28,7 +28,7 @@
 - Public fallback is exactly: lead time 5, notice disabled, contact e-mail absent, WhatsApp absent.
 - The database is seeded with the currently published contact values (`contato@proxybembem.com.br`, `+5544991250332`) so the successful migration/deploy path does not make existing contact affordances disappear.
 - New database work is additive. Do not modify or reapply already-hosted migrations.
-- Do not alter the KingHost deploy/publish-assets permission strategy or add `umask` hardening as part of Phase 7.
+- Do not alter the Vercel deploy/publish-assets permission strategy or add `umask` hardening as part of Phase 7.
 - Every code/DDL task follows RED -> verify exact failure -> minimal GREEN -> focused verification -> commit.
 - Before ending any implementation session, update `docs/superpowers/phase-7/CONTINUIDADE.md` with real state and the next exact action.
 
@@ -503,11 +503,11 @@ nvm use
 node --version
 npx pnpm@10 install --frozen-lockfile
 npx pnpm@10 typecheck
-NODE_ENV=production npx pnpm@10 build:kinghost
+NODE_ENV=production npx pnpm@10 build
 npx pnpm@10 test
 ```
 
-Node must resolve to exactly `v22.1.0` for the KingHost runtime/build gate. Record actual test counts/results rather than copying old numbers.
+Node must resolve to exactly `v22.1.0` for the Vercel runtime/build gate. Record actual test counts/results rather than copying old numbers.
 
 - [ ] **Step 2: Inspect branch diff for scope/security regressions**
 
@@ -519,7 +519,7 @@ Set Phase 7 to an honest state such as `IMPLEMENTATION COMPLETE / AUTOMATED GREE
 
 - [ ] **Step 4: Push and wait for GitHub Actions**
 
-Require CI success on the current branch HEAD before applying hosted DDL. If CI fails, use systematic debugging; do not roll forward to Supabase/KingHost.
+Require CI success on the current branch HEAD before applying hosted DDL. If CI fails, use systematic debugging; do not roll forward to Supabase/Vercel.
 
 - [ ] **Step 5: Commit documentation checkpoint**
 
@@ -563,11 +563,11 @@ Classify findings. Do not treat intentional backend-only “RLS enabled/no polic
 
 - [ ] **Step 5: Update continuity with exact hosted evidence**
 
-Record the actual hosted migration timestamp/name and verification results. Phase 7 remains deployment pending until KingHost runtime is updated and smoke-tested.
+Record the actual hosted migration timestamp/name and verification results. Phase 7 remains deployment pending until Vercel runtime is updated and smoke-tested.
 
 ---
 
-### Task 10: KingHost deployment, focused Production smoke and final Phase 7 handoff
+### Task 10: Vercel deployment, focused Production smoke and final Phase 7 handoff
 
 **Files:**
 - Final updates: `docs/superpowers/CURRENT_STATUS.md`
@@ -576,7 +576,7 @@ Record the actual hosted migration timestamp/name and verification results. Phas
 - Final updates: `docs/superpowers/phase-7/CONTINUIDADE.md`
 
 **Interfaces:**
-- Use the existing KingHost runbook and normal deployment path only.
+- Use the existing Vercel runbook and normal deployment path only.
 - During interactive SSH execution with the owner, issue **one command/action at a time** and wait for the result before the next action.
 
 - [ ] **Step 1: Confirm deploy candidate**
@@ -592,10 +592,10 @@ ssh -4 proxybembem@ftp.proxybembem.com.br
 cd ~/apps_nodejs/proxybembem && git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile
-NODE_ENV=production npx pnpm@10 deploy:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Then restart via the KingHost panel. During the real session, do not send this as a multi-command dump; guide the owner one action at a time.
+Then restart via the Vercel dashboard. During the real session, do not send this as a multi-command dump; guide the owner one action at a time.
 
 - [ ] **Step 3: Focused Production admin smoke**
 

@@ -13,13 +13,13 @@ A branch canônica de integração agora é `main`. As branches antigas são che
 
 ## Runtime atual
 
-- aplicação: KingHost;
+- aplicação: Vercel;
 - Node.js: **22.1.0**;
 - backend/Auth/banco: Supabase hospedado separadamente;
 - pagamentos: Mercado Pago;
 - frete/remessas: Melhor Envio;
 - e-mails transacionais: Resend;
-- deploy: `docs/deployment/kinghost.md`.
+- deploy: `docs/deployment/vercel.md`.
 
 ## Estado do roadmap
 

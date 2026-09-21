@@ -20,11 +20,7 @@ function bearerCredential(request: Request) {
 
 function isAuthorized(request: Request, expected: string) {
   const bearer = bearerCredential(request)
-  const kingHost = request.headers.get("x-cron-auth")
-  return Boolean(
-    (bearer && timingSafeSecretEqual(bearer, expected)) ||
-      (kingHost && timingSafeSecretEqual(kingHost, expected)),
-  )
+  return Boolean(bearer && timingSafeSecretEqual(bearer, expected))
 }
 
 async function handle(request: Request) {

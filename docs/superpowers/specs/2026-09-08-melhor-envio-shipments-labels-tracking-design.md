@@ -10,7 +10,7 @@ Add a production-capable shipment subsystem to the existing ProxyBembem modular 
 
 The customer must automatically receive sanitized tracking information in `Minha conta -> Pedidos -> Pedido` once tracking exists.
 
-This phase extends the existing Melhor Envio freight-quote/OAuth integration. It must not create a second provider integration or weaken existing payment, order-ownership, admin-auth, MFA, audit, Supabase, or KingHost boundaries.
+This phase extends the existing Melhor Envio freight-quote/OAuth integration. It must not create a second provider integration or weaken existing payment, order-ownership, admin-auth, MFA, audit, Supabase, or Vercel boundaries.
 
 ## 2. Owner decisions captured by this spec
 
@@ -72,7 +72,7 @@ Phase 5 must preserve these existing boundaries:
 - Existing admin write protections, origin checks, rate limits and audit patterns remain in force.
 - Product price and shipping metadata remain server-authoritative.
 - Existing Melhor Envio OAuth token storage/refresh remains the only token authority. Access/refresh tokens never enter shipment rows or browser payloads.
-- Existing KingHost Node/Next.js deployment architecture remains unchanged.
+- Existing Vercel Node/Next.js deployment architecture remains unchanged.
 
 ## 5. Provider contract and OAuth permissions
 
@@ -379,7 +379,7 @@ At minimum this applies to:
 - cancellation;
 - manual posting transition.
 
-The repository should follow existing RPC/lease/version patterns rather than relying on in-memory locks, because KingHost process restarts and parallel requests invalidate in-memory assumptions.
+The repository should follow existing RPC/lease/version patterns rather than relying on in-memory locks, because Vercel process restarts and parallel requests invalidate in-memory assumptions.
 
 ### 13.2 Purchase timeout rule
 
@@ -529,7 +529,7 @@ Prove:
 Before any deploy candidate is called ready:
 
 - typecheck passes;
-- KingHost production build passes;
+- Vercel production build passes;
 - full automated test suite passes;
 - migration/grant tests pass;
 - exact candidate SHA has green CI evidence.

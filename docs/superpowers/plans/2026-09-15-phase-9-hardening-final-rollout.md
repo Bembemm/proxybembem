@@ -6,7 +6,7 @@
 
 **Architecture:** Keep the existing modular monolith. Add only targeted regression tests, bounded server-side corrections, additive Supabase migrations, and Phase 9 audit/evidence docs. Hosted changes are applied once and reconciled before rollout.
 
-**Tech Stack:** Next.js 16.3.3, TypeScript 5.7.3, Node 22.1.0, Supabase/PostgreSQL/Auth/RLS, Mercado Pago, Melhor Envio, Resend, KingHost.
+**Tech Stack:** Next.js 16.3.3, TypeScript 5.7.3, Node.js 22.x, Supabase/PostgreSQL/Auth/RLS, Mercado Pago, Melhor Envio, Resend, Vercel.
 
 **Spec:** `docs/superpowers/specs/2026-09-15-phase-9-hardening-final-rollout-design.md`
 
@@ -17,8 +17,8 @@
 - Never edit or reapply an already-hosted migration. Database corrections are additive only.
 - Do not merge, squash, rebase, delete branches or force-move refs without explicit owner approval.
 - Stop for owner approval before any change that materially alters checkout, payment/reversal semantics, order ownership, shipping purchase/cancellation, customer auth UX, admin MFA/session requirements, product lifecycle, public pricing/lead-time promises or destructive data behavior.
-- KingHost runtime remains Node `22.1.0`; use `npx pnpm@10` and normal `umask 022`. Never build with `umask 077`.
-- Never restart Production with PM2 CLI. Restart only through the KingHost panel.
+- Vercel runtime remains Node `22.1.0`; use `npx pnpm@10` and normal `umask 022`. Never build with `umask 077`.
+- Never restart Production with PM2 CLI. Restart only through the Vercel dashboard.
 - A security/advisor warning is not itself permission to change behavior. Prove the issue, then make the smallest safe correction.
 - No completion/acceptance claim without fresh verification evidence.
 
@@ -497,11 +497,11 @@ The document must state exactly what was independently verified, what is owner-r
 nvm use 22.1.0
 npx pnpm@10 install --frozen-lockfile
 npx pnpm@10 typecheck
-npx pnpm@10 build:kinghost
+npx pnpm@10 build
 npx pnpm@10 test
 ```
 
-Also run the same private-order route contract and KingHost startup adapter checks used by `.github/workflows/ci.yml` if they are separate from `pnpm test`/build.
+Also run the same private-order route contract and Vercel runtime checks used by `.github/workflows/ci.yml` if they are separate from `pnpm test`/build.
 
 Expected: all commands exit 0. Do not infer success from an earlier run.
 
@@ -528,18 +528,18 @@ node --experimental-strip-types --test \
 
 - [ ] **Step 4: Commit the candidate checkpoint and require exact-SHA CI**
 
-After the docs commit, obtain the exact branch HEAD and wait for GitHub Actions. The candidate is eligible for Production only when that exact SHA passes the full workflow: Node 22.1.0, frozen install, typecheck, KingHost build, private-order route contract, startup smoke and full test suite.
+After the docs commit, obtain the exact branch HEAD and wait for GitHub Actions. The candidate is eligible for Production only when that exact SHA passes the full workflow: Node.js 22.x, frozen install, typecheck, Vercel build, private-order route contract, startup smoke and full test suite.
 
 Do not call the project `Production accepted` merely because CI is green.
 
 ---
 
-## Task 9 — Final KingHost rollout and truthful project acceptance
+## Task 9 — Final Vercel rollout and truthful project acceptance
 
 **Files:**
 - Create only after real final evidence exists: `docs/superpowers/phase-9/FINAL_ACCEPTANCE.md`
 
-- [ ] **Step 1: Preflight the exact CI-green candidate on KingHost**
+- [ ] **Step 1: Preflight the exact CI-green candidate on Vercel**
 
 Before changing checkout state:
 
@@ -569,10 +569,10 @@ The printed HEAD must equal the exact SHA whose CI evidence was reviewed in Task
 ```bash
 nvm use
 npx pnpm@10 install --frozen-lockfile
-NODE_ENV=production npx pnpm@10 deploy:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Only after successful build/publish, restart from the KingHost panel. Never use `pm2 start`, `pm2 restart`, or other PM2 CLI operations.
+Only after successful build/publish, restart from the Vercel dashboard. Never use `pm2 start`, `pm2 restart`, or other PM2 CLI operations.
 
 - [ ] **Step 4: Run public smoke**
 

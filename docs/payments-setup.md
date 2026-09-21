@@ -1,10 +1,10 @@
 # Mercado Pago Checkout Pro — configuração operacional
 
-A ProxyBembem usa Mercado Pago Checkout Pro para pagamento, Supabase para catálogo/pedidos/contas e KingHost para o runtime Next.js. O navegador nunca decide preço, frete, total, status de pagamento ou propriedade do pedido.
+A ProxyBembem usa Mercado Pago Checkout Pro para pagamento, Supabase para catálogo/pedidos/contas e Vercel para o runtime Next.js. O navegador nunca decide preço, frete, total, status de pagamento ou propriedade do pedido.
 
 ## Estado atual
 
-- Production: KingHost Node.js 22.1.0.
+- Production: Vercel Node.js 22.x.
 - Supabase permanece hospedado separadamente.
 - `public.products` é a única autoridade de catálogo em runtime.
 - O produto precisa estar `published` para ser resolvido por checkout.
@@ -16,7 +16,7 @@ A ProxyBembem usa Mercado Pago Checkout Pro para pagamento, Supabase para catál
 
 ## Variáveis de Production
 
-Valores reais ficam somente no ambiente privado da KingHost/secret store. Nunca coloque segredos em Git, screenshot, logs ou chat.
+Valores reais ficam somente no Vercel Environment Variables. Nunca coloque segredos em Git, screenshot, logs ou chat.
 
 ```text
 NEXT_PUBLIC_SITE_URL=https://www.proxybembem.com.br
@@ -111,10 +111,10 @@ A Phase 3 e a Stage 2 já tiveram aceitação produtiva. O smoke final da Stage 
 Use exclusivamente:
 
 ```text
-docs/deployment/kinghost.md
+docs/deployment/vercel.md
 ```
 
-O fluxo usa `pnpm deploy:kinghost` e restart do app `proxybembem` pelo painel KingHost. Siga somente esse runbook e não use procedimentos antigos ou PM2 manual.
+O deploy de Production é feito pela integração Git da Vercel a partir da branch `main`. Siga somente esse runbook.
 
 ## Segurança operacional
 

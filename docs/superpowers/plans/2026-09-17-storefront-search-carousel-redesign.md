@@ -497,15 +497,15 @@ pnpm typecheck
 
 Expected: zero warnings/errors.
 
-- [ ] **Step 3: Run production KingHost build**
+- [ ] **Step 3: Run production Vercel build**
 
-Run: `pnpm build:kinghost`
+Run: `pnpm build`
 
 Expected: successful Next.js build and standalone preparation.
 
 - [ ] **Step 4: Verify the GitHub Actions CI equivalent**
 
-Push/commit the final feature branch state and wait for `.github/workflows/ci.yml` to complete. Confirm the workflow reports success for lint, typecheck, `build:kinghost`, private order route contract, KingHost startup smoke, critical commerce/security subset, and full tests.
+Push/commit the final feature branch state and wait for `.github/workflows/ci.yml` to complete. Confirm the workflow reports success for lint, typecheck, `build`, private order route contract, Vercel runtime smoke, critical commerce/security subset, and full tests.
 
 - [ ] **Step 5: Review the branch diff against the spec**
 
