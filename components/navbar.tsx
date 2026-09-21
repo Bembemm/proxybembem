@@ -350,7 +350,6 @@ export function Navbar() {
                         <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                           <Image
                             src={product.image}
-                            unoptimized={product.image.startsWith("/")}
                             alt=""
                             fill
                             sizes="48px"
