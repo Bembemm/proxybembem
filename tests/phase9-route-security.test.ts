@@ -43,6 +43,19 @@ test("checkout keeps origin authenticated-customer abuse and cache boundaries", 
   assert.match(route, /Cache-Control["']?\s*[,\]:]\s*["']no-store["']/i)
 })
 
+test("customer payment reconciliation stays same-origin authenticated owner-scoped and rate-limited", async () => {
+  const route = await source("../app/api/orders/[id]/reconcile-payment/route.ts")
+
+  assert.match(route, /isSameOriginAccountRequest/)
+  assert.match(route, /getOptionalCustomerIdentity/)
+  assert.match(route, /getOrderByIdForCustomer\(id, identity\.userId\)/)
+  assert.match(route, /consumeRateLimit/)
+  assert.match(route, /scope:\s*["']customer-payment-reconcile["']/)
+  assert.match(route, /reconcileMercadoPagoOrderPayment/)
+  assert.match(route, /private, no-cache, no-store, max-age=0, must-revalidate/)
+  assert.doesNotMatch(route, /request\.json\s*\(/)
+})
+
 test("admin catalog images and settings retain touched auth same-origin bounded writes", async () => {
   const [products, imageRoute, images, settingsRoute, settings] = await Promise.all([
     source("../lib/server/admin-product-actions.ts"),
