@@ -1,7 +1,7 @@
 # ProxyBembem — Visão Geral Mestre do Projeto
 
 **Atualizado em:** 2026-09-15  
-**Estado consolidado:** Phases 0–9 concluídas, aceitas em Production e integradas em `main`; hosted Supabase validado; final runtime candidate permanece deployado e pinado na KingHost.
+**Estado consolidado:** Phases 0–9 concluídas, aceitas em Production e integradas em `main`; hosted Supabase validado; final runtime candidate permanece deployado e pinado na Vercel.
 
 Este documento é o ponto de entrada canônico para entender o projeto. A realidade hospedada e a implementação atual prevalecem sobre anotações históricas antigas. Planos/specs em `docs/superpowers/plans/` e `docs/superpowers/specs/` preservam o processo histórico de design/TDD e não devem ser lidos como pendências atuais apenas porque contêm passos RED/GREEN antigos.
 
@@ -25,7 +25,7 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 
 ### Production / hosted
 
-- Aplicação: KingHost.
+- Aplicação: Vercel.
 - Runtime: Node.js **22.1.0**.
 - pnpm operacional: major **10**.
 - Backend/Auth/banco: Supabase hospedado separadamente.
@@ -33,7 +33,7 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 - Phase 7 hosted migration: `20260915002740 store_settings`.
 - Phase 8 hosted migration: `20260915092352 dashboard_metrics_attention_center`.
 - Phase 9 hosted migration: `20260915145834 phase9_customer_profiles_rls_performance`.
-- Final runtime candidate Phase 9 foi deployado na KingHost e reiniciado pelo painel.
+- Final runtime candidate Phase 9 foi deployado na Vercel e reiniciado pelo painel.
 - Public health pós-restart: `HTTP/2 200` com headers de segurança esperados.
 - Phase 8 authenticated `/admin` smoke: **PASS / OWNER-REPORTED 2026-09-15**.
 - Phase 9 final authenticated/business smoke: **PASS / OWNER-REPORTED 2026-09-15**.
@@ -44,7 +44,7 @@ Este documento é o ponto de entrada canônico para entender o projeto. A realid
 - Mercado Pago: autoridade financeira.
 - Melhor Envio: cotação/remessa/etiqueta/rastreamento.
 - Resend: e-mails transacionais e recuperação de senha.
-- KingHost: runtime Next.js/Node e camada pública nginx/webroot.
+- Vercel: runtime Next.js/Node e camada pública nginx/webroot.
 - Supabase: Auth, PostgreSQL, Storage, dados operacionais e RPCs.
 
 ---
@@ -61,7 +61,7 @@ Camadas operacionais:
 - **Mercado Pago:** verdade financeira;
 - **Melhor Envio:** verdade operacional de remessa/rastreamento;
 - **Resend:** transporte/callbacks de e-mail;
-- **KingHost:** execução da aplicação e publicação dos assets.
+- **Vercel:** execução da aplicação e publicação dos assets.
 
 Não existe segunda implementação de backend que deva ser ressuscitada de branches históricas.
 
@@ -93,7 +93,7 @@ Não existe segunda implementação de backend que deva ser ressuscitada de bran
 22. Métricas financeiras usam eventos confiáveis do Mercado Pago; `orders.created_at` não substitui horário de aprovação/reversão.
 23. Falha do snapshot administrativo aparece explicitamente; nunca vira zeros sintéticos.
 24. Índice não é removido apenas para reduzir advisor INFO; remoção exige prova de redundância e ausência de risco.
-25. Reinício KingHost é pelo painel; não usar PM2 CLI.
+25. Reinício Vercel é pelo painel; não usar PM2 CLI.
 
 ---
 
@@ -281,16 +281,16 @@ O tooling conectado não expôs Auth-config read/write nem prova do tier do proj
 
 ---
 
-## 8. Deploy e operação KingHost
+## 8. Deploy e operação Vercel
 
-Runbook: `docs/deployment/kinghost.md`.
+Runbook: `docs/deployment/vercel.md`.
 
 Estrutura:
 
 - aplicação Node/Next: `~/apps_nodejs/proxybembem`;
 - assets públicos/Next: `~/www`;
 - entrypoint: `proxybembem/app.js`;
-- porta vem do ambiente KingHost; não hard-code.
+- porta vem do ambiente Vercel; não hard-code.
 
 Deploy normal:
 
@@ -299,10 +299,10 @@ cd ~/apps_nodejs/proxybembem
 git pull --ff-only
 nvm use
 npx pnpm@10 install --frozen-lockfile
-NODE_ENV=production npx pnpm@10 deploy:kinghost
+NODE_ENV=production npx pnpm@10 build
 ```
 
-Para rollout de branch/candidate não integrado, usar detached exact SHA deliberadamente e não reescrever histórico. Depois, restart apenas pelo painel KingHost. Não iniciar/reiniciar PM2 via CLI.
+Para rollout de branch/candidate não integrado, usar detached exact SHA deliberadamente e não reescrever histórico. Depois, restart apenas pelo painel Vercel. Não iniciar/reiniciar PM2 via CLI.
 
 ### Incidente `umask`
 
@@ -320,7 +320,7 @@ O owner confirmou restart via painel, `HTTP/2 200`, headers de segurança espera
 
 ## 9. Verificação / CI
 
-CI verifica Node 22.1.0, frozen install, typecheck, `build:kinghost`, private-order contract, startup adapter smoke e full tests.
+CI verifica Node.js 22.x, frozen install, typecheck, `build`, private-order contract, startup adapter smoke e full tests.
 
 Phase 9 runtime candidate:
 
@@ -368,7 +368,7 @@ OAuth Production, caminho de remessa, compra explícita e smoke final aceitos no
 
 ### Phase 6
 
-Resend Production, webhook assinado, cron KingHost, entrega real de fixture e reenvio manual auditável aceitos.
+Resend Production, webhook assinado, cron Vercel, entrega real de fixture e reenvio manual auditável aceitos.
 
 ### Phase 7
 
@@ -391,7 +391,7 @@ Status: **PRODUCTION ACCEPTED / IN MAIN**.
 - hosted RLS performance migration: aplicada/validada;
 - advisors/grants/reconciliation: validados;
 - final runtime candidate: CI-green;
-- KingHost final rollout: concluído;
+- Vercel final rollout: concluído;
 - final manual smoke: **PASS / owner-reported 2026-09-15**;
 - integração Git: PR #5 merged em `main`.
 
@@ -418,7 +418,7 @@ Estado operacional:
 ## 13. Documentos de referência
 
 - `docs/PROJECT_MASTER_OVERVIEW.md` — visão geral canônica;
-- `docs/deployment/kinghost.md` — deploy/runtime KingHost;
+- `docs/deployment/vercel.md` — deploy/runtime Vercel;
 - `docs/payments-setup.md` — Mercado Pago/checkout;
 - `docs/shipping-setup.md` — Melhor Envio/remessas;
 - `docs/superpowers/CURRENT_STATUS.md` — checkpoint operacional curto;

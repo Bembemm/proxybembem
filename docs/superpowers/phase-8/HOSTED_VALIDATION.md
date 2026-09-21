@@ -46,6 +46,6 @@ Post-migration security/performance advisors showed no new Phase 8-specific regr
 
 ## Remaining gate
 
-Phase 8 is not Production-accepted yet. The remaining closeout gate is one KingHost deployment of the final CI-green candidate, followed by authenticated `/admin` smoke/reconciliation and creation of `FINAL_ACCEPTANCE.md`.
+Phase 8 is not Production-accepted yet. The remaining closeout gate is one Vercel deployment of the final CI-green candidate, followed by authenticated `/admin` smoke/reconciliation and creation of `FINAL_ACCEPTANCE.md`.
 
 Phase 9 remains **NOT STARTED**.

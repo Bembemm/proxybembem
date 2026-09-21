@@ -75,7 +75,7 @@ Runtime final:
 
 GitHub Actions CI #1613 / run `34923612641`: **PASS** no próprio `main` e no mesmo SHA.
 
-O pipeline cobre runtime Node 22.1.0, install congelado, typecheck, KingHost build, private-order contract, startup smoke e suíte automatizada.
+O pipeline cobre runtime Node.js 22.x, install congelado, typecheck, Vercel build, private-order contract, startup smoke e suíte automatizada.
 
 ## Hosted Supabase — concluído
 
@@ -85,13 +85,13 @@ O teste rollback-only da RPC comprovou update válido, avanço de `updated_at`, 
 
 Não reaplicar `20260915002740 store_settings`.
 
-## KingHost / Production — concluído
+## Vercel / Production — concluído
 
 Runtime implantado: `3fd88688a6cfae343fea3b346a3d1cad1035eb86`.
 
 O checkout Production foi normalizado de detached HEAD para branch local `main` rastreando `origin/main`. O estado intermediário do index foi verificado por igualdade exata de tree SHA antes da correção, evitando descarte cego de arquivos.
 
-`nvm use`, install e deploy seguiram o runbook KingHost; restart ocorreu pelo painel, sem iniciar PM2 manualmente. Homepage respondeu `HTTP/2 200`.
+`nvm use`, install e deploy seguiram o runbook Vercel; restart ocorreu pelo painel, sem iniciar PM2 manualmente. Homepage respondeu `HTTP/2 200`.
 
 O smoke funcional final do proprietário confirmou propagação global dos settings públicos testados. O conflito stale-tab permanece recusando sobrescrita de revisão mais nova.
 
@@ -128,4 +128,4 @@ Runtime `db430829...` implantado; banner corrigido para ficar abaixo da navbar; 
 
 ### 2026-09-15 — consistência global, integração e aceitação final
 
-Consumidores públicos foram auditados e corrigidos para obedecer Store Settings globalmente; `main` avançou por fast-forward para `3fd88688...`; CI #1613 passou; KingHost foi normalizada para `main`; Production respondeu HTTP/2 200 e o smoke funcional do proprietário confirmou a propagação global esperada.
+Consumidores públicos foram auditados e corrigidos para obedecer Store Settings globalmente; `main` avançou por fast-forward para `3fd88688...`; CI #1613 passou; Vercel foi normalizada para `main`; Production respondeu HTTP/2 200 e o smoke funcional do proprietário confirmou a propagação global esperada.

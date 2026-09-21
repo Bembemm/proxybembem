@@ -47,13 +47,13 @@ GitHub Actions CI #1648 / run `34983376962`: **PASS**.
 
 No mesmo SHA o job `verify` passou:
 
-- exact KingHost Node runtime setup;
+- exact Vercel Node runtime setup;
 - Node version check;
 - frozen pnpm install;
 - typecheck;
-- `build:kinghost`;
+- `build`;
 - private-order route contract;
-- KingHost startup adapter smoke;
+- Vercel runtime smoke;
 - full `pnpm test`.
 
 Commits posteriores ao runtime candidate são aceitação/testes/documentação e não exigem novo deploy de runtime enquanto não alterarem código de aplicação.
@@ -88,9 +88,9 @@ O advisor hospedado continua reportando **Leaked Password Protection Disabled**.
 
 Disposition final: **PLATFORM_LIMITATION / OWNER DASHBOARD CHECK**. É uma pendência de plataforma/configuração documentada, não uma finding crítica/alta desconhecida da aplicação.
 
-### Final KingHost rollout
+### Final Vercel rollout
 
-O owner executou o rollout final do exact runtime candidate e informou restart concluído pelo painel KingHost, sem uso de PM2 CLI.
+O owner executou o rollout final do exact runtime candidate e informou restart concluído pelo painel Vercel, sem uso de PM2 CLI.
 
 Evidência terminal fornecida pelo owner em 2026-09-15:
 
@@ -172,7 +172,7 @@ Migrations Phase 5 preservadas:
 - Dashboard/Attention Center são read-only e não resolvem flags nem mutam verdade financeira/operacional.
 - Não remover índice apenas para reduzir advisor INFO.
 - Não fazer rebase/force/delete de branch sem aprovação explícita do owner.
-- Não usar PM2 CLI para reiniciar a aplicação KingHost; restart somente pelo painel.
+- Não usar PM2 CLI para reiniciar a aplicação Vercel; restart somente pelo painel.
 
 ## Próxima ação
 

@@ -18,7 +18,7 @@ Store Settings V1 contém somente cinco valores allowlisted:
 - `notice_enabled`: flag do aviso público;
 - `notice_text`: texto simples opcional, máximo 400 caracteres.
 
-Segredos de Mercado Pago, Melhor Envio, Supabase, Resend, cron, KingHost e qualquer credencial de infraestrutura continuam fora de Store Settings.
+Segredos de Mercado Pago, Melhor Envio, Supabase, Resend, cron, Vercel e qualquer credencial de infraestrutura continuam fora de Store Settings.
 
 ## Supabase hospedado
 
@@ -51,7 +51,7 @@ O ciclo TDD comprovou RED nos três contratos novos antes da implementação. Ap
 
 GitHub Actions CI #1613 / run `34923612641`: **PASS** no SHA `3fd88688...`.
 
-O gate incluiu runtime Node 22.1.0, install com lockfile congelado, typecheck, KingHost build, private-order route contract, startup smoke e suíte automatizada.
+O gate incluiu runtime Node.js 22.x, install com lockfile congelado, typecheck, Vercel build, private-order route contract, startup smoke e suíte automatizada.
 
 ## Integração em `main`
 
@@ -59,7 +59,7 @@ Antes da integração, `feat/phase-7-store-settings` estava 60 commits à frente
 
 Com autorização explícita do proprietário, `main` foi avançada por fast-forward para `3fd88688a6cfae343fea3b346a3d1cad1035eb86`, sem force update. O CI #1613 rodou no próprio `main` e concluiu com sucesso no mesmo SHA.
 
-## Rollout KingHost
+## Rollout Vercel
 
 O checkout Production ainda estava em detached HEAD no runtime anterior `db4308296e9f2603e76ded4332394dd58c99a84c`.
 
@@ -71,8 +71,8 @@ Durante a normalização:
 4. foi comprovado que `git write-tree` e `origin/main^{tree}` eram ambos `70bd56c613c873327f809ceecb8a1f8158fa6a75`, sem diferença de working tree;
 5. o estado foi corrigido sem descartar dados: criou-se a branch local `main`, adicionou-se `main` ao fetch refspec do remote e configurou-se tracking para `origin/main`;
 6. `git status -sb` ficou `## main...origin/main` e `HEAD = 3fd88688...`;
-7. `nvm use`, install congelado e `NODE_ENV=production npx pnpm@10 deploy:kinghost` concluíram;
-8. restart foi feito pelo painel KingHost, sem PM2 manual.
+7. `nvm use`, install congelado e `NODE_ENV=production npx pnpm@10 build` concluíram;
+8. restart foi feito pelo painel Vercel, sem PM2 manual.
 
 Nenhuma migration foi reaplicada.
 
@@ -94,6 +94,6 @@ O proprietário executou o smoke funcional final e confirmou que a mudança de C
 
 ## Resultado final
 
-Phase 7 está **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN** no nível de implementação, banco hospedado, CI, deploy KingHost e smoke funcional.
+Phase 7 está **COMPLETE / PRODUCTION ACCEPTED / INTEGRATED INTO MAIN** no nível de implementação, banco hospedado, CI, deploy Vercel e smoke funcional.
 
 Phase 8 e Phase 9 permanecem **NOT STARTED** até nova instrução explícita.
