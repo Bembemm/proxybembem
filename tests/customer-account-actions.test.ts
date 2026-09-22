@@ -253,6 +253,7 @@ test("auth routes use the intended Supabase operations without admin-session aut
   const combined = [signup, login, reset, update, callback].join("\n")
 
   assert.match(signup, /signUp\s*\(/)
+  assert.doesNotMatch(signup, /auth\.admin\.listUsers|registeredEmailExists/)
   assert.match(signup, /emailRedirectTo/)
   assert.match(signup, /name/)
   assert.match(signup, /whatsapp/)
