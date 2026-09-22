@@ -58,23 +58,14 @@ test("used or expired signup confirmation links get a dedicated customer message
   )
 })
 
-test("signup rejects an already registered email before asking Supabase to create another account", async () => {
+test("signup does not depend on privileged user listing before Supabase Auth", async () => {
   const signupRoute = await source("../app/api/account/signup/route.ts")
 
-  assert.match(signupRoute, /getSupabaseEnv/)
-  assert.match(signupRoute, /auth\.admin\.listUsers\s*\(/)
-  assert.match(signupRoute, /perPage\s*:\s*1_000/)
-  assert.match(signupRoute, /user\.email/)
-  assert.match(signupRoute, /input\.email/)
-  assert.match(signupRoute, /json\(409/)
-  assert.match(
-    signupRoute,
-    /Este e-mail já está cadastrado\. Entre na sua conta ou redefina sua senha\./,
-  )
-
-  const duplicateCheck = signupRoute.indexOf("auth.admin.listUsers")
-  const signup = signupRoute.indexOf("auth.signUp")
-  assert.ok(duplicateCheck >= 0 && signup > duplicateCheck)
+  assert.doesNotMatch(signupRoute, /getSupabaseEnv/)
+  assert.doesNotMatch(signupRoute, /auth\.admin\.listUsers\s*\(/)
+  assert.doesNotMatch(signupRoute, /registeredEmailExists/)
+  assert.match(signupRoute, /auth\.signUp\s*\(/)
+  assert.match(signupRoute, /emailRedirectTo/)
 })
 
 test("password signup sends the exact strongly validated password to Supabase", async () => {

@@ -120,6 +120,8 @@ test("signup keeps a stable form reference across await and never reports provid
 
   assert.match(route, /const\s*\{\s*error\s*\}\s*=\s*await\s+supabase\.auth\.signUp\s*\(/)
   assert.match(route, /if\s*\(\s*error\s*\)/)
+  assert.doesNotMatch(route, /auth\.admin\.listUsers|registeredEmailExists/)
+  assert.doesNotMatch(route, /getSupabaseEnv\(\)/)
 })
 
 test("customer account shell stays structural while leaf pages own server protection", async () => {
