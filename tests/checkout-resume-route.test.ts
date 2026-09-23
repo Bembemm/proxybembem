@@ -32,13 +32,17 @@ test("resume-payment route is owner-scoped, expiry-aware, and redirects only to 
   assert.match(orders, /id:\s*\x60eq\.\$\{orderId\}\x60/)
 })
 
-test("customer order detail provides resume and branded unavailable states without trusting return parameters", async () => {
+test("customer order detail uses provider return params only to trigger safe reconciliation", async () => {
   const detail = await source("../app/minha-conta/pedidos/[id]/page.tsx")
 
-  assert.match(detail, /Continuar pagamento/)
+  assert.match(detail, /PaymentReturnReconciler/)
+  assert.match(detail, /MERCADO_PAGO_RETURN_SIGNAL_KEYS/)
+  assert.match(detail, /Ir para o Mercado Pago/)
+  assert.match(detail, /não pague novamente/i)
   assert.match(detail, /Checkout expirado/)
   assert.match(detail, /\/api\/orders\/\$\{order\.id\}\/resume-payment/)
   assert.match(detail, /Não foi possível carregar este pedido/)
   assert.match(detail, /Pedido não encontrado/)
   assert.doesNotMatch(detail, /searchParams.*payment_status/)
+  assert.doesNotMatch(detail, /returnParams.*paymentStatus/)
 })

@@ -52,9 +52,10 @@ Use `.env.example` como lista canônica de nomes. `NEXT_PUBLIC_*` contém soment
 7. o pedido é criado no Supabase antes do redirecionamento;
 8. a preferência Mercado Pago usa somente valores reconstruídos no servidor;
 9. `back_urls` retornam para `/minha-conta/pedidos/{order-id}`;
-10. cada preferência Checkout Pro expira em 72 horas;
-11. enquanto o pedido permanece `pending + awaiting_payment` e dentro desse prazo, a página privada oferece **Continuar pagamento** por uma rota server-side owner-scoped;
-12. depois de 72 horas sem confirmação financeira, o checkout é tratado como **expirado** na aplicação: não pode mais ser retomado, não entra em produção e permanece apenas como histórico. O `payment_status` não é falsificado para representar essa expiração local.
+10. quando o cliente retorna do Mercado Pago e o pedido ainda está aguardando pagamento, a página mostra **Verificando pagamento** e chama somente uma rota POST same-origin, autenticada, owner-scoped e rate-limited;
+11. essa rota ignora status/valor vindos do navegador e consulta o Mercado Pago no servidor pela referência já armazenada no pedido, reaproveitando a mesma reconciliação autoritativa usada pelo admin;
+12. enquanto a confirmação não chega, a UI avisa explicitamente **não pague novamente** e só oferece voltar ao Mercado Pago caso o cliente ainda não tenha concluído o pagamento;
+13. cada preferência Checkout Pro expira em 72 horas; depois desse prazo sem confirmação financeira, o checkout é tratado como **expirado** na aplicação: não pode mais ser retomado, não entra em produção e permanece apenas como histórico. O `payment_status` não é falsificado para representar essa expiração local.
 
 Se um produto for arquivado antes do pagamento, deixar de existir ou não estiver publicado, o checkout deve falhar fechado em vez de usar dados antigos do carrinho. Se o preço atual mudar, o servidor usa o preço atual.
 
@@ -71,6 +72,8 @@ A URL de produção deve permanecer configurada em **Suas integrações > Webhoo
 Não adicione parâmetros para forçar IPN. O endpoint processa notificações Webhook assinadas e valida `x-signature` com a chave secreta da aplicação.
 
 O webhook valida HMAC, consulta o pagamento diretamente no provedor, valida a referência `PB-...`, compara moeda/valor com a verdade armazenada e aplica a transição via RPC atômico. Divergências vão para revisão; retorno de navegador nunca é autoridade financeira.
+
+Os parâmetros anexados pelo Mercado Pago à `back_url` servem apenas como sinal para iniciar a verificação. A aplicação não aceita `status`, `payment_id`, valor ou referência enviados pelo browser como prova de pagamento. A rota de reconciliação do cliente primeiro autentica a sessão, busca o pedido pelo `customer_id` do usuário autenticado e então consulta o provedor usando credenciais server-only.
 
 A expiração de 72 horas é uma regra de checkout, não um status financeiro inventado. Pedidos abandonados continuam auditáveis no histórico, mas a aplicação deixa de tratá-los como checkouts retomáveis depois do prazo. Não existe hard delete automático de pedido nesse fluxo.
 
